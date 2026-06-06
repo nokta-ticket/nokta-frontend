@@ -18,6 +18,7 @@ import { CancelEventoDialog } from "@/app/(private-routes)/(painel-produtor)/pro
 import { toast } from "@/lib/toast";
 import { formatarDataCurta } from "@/lib/formatarData";
 import api from "@/lib/axios";
+import { IngressoLote } from "@/context/EventoContext";
 import { AxiosError } from "axios";
 import { Paginate } from "@/interfaces/paginate";
 import { useRouter } from "next/navigation";
@@ -49,7 +50,7 @@ type EventoAPI = {
   status: number;
   thumbnails: Thumbnail[];
   endereco: Address;
-  ingressos?: IngressoLote[];
+  ingressos?: { id?: number; nome: string; lote: number; quantidade: number; valor: number; tipo: number; dataLimite: string; disponivelParaVenda: boolean }[];
 };
 
 interface GetEvents {

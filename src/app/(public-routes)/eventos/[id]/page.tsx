@@ -584,8 +584,8 @@ export default function IngressoDetalhesPage() {
                     <div className="flex items-center gap-3 px-3 py-3.5">
                       <div className="h-7 w-7 flex items-center justify-center shrink-0">
                         {/18/i.test(evento.classificacaoEtaria)
-                          ? <AgeRestrictionIcon size={18} className="text-[#111827]" size={22} />
-                          : <CircleLIcon size={18} className="text-[#111827]" size={22} />
+                          ? <AgeRestrictionIcon size={22} className="text-[#111827]" />
+                          : <CircleLIcon size={22} className="text-[#111827]" />
                         }
                       </div>
                       <div className="min-w-0 flex-1">
@@ -600,7 +600,7 @@ export default function IngressoDetalhesPage() {
                       className="w-full flex items-center gap-3 px-3 py-3.5 text-left hover:bg-gray-50 transition"
                     >
                       <div className="h-7 w-7 flex items-center justify-center shrink-0">
-                        <CouponIcon size={18} className="text-[#111827]" size={22} />
+                        <CouponIcon size={22} className="text-[#111827]" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-[11px] text-gray-400 leading-none mb-1">Meia entrada</p>
@@ -617,7 +617,7 @@ export default function IngressoDetalhesPage() {
                       className="w-full flex items-center gap-3 px-3 py-3.5 text-left hover:bg-gray-50 transition"
                     >
                       <div className="h-7 w-7 flex items-center justify-center shrink-0">
-                        <CancellationIcon size={18} className="text-[#111827]" size={22} />
+                        <CancellationIcon size={22} className="text-[#111827]" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-[11px] text-gray-400 leading-none mb-1">Cancelamento</p>
