@@ -161,7 +161,7 @@ export default function ComprarRevendaPage() {
                   {resale.evento?.endereco && (
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-primary" />
-                      <span>{resale.evento.endereco.localidade}, {resale.evento.endereco.uf}</span>
+                      <span>{resale.evento?.endereco?.localidade}, {resale.evento?.endereco?.uf}</span>
                     </div>
                   )}
                 </div>

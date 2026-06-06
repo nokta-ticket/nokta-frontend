@@ -33,7 +33,7 @@ export default function EventCardSmall({ event }: Props) {
         {event.nome}
       </p>
       <p className="text-[12px] text-muted-foreground truncate mb-1">
-        {event.endereco.localidade} — {event.endereco.uf}
+        {event.endereco?.localidade} — {event.endereco?.uf}
       </p>
       <p className="text-[12px] font-semibold text-violet-600">
         {formatarDataCurta(event.data)}

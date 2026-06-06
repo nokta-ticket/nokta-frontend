@@ -169,7 +169,7 @@ export default function SearchOverlay({ open, onClose }: Props) {
                         </p>
                         <div className="flex items-center gap-1 text-[12px] text-gray-400">
                           <MapPin size={11} className="shrink-0" />
-                          <span className="truncate">{ev.endereco.localidade} - {ev.endereco.uf}</span>
+                          <span className="truncate">{ev.endereco?.localidade} - {ev.endereco?.uf}</span>
                         </div>
                         <div className="flex items-center gap-1 text-[12px] text-gray-400 mt-0.5">
                           <Calendar size={11} className="shrink-0" />
@@ -237,7 +237,7 @@ export default function SearchOverlay({ open, onClose }: Props) {
                           {src && <Image src={src} alt={ev.nome} fill className="object-cover" unoptimized />}
                         </div>
                         <p className="font-sans text-[15px] font-bold text-[#181d27] leading-snug mb-1.5 line-clamp-2">{ev.nome}</p>
-                        <p className="font-sans text-[13px] text-gray-400 mb-1 truncate">{ev.endereco.localidade} - {ev.endereco.uf}</p>
+                        <p className="font-sans text-[13px] text-gray-400 mb-1 truncate">{ev.endereco?.localidade} - {ev.endereco?.uf}</p>
                         <p className="font-sans text-[13px] font-bold text-[#181d27]">{dataFmt}</p>
                       </div>
                     );

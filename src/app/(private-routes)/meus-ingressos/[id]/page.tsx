@@ -248,7 +248,7 @@ export default function DetalheIngressoPage() {
 
   const openMaps = () => {
     if (!ev?.endereco) return;
-    const q = encodeURIComponent(`${ev.endereco.logradouro}, ${ev.endereco.numero}, ${ev.endereco.localidade}, ${ev.endereco.uf}`);
+    const q = encodeURIComponent(`${ev.endereco?.logradouro}, ${ev.endereco?.numero}, ${ev.endereco?.localidade}, ${ev.endereco?.uf}`);
     window.open(`https://www.google.com/maps/search/?api=1&query=${q}`, "_blank");
   };
 
@@ -496,10 +496,10 @@ export default function DetalheIngressoPage() {
           {ev?.endereco && (
             <Accordion label="Localização" open={openLocation} onToggle={() => setOpenLocation(v => !v)}>
               <p className="text-gray-500 leading-relaxed">
-                {ev.endereco.logradouro}, {ev.endereco.numero}
-                {ev.endereco.bairro && ` · ${ev.endereco.bairro}`}
-                <br />{ev.endereco.localidade}/{ev.endereco.uf}
-                {ev.endereco.cep && ` · CEP ${ev.endereco.cep}`}
+                {ev.endereco?.logradouro}, {ev.endereco?.numero}
+                {ev.endereco?.bairro && ` · ${ev.endereco.bairro}`}
+                <br />{ev.endereco?.localidade}/{ev.endereco?.uf}
+                {ev.endereco?.cep && ` · CEP ${ev.endereco.cep}`}
               </p>
               <button onClick={openMaps} className="mt-2 flex items-center gap-1 text-violet-600 text-xs font-medium hover:text-violet-700 transition-colors">
                 <ExternalLink size={11} /> Abrir no Google Maps

@@ -158,7 +158,7 @@ function LastCallItem({ event }: { event: EventoAPI }) {
           {event.nome}
         </p>
         <p className="text-[13px] text-muted-foreground truncate mb-1">
-          {event.endereco.localidade} — {event.endereco.uf}
+          {event.endereco?.localidade} — {event.endereco?.uf}
         </p>
         <p className="text-[13px] font-bold text-violet-600">
           {formatarDataCurta(event.data)}

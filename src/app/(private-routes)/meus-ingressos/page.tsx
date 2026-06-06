@@ -144,7 +144,7 @@ function TicketCard({ item, dim = false, count = 1 }: { item: UserTicket; dim?: 
           {item.event?.endereco && (
             <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
               <MapPin size={11} className="shrink-0" />
-              <span>{item.event.endereco.localidade}/{item.event.endereco.uf}</span>
+              <span>{item.event.endereco?.localidade}/{item.event.endereco?.uf}</span>
             </div>
           )}
         </div>

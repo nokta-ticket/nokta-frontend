@@ -194,7 +194,7 @@ export default function HeroSlider() {
           <div className="flex flex-col items-center gap-2">
             <div className="flex items-center gap-1.5 text-[14px] text-[#414651]">
               <MapPin size={15} className="text-gray-400 shrink-0" />
-              <span>{mobileEv.endereco.localidade} - {mobileEv.endereco.uf}</span>
+              <span>{mobileEv.endereco?.localidade} - {mobileEv.endereco?.uf}</span>
             </div>
             <div className="flex items-center gap-1.5 text-[14px] text-[#414651]">
               <Calendar size={15} className="text-gray-400 shrink-0" />

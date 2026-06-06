@@ -185,7 +185,7 @@ export default function MinhasRevendasPage() {
                       {r.evento?.endereco && (
                         <span className="flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
-                          {r.evento.endereco.localidade}, {r.evento.endereco.uf}
+                          {r.evento.endereco?.localidade}, {r.evento.endereco?.uf}
                         </span>
                       )}
                     </div>

@@ -106,7 +106,7 @@ const RevendaPage = () => {
     .filter((r) => {
       const nomeEvento = r.evento?.nome ?? "";
       const cidade = r.evento?.endereco
-        ? `${r.evento.endereco.localidade} ${r.evento.endereco.uf}`
+        ? `${r.evento?.endereco?.localidade} ${r.evento?.endereco?.uf}`
         : "";
       const normalizedSearch = normalizeText(searchQuery);
       const matchesSearch =
@@ -261,7 +261,7 @@ const RevendaPage = () => {
                               <div className="flex items-center gap-2">
                                 <MapPin className="h-4 w-4 text-primary" />
                                 <span className="line-clamp-1">
-                                  {r.evento.endereco.localidade}, {r.evento.endereco.uf}
+                                  {r.evento?.endereco?.localidade}, {r.evento?.endereco?.uf}
                                 </span>
                               </div>
                             )}

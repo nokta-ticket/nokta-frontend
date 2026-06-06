@@ -201,7 +201,7 @@ function SuccessScreen({
 
   const handleMap = () => {
     const addr = ev.endereco
-      ? encodeURIComponent(`${ev.endereco.logradouro}, ${ev.endereco.numero}, ${ev.endereco.localidade}, ${ev.endereco.uf}`)
+      ? encodeURIComponent(`${ev.endereco?.logradouro}, ${ev.endereco?.numero}, ${ev.endereco?.localidade}, ${ev.endereco?.uf}`)
       : encodeURIComponent(evento.nome);
     window.open(`https://www.google.com/maps/search/?api=1&query=${addr}`, "_blank");
   };
@@ -616,7 +616,7 @@ return (
                 {ev.endereco && (
                   <span className="flex items-center gap-1 text-[12px] text-[#7c3aed]">
                     <MapPin size={11} className="shrink-0" />
-                    {ev.endereco.localidade}/{ev.endereco.uf}
+                    {ev.endereco?.localidade}/{ev.endereco?.uf}
                   </span>
                 )}
               </div>
