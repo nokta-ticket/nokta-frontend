@@ -126,10 +126,10 @@ function calcLayout(items: ProgramItem[]) {
 
 // ── Desktop timeline ───────────────────────────────────────────
 function DesktopTimeline({ items }: { items: ProgramItem[] }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
   const layout = calcLayout(items);
   if (!layout) return null;
   const { n, dotXs, dotYAbs, cardTop, contH, colWPct, path, scrollW } = layout;
-  const scrollRef = useRef<HTMLDivElement>(null);
   const needsScroll = n > 5;
   const SCROLL_STEP = 280;
 

@@ -83,7 +83,7 @@ export default function StepMedia({ prevTab }: Props) {
 
   const removeImage = useCallback(
     (idx: number) => {
-      // @ts-ignore
+      // @ts-expect-error
       setThumbnails((prev: string[]) => {
         const next = prev.filter((_: any, i: number) => i !== idx);
         setThumbnails(next);
