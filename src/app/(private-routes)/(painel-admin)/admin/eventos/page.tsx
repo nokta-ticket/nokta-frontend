@@ -204,8 +204,8 @@ export default function AdminEventos() {
 
                   <h2 className="mt-1 text-base font-semibold">{ev.nome}</h2>
                   <p className="text-sm text-muted-foreground flex items-center gap-1">
-                    {ev.endereco.logradouro}, {ev.endereco.numero} -{" "}
-                    {ev.endereco.localidade}
+                    {ev.endereco?.logradouro}, {ev.endereco?.numero} -{" "}
+                    {ev.endereco?.localidade}
                   </p>
 
                   <Badge

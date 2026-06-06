@@ -189,8 +189,8 @@ export default function EventosEmDestaquePage() {
 
                 <h2 className="mt-1 text-base font-semibold">{ev.nome}</h2>
                 <p className="text-sm text-muted-foreground">
-                  {ev.endereco.logradouro}, {ev.endereco.numero} -{" "}
-                  {ev.endereco.localidade}
+                  {ev.endereco?.logradouro}, {ev.endereco?.numero} -{" "}
+                  {ev.endereco?.localidade}
                 </p>
 
                 <div className="mt-2">

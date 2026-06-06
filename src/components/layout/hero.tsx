@@ -231,7 +231,7 @@ export default function HeroSlider() {
                     <CardTitle className="text-xl font-bold">{ev.nome}</CardTitle>
                     <div className="font-semibold flex justify-center text-sm text-muted-foreground mt-2">
                       <span className="text-center leading-tight">
-                        {ev.endereco.logradouro}, {ev.endereco.localidade} - {ev.endereco.uf}
+                        {ev.endereco?.logradouro}, {ev.endereco?.localidade} - {ev.endereco?.uf}
                       </span>
                     </div>
                     <div className="font-semibold flex justify-center text-sm text-muted-foreground mt-2">

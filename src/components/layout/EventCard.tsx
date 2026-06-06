@@ -62,8 +62,8 @@ export default function EventCard({ event, toggleFavorite }: Props) {
       <CardContent className="px-4 pt-3">
         <h2 className="text-md font-semibold leading-tight">{event.nome}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          {event.endereco.logradouro}, {event.endereco.localidade} -{" "}
-          {event.endereco.uf}
+          {event.endereco?.logradouro}, {event.endereco?.localidade} -{" "}
+          {event.endereco?.uf}
         </p>
       </CardContent>
 

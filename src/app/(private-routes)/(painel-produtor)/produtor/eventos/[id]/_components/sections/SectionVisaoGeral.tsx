@@ -169,7 +169,7 @@ export default function SectionVisaoGeral({ event, onRefresh }: SectionProps) {
             <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Localização</p>
           </div>
           <p className="text-[13px] text-gray-800 font-medium">
-            {event.endereco.logradouro}, {event.endereco.numero}
+            {event.endereco?.logradouro}, {event.endereco?.numero}
           </p>
           <p className="text-[12px] text-gray-500 mt-0.5">
             {event.endereco.bairro} – {event.endereco.localidade}/{event.endereco.uf}
