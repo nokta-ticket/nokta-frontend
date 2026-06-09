@@ -14,7 +14,7 @@ export default function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const isEventPage = /^\/eventos\/[^/]+$/.test(pathname);
+  const isEventPage = /^\/eventos\/[^/]+$/.test(pathname) || /^\/revenda\/\d+$/.test(pathname);
 
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
