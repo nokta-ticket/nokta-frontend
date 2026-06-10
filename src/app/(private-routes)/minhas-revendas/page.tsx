@@ -77,7 +77,6 @@ export default function MinhasRevendasPage() {
       setResales(payload.data ?? []);
       setPaginate(normalizePagination(payload.paginate ?? null));
     } catch (err) {
-      console.error(err);
       setResales([]);
       setPaginate(normalizePagination(null));
       setError(getErrorMessage(err, "Nao foi possivel carregar seus anuncios."));

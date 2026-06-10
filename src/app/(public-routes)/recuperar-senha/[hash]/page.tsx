@@ -23,7 +23,6 @@ export default function RecuperarSenha() {
         "/validate-reset-password-request/" + hash
       );
     } catch (error: unknown) {
-      console.error(error);
       if (error instanceof AxiosError) {
         toast.error(error.response?.data.message);
       } else {
@@ -52,7 +51,6 @@ export default function RecuperarSenha() {
       toast.success("Senha atualizada com sucesso");
       router.push("/login");
     } catch (error: unknown) {
-      console.error(error);
       if (error instanceof AxiosError) {
         toast.error(error.response?.data.message);
       } else {

@@ -197,7 +197,6 @@ export default function DetalheIngressoPage() {
         pdf.save(`${baseName}.pdf`);
       }
     } catch (err) {
-      console.error("Export error:", err);
       toast.error("Erro ao exportar. Tente novamente.");
     } finally {
       // Restore hidden state

@@ -73,7 +73,6 @@ export default function FavoritosPage() {
       const response = await api.get<FavoriteEvent[]>('/eventos/favoritos');
       setFavorites(uniqById(response.data));
     } catch (err) {
-      console.error(err);
       setError(getErrorMessage(err, 'Nao foi possivel carregar os favoritos.'));
     } finally {
       setLoading(false);
@@ -130,7 +129,6 @@ export default function FavoritosPage() {
       await api.delete(`/eventos/favoritos/${eventId}`);
       toast.success('Favorito removido com sucesso.');
     } catch (err) {
-      console.error(err);
       toast.error(
         getErrorMessage(err, 'Nao foi possivel remover dos favoritos.'),
       );

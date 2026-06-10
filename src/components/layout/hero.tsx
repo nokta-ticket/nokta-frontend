@@ -81,7 +81,6 @@ export default function HeroSlider() {
         if (evs.length === 0) evs = data;
         setEventos(evs);
       } catch (err) {
-        console.error('Erro ao buscar eventos:', err);
       } finally {
         setLoading(false);
       }

@@ -81,7 +81,6 @@ export default function MeusEventosPage() {
       setPaginate(res.data.paginate);
       setEventos(res.data.data);
     } catch (err: any) {
-      console.error(err);
       toast.error(err.message ?? "Falha ao carregar eventos.");
     } finally {
       setLoading(false);

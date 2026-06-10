@@ -239,7 +239,6 @@ export default function EventGrid() {
       const res = await api.get("/eventos");
       setEvents(res.data.data as EventoAPI[]);
     } catch (err) {
-      console.error("Erro ao buscar eventos:", err);
     } finally {
       setLoading(false);
     }

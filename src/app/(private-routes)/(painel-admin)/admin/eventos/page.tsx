@@ -94,7 +94,6 @@ export default function AdminEventos() {
       setPaginate(res.data.paginate);
       setEventos(data);
     } catch (err: any) {
-      console.error(err);
       toast.error(err.message ?? "Falha ao carregar eventos.");
     } finally {
       setLoading(false);

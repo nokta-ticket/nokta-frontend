@@ -153,7 +153,6 @@ export function EventoProvider({ children }: { children: React.ReactNode }) {
 
       router.push("/produtor/eventos");
     } catch (err: any) {
-      console.error(err);
       if (err instanceof AxiosError) {
         const msg = err.response?.data?.message;
         const text = Array.isArray(msg) ? msg[0] : (msg || "Erro ao salvar evento.");

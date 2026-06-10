@@ -122,7 +122,7 @@ export function ConfirmEmailModal({ open, onClose, email, onConfirm }: ConfirmEm
   const handleConfirm = async (code: string) => {
     setLoading(true)
     try {
-      const res = await fetch(`${API_URL}/auth/confirmar-email`, {
+      const res = await fetch(`${API_URL}/auth/confirmar-telefone`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: code }),
@@ -155,12 +155,11 @@ export function ConfirmEmailModal({ open, onClose, email, onConfirm }: ConfirmEm
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="space-y-5 max-w-sm">
         <DialogHeader>
-          <DialogTitle>Confirmar conta</DialogTitle>
+          <DialogTitle>Verificação de telefone</DialogTitle>
         </DialogHeader>
 
         <p className="text-sm text-muted-foreground -mt-2">
-          Insira o código de 6 dígitos enviado para{' '}
-          <span className="font-medium text-gray-700">{email || 'seu e-mail'}</span>.
+          Insira o código de 6 dígitos enviado para o seu WhatsApp.
         </p>
 
         <OtpInput onComplete={handleConfirm} disabled={loading} />
@@ -189,7 +188,7 @@ export function ConfirmEmailModal({ open, onClose, email, onConfirm }: ConfirmEm
           )}
         </div>
 
-        <p className="text-center text-xs text-gray-400">Verifique também a pasta de spam.</p>
+        <p className="text-center text-xs text-gray-400">Verifique as mensagens do WhatsApp no seu celular.</p>
       </DialogContent>
     </Dialog>
   )

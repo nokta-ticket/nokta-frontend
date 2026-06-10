@@ -39,7 +39,6 @@ export default function ValidarIngressoPage() {
         status: "válido",
       });
     } catch (error) {
-      console.error(error);
       if (error instanceof AxiosError) {
         toast.error(error.response?.data.message);
       }

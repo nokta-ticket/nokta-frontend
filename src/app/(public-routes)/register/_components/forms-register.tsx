@@ -8,9 +8,36 @@ import { toast } from "@/lib/toast";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/axios";
 import { PhoneInput, validatePhone } from "@/components/ui/phone-input";
-import type { Country } from "react-phone-number-input";
+import { getCountryCallingCode, type Country } from "react-phone-number-input";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+// ─── WhatsApp icon ──────────────────────────────────────────────────────────
+
+function WhatsAppIcon({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className={className} aria-hidden>
+      <path fill="#fff" d="M4.868,43.303l2.694-9.835C5.9,30.59,5.026,27.324,5.027,23.979C5.032,13.514,13.548,5,24.014,5c5.079,0.002,9.845,1.979,13.43,5.566c3.584,3.588,5.558,8.356,5.556,13.428c-0.004,10.465-8.522,18.98-18.986,18.98c-0.001,0,0,0,0,0h-0.008c-3.177-0.001-6.3-0.798-9.073-2.311L4.868,43.303z"/>
+      <path fill="#fff" d="M4.868,43.803c-0.132,0-0.26-0.052-0.355-0.148c-0.125-0.127-0.174-0.312-0.127-0.483l2.639-9.636c-1.636-2.906-2.499-6.206-2.497-9.556C4.532,13.238,13.273,4.5,24.014,4.5c5.21,0.002,10.105,2.031,13.784,5.713c3.679,3.683,5.704,8.577,5.702,13.781c-0.004,10.741-8.746,19.48-19.486,19.48c-3.189-0.001-6.344-0.788-9.144-2.277l-9.875,2.589C4.953,43.798,4.911,43.803,4.868,43.803z"/>
+      <path fill="#cfd8dc" d="M24.014,5c5.079,0.002,9.845,1.979,13.43,5.566c3.584,3.588,5.558,8.356,5.556,13.428c-0.004,10.465-8.522,18.98-18.986,18.98h-0.008c-3.177-0.001-6.3-0.798-9.073-2.311L4.868,43.303l2.694-9.835C5.9,30.59,5.026,27.324,5.027,23.979C5.032,13.514,13.548,5,24.014,5 M24.014,42.974C24.014,42.974,24.014,42.974,24.014,42.974C24.014,42.974,24.014,42.974,24.014,42.974 M24.014,42.974C24.014,42.974,24.014,42.974,24.014,42.974C24.014,42.974,24.014,42.974,24.014,42.974 M24.014,4C24.014,4,24.014,4,24.014,4C12.998,4,4.032,12.962,4.027,23.979c-0.001,3.367,0.849,6.685,2.461,9.622l-2.585,9.439c-0.094,0.345,0.002,0.713,0.254,0.967c0.19,0.192,0.447,0.297,0.711,0.297c0.085,0,0.17-0.011,0.254-0.033l9.687-2.54c2.828,1.468,5.998,2.243,9.197,2.244c11.024,0,19.99-8.963,19.995-19.98c0.002-5.339-2.075-10.359-5.848-14.135C34.378,6.083,29.357,4.002,24.014,4L24.014,4z"/>
+      <path fill="#40c351" d="M35.176,12.832c-2.98-2.982-6.941-4.625-11.157-4.626c-8.704,0-15.783,7.076-15.787,15.774c-0.001,2.981,0.833,5.883,2.413,8.396l0.376,0.597l-1.595,5.821l5.973-1.566l0.577,0.342c2.422,1.438,5.2,2.198,8.032,2.199h0.006c8.698,0,15.777-7.077,15.78-15.776C39.795,19.778,38.156,15.814,35.176,12.832z"/>
+      <path fill="#fff" fillRule="evenodd" d="M19.268,16.045c-0.355-0.79-0.729-0.806-1.068-0.82c-0.277-0.012-0.593-0.011-0.909-0.011c-0.316,0-0.83,0.119-1.265,0.594c-0.435,0.475-1.661,1.622-1.661,3.956c0,2.334,1.7,4.59,1.937,4.906c0.237,0.316,3.282,5.259,8.104,7.161c4.007,1.58,4.823,1.266,5.693,1.187c0.87-0.079,2.807-1.147,3.202-2.255c0.395-1.108,0.395-2.057,0.277-2.255c-0.119-0.198-0.435-0.316-0.909-0.554s-2.807-1.385-3.242-1.543c-0.435-0.158-0.751-0.237-1.068,0.238c-0.316,0.474-1.225,1.543-1.502,1.859c-0.277,0.317-0.554,0.357-1.028,0.119c-0.474-0.238-2.002-0.738-3.815-2.354c-1.41-1.257-2.362-2.81-2.639-3.285c-0.277-0.474-0.03-0.731,0.208-0.968c0.213-0.213,0.474-0.554,0.712-0.831c0.237-0.277,0.316-0.475,0.474-0.791c0.158-0.317,0.079-0.594-0.04-0.831C20.612,19.329,19.69,16.983,19.268,16.045z" clipRule="evenodd"/>
+    </svg>
+  );
+}
+
+// ─── Device fingerprint ──────────────────────────────────────────────────────
+
+function getDeviceFingerprint(): string {
+  if (typeof window === 'undefined') return 'ssr';
+  const key = 'nokta_device_id';
+  let id = localStorage.getItem(key);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -306,7 +333,8 @@ export function RegisterForm() {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [showPw,         setShowPw]        = useState(false);
 
-  const [emailCode, setEmailCode] = useState("");
+  const [phoneCode,  setPhoneCode]  = useState("");
+  const [phoneE164,  setPhoneE164]  = useState("");
 
   const [nome,            setNome]           = useState("");
   const [email,           setEmail]          = useState("");
@@ -317,12 +345,7 @@ export function RegisterForm() {
   const [emailSuggestion, setEmailSuggestion] = useState<string | null>(null);
   const [touched, setTouched] = useState({ nome: false, email: false, telefone: false, senha: false });
 
-  const [emailChanged,      setEmailChanged]      = useState(false);
-  const [showEmailChange,   setShowEmailChange]   = useState(false);
-  const [newEmailInput,     setNewEmailInput]     = useState("");
-  const [emailChangeLoading, setEmailChangeLoading] = useState(false);
-
-  const emailResend = useResendCooldown();
+  const phoneResend = useResendCooldown();
 
   const handleEmailBlur = () => {
     setTouched((t) => ({ ...t, email: true }));
@@ -356,12 +379,18 @@ export function RegisterForm() {
     setLoading(true);
     const { nome: firstName, sobrenome } = splitName(nome);
     const localDigits = telefone.replace(/\D/g, "");
+    const e164 = `+${getCountryCallingCode(telefoneCountry)}${localDigits}`;
+    setPhoneE164(e164);
 
     try {
       const res = await fetch(`${API_URL}/auth/register`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
-        body: JSON.stringify({ nome: firstName, sobrenome, email, senha, telefone: localDigits }),
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
+          "X-Device-Fingerprint": getDeviceFingerprint(),
+        },
+        body: JSON.stringify({ nome: firstName, sobrenome, email, senha, telefone: e164 }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -376,10 +405,14 @@ export function RegisterForm() {
   };
 
   const handleConfirm = async () => {
-    if (emailCode.length < 6) return;
+    if (phoneCode.length < 6) return;
     setConfirmLoading(true);
     try {
-      const res = await api.post("/auth/confirmar-email", { token: emailCode });
+      const res = await api.post(
+        "/auth/confirmar-telefone",
+        { token: phoneCode, phone: phoneE164 },
+        { headers: { "X-Device-Fingerprint": getDeviceFingerprint() } },
+      );
       const { token, user } = res.data;
       signIn(token, user);
       setStep("done");
@@ -390,47 +423,34 @@ export function RegisterForm() {
           router.push("/");
         }
       }, 1200);
-    } catch {
-      toast.error("Código de e-mail inválido. Verifique e tente novamente.");
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || "Código inválido. Verifique seu WhatsApp e tente novamente.";
+      toast.error(msg);
     } finally {
       setConfirmLoading(false);
     }
   };
 
-  const handleResendEmail = async () => {
-    if (!emailResend.canResend) return;
+  const handleResendPhone = async () => {
+    if (!phoneResend.canResend) return;
     try {
-      await fetch(`${API_URL}/auth/reenviar-confirmacao`, {
+      const res = await fetch(`${API_URL}/auth/reenviar-confirmacao`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
+          "X-Device-Fingerprint": getDeviceFingerprint(),
+        },
         body: JSON.stringify({ email }),
       });
-      toast.success("Código de e-mail reenviado!");
-      emailResend.startCooldown(emailResend.sendCount + 1);
-    } catch {
-      toast.error("Erro ao reenviar o código.");
-    }
-  };
-
-
-  const handleChangeEmail = async () => {
-    if (!validateEmail(newEmailInput) || emailChangeLoading) return;
-    setEmailChangeLoading(true);
-    try {
-      await fetch(`${API_URL}/auth/alterar-email-pendente`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
-        body: JSON.stringify({ emailAtual: email, emailNovo: newEmailInput }),
-      });
-      setEmail(newEmailInput);
-      setEmailChanged(true);
-      setShowEmailChange(false);
-      emailResend.startCooldown(emailResend.sendCount + 1);
-      toast.success("E-mail atualizado. Verifique a nova caixa de entrada.");
-    } catch {
-      toast.error("Não foi possível alterar o e-mail. Tente novamente.");
-    } finally {
-      setEmailChangeLoading(false);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Erro ao reenviar o código.");
+      }
+      toast.success("Código reenviado no WhatsApp!");
+      phoneResend.startCooldown(phoneResend.sendCount + 1);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao reenviar o código.");
     }
   };
 
@@ -449,8 +469,8 @@ export function RegisterForm() {
 
   // ── OTP ──────────────────────────────────────────────────────────────────
   if (step === "otp") {
-    const emailDone  = emailCode.length === 6;
-    const canConfirm = emailDone && !confirmLoading;
+    const phoneDone  = phoneCode.length === 6;
+    const canConfirm = phoneDone && !confirmLoading;
 
     return (
       <div className="space-y-6">
@@ -466,43 +486,50 @@ export function RegisterForm() {
 
         {/* Header */}
         <div className="text-center space-y-1.5">
+          <div className="flex justify-center mb-3">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-50">
+              <WhatsAppIcon className="h-8 w-8" />
+            </div>
+          </div>
           <h2 className="text-[20px] font-bold tracking-[-0.4px] text-gray-950">
-            Confirme seu e-mail
+            Verificação de telefone
           </h2>
           <p className="text-[13px] text-gray-500">
             Enviamos um código de 6 dígitos para
           </p>
           <div className="inline-flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50/70 px-3 py-1.5">
-            <Mail size={13} className="shrink-0 text-gray-400" />
-            <span className="text-[13px] font-medium text-gray-700">{email}</span>
-            {emailDone && <Check size={13} className="shrink-0 text-green-500" />}
+            <WhatsAppIcon className="h-[14px] w-[14px] shrink-0" />
+            <span className="text-[13px] font-medium text-gray-700">{phoneE164}</span>
+            {phoneDone && <Check size={13} className="shrink-0 text-green-500" />}
           </div>
+          <p className="text-[11px] text-gray-400">Enviamos um código de confirmação para o seu WhatsApp.</p>
+          <p className="text-[11px] text-gray-400">Digite o código recebido para ativar sua conta.</p>
         </div>
 
         {/* OTP */}
         <div className="space-y-3">
           <OtpInput
-            onChange={setEmailCode}
+            onChange={setPhoneCode}
             disabled={confirmLoading}
             autoFocus
-            completed={emailDone}
+            completed={phoneDone}
           />
           <div className="flex justify-center">
-            {emailResend.secondsLeft > 0 ? (
+            {phoneResend.secondsLeft > 0 ? (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-100/80 px-3 py-1 text-[11.5px] text-gray-500">
                 <span className="h-1.5 w-1.5 rounded-full bg-gray-400 animate-pulse" />
                 Reenviar em{" "}
                 <span className="font-semibold tabular-nums text-gray-700">
-                  {emailResend.formatTime(emailResend.secondsLeft)}
+                  {phoneResend.formatTime(phoneResend.secondsLeft)}
                 </span>
               </span>
             ) : (
               <button
                 type="button"
-                onClick={handleResendEmail}
+                onClick={handleResendPhone}
                 className="text-[12px] text-gray-500 underline underline-offset-2 decoration-gray-300 hover:text-gray-700 hover:decoration-gray-400 transition-colors"
               >
-                Reenviar código
+                Reenviar código no WhatsApp
               </button>
             )}
           </div>
@@ -526,54 +553,17 @@ export function RegisterForm() {
             )}
           </button>
 
-          <div className="flex items-center justify-center gap-3 pt-0.5">
-            <p className="text-[11px] text-gray-300">Verifique também a pasta de spam.</p>
-            {!emailChanged && (
-              <>
-                <span className="h-3 w-px bg-gray-200" />
-                <button
-                  type="button"
-                  onClick={() => setShowEmailChange(true)}
-                  className="text-[11px] text-gray-400 underline underline-offset-2 decoration-gray-200 hover:text-gray-600 transition-colors"
-                >
-                  Alterar e-mail
-                </button>
-              </>
-            )}
-          </div>
+          <p className="text-center text-[11px] text-gray-400">
+            Número errado?{" "}
+            <button
+              type="button"
+              onClick={() => setStep("form")}
+              className="text-violet-600 underline underline-offset-2 hover:text-violet-700 transition-colors"
+            >
+              Voltar e corrigir
+            </button>
+          </p>
         </div>
-
-        {/* Email change panel */}
-        {showEmailChange && (
-          <div className="rounded-xl border border-violet-200 bg-violet-50/60 p-4 space-y-3">
-            <p className="text-[12px] font-medium text-violet-800">Informe o e-mail correto</p>
-            <input
-              type="email"
-              placeholder="novo@email.com"
-              value={newEmailInput}
-              onChange={(e) => setNewEmailInput(e.target.value)}
-              autoFocus
-              className={`${inputBase} pl-4`}
-            />
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setShowEmailChange(false)}
-                className="h-9 flex-1 rounded-lg border border-gray-200 text-[12px] font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={!validateEmail(newEmailInput) || emailChangeLoading || newEmailInput === email}
-                onClick={handleChangeEmail}
-                className="h-9 flex-1 rounded-lg bg-violet-600 text-[12px] font-medium text-white hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {emailChangeLoading ? "Alterando…" : "Confirmar"}
-              </button>
-            </div>
-          </div>
-        )}
 
       </div>
     );

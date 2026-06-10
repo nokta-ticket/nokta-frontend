@@ -168,7 +168,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }, 9000);
       }
     } catch (e) {
-      console.error(e);
     } finally {
       setIsAuthResolved(true);
     }

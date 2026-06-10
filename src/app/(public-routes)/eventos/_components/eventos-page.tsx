@@ -58,7 +58,6 @@ export default function EventosPage() {
       setEventos([]);
       setPaginate(toPaginate(null));
       setError(getErrorMessage(err, "Nao foi possivel carregar os eventos."));
-      console.error("Erro ao buscar eventos:", err);
     } finally {
       setLoading(false);
     }
@@ -90,7 +89,6 @@ export default function EventosPage() {
 
       toast.success("Favorito atualizado com sucesso");
     } catch (e) {
-      console.error(e);
       if (e instanceof AxiosError) {
         const message =
           e.response?.data.message === "Unauthenticated."
