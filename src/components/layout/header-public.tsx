@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Menu, X } from 'lucide-react';
+import { Menu, Ticket, X } from 'lucide-react';
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
 } from '@/components/ui/sheet';
@@ -24,33 +24,55 @@ export default function Header() {
       {/* ── MOBILE ────────────────────────────────────────────────── */}
       <div className="lg:hidden flex items-center h-16 px-4 relative w-full">
 
-        {/* Botão voltar — só em páginas de evento */}
-        {isEventPage ? (
-          <button onClick={() => router.back()} aria-label="Voltar" className="flex items-center justify-center">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-              <defs>
-                <linearGradient id="grad-back-pub" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#9944CC"/>
-                  <stop offset="100%" stopColor="#3399FF"/>
-                </linearGradient>
-              </defs>
-              <path d="M15 18l-6-6 6-6" stroke="url(#grad-back-pub)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </button>
-        ) : <div className="w-[26px]" />}
+        {pathname === '/' ? (
+          /* Tela inicial: logo à esquerda + botão Ingressos */
+          <>
+            <Link
+              href="/"
+              className="font-gooddog font-bold text-[1.65rem] leading-none text-transparent bg-clip-text bg-gradient-to-r from-[#9944CC] to-[#3399FF] ml-1"
+            >
+              nokta tickets
+            </Link>
+            <div className="ml-auto flex items-center gap-2">
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:opacity-90"
+              >
+                <Ticket size={13} />
+                Ingressos
+              </Link>
+            </div>
+          </>
+        ) : (
+          /* Demais telas: logo centralizado + botão voltar se for página de evento */
+          <>
+            {isEventPage ? (
+              <button onClick={() => router.back()} aria-label="Voltar" className="flex items-center justify-center">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                  <defs>
+                    <linearGradient id="grad-back-pub" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#9944CC"/>
+                      <stop offset="100%" stopColor="#3399FF"/>
+                    </linearGradient>
+                  </defs>
+                  <path d="M15 18l-6-6 6-6" stroke="url(#grad-back-pub)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            ) : <div className="w-[26px]" />}
 
-        {/* Logo centralizado */}
-        <Link
-          href="/"
-          className="absolute left-1/2 -translate-x-1/2 font-gooddog font-bold text-[1.65rem] leading-none text-transparent bg-clip-text bg-gradient-to-r from-[#9944CC] to-[#3399FF]"
-        >
-          nokta tickets
-        </Link>
+            <Link
+              href="/"
+              className="absolute left-1/2 -translate-x-1/2 font-gooddog font-bold text-[1.65rem] leading-none text-transparent bg-clip-text bg-gradient-to-r from-[#9944CC] to-[#3399FF]"
+            >
+              nokta tickets
+            </Link>
+          </>
+        )}
 
-        {/* Hambúrguer — direita */}
+        {/* Hambúrguer — direita (sempre visível) */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
-            <button className="ml-auto flex items-center justify-center h-9 w-9 rounded-full hover:bg-black/5 transition" aria-label="Abrir menu">
+            <button className={`flex items-center justify-center h-9 w-9 rounded-full hover:bg-black/5 transition ${pathname !== '/' ? 'ml-auto' : ''}`} aria-label="Abrir menu">
               <Menu size={22} className="text-[#9944CC]" />
             </button>
           </SheetTrigger>
