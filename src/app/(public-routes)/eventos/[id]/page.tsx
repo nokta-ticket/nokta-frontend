@@ -842,7 +842,7 @@ export default function IngressoDetalhesPage() {
                   onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError(''); }}
                   onKeyDown={e => e.key === 'Enter' && handleAplicarCupom()}
                   placeholder="Digite o cupom"
-                  className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-[13px] font-medium focus:outline-none focus:border-[#9944CC] focus:ring-1 focus:ring-[#9944CC]/30 uppercase placeholder:normal-case placeholder:text-gray-400"
+                  className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-[16px] sm:text-[13px] font-medium focus:outline-none focus:border-[#9944CC] focus:ring-1 focus:ring-[#9944CC]/30 uppercase placeholder:normal-case placeholder:text-gray-400"
                 />
                 <button
                   onClick={handleAplicarCupom}

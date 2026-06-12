@@ -139,7 +139,7 @@ function LoginModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: ()
           <Input
             type="email" placeholder="E-mail" value={email}
             onChange={(e) => setEmail(e.target.value)} required
-            className="h-11 text-[14px]"
+            className="h-11 text-[16px] sm:text-[14px]"
           />
           <div className="relative">
             <Input
@@ -919,19 +919,19 @@ return (
                     {paymentMethod === "card" && (
                       <form onSubmit={handleCardCheckout} className="mt-2 bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-3">
                         <p className="font-semibold text-[14px] text-[#0F172A] mb-1">Dados do cartão</p>
-                        <Input placeholder="Número do cartão" value={form.cardNumber} onChange={(e) => setForm((p) => ({ ...p, cardNumber: formatCard(e.target.value) }))} maxLength={19} className="h-11 text-[14px]" />
+                        <Input placeholder="Número do cartão" value={form.cardNumber} onChange={(e) => setForm((p) => ({ ...p, cardNumber: formatCard(e.target.value) }))} maxLength={19} className="h-11 text-[16px] sm:text-[14px]" />
                         <Input placeholder="Nome impresso no cartão" value={form.cardName} onChange={fld("cardName")} className="h-11 text-[14px] uppercase" />
                         <div className="grid grid-cols-2 gap-3">
-                          <Input placeholder="MM/AA" value={form.expiryDate} onChange={(e) => setForm((p) => ({ ...p, expiryDate: formatExpiry(e.target.value) }))} maxLength={5} className="h-11 text-[14px]" />
-                          <Input placeholder="CVV" value={form.cvv} onChange={fld("cvv")} maxLength={4} className="h-11 text-[14px]" />
+                          <Input placeholder="MM/AA" value={form.expiryDate} onChange={(e) => setForm((p) => ({ ...p, expiryDate: formatExpiry(e.target.value) }))} maxLength={5} className="h-11 text-[16px] sm:text-[14px]" />
+                          <Input placeholder="CVV" value={form.cvv} onChange={fld("cvv")} maxLength={4} className="h-11 text-[16px] sm:text-[14px]" />
                         </div>
-                        <Input placeholder="Telefone" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: formatPhone(e.target.value) }))} maxLength={15} className="h-11 text-[14px]" />
+                        <Input placeholder="Telefone" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: formatPhone(e.target.value) }))} maxLength={15} className="h-11 text-[16px] sm:text-[14px]" />
                         <div className="grid grid-cols-3 gap-3">
-                          <Input placeholder="CEP" value={form.cep} onChange={fld("cep")} maxLength={9} className="h-11 text-[14px]" />
-                          <Input placeholder="Nº" value={form.number} onChange={fld("number")} className="h-11 text-[14px]" />
+                          <Input placeholder="CEP" value={form.cep} onChange={fld("cep")} maxLength={9} className="h-11 text-[16px] sm:text-[14px]" />
+                          <Input placeholder="Nº" value={form.number} onChange={fld("number")} className="h-11 text-[16px] sm:text-[14px]" />
                           <Input placeholder="UF" value={form.state} onChange={fld("state")} maxLength={2} className="h-11 text-[14px] uppercase" />
                         </div>
-                        <Input placeholder="Cidade" value={form.city} onChange={fld("city")} className="h-11 text-[14px]" />
+                        <Input placeholder="Cidade" value={form.city} onChange={fld("city")} className="h-11 text-[16px] sm:text-[14px]" />
                         <Button type="submit" disabled={processing} className="w-full h-12 font-bold text-[15px] bg-gradient-to-r from-[#9944CC] to-[#3399FF] text-white mt-1">
                           {processing ? <Loader2 size={18} className="animate-spin" /> : `Pagar ${formatCurrency(total)}`}
                         </Button>

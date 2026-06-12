@@ -134,7 +134,7 @@ export function LoginForm() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              className="h-[46px] w-full rounded-xl border border-gray-200 bg-gray-50/60 pl-[38px] pr-4 text-[13.5px] text-gray-900 placeholder:text-gray-400 outline-none transition-all duration-150 focus:border-violet-500/70 focus:bg-white focus:ring-3 focus:ring-violet-500/10"
+              className="h-[46px] w-full rounded-xl border border-gray-200 bg-gray-50/60 pl-[38px] pr-4 text-[16px] sm:text-[13.5px] text-gray-900 placeholder:text-gray-400 outline-none transition-all duration-150 focus:border-violet-500/70 focus:bg-white focus:ring-3 focus:ring-violet-500/10"
             />
           </div>
 
@@ -151,7 +151,7 @@ export function LoginForm() {
                 value={senha}
                 onChange={e => setSenha(e.target.value)}
                 required
-                className="h-[46px] w-full rounded-xl border border-gray-200 bg-gray-50/60 pl-[38px] pr-10 text-[13.5px] text-gray-900 placeholder:text-gray-400 outline-none transition-all duration-150 focus:border-violet-500/70 focus:bg-white focus:ring-3 focus:ring-violet-500/10"
+                className="h-[46px] w-full rounded-xl border border-gray-200 bg-gray-50/60 pl-[38px] pr-10 text-[16px] sm:text-[13.5px] text-gray-900 placeholder:text-gray-400 outline-none transition-all duration-150 focus:border-violet-500/70 focus:bg-white focus:ring-3 focus:ring-violet-500/10"
               />
               <button
                 type="button"

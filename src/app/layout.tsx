@@ -39,7 +39,7 @@ export default function RootLayout({
       <body className="bg-white antialiased font-sans" suppressHydrationWarning>
         <AuthProvider>
           {painelSlot ?? (
-            <div className="flex min-h-screen flex-col">
+            <div className="flex min-h-dvh flex-col">
               <HeaderSwitcher />
               <main className="flex flex-1 flex-col">{children}</main>
               <FooterConditional />

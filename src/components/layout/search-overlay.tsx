@@ -113,7 +113,7 @@ export default function SearchOverlay({ open, onClose }: Props) {
             placeholder="Buscar eventos"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="font-sans flex-1 text-[14px] text-[#181d27] placeholder:text-gray-400 bg-transparent border-none outline-none"
+            className="font-sans flex-1 text-[16px] sm:text-[14px] text-[#181d27] placeholder:text-gray-400 bg-transparent border-none outline-none"
           />
           {isTyping && (
             <button type="button" onClick={() => setQuery('')} className="text-gray-400 shrink-0 text-[12px] font-sans font-medium">
