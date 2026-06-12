@@ -33,7 +33,7 @@ export default function Header() {
             >
               nokta tickets
             </Link>
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-4">
               <Link
                 href="/login"
                 className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:opacity-90"
