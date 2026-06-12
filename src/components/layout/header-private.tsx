@@ -130,7 +130,7 @@ export default function HeaderPrivate() {
               </Link>
               <button
                 onClick={() => setMobileOpen(true)}
-                className="flex items-center justify-center h-9 w-9 rounded-full hover:bg-black/5 transition"
+                className="flex items-center justify-center h-9 w-9 rounded-full hover:bg-black/5 transition outline-none focus-visible:ring-0"
                 aria-label="Abrir menu"
               >
                 <Menu size={22} className="text-[#9944CC]" />
@@ -163,7 +163,7 @@ export default function HeaderPrivate() {
 
             <button
               onClick={() => setMobileOpen(true)}
-              className="ml-auto flex items-center justify-center h-9 w-9 rounded-full hover:bg-black/5 transition"
+              className="ml-auto flex items-center justify-center h-9 w-9 rounded-full hover:bg-black/5 transition outline-none focus-visible:ring-0"
               aria-label="Abrir menu"
             >
               <Menu size={22} className="text-[#9944CC]" />

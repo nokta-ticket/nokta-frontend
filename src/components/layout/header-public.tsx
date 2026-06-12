@@ -72,7 +72,7 @@ export default function Header() {
         {/* Hambúrguer — direita (sempre visível) */}
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
-            <button className={`flex items-center justify-center h-9 w-9 rounded-full hover:bg-black/5 transition ${pathname !== '/' ? 'ml-auto' : ''}`} aria-label="Abrir menu">
+            <button className={`flex items-center justify-center h-9 w-9 rounded-full hover:bg-black/5 transition outline-none focus-visible:ring-0 ${pathname !== '/' ? 'ml-auto' : ''}`} aria-label="Abrir menu">
               <Menu size={22} className="text-[#9944CC]" />
             </button>
           </SheetTrigger>
