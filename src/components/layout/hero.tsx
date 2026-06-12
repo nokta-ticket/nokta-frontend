@@ -41,6 +41,18 @@ function NoAutoplayPlugin(_slider: any) {
 const SLIDE_H    = 210;
 const INACTIVE_H = 182;
 
+function parseDateSafe(dateStr: string): Date | null {
+  const parts = dateStr?.split('T')[0]?.split('-').map(Number);
+  if (!parts || parts.length !== 3 || parts.some(isNaN)) return null;
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
+function extractTime(horario?: string | null): string | null {
+  if (!horario) return null;
+  const timePart = horario.includes('T') ? horario.split('T')[1] : horario;
+  return timePart?.slice(0, 5) ?? null;
+}
+
 export default function HeroSlider() {
   const router = useRouter();
   const [eventos, setEventos] = useState<EventoAPI[]>([]);
@@ -98,10 +110,11 @@ export default function HeroSlider() {
   if (!eventos.length) return null;
 
   const mobileEv = eventos[mobileCurrent];
-  const mobileDataFmt = new Date(mobileEv.data).toLocaleDateString('pt-BR', {
-    weekday: 'long', day: '2-digit', month: 'short',
-  });
-  const mobileHorario = mobileEv.horario?.slice(0, 5);
+  const mobileDate = parseDateSafe(mobileEv.data);
+  const mobileDataFmt = mobileDate
+    ? mobileDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' })
+    : '';
+  const mobileHorario = extractTime(mobileEv.horario);
 
   return (
     <>
@@ -207,10 +220,11 @@ export default function HeroSlider() {
       <section className="hidden lg:block w-full max-w-[1300px] mx-auto px-4 sm:px-6 lg:px-8 mt-6 relative">
         <div ref={sliderRef} className="keen-slider relative z-10">
           {eventos.map((ev) => {
-            const dataFmt = new Date(ev.data).toLocaleDateString('pt-BR', {
-              weekday: 'short', day: '2-digit', month: 'long', year: 'numeric',
-            });
-            const horarioFmt = ev.horario?.slice(0, 5);
+            const evDate = parseDateSafe(ev.data);
+            const dataFmt = evDate
+              ? evDate.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' })
+              : '';
+            const horarioFmt = extractTime(ev.horario);
             return (
               <div key={ev.id} className="keen-slider__slide flex flex-col lg:flex-row gap-6 relative z-10">
                 <div className="w-full lg:w-2/3 relative rounded-lg overflow-hidden">

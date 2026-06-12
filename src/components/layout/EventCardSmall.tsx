@@ -29,7 +29,7 @@ export default function EventCardSmall({ event }: Props) {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/40 pointer-events-none" />
       </div>
 
-      <p className="text-[13px] font-bold uppercase leading-snug text-foreground line-clamp-2 mb-1">
+      <p className="text-[13px] font-bold uppercase leading-snug text-foreground line-clamp-2 mb-1 min-h-[36px]">
         {event.nome}
       </p>
       <p className="text-[12px] text-muted-foreground truncate mb-1">
