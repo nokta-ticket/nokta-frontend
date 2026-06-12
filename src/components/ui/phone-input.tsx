@@ -287,7 +287,7 @@ export function PhoneInput({ value, country, onChange, onBlur, error }: PhoneInp
         onChange={e => onChange(formatPhone(e.target.value, country), country)}
         onFocus={() => setFocused(true)}
         onBlur={() => { setFocused(false); onBlur?.() }}
-        className="h-full min-w-0 flex-1 bg-transparent pl-3 pr-4 text-[13.5px] text-gray-900 placeholder:text-gray-500 outline-none"
+        className="h-full min-w-0 flex-1 bg-transparent pl-3 pr-4 text-[16px] sm:text-[13.5px] text-gray-900 placeholder:text-gray-500 outline-none"
       />
     </div>
   )

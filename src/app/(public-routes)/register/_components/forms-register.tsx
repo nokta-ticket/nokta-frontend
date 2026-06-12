@@ -121,7 +121,7 @@ function suggestEmail(email: string): string | null {
 // ─── Input base ──────────────────────────────────────────────────────────────
 
 const inputBase =
-  "h-[42px] w-full rounded-xl border border-gray-200 bg-gray-50/60 text-[13px] text-gray-900 placeholder:text-gray-500 outline-none transition-all duration-200 focus:border-violet-400/80 focus:bg-white focus:ring-2 focus:ring-violet-500/10 focus:shadow-[0_0_0_3px_rgba(139,92,246,0.07)]";
+  "h-[42px] w-full rounded-xl border border-gray-200 bg-gray-50/60 text-[16px] sm:text-[13px] text-gray-900 placeholder:text-gray-500 outline-none transition-all duration-200 focus:border-violet-400/80 focus:bg-white focus:ring-2 focus:ring-violet-500/10 focus:shadow-[0_0_0_3px_rgba(139,92,246,0.07)]";
 
 // ─── OAuth buttons ──────────────────────────────────────────────────────────
 
