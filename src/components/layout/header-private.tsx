@@ -337,14 +337,7 @@ export default function HeaderPrivate() {
           })}
         </nav>
 
-        <div className="flex flex-1 justify-end items-center gap-3">
-          <Link
-            href="/meus-ingressos"
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-purple-200 transition hover:opacity-90"
-          >
-            <Ticket size={15} />
-            Ingressos
-          </Link>
+        <div className="flex flex-1 justify-end items-center">
           <UserDropdownMenu />
         </div>
       </div>
