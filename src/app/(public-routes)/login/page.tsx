@@ -119,7 +119,7 @@ export default function LoginPage() {
         <div className="w-full max-w-[490px]">
 
           {/* Card */}
-          <div className="rounded-[22px] border border-gray-200/50 bg-white px-6 py-6 sm:px-10 sm:py-10 shadow-[0_8px_40px_-8px_rgba(0,0,0,0.11),_0_2px_12px_-3px_rgba(0,0,0,0.06),_0_0_0_1px_rgba(0,0,0,0.03)]">
+          <div className="rounded-[22px] border border-gray-200/50 bg-white px-6 pt-4 pb-5 sm:px-10 sm:py-10 shadow-[0_8px_40px_-8px_rgba(0,0,0,0.11),_0_2px_12px_-3px_rgba(0,0,0,0.06),_0_0_0_1px_rgba(0,0,0,0.03)]">
 
             {/* Cabeçalho */}
             <div className="mb-4 sm:mb-7 text-center">
@@ -145,7 +145,7 @@ export default function LoginPage() {
           </div>
 
           {/* Link abaixo do card */}
-          <p className="mt-3 sm:mt-4 text-center text-[13px] text-gray-500">
+          <p className="mt-1.5 sm:mt-4 text-center text-[13px] text-gray-500">
             Não possui conta?{" "}
             <Link
               href="/register"
