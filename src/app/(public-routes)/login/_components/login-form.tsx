@@ -19,7 +19,7 @@ function OAuthButtons({ ctx }: { ctx: string }) {
       <button
         type="button"
         onClick={handleGoogle}
-        className="group flex h-[46px] w-full items-center justify-center gap-2.5 rounded-xl border border-gray-200 bg-white px-4 text-[13px] font-medium text-gray-700 transition-all duration-150 hover:border-gray-300 hover:bg-gray-50/80 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] active:scale-[0.99]"
+        className="group flex h-[42px] sm:h-[46px] w-full items-center justify-center gap-2.5 rounded-xl border border-gray-200 bg-white px-4 text-[13px] font-medium text-gray-700 transition-all duration-150 hover:border-gray-300 hover:bg-gray-50/80 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] active:scale-[0.99]"
       >
         <svg width="17" height="17" viewBox="0 0 18 18" aria-hidden="true" className="shrink-0">
           <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
@@ -33,7 +33,7 @@ function OAuthButtons({ ctx }: { ctx: string }) {
       <button
         type="button"
         onClick={handleApple}
-        className="group flex h-[46px] w-full items-center justify-center gap-2.5 rounded-xl border border-gray-200 bg-white px-4 text-[13px] font-medium text-gray-700 transition-all duration-150 hover:border-gray-300 hover:bg-gray-50/80 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] active:scale-[0.99]"
+        className="group flex h-[42px] sm:h-[46px] w-full items-center justify-center gap-2.5 rounded-xl border border-gray-200 bg-white px-4 text-[13px] font-medium text-gray-700 transition-all duration-150 hover:border-gray-300 hover:bg-gray-50/80 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] active:scale-[0.99]"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="shrink-0">
           <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.54 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.029 1.52-.065 2.09-.987 3.925-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/>
@@ -117,10 +117,10 @@ export function LoginForm() {
 
   return (
     <>
-      <div className="space-y-3.5">
+      <div className="space-y-2.5 sm:space-y-3.5">
         <OAuthButtons ctx={ctx} />
 
-        <form className="space-y-2.5" onSubmit={handleLogin}>
+        <form className="space-y-2" onSubmit={handleLogin}>
 
           {/* E-mail */}
           <div className="relative">
@@ -134,7 +134,7 @@ export function LoginForm() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               required
-              className="h-[46px] w-full rounded-xl border border-gray-200 bg-gray-50/60 pl-[38px] pr-4 text-[16px] sm:text-[13.5px] text-gray-900 placeholder:text-gray-400 outline-none transition-all duration-150 focus:border-violet-500/70 focus:bg-white focus:ring-3 focus:ring-violet-500/10"
+              className="h-[42px] sm:h-[46px] w-full rounded-xl border border-gray-200 bg-gray-50/60 pl-[38px] pr-4 text-[16px] sm:text-[13.5px] text-gray-900 placeholder:text-gray-400 outline-none transition-all duration-150 focus:border-violet-500/70 focus:bg-white focus:ring-3 focus:ring-violet-500/10"
             />
           </div>
 
@@ -151,7 +151,7 @@ export function LoginForm() {
                 value={senha}
                 onChange={e => setSenha(e.target.value)}
                 required
-                className="h-[46px] w-full rounded-xl border border-gray-200 bg-gray-50/60 pl-[38px] pr-10 text-[16px] sm:text-[13.5px] text-gray-900 placeholder:text-gray-400 outline-none transition-all duration-150 focus:border-violet-500/70 focus:bg-white focus:ring-3 focus:ring-violet-500/10"
+                className="h-[42px] sm:h-[46px] w-full rounded-xl border border-gray-200 bg-gray-50/60 pl-[38px] pr-10 text-[16px] sm:text-[13.5px] text-gray-900 placeholder:text-gray-400 outline-none transition-all duration-150 focus:border-violet-500/70 focus:bg-white focus:ring-3 focus:ring-violet-500/10"
               />
               <button
                 type="button"
@@ -176,7 +176,7 @@ export function LoginForm() {
           <button
             type="submit"
             disabled={loading}
-            className="h-[46px] w-full rounded-xl bg-[#5B21B6] text-[13.5px] font-semibold tracking-[0.01em] text-white/95 shadow-[0_1px_2px_rgba(0,0,0,0.08),_0_2px_8px_rgba(91,33,182,0.14)] transition-all duration-200 hover:bg-[#4C1D95] hover:shadow-[0_2px_10px_rgba(91,33,182,0.18)] active:scale-[0.99] active:shadow-none disabled:cursor-not-allowed disabled:opacity-55"
+            className="h-[42px] sm:h-[46px] w-full rounded-xl bg-[#5B21B6] text-[13.5px] font-semibold tracking-[0.01em] text-white/95 shadow-[0_1px_2px_rgba(0,0,0,0.08),_0_2px_8px_rgba(91,33,182,0.14)] transition-all duration-200 hover:bg-[#4C1D95] hover:shadow-[0_2px_10px_rgba(91,33,182,0.18)] active:scale-[0.99] active:shadow-none disabled:cursor-not-allowed disabled:opacity-55"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
