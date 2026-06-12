@@ -129,10 +129,10 @@ export default function Header() {
             {/* Botões */}
             <div className="px-5 pb-8 pt-4 space-y-2.5">
               <Link href="/login" className="block">
-                <Button variant="outline" className="font-sans w-full font-semibold">Entrar</Button>
+                <Button variant="outline" className="font-sans w-full font-semibold focus-visible:ring-0 focus-visible:border-gray-300">Entrar</Button>
               </Link>
               <Link href="/register" className="block">
-                <Button className="font-sans w-full font-semibold text-white bg-gradient-to-r from-[#9944CC] to-[#3399FF] hover:opacity-90">
+                <Button className="font-sans w-full font-semibold text-white bg-gradient-to-r from-[#9944CC] to-[#3399FF] hover:opacity-90 focus-visible:ring-0">
                   Cadastrar
                 </Button>
               </Link>
