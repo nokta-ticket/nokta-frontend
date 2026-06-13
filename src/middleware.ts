@@ -66,8 +66,12 @@ function hasProdutorRole(payload: UserPayload): boolean {
   return payload?.role === "PRODUTOR";
 }
 
+// Acesso ao painel: todo o staff (SUPER_ADMIN, ADMIN, SUPPORT).
+// As restrições por tipo de ação são aplicadas no backend (RolesGuard).
+const STAFF_ROLES = ["SUPER_ADMIN", "ADMIN", "SUPPORT"];
+
 function hasAdminRole(payload: UserPayload): boolean {
-  return payload?.role === "ADMIN";
+  return STAFF_ROLES.includes(payload?.role ?? "");
 }
 
 function matchDynamicRoute(path: string, routePattern: string): boolean {
