@@ -331,6 +331,7 @@ export function RegisterForm() {
   const [step,           setStep]          = useState<Step>("form");
   const [loading,        setLoading]       = useState(false);
   const [confirmLoading, setConfirmLoading] = useState(false);
+  const submittingRef = useRef(false);
   const [showPw,         setShowPw]        = useState(false);
 
   const [phoneCode,  setPhoneCode]  = useState("");
@@ -373,9 +374,11 @@ export function RegisterForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
     setTouched({ nome: true, email: true, telefone: true, senha: true });
     if (!isValid) return;
 
+    submittingRef.current = true;
     setLoading(true);
     const { nome: firstName, sobrenome } = splitName(nome);
     const localDigits = telefone.replace(/\D/g, "");
@@ -400,6 +403,7 @@ export function RegisterForm() {
     } catch (err: any) {
       toast.error(err.message || "Erro ao criar conta. Tente novamente.");
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
