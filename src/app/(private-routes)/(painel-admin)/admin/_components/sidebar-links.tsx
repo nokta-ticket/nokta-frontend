@@ -2,7 +2,9 @@ import {
   BarChart2,
   ClipboardCheck,
   LayoutList,
+  ScrollText,
   Star,
+  Ticket,
   Users
 } from "lucide-react";
 import { ReactNode } from "react";
@@ -25,6 +27,11 @@ export const sidebarLinks: SidebarLink[] = [
     href: "/admin/usuarios",
   },
   {
+    label: "Ingressos",
+    icon: <Ticket size={16} />,
+    href: "/admin/ingressos",
+  },
+  {
     label: "Eventos",
     icon: <LayoutList size={16} />,
     href: "/admin/eventos",
@@ -38,5 +45,10 @@ export const sidebarLinks: SidebarLink[] = [
     label: "Eventos em Destaque",
     icon: <Star size={16} />,
     href: "/admin/eventos/destaques",
+  },
+  {
+    label: "Auditoria",
+    icon: <ScrollText size={16} />,
+    href: "/admin/auditoria",
   },
 ];

@@ -45,6 +45,7 @@ interface User {
   genero: Genero;
   role: Role;
   ativo: boolean;
+  bloqueado?: boolean;
 }
 
 interface GetUsersResponse {
@@ -196,16 +197,23 @@ export function UserTable({ search, filter }: Props) {
                     </TableCell>
 
                     <TableCell className="px-6 py-3">
-                      <Badge
-                        className={cn(
-                          "rounded-full px-3 py-1 text-xs",
-                          user.ativo
-                            ? "bg-green-100 text-green-700"
-                            : "bg-red-100 text-red-700"
-                        )}
-                      >
-                        {user.ativo ? "Ativo" : "Inativo"}
-                      </Badge>
+                      <div className="flex flex-wrap gap-1">
+                        <Badge
+                          className={cn(
+                            "rounded-full px-3 py-1 text-xs",
+                            user.ativo
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-700"
+                          )}
+                        >
+                          {user.ativo ? "Ativo" : "Inativo"}
+                        </Badge>
+                        {user.bloqueado ? (
+                          <Badge className="rounded-full bg-red-100 px-3 py-1 text-xs text-red-700">
+                            Bloqueado
+                          </Badge>
+                        ) : null}
+                      </div>
                     </TableCell>
 
                     <TableCell className="px-6 py-3 text-right">

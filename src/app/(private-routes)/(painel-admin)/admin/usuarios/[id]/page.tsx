@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import Image from "next/image";
 import { toast } from "@/lib/toast";
-import { AlertTriangle, Trash2, CreditCard, Mail, User } from "lucide-react";
+import { AlertTriangle, Ban, ShieldCheck, Trash2, CreditCard, Mail, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +21,8 @@ type Usuario = {
   email: string;
   cpf: string;
   ativo: boolean;
+  bloqueado: boolean;
+  bloqueadoMotivo: string | null;
   dataNascimento: string;
 };
 
@@ -73,6 +75,29 @@ export default function UsuarioDetalhesPage() {
     }
   };
 
+  const toggleBlock = async () => {
+    if (!usuario) return;
+
+    try {
+      const res = await api.patch<Usuario>(
+        `/admin/usuarios/${usuario.id}/bloqueio`,
+        { bloqueado: !usuario.bloqueado }
+      );
+
+      const atualizado: Usuario = res.data;
+      setUsuario(atualizado);
+      toast.success(
+        atualizado.bloqueado
+          ? "Usuário bloqueado com sucesso"
+          : "Usuário desbloqueado com sucesso"
+      );
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message || err.message || "Falha de rede"
+      );
+    }
+  };
+
   const excluirUsuario = async () => {
     if (!usuario) return;
     try {
@@ -121,7 +146,18 @@ export default function UsuarioDetalhesPage() {
           value={usuario.ativo ? "Ativo" : "Desativado"}
           textClass={usuario.ativo ? "text-emerald-700" : "text-gray-500"}
         />
+        <Campo
+          label="Bloqueio"
+          value={usuario.bloqueado ? "Bloqueado" : "Liberado"}
+          textClass={usuario.bloqueado ? "text-red-600" : "text-emerald-700"}
+        />
       </div>
+
+      {usuario.bloqueado && usuario.bloqueadoMotivo ? (
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <strong>Motivo do bloqueio:</strong> {usuario.bloqueadoMotivo}
+        </div>
+      ) : null}
 
       <div className="mt-10 flex flex-col gap-4 sm:flex-row">
         <ConfirmDialog
@@ -143,6 +179,33 @@ export default function UsuarioDetalhesPage() {
             >
               <AlertTriangle className="mr-2 h-4 w-4" />
               {usuario.ativo ? "Desativar Usuário" : "Reativar Usuário"}
+            </Button>
+          }
+        />
+
+        <ConfirmDialog
+          title={usuario.bloqueado ? "Desbloquear Usuário" : "Bloquear Usuário"}
+          description={
+            usuario.bloqueado
+              ? "Deseja desbloquear este usuário? Ele poderá acessar a plataforma novamente."
+              : "Tem certeza que deseja bloquear este usuário? Ele será impedido de fazer login e usar a plataforma imediatamente."
+          }
+          onConfirm={toggleBlock}
+          trigger={
+            <Button
+              variant="outline"
+              className={
+                usuario.bloqueado
+                  ? "border-emerald-600 text-emerald-600 hover:bg-emerald-50"
+                  : "border-red-600 text-red-600 hover:bg-red-50"
+              }
+            >
+              {usuario.bloqueado ? (
+                <ShieldCheck className="mr-2 h-4 w-4" />
+              ) : (
+                <Ban className="mr-2 h-4 w-4" />
+              )}
+              {usuario.bloqueado ? "Desbloquear Usuário" : "Bloquear Usuário"}
             </Button>
           }
         />
