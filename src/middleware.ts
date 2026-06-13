@@ -35,9 +35,11 @@ const authOnlyRoutes = ["/produtor/onboarding"];
 const protectedAdminRoutes = [
   "/admin/dashboard",
   "/admin/usuarios",
+  "/admin/ingressos",
   "/admin/eventos",
   "/admin/pedidos-produtor",
   "/admin/eventos/destaques",
+  "/admin/auditoria",
 ];
 
 const REDIRECT_WHEN_NOT_AUTHENTICATION_ROUTE = "/";
