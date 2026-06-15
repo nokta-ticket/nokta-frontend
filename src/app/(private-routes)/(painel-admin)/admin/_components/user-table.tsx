@@ -40,9 +40,9 @@ interface User {
   nome: string;
   sobrenome: string;
   email: string;
-  cpf: string;
-  dataNascimento: string;
-  genero: Genero;
+  cpf: string | null;
+  dataNascimento: string | null;
+  genero: Genero | null;
   role: Role;
   ativo: boolean;
   bloqueado?: boolean;
@@ -175,10 +175,12 @@ export function UserTable({ search, filter }: Props) {
                       {formatarCPF(user.cpf)}
                     </TableCell>
                     <TableCell className="px-6 py-3 text-center">
-                      {new Date(user.dataNascimento).toLocaleDateString("pt-BR")}
+                      {user.dataNascimento
+                        ? new Date(user.dataNascimento).toLocaleDateString("pt-BR")
+                        : "—"}
                     </TableCell>
                     <TableCell className="px-6 py-3 text-center capitalize">
-                      {user.genero.toLowerCase()}
+                      {user.genero?.toLowerCase() ?? "—"}
                     </TableCell>
 
                     <TableCell className="px-6 py-3">
