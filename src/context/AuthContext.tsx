@@ -12,7 +12,7 @@ const COOKIE_OPTIONS: Cookies.CookieAttributes = {
 };
 
 export interface UserPayload {
-  role: "COMUM" | "PRODUTOR" | "ADMIN";
+  role: "COMUM" | "PRODUTOR" | "ADMIN" | "SUPER_ADMIN" | "SUPPORT";
   userId: number;
   nivelProdutor?: number | null;
 }
@@ -62,8 +62,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.data;
       setUserId(data.id);
 
-      if (data.role === "ADMIN") {
-        setUser({ nome: "Administrador", sobrenome: "", email: "" });
+      const staffRoles = ["SUPER_ADMIN", "ADMIN", "SUPPORT"];
+      if (staffRoles.includes(data.role)) {
+        setUser({ nome: data.nome ?? "Administrador", sobrenome: data.sobrenome ?? "", email: data.email ?? "" });
         return;
       }
 

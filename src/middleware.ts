@@ -7,6 +7,7 @@ import { UserPayload } from "./context/AuthContext";
 
 const publicRoutes = [
   { path: "/login", whenAutenticated: "redirect" },
+  { path: "/admin/login", whenAutenticated: "redirect" },
   { path: "/recuperar-senha", whenAutenticated: "next" },
   { path: "/recuperar-senha/[id]", whenAutenticated: "next" },
   { path: "/register", whenAutenticated: "redirect" },
@@ -119,9 +120,20 @@ export function middleware(request: NextRequest) {
 
   // Authenticated → redirect away from login/register
   if (authToken && publicRoute?.whenAutenticated === "redirect") {
-    const ctx = request.nextUrl.searchParams.get("ctx");
     const redirectUrl = request.nextUrl.clone();
+    redirectUrl.search = "";
 
+    if (path === "/admin/login") {
+      redirectUrl.pathname = hasAdminRole(userPayload) ? "/admin/dashboard" : "/";
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    if (path === "/login" && hasAdminRole(userPayload)) {
+      redirectUrl.pathname = "/admin/login";
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    const ctx = request.nextUrl.searchParams.get("ctx");
     if (ctx === "produtor") {
       if (hasProdutorRole(userPayload)) {
         redirectUrl.pathname = "/produtor/eventos";
@@ -132,7 +144,6 @@ export function middleware(request: NextRequest) {
       redirectUrl.pathname = "/";
     }
 
-    redirectUrl.search = "";
     return NextResponse.redirect(redirectUrl);
   }
 

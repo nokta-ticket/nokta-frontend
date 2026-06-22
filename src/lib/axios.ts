@@ -57,13 +57,18 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid - clear cookies and redirect
+      const userCookie = Cookies.get("user");
       Cookies.remove("token");
       Cookies.remove("user");
-      
-      // Only redirect if in browser and not already on login page
+
       if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
-        window.location.href = "/login";
+        let loginPath = "/login";
+        try {
+          const parsed = userCookie ? JSON.parse(userCookie) : {};
+          const staffRoles = ["SUPER_ADMIN", "ADMIN", "SUPPORT"];
+          if (staffRoles.includes(parsed.role)) loginPath = "/admin/login";
+        } catch {}
+        window.location.href = loginPath;
       }
     }
     return Promise.reject(error);
