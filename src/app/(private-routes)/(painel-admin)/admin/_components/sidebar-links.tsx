@@ -3,6 +3,7 @@ import {
   ClipboardCheck,
   LayoutList,
   ScrollText,
+  Shield,
   Star,
   Ticket,
   Users
@@ -50,5 +51,10 @@ export const sidebarLinks: SidebarLink[] = [
     label: "Auditoria",
     icon: <ScrollText size={16} />,
     href: "/admin/auditoria",
+  },
+  {
+    label: "Segurança",
+    icon: <Shield size={16} />,
+    href: "/admin/seguranca",
   },
 ];

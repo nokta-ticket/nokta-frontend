@@ -41,6 +41,7 @@ const protectedAdminRoutes = [
   "/admin/pedidos-produtor",
   "/admin/eventos/destaques",
   "/admin/auditoria",
+  "/admin/seguranca",
 ];
 
 const REDIRECT_WHEN_NOT_AUTHENTICATION_ROUTE = "/";
