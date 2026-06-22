@@ -88,7 +88,6 @@ export default function TabDadosGerais({ user, onRefresh }: TabDadosGeraisProps)
     cpf: user.cpf ?? "",
     telefone: user.telefone ?? "",
     dataNascimento: formatDateInput(user.dataNascimento),
-    nomeArtistico: user.nomeArtistico ?? "",
   });
 
   const [blockOpen, setBlockOpen] = useState(false);
@@ -106,7 +105,6 @@ export default function TabDadosGerais({ user, onRefresh }: TabDadosGeraisProps)
       cpf: user.cpf ?? "",
       telefone: user.telefone ?? "",
       dataNascimento: formatDateInput(user.dataNascimento),
-      nomeArtistico: user.nomeArtistico ?? "",
     });
     setEditing(true);
   }
@@ -120,7 +118,6 @@ export default function TabDadosGerais({ user, onRefresh }: TabDadosGeraisProps)
       if (form.email !== (user.email ?? "")) payload.email = form.email;
       if (form.cpf !== (user.cpf ?? "")) payload.cpf = form.cpf;
       if (form.telefone !== (user.telefone ?? "")) payload.telefone = form.telefone;
-      if (form.nomeArtistico !== (user.nomeArtistico ?? "")) payload.nomeArtistico = form.nomeArtistico;
 
       const origDate = formatDateInput(user.dataNascimento);
       if (form.dataNascimento !== origDate) {
@@ -181,7 +178,6 @@ export default function TabDadosGerais({ user, onRefresh }: TabDadosGeraisProps)
     { key: "telefone", label: "Telefone", icon: Phone, type: "tel" },
     { key: "cpf", label: "CPF", icon: CreditCard, type: "text" },
     { key: "dataNascimento", label: "Data de nascimento", icon: CalendarDays, type: "date" },
-    { key: "nomeArtistico", label: "Nome artístico", icon: User, type: "text" },
   ];
 
   const readonlyFields = [
