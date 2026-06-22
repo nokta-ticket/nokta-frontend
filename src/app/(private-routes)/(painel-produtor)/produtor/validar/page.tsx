@@ -31,7 +31,7 @@ export default function ValidarIngressoPage() {
     setLoading(true);
     setResultado(null);
     try {
-      const res = await api.post("/tickets/validate", { code });
+      const res = await api.post("/tickets/validar", { code });
 
       setResultado({
         codigo,
