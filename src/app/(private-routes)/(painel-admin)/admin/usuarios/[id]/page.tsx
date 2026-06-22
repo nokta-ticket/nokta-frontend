@@ -1,248 +1,187 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import Cookies from "js-cookie";
-import Image from "next/image";
-import { toast } from "@/lib/toast";
-import { AlertTriangle, Ban, ShieldCheck, Trash2, CreditCard, Mail, User } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ConfirmDialog } from "@/components/layout/confirm-dialog";
-import { formatarCPF } from "@/lib/formatarCPF";
-import api from "@/lib/axios";
+import { useCallback, useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
+import { ArrowLeft, AlertCircle } from "lucide-react";
 import { AxiosError } from "axios";
 
-type Usuario = {
-  id: string;
-  nome: string;
-  sobrenome: string;
-  email: string;
-  cpf: string;
-  ativo: boolean;
-  bloqueado: boolean;
-  bloqueadoMotivo: string | null;
-  dataNascimento: string;
-};
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import api from "@/lib/axios";
+import { toast } from "@/lib/toast";
 
-const API = process.env.NEXT_PUBLIC_API_URL!;
+import TabDadosGerais from "./_components/tab-dados-gerais";
+import TabIngressos from "./_components/tab-ingressos";
+import TabCompras from "./_components/tab-compras";
+import TabAuditoria from "./_components/tab-auditoria";
+import TabSeguranca from "./_components/tab-seguranca";
+
+function getInitials(nome?: string, sobrenome?: string): string {
+  const first = nome?.charAt(0)?.toUpperCase() ?? "";
+  const last = sobrenome?.charAt(0)?.toUpperCase() ?? "";
+  return first + last || "?";
+}
 
 export default function UsuarioDetalhesPage() {
   const { id } = useParams();
-  const router = useRouter();
-  const [usuario, setUsuario] = useState<Usuario>();
+  const [usuario, setUsuario] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  async function getUser(id: string) {
+  const fetchUser = useCallback(async () => {
+    if (!id) return;
+    setLoading(true);
+    setError(null);
     try {
-      const res = await api.get<Usuario>(`/admin/usuarios/${id}`);
+      const res = await api.get(`/admin/usuarios/${id}`);
       setUsuario(res.data);
-    } catch (error) {
-      if (error instanceof AxiosError) {
-        toast.error(error.response?.data.message);
+    } catch (err) {
+      if (err instanceof AxiosError) {
+        setError(
+          err.response?.data?.message ?? "Não foi possível carregar o usuário."
+        );
+      } else {
+        setError("Não foi possível carregar o usuário.");
       }
-      toast.error("Não foi possível carregar usuário");
+      toast.error("Erro ao carregar dados do usuário");
     } finally {
       setLoading(false);
     }
-  }
-
-  useEffect(() => {
-    if (id && typeof id === "string") {
-      getUser(id);
-    }
   }, [id]);
 
-  const toggleStatus = async () => {
-    if (!usuario) return;
+  useEffect(() => {
+    void fetchUser();
+  }, [fetchUser]);
 
-    try {
-      const res = await api.patch<Usuario>(
-        `/admin/usuarios/${usuario.id}/status`,
-        { ativo: !usuario.ativo }
-      );
+  const userId = typeof id === "string" ? Number(id) : 0;
 
-      const atualizado: Usuario = res.data;
-      setUsuario(atualizado);
-      toast.success(
-        atualizado.ativo
-          ? "Usuário reativado com sucesso"
-          : "Usuário desativado com sucesso"
-      );
-    } catch (err: any) {
-      toast.error(err.message || "Falha de rede");
-    }
-  };
-
-  const toggleBlock = async () => {
-    if (!usuario) return;
-
-    try {
-      const res = await api.patch<Usuario>(
-        `/admin/usuarios/${usuario.id}/bloqueio`,
-        { bloqueado: !usuario.bloqueado }
-      );
-
-      const atualizado: Usuario = res.data;
-      setUsuario(atualizado);
-      toast.success(
-        atualizado.bloqueado
-          ? "Usuário bloqueado com sucesso"
-          : "Usuário desbloqueado com sucesso"
-      );
-    } catch (err: any) {
-      toast.error(
-        err?.response?.data?.message || err.message || "Falha de rede"
-      );
-    }
-  };
-
-  const excluirUsuario = async () => {
-    if (!usuario) return;
-    try {
-      await api.delete(`/admin/usuarios/${usuario.id}`);
-
-      toast.success("Usuário excluído com sucesso");
-      router.push("/admin/usuarios");
-    } catch (err: any) {
-      toast.error(err.message || "Falha de rede");
-    }
-  };
-
-  if (loading)
+  /* ---------- Loading state ---------- */
+  if (loading) {
     return (
-      <p className="py-20 text-center text-muted-foreground">Carregando…</p>
-    );
+      <div className="space-y-6">
+        {/* Back link skeleton */}
+        <Skeleton className="h-5 w-40" />
 
-  if (!usuario)
+        {/* Header skeleton */}
+        <div className="flex items-center gap-4 rounded-xl border bg-white p-6 shadow-sm">
+          <Skeleton className="h-14 w-14 rounded-full" />
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-4 w-36" />
+          </div>
+        </div>
+
+        {/* Tabs skeleton */}
+        <Skeleton className="h-10 w-full max-w-lg" />
+
+        {/* Content skeleton */}
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 rounded-lg" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  /* ---------- Error state ---------- */
+  if (error || !usuario) {
     return (
-      <p className="py-20 text-center text-muted-foreground">
-        Usuário não encontrado.
-      </p>
+      <div className="flex flex-col items-center gap-4 py-20">
+        <AlertCircle className="h-10 w-10 text-red-500" />
+        <p className="text-lg font-semibold text-gray-700">
+          {error ?? "Usuário não encontrado."}
+        </p>
+        <Button variant="outline" onClick={() => void fetchUser()}>
+          Tentar novamente
+        </Button>
+      </div>
     );
+  }
 
-  const fullName = `${usuario.nome} ${usuario.sobrenome}`;
+  const fullName =
+    `${usuario.nome ?? ""} ${usuario.sobrenome ?? ""}`.trim() || "Sem nome";
+  const initials = getInitials(usuario.nome, usuario.sobrenome);
 
   return (
-    <div className="mx-auto px-4">
-      <h1 className="mb-6 text-2xl font-bold">Dados do Usuário</h1>
+    <div className="space-y-6">
+      {/* Voltar */}
+      <Link
+        href="/admin/usuarios"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-violet-600 transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Voltar para Usuários
+      </Link>
 
-      <div className="mb-8 flex flex-col items-center rounded-2xl bg-white p-6 shadow-md">
-        <div className="mb-4 h-24 w-24 overflow-hidden rounded-full border-4 border-violet-500">
-          <Image src="/user_default.png" alt="Avatar" width={96} height={96} />
+      {/* Header do usuário */}
+      <div className="flex flex-col gap-4 rounded-xl border bg-white p-6 shadow-sm sm:flex-row sm:items-center">
+        {/* Avatar com iniciais */}
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-violet-100 text-lg font-bold text-violet-700">
+          {initials}
         </div>
-        <p className="text-lg font-semibold">{fullName}</p>
-        <p className="text-sm text-muted-foreground">{usuario.email}</p>
-      </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <Campo label="Nome" icon={User} value={usuario.nome} />
-        <Campo label="Sobrenome" icon={User} value={usuario.sobrenome} />
-        <Campo label="Email" icon={Mail} value={usuario.email} />
-        <Campo label="CPF" icon={CreditCard} value={formatarCPF(usuario.cpf)} />
-        <Campo
-          label="Status"
-          value={usuario.ativo ? "Ativo" : "Desativado"}
-          textClass={usuario.ativo ? "text-emerald-700" : "text-gray-500"}
-        />
-        <Campo
-          label="Bloqueio"
-          value={usuario.bloqueado ? "Bloqueado" : "Liberado"}
-          textClass={usuario.bloqueado ? "text-red-600" : "text-emerald-700"}
-        />
-      </div>
-
-      {usuario.bloqueado && usuario.bloqueadoMotivo ? (
-        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          <strong>Motivo do bloqueio:</strong> {usuario.bloqueadoMotivo}
+        <div className="flex-1 space-y-1">
+          <h1 className="text-xl font-bold text-gray-900">{fullName}</h1>
+          <p className="text-sm text-muted-foreground">{usuario.email}</p>
         </div>
-      ) : null}
 
-      <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-        <ConfirmDialog
-          title={usuario.ativo ? "Desativar Usuário" : "Reativar Usuário"}
-          description={
-            usuario.ativo
-              ? "Tem certeza que deseja desativar este usuário? Ele não poderá mais acessar a plataforma."
-              : "Deseja reativar o acesso deste usuário?"
-          }
-          onConfirm={toggleStatus}
-          trigger={
-            <Button
-              variant="outline"
-              className={
-                usuario.ativo
-                  ? "border-yellow-600 text-yellow-600 hover:bg-yellow-50"
-                  : "border-emerald-600 text-emerald-600 hover:bg-emerald-50"
-              }
-            >
-              <AlertTriangle className="mr-2 h-4 w-4" />
-              {usuario.ativo ? "Desativar Usuário" : "Reativar Usuário"}
-            </Button>
-          }
-        />
-
-        <ConfirmDialog
-          title={usuario.bloqueado ? "Desbloquear Usuário" : "Bloquear Usuário"}
-          description={
-            usuario.bloqueado
-              ? "Deseja desbloquear este usuário? Ele poderá acessar a plataforma novamente."
-              : "Tem certeza que deseja bloquear este usuário? Ele será impedido de fazer login e usar a plataforma imediatamente."
-          }
-          onConfirm={toggleBlock}
-          trigger={
-            <Button
-              variant="outline"
-              className={
-                usuario.bloqueado
-                  ? "border-emerald-600 text-emerald-600 hover:bg-emerald-50"
-                  : "border-red-600 text-red-600 hover:bg-red-50"
-              }
-            >
-              {usuario.bloqueado ? (
-                <ShieldCheck className="mr-2 h-4 w-4" />
-              ) : (
-                <Ban className="mr-2 h-4 w-4" />
-              )}
-              {usuario.bloqueado ? "Desbloquear Usuário" : "Bloquear Usuário"}
-            </Button>
-          }
-        />
-
-        <ConfirmDialog
-          title="Excluir Usuário"
-          description="Esta ação é irreversível. Deseja realmente excluir este usuário?"
-          onConfirm={excluirUsuario}
-          trigger={
-            <Button variant="destructive">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Excluir Usuário
-            </Button>
-          }
-        />
+        <div className="flex flex-wrap gap-2">
+          <Badge
+            className={`rounded-full px-3 py-1 text-xs ${
+              usuario.ativo
+                ? "bg-green-100 text-green-700"
+                : "bg-gray-100 text-gray-600"
+            }`}
+          >
+            {usuario.ativo ? "Ativo" : "Inativo"}
+          </Badge>
+          {usuario.bloqueado && (
+            <Badge className="rounded-full bg-red-100 px-3 py-1 text-xs text-red-700">
+              Bloqueado
+            </Badge>
+          )}
+        </div>
       </div>
-    </div>
-  );
-}
 
-function Campo({
-  label,
-  icon: Icon,
-  value,
-  textClass = "",
-}: {
-  label: string;
-  icon?: any;
-  value: string;
-  textClass?: string;
-}) {
-  return (
-    <div className="rounded-lg bg-gray-50 p-4 shadow-sm">
-      <p className="mb-1 flex items-center text-xs text-muted-foreground">
-        {Icon && <Icon className="mr-2 h-4 w-4" />} {label}
-      </p>
-      <Input value={value} disabled className={`bg-white ${textClass}`} />
+      {/* Tabs */}
+      <Tabs defaultValue="dados-gerais">
+        <TabsList className="w-full overflow-x-auto">
+          <TabsTrigger value="dados-gerais">Dados Gerais</TabsTrigger>
+          <TabsTrigger value="ingressos">Ingressos</TabsTrigger>
+          <TabsTrigger value="compras">Compras</TabsTrigger>
+          <TabsTrigger value="auditoria">Auditoria</TabsTrigger>
+          <TabsTrigger value="seguranca">Segurança</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="dados-gerais" className="mt-4">
+          <TabDadosGerais user={usuario} onRefresh={fetchUser} />
+        </TabsContent>
+
+        <TabsContent value="ingressos" className="mt-4">
+          <TabIngressos userId={userId} />
+        </TabsContent>
+
+        <TabsContent value="compras" className="mt-4">
+          <TabCompras userId={userId} />
+        </TabsContent>
+
+        <TabsContent value="auditoria" className="mt-4">
+          <TabAuditoria userId={userId} />
+        </TabsContent>
+
+        <TabsContent value="seguranca" className="mt-4">
+          <TabSeguranca userId={userId} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
