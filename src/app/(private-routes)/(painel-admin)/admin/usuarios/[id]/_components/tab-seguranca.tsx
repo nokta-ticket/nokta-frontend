@@ -29,9 +29,9 @@ import { toast } from "@/lib/toast";
 interface SecurityData {
   emailVerificado: boolean;
   telefoneVerificado: boolean;
-  contaBloqueada: boolean;
+  bloqueado: boolean;
   bloqueadoMotivo: string | null;
-  twoFactorAtivo: boolean;
+  totpEnabled: boolean;
   ultimoIp: string | null;
   falhasRecentes: number;
 }
@@ -86,6 +86,7 @@ export default function TabSeguranca({ userId }: { userId: number }) {
       await api.post(`/admin/usuarios/${userId}/invalidar-sessoes`);
       toast.success("Todas as sessões foram invalidadas com sucesso");
       setSessionOpen(false);
+      void getSecurityData();
     } catch (err) {
       toast.error(
         getErrorMessage(err, "Não foi possível invalidar as sessões.")
@@ -125,16 +126,16 @@ export default function TabSeguranca({ userId }: { userId: number }) {
     },
     {
       label: "Conta bloqueada",
-      value: data.contaBloqueada,
+      value: data.bloqueado,
       icon: Lock,
-      extra: data.contaBloqueada && data.bloqueadoMotivo
+      extra: data.bloqueado && data.bloqueadoMotivo
         ? `Motivo: ${data.bloqueadoMotivo}`
         : undefined,
       invertColor: true,
     },
     {
       label: "2FA ativo",
-      value: data.twoFactorAtivo,
+      value: data.totpEnabled,
       icon: Shield,
     },
   ];

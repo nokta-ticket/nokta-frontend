@@ -143,7 +143,7 @@ export default function TabDadosGerais({ user, onRefresh }: TabDadosGeraisProps)
               <field.icon className="h-3.5 w-3.5" />
               {field.label}
             </p>
-            <p className="text-sm font-medium truncate">{field.value}</p>
+            <p className="text-sm font-medium break-all">{field.value}</p>
           </div>
         ))}
 

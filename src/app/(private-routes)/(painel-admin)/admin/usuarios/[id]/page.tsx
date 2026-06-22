@@ -129,9 +129,9 @@ export default function UsuarioDetalhesPage() {
           {initials}
         </div>
 
-        <div className="flex-1 space-y-1">
+        <div className="min-w-0 flex-1 space-y-1">
           <h1 className="text-xl font-bold text-gray-900">{fullName}</h1>
-          <p className="text-sm text-muted-foreground">{usuario.email}</p>
+          <p className="text-sm text-muted-foreground break-all">{usuario.email}</p>
         </div>
 
         <div className="flex flex-wrap gap-2">
