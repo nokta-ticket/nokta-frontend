@@ -57,11 +57,14 @@ function formatDatePill(raw: string) {
 
 function formatTime(raw: string) {
   if (!raw) return "";
-  const d = new Date(raw);
+  const str = typeof raw === "string" ? raw : String(raw);
+  const timeMatch = str.match(/(\d{2}):(\d{2})/);
+  if (timeMatch) return `${timeMatch[1]}:${timeMatch[2]}`;
+  const d = new Date(str);
   if (!isNaN(d.getTime())) {
     return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
   }
-  return raw.slice(0, 5);
+  return "";
 }
 
 type PolicyModal = 'meiaEntrada' | 'cancelamento' | null;
@@ -186,6 +189,14 @@ export default function IngressoDetalhesPage() {
   const addr = evento.endereco;
   const checkoutHref = `/eventos/${evento.slug ?? evento.id}/checkout`;
 
+  const isEventPast = (() => {
+    if (!evento.data) return false;
+    const eventDate = new Date(evento.data.split("T")[0] + "T23:59:59");
+    return eventDate < new Date();
+  })();
+  const isCancelled = evento.status === 3;
+  const isEncerrado = isEventPast || isCancelled;
+
   function buildCheckoutUrl() {
     const base = `/eventos/${evento!.slug ?? evento!.id}/checkout`;
     const selected = Object.entries(quantities).filter(([, qty]) => qty > 0);
@@ -286,12 +297,18 @@ export default function IngressoDetalhesPage() {
 
               {/* CTAs */}
               <div className="flex items-center gap-3.5">
-                <Link href={checkoutHref}>
-                  <Button className="bg-gradient-to-r from-[#9944CC] to-[#3399FF] hover:brightness-110 text-white font-bold px-8 h-12 gap-2 text-[15px] shadow-xl shadow-violet-900/40 transition-all rounded-xl">
-                    <Ticket size={16} />
-                    Comprar ingresso
+                {isEncerrado ? (
+                  <Button disabled className="bg-gray-500 text-white font-bold px-8 h-12 gap-2 text-[15px] rounded-xl cursor-not-allowed opacity-70">
+                    {isCancelled ? "Evento Cancelado" : "Evento Encerrado"}
                   </Button>
-                </Link>
+                ) : (
+                  <Link href={checkoutHref}>
+                    <Button className="bg-gradient-to-r from-[#9944CC] to-[#3399FF] hover:brightness-110 text-white font-bold px-8 h-12 gap-2 text-[15px] shadow-xl shadow-violet-900/40 transition-all rounded-xl">
+                      <Ticket size={16} />
+                      Comprar ingresso
+                    </Button>
+                  </Link>
+                )}
                 <button
                   onClick={handleShare}
                   className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/8 text-white/40 hover:text-white/80 hover:bg-white/15 transition"
