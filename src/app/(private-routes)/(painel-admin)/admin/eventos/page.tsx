@@ -217,7 +217,7 @@ export default function AdminEventos() {
                     {ev.ativo ? "Ativo" : "Inativo"}
                   </Badge>
 
-                  <Link href={`/produtor/eventos/${ev.id}`}>
+                  <Link href={`/admin/eventos/${ev.id}`}>
                     <Button
                       variant="outline"
                       className="mt-4 w-full border-violet-500 text-violet-600 hover:bg-violet-600 hover:text-white"
