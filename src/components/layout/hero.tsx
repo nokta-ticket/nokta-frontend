@@ -62,36 +62,37 @@ export default function HeroSlider() {
   // Mobile
   const [mobileCurrent, setMobileCurrent] = useState(0);
   const isDragging = useRef(false);
+  const canLoop = eventos.length > 1;
   const [mobileSliderRef, mobileInstRef] = useKeenSlider<HTMLDivElement>(
     {
-      loop: true,
-      slides: { perView: 1.15, spacing: 12, origin: 'center' },
+      loop: canLoop,
+      slides: { perView: canLoop ? 1.15 : 1, spacing: 12, origin: 'center' },
       slideChanged(s) { setMobileCurrent(s.track.details.rel); },
       dragStarted()   { isDragging.current = true; },
       dragEnded()     { setTimeout(() => { isDragging.current = false; }, 50); },
+      disabled: eventos.length === 0,
     },
-    [NoAutoplayPlugin]
+    [canLoop ? NoAutoplayPlugin : NoAutoplayPlugin]
   );
 
   // Desktop
   const [currentSlide, setCurrentSlide] = useState(0);
   const [sliderRef, instRef] = useKeenSlider<HTMLDivElement>(
     {
-      loop: true,
+      loop: canLoop,
       slides: { perView: 1, spacing: 16 },
       slideChanged(s) { setCurrentSlide(s.track.details.rel); },
+      disabled: eventos.length === 0,
     },
-    [AutoplayPlugin]
+    [canLoop ? AutoplayPlugin : NoAutoplayPlugin]
   );
 
   useEffect(() => {
     (async () => {
       try {
-        const res = await api.get('/eventos', { params: { destaque: true } });
-        const data: EventoAPI[] = res.data.data;
-        let evs = data.filter((e) => e.destaque === true);
-        if (evs.length === 0) evs = data;
-        setEventos(evs);
+        const res = await api.get('/eventos/destaques');
+        const data: EventoAPI[] = res.data.data ?? [];
+        setEventos(data);
       } catch (err) {
       } finally {
         setLoading(false);
