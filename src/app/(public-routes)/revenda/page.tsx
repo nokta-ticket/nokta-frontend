@@ -519,17 +519,63 @@ export default function RevendaPage() {
 
           {/* ── Banner ── */}
           <div style={{
+            background: "linear-gradient(135deg, #1A1A2E 0%, #16213E 60%, #0f0f1a 100%)",
             borderRadius: 10,
+            padding: "28px 20px",
             marginBottom: 20,
-            overflow: "hidden",
             position: "relative",
-            height: 142,
+            overflow: "hidden",
           }}>
-            <img
-              src="/banner-revenda.png"
-              alt="Nokta Tickets — Revenda oficial. Compra segura."
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-            />
+            <div style={{
+              position: "absolute", top: -40, right: -40, width: 200, height: 200,
+              borderRadius: "50%",
+              background: "radial-gradient(circle, rgba(153,68,204,0.25) 0%, transparent 70%)",
+              pointerEvents: "none",
+            }} />
+            <div style={{ position: "relative", zIndex: 1 }}>
+              <div style={{
+                display: "inline-block",
+                padding: "3px 10px",
+                background: "rgba(153,68,204,0.25)",
+                border: "1px solid rgba(153,68,204,0.4)",
+                borderRadius: 6,
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: 10, fontWeight: 600, color: "#c084fc",
+                letterSpacing: "0.06em",
+                marginBottom: 10,
+              }}>
+                REVENDA OFICIAL
+              </div>
+              <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12 }}>
+                <div>
+                  <h1 style={{
+                    fontFamily: "'Sora', sans-serif",
+                    fontSize: 20, fontWeight: 700, color: "#fff",
+                    margin: 0, lineHeight: 1.2,
+                  }}>
+                    Compre mais barato,<br />de forma segura.
+                  </h1>
+                  <p style={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 12, color: "rgba(255,255,255,0.50)",
+                    margin: "6px 0 0", lineHeight: 1.5,
+                  }}>
+                    QR Code novo · Validação oficial · Pagamento protegido
+                  </p>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                  {["💰 Lote anterior", "✅ Oficial", "⚡ Instantâneo"].map((text, i) => (
+                    <span key={i} style={{
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontSize: 11, color: "rgba(255,255,255,0.65)",
+                      whiteSpace: "nowrap",
+                    }}>
+                      {text}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* ── Eventos em destaque ── */}
