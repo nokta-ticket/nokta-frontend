@@ -170,7 +170,7 @@ export function middleware(request: NextRequest) {
   const isProdutorRoute = protectedProdutorRoutes.some((route) =>
     path.startsWith(route)
   );
-  if (authToken && isProdutorRoute && !hasProdutorRole(userPayload)) {
+  if (authToken && isProdutorRoute && !hasProdutorRole(userPayload) && !hasAdminRole(userPayload)) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = REDIRECT_WHEN_INVALID_ROLE_ROUTE;
     return NextResponse.redirect(redirectUrl);

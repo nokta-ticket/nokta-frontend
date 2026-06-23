@@ -217,12 +217,12 @@ export default function AdminEventos() {
                     {ev.ativo ? "Ativo" : "Inativo"}
                   </Badge>
 
-                  <Link href={`/admin/eventos/${ev.id}`}>
+                  <Link href={`/produtor/eventos/${ev.id}`}>
                     <Button
                       variant="outline"
                       className="mt-4 w-full border-violet-500 text-violet-600 hover:bg-violet-600 hover:text-white"
                     >
-                      Visualizar
+                      Editar evento
                     </Button>
                   </Link>
                 </div>
