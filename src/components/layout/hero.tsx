@@ -110,12 +110,73 @@ export default function HeroSlider() {
 
   if (!eventos.length) return null;
 
+  const isSingle = eventos.length === 1;
   const mobileEv = eventos[mobileCurrent];
   const mobileDate = parseDateSafe(mobileEv.data);
   const mobileDataFmt = mobileDate
     ? mobileDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' })
     : '';
   const mobileHorario = extractTime(mobileEv.horario);
+
+  if (isSingle) {
+    const ev = eventos[0];
+    const src = resolveThumbnailUrl(ev.thumbnails?.[0], null);
+    const evDate = parseDateSafe(ev.data);
+    const dataFmt = evDate
+      ? evDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'short' })
+      : '';
+    const horarioFmt = extractTime(ev.horario);
+
+    return (
+      <>
+        <section className="w-full max-w-[1300px] mx-auto px-4 py-6">
+          <div className="px-4 mb-5 lg:hidden">
+            <button
+              type="button"
+              onClick={() => setOverlayOpen(true)}
+              className="w-full flex items-center gap-2.5 border border-gray-200 rounded-2xl px-3.5 py-2.5 bg-gray-50"
+            >
+              <svg viewBox="0 0 16 16" fill="none" width="17" height="17" className="text-gray-500 shrink-0">
+                <path d="m14 14-2.9-2.9M7.333 4a3.333 3.333 0 0 1 3.334 3.333m2 0A5.333 5.333 0 1 1 2 7.333a5.333 5.333 0 0 1 10.667 0Z" stroke="currentColor" strokeWidth="1.333" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span className="font-sans text-[14px] text-gray-400">Buscar eventos</span>
+            </button>
+          </div>
+          <SearchOverlay open={overlayOpen} onClose={() => setOverlayOpen(false)} />
+
+          <div
+            className="relative rounded-xl overflow-hidden cursor-pointer"
+            style={{ height: SLIDE_H }}
+            onClick={() => router.push(`/eventos/${ev.slug ?? ev.id}`)}
+          >
+            {src ? (
+              <Image src={src} alt={ev.nome} fill className="object-cover" unoptimized />
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-900 to-indigo-800" />
+            )}
+          </div>
+
+          <div className="text-center mt-4">
+            <h3 className="font-sans text-[17px] font-bold text-[#181d27] uppercase leading-snug mb-3 px-4">
+              {ev.nome}
+            </h3>
+            <div className="flex flex-col items-center gap-2">
+              {ev.endereco && (
+                <div className="flex items-center gap-1.5 text-[14px] text-[#414651]">
+                  <MapPin size={15} className="text-gray-400 shrink-0" />
+                  <span>{ev.endereco.localidade} - {ev.endereco.uf}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-1.5 text-[14px] text-[#414651]">
+                <Calendar size={15} className="text-gray-400 shrink-0" />
+                <span>{dataFmt}{horarioFmt && ` às ${horarioFmt}`}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </>
+    );
+  }
 
   return (
     <>
