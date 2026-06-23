@@ -522,11 +522,13 @@ export default function RevendaPage() {
             borderRadius: 10,
             marginBottom: 20,
             overflow: "hidden",
+            position: "relative",
+            height: 142,
           }}>
             <img
               src="/banner-revenda.png"
               alt="Nokta Tickets — Revenda oficial. Compra segura."
-              style={{ width: "100%", height: "auto", display: "block" }}
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
             />
           </div>
 
