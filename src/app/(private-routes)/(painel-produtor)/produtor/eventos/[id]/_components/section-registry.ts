@@ -9,6 +9,7 @@ import {
   Tag,
   BarChart2,
   QrCode,
+  Users,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
@@ -30,6 +31,7 @@ export const SECTIONS: SectionMeta[] = [
   { key: "configuracoes", label: "Configurações", icon: Settings },
   { key: "cupons",        label: "Cupons",        icon: Tag },
   { key: "vendas",        label: "Vendas",        icon: BarChart2 },
+  { key: "equipe",        label: "Equipe",         icon: Users },
   { key: "checkin",       label: "Check-in",      icon: QrCode, disabled: true, comingSoon: true },
 ]
 
