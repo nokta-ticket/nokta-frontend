@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ArrowLeft,
   ChevronDown,
@@ -19,83 +19,114 @@ import { toast } from "@/lib/toast";
 /* ---------- types ---------- */
 
 interface SearchResult {
-  ticketId: number;
-  codigo: string;
+  id: number;
+  code: string;
+  status: number;
   evento: string;
   comprador: string;
-  data: string;
+  dataCompra: string;
 }
 
 interface InvestigationData {
-  resumo: {
-    code: string;
-    status: string;
-    risco: string;
-    evento: string;
-    comprador: string;
-    dataCompra: string;
-    dataCheckin: string | null;
+  ingresso: {
+    id: number;
+    codigo: string;
+    status: number;
+    statusNome: string;
+    bloqueado: boolean;
+    bloqueadoMotivo: string | null;
+    resaleAddCount: number;
+    criadoEm: string;
   };
-  scoreDefesa: {
-    total: number;
-    maximo: number;
-    nivel: string;
-    itens: { evidencia: string; pontos: number; ativo: boolean }[];
+  evento: {
+    id: number;
+    nome: string;
+    data: string;
+    endereco: string;
   };
-  veredito: {
-    tipo: "defesa_recomendada" | "analisar_manualmente" | "alto_risco";
-    motivos: string[];
+  lote: {
+    id: number;
+    nome: string;
+    valor: string;
+    tipo: number;
+    lote: number;
   };
-  evidenciasFavoraveis: { descricao: string; presente: boolean }[];
-  identidade: {
+  comprador: {
     id: number;
     nome: string;
     email: string;
     cpf: string;
     telefone: string;
     telefoneVerificado: boolean;
-    ativo: boolean;
-    createdAt: string;
+    contaAtiva: boolean;
+    contaCriadaEm: string;
+    bloqueado: boolean;
   };
-  historicoUsuario: {
-    diasConta: number;
-    eventosComprados: number;
-    eventosComparecidos: number;
-    transferencias: number;
-    revendas: number;
-    chargebacksAnteriores: number;
-  };
-  compra: {
-    pedidoCodigo: string;
-    valor: number;
-    status: string;
-    dataPagamento: string;
-    dataCriacao: string;
+  pedido: {
+    id: number;
+    codigo: string;
+    status: number;
+    statusNome: string;
+    valorTotal: string;
     quantidade: number;
+    pagoEm: string;
+    criadoEm: string;
+    itens: number;
+    transacoes: number;
+    chargebacks: number;
+  } | null;
+  transferencias: Array<{
+    id: number;
+    de: { id: number; nome: string; email: string };
+    para: { id: number; nome: string; email: string };
+    data: string;
+  }>;
+  revendas: Array<{
+    id: number;
+    vendedor: { id: number; nome: string; email: string };
+    comprador: { id: number; nome: string; email: string } | null;
+    precoOriginal: string;
+    precoRevenda: string;
+    status: number;
+    criadaEm: string;
+    vendidaEm: string;
+  }>;
+  historicoComprador: {
+    pedidosPagos: number;
+    totalIngressos: number;
+    transferenciasRealizadas: number;
+    revendasRealizadas: number;
+    chargebacks: number;
+    eventosComparecidos: number;
+  };
+  indicadores: Array<{
     tipo: string;
-    lote: string;
-    transacoes: unknown[];
+    severidade: "critico" | "alto" | "medio" | "baixo";
+    descricao: string;
+    valor: number;
+  }>;
+  score: {
+    total: number;
+    maximo: number;
+    nivel: "muito_forte" | "forte" | "moderado" | "fraco";
+    itens: Array<{ evidencia: string; pontos: number; ativo: boolean }>;
   };
-  evidenciasTecnicas: {
-    ips: { ip: string; data: string }[];
-    fingerprints: { fingerprint: string; data: string }[];
+  veredito: {
+    tipo: "defesa_recomendada" | "analisar_manualmente" | "alto_risco";
+    motivos: string[];
   };
-  evidenciasEntrega: {
-    qrGerado: boolean;
-    emailEnviado: boolean;
-    whatsappEnviado: boolean;
-    meusIngressosAcessado: boolean;
-  };
-  historicoPosse: {
-    transfers: { de: string; para: string; data: string }[];
-    resales: {
-      vendedor: string;
-      comprador: string;
-      valor: number;
-      status: string;
-      data: string;
-    }[];
-  };
+  evidenciasFavoraveis: Array<{
+    descricao: string;
+    presente: boolean;
+  }>;
+  timeline: Array<{
+    data: string;
+    tipo: string;
+    descricao: string;
+    ator: string | null;
+    ip: string | null;
+    fingerprint: string | null;
+  }>;
   checkin: {
     utilizado: boolean;
     dataHora: string | null;
@@ -104,58 +135,58 @@ interface InvestigationData {
     fingerprint: string | null;
     tentativasAntes: number;
   };
-  timeline: {
-    data: string;
+  auditoria: {
+    totalRegistros: number;
+    integridadeVerificada: boolean;
+    cadeiaQuebrada: unknown | null;
+  };
+  eventosSeguranca: Array<{
     tipo: string;
-    descricao: string;
-    ator: string | null;
     ip: string | null;
     fingerprint: string | null;
-  }[];
-  indicadores: {
-    tipo: string;
-    severidade: "critico" | "alto" | "medio" | "baixo";
-    descricao: string;
-    valor: string;
-  }[];
-  integridade: { valid: boolean; total: number };
+    data: string;
+  }>;
 }
 
 /* ---------- helpers ---------- */
 
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return "---";
-  const d = new Date(iso);
-  return d.toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+function loteTipoNome(tipo: number): string {
+  switch (tipo) {
+    case 1: return "Normal";
+    case 2: return "Meia";
+    case 3: return "Gratuito";
+    default: return `Tipo ${tipo}`;
+  }
 }
 
-function formatBRL(value: number): string {
-  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+function scoreColor(nivel: string): string {
+  switch (nivel) {
+    case "muito_forte": return "text-green-600 border-green-500";
+    case "forte": return "text-green-600 border-green-500";
+    case "moderado": return "text-yellow-600 border-yellow-500";
+    case "fraco": return "text-red-600 border-red-500";
+    default: return "text-gray-600 border-gray-500";
+  }
 }
 
-function scoreColor(score: number): string {
-  if (score >= 70) return "text-green-600 border-green-500";
-  if (score >= 50) return "text-yellow-600 border-yellow-500";
-  return "text-red-600 border-red-500";
+function scoreBg(nivel: string): string {
+  switch (nivel) {
+    case "muito_forte":
+    case "forte": return "bg-green-50";
+    case "moderado": return "bg-yellow-50";
+    case "fraco": return "bg-red-50";
+    default: return "bg-gray-50";
+  }
 }
 
-function scoreLabel(score: number): string {
-  if (score >= 80) return "Muito forte";
-  if (score >= 70) return "Forte";
-  if (score >= 50) return "Moderado";
-  return "Fraco";
-}
-
-function scoreBg(score: number): string {
-  if (score >= 70) return "bg-green-50";
-  if (score >= 50) return "bg-yellow-50";
-  return "bg-red-50";
+function scoreLabel(nivel: string): string {
+  switch (nivel) {
+    case "muito_forte": return "Muito forte";
+    case "forte": return "Forte";
+    case "moderado": return "Moderado";
+    case "fraco": return "Fraco";
+    default: return nivel;
+  }
 }
 
 function veredictoStyle(tipo: string) {
@@ -172,7 +203,7 @@ function veredictoStyle(tipo: string) {
 }
 
 function timelineDotColor(tipo: string): string {
-  const green = ["INGRESSO_VALIDADO", "ACCOUNT_ACTIVATED", "CODE_VALID"];
+  const green = ["INGRESSO_VALIDADO", "ACCOUNT_ACTIVATED"];
   const red = ["INGRESSO_VALIDACAO_FALHA", "INGRESSO_CANCELADO"];
   const violet = ["INGRESSO_CRIADO", "INGRESSO_COMPRA_PAGA"];
   const blue = ["INGRESSO_TRANSFERIDO", "INGRESSO_REVENDIDO"];
@@ -196,6 +227,25 @@ function severityColor(sev: string) {
       return "bg-gray-100 text-gray-700 border-gray-300";
     default:
       return "bg-gray-100 text-gray-700 border-gray-300";
+  }
+}
+
+function calcDiasConta(contaCriadaEm: string): number {
+  try {
+    const parts = contaCriadaEm.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if (parts) {
+      const d = new Date(Number(parts[3]), Number(parts[2]) - 1, Number(parts[1]));
+      const diff = Date.now() - d.getTime();
+      return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+    }
+    const d = new Date(contaCriadaEm);
+    if (!isNaN(d.getTime())) {
+      const diff = Date.now() - d.getTime();
+      return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+    }
+    return 0;
+  } catch {
+    return 0;
   }
 }
 
@@ -329,7 +379,7 @@ export default function EvidenciasPage() {
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `dossie-${data.resumo.code}.pdf`;
+      a.download = `dossie-${data.ingresso.codigo}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success("Dossie baixado com sucesso.");
@@ -389,21 +439,19 @@ export default function EvidenciasPage() {
           <div className="grid gap-3">
             {results.map((r) => (
               <button
-                key={r.ticketId}
+                key={r.id}
                 type="button"
-                onClick={() => loadInvestigation(r.ticketId)}
+                onClick={() => loadInvestigation(r.id)}
                 className="rounded-xl border bg-white p-4 shadow-sm text-left hover:border-violet-300 hover:shadow transition-all"
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-semibold text-gray-800">{r.codigo}</p>
+                    <p className="font-semibold text-gray-800">{r.code}</p>
                     <p className="text-sm text-gray-600">{r.evento}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-gray-700">{r.comprador}</p>
-                    <p className="text-xs text-gray-400">
-                      {formatDate(r.data)}
-                    </p>
+                    <p className="text-xs text-gray-400">{r.dataCompra}</p>
                   </div>
                 </div>
               </button>
@@ -433,13 +481,12 @@ export default function EvidenciasPage() {
     );
   }
 
-  const { resumo, scoreDefesa, veredito } = data;
-  const pct = scoreDefesa.maximo > 0
-    ? Math.round((scoreDefesa.total / scoreDefesa.maximo) * 100)
+  const { score, veredito } = data;
+  const pct = score.maximo > 0
+    ? Math.round((score.total / score.maximo) * 100)
     : 0;
   const vs = veredictoStyle(veredito.tipo);
 
-  // count favorable evidence
   const totalFav = data.evidenciasFavoraveis.length;
   const presentFav = data.evidenciasFavoraveis.filter((e) => e.presente).length;
 
@@ -450,6 +497,8 @@ export default function EvidenciasPage() {
     if (ratio >= 0.6) return "A maioria das evidencias indica prestacao efetiva do servico.";
     return "Evidencias insuficientes para conclusao definitiva.";
   }
+
+  const diasConta = calcDiasConta(data.comprador.contaCriadaEm);
 
   return (
     <div className="space-y-6">
@@ -466,28 +515,39 @@ export default function EvidenciasPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Left: Resumo */}
         <div className="rounded-xl border bg-white p-5 shadow-sm space-y-2">
-          <p className="font-bold text-gray-800">
-            Pedido: #{resumo.code}
+          <p className="font-bold text-gray-800">Resumo</p>
+          <p className="text-sm text-gray-600">
+            <span className="text-gray-500">Ingresso:</span>{" "}
+            <span className="font-medium">{data.ingresso.codigo}</span>
           </p>
-          <Badge
-            className={
-              resumo.status === "PAGO"
-                ? "bg-green-100 text-green-800"
-                : resumo.status === "CANCELADO"
-                  ? "bg-red-100 text-red-800"
-                  : "bg-gray-100 text-gray-700"
-            }
-          >
-            {resumo.status}
-          </Badge>
-          <p className="text-sm text-gray-600">{resumo.evento}</p>
-          <p className="text-sm text-gray-600">{resumo.comprador}</p>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-500">Status:</span>
+            <Badge
+              className={
+                data.ingresso.status === 1
+                  ? "bg-green-100 text-green-800"
+                  : data.ingresso.status === 4
+                    ? "bg-red-100 text-red-800"
+                    : "bg-gray-100 text-gray-700"
+              }
+            >
+              {data.ingresso.statusNome}
+            </Badge>
+          </div>
+          <p className="text-sm text-gray-600">
+            <span className="text-gray-500">Evento:</span>{" "}
+            {data.evento.nome}
+          </p>
+          <p className="text-sm text-gray-600">
+            <span className="text-gray-500">Comprador:</span>{" "}
+            {data.comprador.nome}
+          </p>
           <p className="text-xs text-gray-500">
-            Compra: {formatDate(resumo.dataCompra)}
+            Compra: {data.pedido?.criadoEm ?? "---"}
           </p>
           <p className="text-xs text-gray-500">
             Check-in:{" "}
-            {resumo.dataCheckin ? formatDate(resumo.dataCheckin) : "Nao utilizado"}
+            {data.checkin.utilizado ? data.checkin.dataHora : "Nao utilizado"}
           </p>
         </div>
 
@@ -497,12 +557,15 @@ export default function EvidenciasPage() {
             Score de Defesa
           </p>
           <div
-            className={`w-24 h-24 rounded-full border-4 flex items-center justify-center ${scoreColor(pct)} ${scoreBg(pct)}`}
+            className={`w-24 h-24 rounded-full border-4 flex items-center justify-center ${scoreColor(score.nivel)} ${scoreBg(score.nivel)}`}
           >
-            <span className="text-3xl font-bold">{pct}</span>
+            <div className="text-center">
+              <span className="text-2xl font-bold">{score.total}</span>
+              <span className="text-xs text-gray-400">/{score.maximo}</span>
+            </div>
           </div>
-          <p className={`mt-2 text-sm font-semibold ${scoreColor(pct)}`}>
-            {scoreLabel(pct)}
+          <p className={`mt-2 text-sm font-semibold ${scoreColor(score.nivel)}`}>
+            {scoreLabel(score.nivel)}
           </p>
         </div>
 
@@ -537,7 +600,7 @@ export default function EvidenciasPage() {
 
       {/* ===== COLLAPSIBLE SECTIONS ===== */}
 
-      {/* Section 1 - Evidencias Favoraveis */}
+      {/* Section 1 - Evidencias Favoraveis a Nokta */}
       <CollapsibleSection
         title="Evidencias Favoraveis a Nokta"
         defaultOpen
@@ -568,18 +631,14 @@ export default function EvidenciasPage() {
       {/* Section 2 - Identidade do Comprador */}
       <CollapsibleSection title="Identidade do Comprador" defaultOpen>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <InfoCard label="Nome" value={data.identidade.nome} />
-          <InfoCard label="Email" value={data.identidade.email} />
-          <InfoCard label="Telefone" value={data.identidade.telefone} />
-          <InfoCard label="CPF" value={data.identidade.cpf} />
-          <InfoCard
-            label="Conta criada em"
-            value={formatDate(data.identidade.createdAt)}
-          />
+          <InfoCard label="Nome" value={data.comprador.nome} />
+          <InfoCard label="Email" value={data.comprador.email} />
+          <InfoCard label="Telefone" value={data.comprador.telefone} />
+          <InfoCard label="CPF" value={data.comprador.cpf} />
           <InfoCard
             label="Telefone verificado"
             value={
-              data.identidade.telefoneVerificado ? (
+              data.comprador.telefoneVerificado ? (
                 <span className="text-green-600 font-semibold">Verificado</span>
               ) : (
                 <span className="text-red-500 font-semibold">Nao verificado</span>
@@ -589,12 +648,16 @@ export default function EvidenciasPage() {
           <InfoCard
             label="Status da conta"
             value={
-              data.identidade.ativo ? (
+              data.comprador.contaAtiva ? (
                 <span className="text-green-600 font-semibold">Ativa</span>
               ) : (
                 <span className="text-red-500 font-semibold">Inativa</span>
               )
             }
+          />
+          <InfoCard
+            label="Conta criada em"
+            value={data.comprador.contaCriadaEm}
           />
         </div>
       </CollapsibleSection>
@@ -604,77 +667,84 @@ export default function EvidenciasPage() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <InfoCard
             label="Conta criada ha"
-            value={`${data.historicoUsuario.diasConta} dias`}
+            value={`${diasConta} dias`}
           />
           <InfoCard
-            label="Eventos comprados"
-            value={data.historicoUsuario.eventosComprados}
+            label="Pedidos pagos"
+            value={data.historicoComprador.pedidosPagos}
           />
           <InfoCard
-            label="Eventos comparecidos"
-            value={data.historicoUsuario.eventosComparecidos}
+            label="Total de ingressos"
+            value={data.historicoComprador.totalIngressos}
           />
           <InfoCard
-            label="Transferencias"
-            value={data.historicoUsuario.transferencias}
+            label="Transferencias realizadas"
+            value={data.historicoComprador.transferenciasRealizadas}
           />
           <InfoCard
-            label="Revendas"
-            value={data.historicoUsuario.revendas}
+            label="Revendas realizadas"
+            value={data.historicoComprador.revendasRealizadas}
           />
           <InfoCard
-            label="Chargebacks anteriores"
+            label="Chargebacks"
             value={
-              data.historicoUsuario.chargebacksAnteriores > 0 ? (
+              data.historicoComprador.chargebacks > 0 ? (
                 <span className="text-red-600 font-semibold">
-                  {data.historicoUsuario.chargebacksAnteriores}
+                  {data.historicoComprador.chargebacks}
                 </span>
               ) : (
                 <span className="text-green-600 font-semibold">0</span>
               )
             }
           />
+          <InfoCard
+            label="Eventos comparecidos"
+            value={data.historicoComprador.eventosComparecidos}
+          />
         </div>
       </CollapsibleSection>
 
       {/* Section 4 - Dados da Compra */}
       <CollapsibleSection title="Dados da Compra">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <InfoCard label="Pedido" value={data.compra.pedidoCodigo} />
-          <InfoCard label="Valor" value={formatBRL(data.compra.valor)} />
-          <InfoCard
-            label="Status do pagamento"
-            value={
-              <Badge
-                className={
-                  data.compra.status === "PAGO"
-                    ? "bg-green-100 text-green-800"
-                    : data.compra.status === "CANCELADO"
-                      ? "bg-red-100 text-red-800"
-                      : "bg-gray-100 text-gray-700"
-                }
-              >
-                {data.compra.status}
-              </Badge>
-            }
-          />
-          <InfoCard
-            label="Data da compra"
-            value={formatDate(data.compra.dataCriacao)}
-          />
-          <InfoCard
-            label="Quantidade de ingressos"
-            value={data.compra.quantidade}
-          />
-          <InfoCard label="Tipo do ingresso" value={data.compra.tipo} />
-          <InfoCard label="Lote" value={data.compra.lote} />
-        </div>
+        {data.pedido ? (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <InfoCard label="Pedido" value={data.pedido.codigo} />
+            <InfoCard label="Valor total" value={data.pedido.valorTotal} />
+            <InfoCard
+              label="Status do pagamento"
+              value={
+                <Badge
+                  className={
+                    data.pedido.statusNome === "Pago"
+                      ? "bg-green-100 text-green-800"
+                      : data.pedido.statusNome === "Cancelado"
+                        ? "bg-red-100 text-red-800"
+                        : "bg-gray-100 text-gray-700"
+                  }
+                >
+                  {data.pedido.statusNome}
+                </Badge>
+              }
+            />
+            <InfoCard label="Pago em" value={data.pedido.pagoEm || "---"} />
+            <InfoCard
+              label="Quantidade de ingressos"
+              value={data.pedido.quantidade}
+            />
+            <InfoCard label="Lote" value={data.lote.nome} />
+            <InfoCard label="Numero do lote" value={data.lote.lote} />
+            <InfoCard label="Tipo do ingresso" value={loteTipoNome(data.lote.tipo)} />
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">
+            Nenhum pedido associado a este ingresso
+          </p>
+        )}
       </CollapsibleSection>
 
       {/* Section 5 - Evidencias Tecnicas */}
       <CollapsibleSection title="Evidencias Tecnicas">
-        {data.evidenciasTecnicas.ips.length === 0 &&
-        data.evidenciasTecnicas.fingerprints.length === 0 ? (
+        {data.eventosSeguranca.length === 0 ? (
           <p className="text-sm text-gray-500">
             Nenhuma evidencia tecnica registrada
           </p>
@@ -683,26 +753,21 @@ export default function EvidenciasPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b text-left text-gray-500">
+                  <th className="pb-2 pr-4 font-medium">Tipo</th>
                   <th className="pb-2 pr-4 font-medium">IP</th>
                   <th className="pb-2 pr-4 font-medium">Fingerprint</th>
                   <th className="pb-2 font-medium">Data</th>
                 </tr>
               </thead>
               <tbody>
-                {data.evidenciasTecnicas.ips.map((item, i) => (
-                  <tr key={`ip-${i}`} className="border-b last:border-0">
-                    <td className="py-2 pr-4 text-gray-700">{item.ip}</td>
-                    <td className="py-2 pr-4 text-gray-400">---</td>
-                    <td className="py-2 text-gray-500">{formatDate(item.data)}</td>
-                  </tr>
-                ))}
-                {data.evidenciasTecnicas.fingerprints.map((item, i) => (
-                  <tr key={`fp-${i}`} className="border-b last:border-0">
-                    <td className="py-2 pr-4 text-gray-400">---</td>
+                {data.eventosSeguranca.map((ev, i) => (
+                  <tr key={i} className="border-b last:border-0">
+                    <td className="py-2 pr-4 text-gray-700">{ev.tipo}</td>
+                    <td className="py-2 pr-4 text-gray-700">{ev.ip ?? "---"}</td>
                     <td className="py-2 pr-4 text-gray-700 font-mono text-xs">
-                      {item.fingerprint}
+                      {ev.fingerprint ?? "---"}
                     </td>
-                    <td className="py-2 text-gray-500">{formatDate(item.data)}</td>
+                    <td className="py-2 text-gray-500">{ev.data}</td>
                   </tr>
                 ))}
               </tbody>
@@ -741,42 +806,45 @@ export default function EvidenciasPage() {
 
       {/* Section 7 - Historico de Posse */}
       <CollapsibleSection title="Historico de Posse">
-        {data.historicoPosse.transfers.length === 0 &&
-        data.historicoPosse.resales.length === 0 ? (
+        {data.transferencias.length === 0 && data.revendas.length === 0 ? (
           <p className="text-sm text-gray-500">
             Nenhuma transferencia ou revenda registrada
           </p>
         ) : (
           <div className="relative pl-6 space-y-4">
-            {/* vertical line */}
             <div className="absolute left-2 top-2 bottom-2 w-0.5 bg-gray-200" />
 
-            {/* Original purchase */}
-            <div className="relative">
-              <div className="absolute -left-4 top-1.5 w-3 h-3 rounded-full bg-violet-500" />
-              <p className="text-sm text-gray-700">
-                <span className="font-medium">Compra original:</span>{" "}
-                {resumo.comprador} &mdash; {formatDate(resumo.dataCompra)}
-              </p>
-            </div>
-
-            {data.historicoPosse.transfers.map((t, i) => (
-              <div key={`t-${i}`} className="relative">
+            {data.transferencias.map((t) => (
+              <div key={`t-${t.id}`} className="relative">
                 <div className="absolute -left-4 top-1.5 w-3 h-3 rounded-full bg-blue-500" />
                 <p className="text-sm text-gray-700">
-                  Transferido de <span className="font-medium">{t.de}</span> para{" "}
-                  <span className="font-medium">{t.para}</span> &mdash;{" "}
-                  {formatDate(t.data)}
+                  Transferido de{" "}
+                  <span className="font-medium">{t.de.nome}</span>{" "}
+                  <span className="text-xs text-gray-400">({t.de.email})</span>{" "}
+                  para{" "}
+                  <span className="font-medium">{t.para.nome}</span>{" "}
+                  <span className="text-xs text-gray-400">({t.para.email})</span>{" "}
+                  &mdash; {t.data}
                 </p>
               </div>
             ))}
 
-            {data.historicoPosse.resales.map((r, i) => (
-              <div key={`r-${i}`} className="relative">
+            {data.revendas.map((r) => (
+              <div key={`r-${r.id}`} className="relative">
                 <div className="absolute -left-4 top-1.5 w-3 h-3 rounded-full bg-orange-500" />
                 <p className="text-sm text-gray-700">
-                  Revendido por {formatBRL(r.valor)} &mdash; {r.status} &mdash;{" "}
-                  {formatDate(r.data)}
+                  Revendido por{" "}
+                  <span className="font-medium">{r.vendedor.nome}</span>{" "}
+                  <span className="text-xs text-gray-400">({r.vendedor.email})</span>
+                  {r.comprador && (
+                    <>
+                      {" "}para{" "}
+                      <span className="font-medium">{r.comprador.nome}</span>{" "}
+                      <span className="text-xs text-gray-400">({r.comprador.email})</span>
+                    </>
+                  )}
+                  {" "}&mdash; Original: {r.precoOriginal} / Revenda: {r.precoRevenda}
+                  {" "}&mdash; {r.criadaEm}
                 </p>
               </div>
             ))}
@@ -796,7 +864,7 @@ export default function EvidenciasPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <InfoCard
                 label="Data/hora da validacao"
-                value={formatDate(data.checkin.dataHora)}
+                value={data.checkin.dataHora ?? "---"}
               />
               <InfoCard
                 label="Operador"
@@ -836,7 +904,7 @@ export default function EvidenciasPage() {
                 <div>
                   <p className="text-sm text-gray-800">{ev.descricao}</p>
                   <p className="text-xs text-gray-400">
-                    {formatDate(ev.data)}
+                    {ev.data}
                     {ev.ator && ` — ${ev.ator}`}
                   </p>
                 </div>
@@ -871,14 +939,33 @@ export default function EvidenciasPage() {
                     {ind.severidade}
                   </Badge>
                 </div>
-                {ind.valor && (
-                  <p className="text-xs text-gray-500">Valor: {ind.valor}</p>
-                )}
+                <p className="text-xs text-gray-500">
+                  Tipo: {ind.tipo} | Valor: {ind.valor}
+                </p>
               </div>
             ))}
           </div>
         )}
       </CollapsibleSection>
+
+      {/* Footer: Auditoria */}
+      <div className="rounded-xl border bg-white p-4 shadow-sm flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div
+            className={`w-3 h-3 rounded-full ${
+              data.auditoria.integridadeVerificada ? "bg-green-500" : "bg-red-500"
+            }`}
+          />
+          <p className="text-sm text-gray-700">
+            {data.auditoria.integridadeVerificada
+              ? "Integridade da auditoria verificada"
+              : "Falha na verificacao de integridade"}
+          </p>
+        </div>
+        <p className="text-xs text-gray-500">
+          {data.auditoria.totalRegistros} registros auditados
+        </p>
+      </div>
     </div>
   );
 }
