@@ -145,6 +145,13 @@ export default function DetalheIngressoPage() {
 
   useEffect(() => { load(); }, [id]);
 
+  // Fire-and-forget: registra visualização do QR code
+  useEffect(() => {
+    if (item && item.code) {
+      api.post(`/tickets/${id}/qr-view`).catch(() => {});
+    }
+  }, [item?.id]);
+
   const handleExport = async (format: "png" | "pdf") => {
     if (!exportRef.current) return;
     setExporting(true);

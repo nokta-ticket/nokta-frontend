@@ -315,6 +315,7 @@ function CheckoutContent() {
   const [showCardForm, setShowCardForm] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [showCoverages, setShowCoverages] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   const { display: timerDisplay, expired: timerExpired } = useDeadlineCountdown(expiresAt);
 
@@ -494,6 +495,8 @@ function CheckoutContent() {
         type: "pix",
         items: selectedItems,
         codigoCupom: cupomCodigo || undefined,
+        termsVersion: "v1",
+        termsAcceptedAt: new Date().toISOString(),
       });
       setSuccess(true);
     } catch (err) {
@@ -510,6 +513,8 @@ function CheckoutContent() {
         reservationCode,
         items: selectedItems,
         codigoCupom: cupomCodigo || undefined,
+        termsVersion: "v1",
+        termsAcceptedAt: new Date().toISOString(),
       });
       if (res.data.pixUrl) setPixUrl(res.data.pixUrl);
       if (res.data.orderCode) setOrderCode(res.data.orderCode);
@@ -531,6 +536,8 @@ function CheckoutContent() {
         reservationCode,
         items: selectedItems,
         codigoCupom: cupomCodigo || undefined,
+        termsVersion: "v1",
+        termsAcceptedAt: new Date().toISOString(),
         phone: { areaCode: m?.[1], number: m ? m[2] + m[3] : "" },
         address: { cep: form.cep, state: form.state, city: form.city, number: form.number, neighborhood: form.neighborhood, street: form.street },
         card: { holderName: form.cardName, number: form.cardNumber.replace(/\s+/g, ""), ccv: form.cvv, expiryMonth: month, expiryYear: year },
@@ -824,11 +831,27 @@ return (
             </div>
           )}
 
+          {/* ── Termos de aceite ────────────────────────────── */}
+          <label className="flex items-start gap-2 text-sm text-gray-600 mt-4">
+            <input
+              type="checkbox"
+              checked={termsAccepted}
+              onChange={(e) => setTermsAccepted(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+            />
+            <span>
+              Li e aceito os{" "}
+              <a href="/termos" target="_blank" className="text-violet-600 underline">Termos de Uso</a>,{" "}
+              <a href="/privacidade" target="_blank" className="text-violet-600 underline">Política de Privacidade</a>{" "}
+              e regras do evento. Estou ciente de que, após o check-in, o serviço será considerado utilizado.
+            </span>
+          </label>
+
           {/* ── Pagamento ────────────────────────────────────── */}
           {isFree ? (
             <button
               onClick={handleCtaClick}
-              disabled={processing || timerExpired || selectedItems.length === 0}
+              disabled={processing || timerExpired || selectedItems.length === 0 || !termsAccepted}
               className="w-full py-4 rounded-2xl font-bold text-[16px] text-white bg-gradient-to-r from-[#9944CC] to-[#3399FF] shadow-lg shadow-violet-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             >
               {processing ? <Loader2 size={18} className="animate-spin" /> : "Confirmar ingressos gratuitos"}
@@ -879,10 +902,10 @@ return (
                         ) : (
                           <button
                             onClick={handleCtaClick}
-                            disabled={processing || timerExpired}
+                            disabled={processing || timerExpired || !termsAccepted}
                             className={cn(
                               "w-full py-4 rounded-2xl font-bold text-[16px] text-white transition-all flex items-center justify-center gap-2",
-                              processing || timerExpired
+                              processing || timerExpired || !termsAccepted
                                 ? "bg-gray-300 cursor-not-allowed"
                                 : "bg-gradient-to-r from-[#9944CC] to-[#3399FF] shadow-lg shadow-violet-200 active:scale-[0.98]"
                             )}
@@ -932,7 +955,7 @@ return (
                           <Input placeholder="UF" value={form.state} onChange={fld("state")} maxLength={2} className="h-11 text-[14px] uppercase" />
                         </div>
                         <Input placeholder="Cidade" value={form.city} onChange={fld("city")} className="h-11 text-[16px] sm:text-[14px]" />
-                        <Button type="submit" disabled={processing} className="w-full h-12 font-bold text-[15px] bg-gradient-to-r from-[#9944CC] to-[#3399FF] text-white mt-1">
+                        <Button type="submit" disabled={processing || !termsAccepted} className="w-full h-12 font-bold text-[15px] bg-gradient-to-r from-[#9944CC] to-[#3399FF] text-white mt-1">
                           {processing ? <Loader2 size={18} className="animate-spin" /> : `Pagar ${formatCurrency(total)}`}
                         </Button>
                       </form>
