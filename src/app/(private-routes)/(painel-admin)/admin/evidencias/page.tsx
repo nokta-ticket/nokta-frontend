@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   ChevronDown,
   ChevronRight,
+  Download,
   FileText,
+  RefreshCw,
   Search,
   Shield,
 } from "lucide-react";
@@ -25,6 +27,16 @@ interface SearchResult {
   evento: string;
   comprador: string;
   dataCompra: string;
+}
+
+interface RecentTicket {
+  id: number;
+  code: string;
+  status: number;
+  bloqueado: boolean;
+  createdAt: string;
+  dono: { nome: string; sobrenome: string; email: string };
+  evento: { nome: string; data: string };
 }
 
 interface InvestigationData {
@@ -146,6 +158,41 @@ interface InvestigationData {
     fingerprint: string | null;
     data: string;
   }>;
+  contextoCheckout?: {
+    ip: string | null;
+    fingerprint: string | null;
+    userAgent: string | null;
+    buyerPhoneVerified: boolean | null;
+    buyerAccountActive: boolean | null;
+    buyerAccountAgeDays: number | null;
+  } | null;
+  gateway?: {
+    gatewayId: string | null;
+    threedsStatus: string | null;
+    antifraudeStatus: string | null;
+  } | null;
+  termosAceitos?: {
+    versao: string;
+    aceiteEm: string;
+  } | null;
+  webhooks?: Array<{
+    eventType: string;
+    signatureValid: boolean;
+    processedOk: boolean;
+    data: string;
+  }>;
+  comunicacoes?: Array<{
+    canal: string;
+    tipo: string;
+    destinatario: string;
+    status: string;
+    data: string;
+  }>;
+  acessosIngresso?: {
+    totalAcessos: number;
+    qrViews: number;
+    ultimoAcesso: string | null;
+  } | null;
 }
 
 /* ---------- helpers ---------- */
@@ -161,21 +208,29 @@ function loteTipoNome(tipo: number): string {
 
 function scoreColor(nivel: string): string {
   switch (nivel) {
-    case "muito_forte": return "text-green-600 border-green-500";
-    case "forte": return "text-green-600 border-green-500";
-    case "moderado": return "text-yellow-600 border-yellow-500";
-    case "fraco": return "text-red-600 border-red-500";
-    default: return "text-gray-600 border-gray-500";
+    case "muito_forte":
+    case "forte":
+      return "text-green-600 border-green-500";
+    case "moderado":
+      return "text-yellow-600 border-yellow-500";
+    case "fraco":
+      return "text-red-600 border-red-500";
+    default:
+      return "text-gray-600 border-gray-500";
   }
 }
 
 function scoreBg(nivel: string): string {
   switch (nivel) {
     case "muito_forte":
-    case "forte": return "bg-green-50";
-    case "moderado": return "bg-yellow-50";
-    case "fraco": return "bg-red-50";
-    default: return "bg-gray-50";
+    case "forte":
+      return "bg-green-50";
+    case "moderado":
+      return "bg-yellow-50";
+    case "fraco":
+      return "bg-red-50";
+    default:
+      return "bg-gray-50";
   }
 }
 
@@ -192,26 +247,22 @@ function scoreLabel(nivel: string): string {
 function veredictoStyle(tipo: string) {
   switch (tipo) {
     case "defesa_recomendada":
-      return { bg: "bg-green-50 border-green-200", text: "Defesa recomendada", icon: "🟢" };
+      return { bg: "bg-green-50 border-green-200", text: "Defesa recomendada", icon: "\u{1F7E2}" };
     case "analisar_manualmente":
-      return { bg: "bg-yellow-50 border-yellow-200", text: "Analisar manualmente", icon: "🟡" };
+      return { bg: "bg-yellow-50 border-yellow-200", text: "Analisar manualmente", icon: "\u{1F7E1}" };
     case "alto_risco":
-      return { bg: "bg-red-50 border-red-200", text: "Alto risco", icon: "🔴" };
+      return { bg: "bg-red-50 border-red-200", text: "Alto risco", icon: "\u{1F534}" };
     default:
       return { bg: "bg-gray-50 border-gray-200", text: tipo, icon: "⚪" };
   }
 }
 
 function timelineDotColor(tipo: string): string {
-  const green = ["INGRESSO_VALIDADO", "ACCOUNT_ACTIVATED"];
-  const red = ["INGRESSO_VALIDACAO_FALHA", "INGRESSO_CANCELADO"];
-  const violet = ["INGRESSO_CRIADO", "INGRESSO_COMPRA_PAGA"];
-  const blue = ["INGRESSO_TRANSFERIDO", "INGRESSO_REVENDIDO"];
-
-  if (green.includes(tipo)) return "bg-green-500";
-  if (red.includes(tipo)) return "bg-red-500";
-  if (violet.includes(tipo)) return "bg-violet-500";
-  if (blue.includes(tipo)) return "bg-blue-500";
+  const upper = tipo.toUpperCase();
+  if (upper.includes("VALIDADO") || upper.includes("ATIVAD")) return "bg-green-500";
+  if (upper.includes("FALHA") || upper.includes("CANCELADO") || upper.includes("BLOQUEADO")) return "bg-red-500";
+  if (upper.includes("CRIADO") || upper.includes("PAGA") || upper.includes("COMPRA")) return "bg-violet-500";
+  if (upper.includes("TRANSFER") || upper.includes("REVEND")) return "bg-blue-500";
   return "bg-gray-400";
 }
 
@@ -230,22 +281,22 @@ function severityColor(sev: string) {
   }
 }
 
-function calcDiasConta(contaCriadaEm: string): number {
-  try {
-    const parts = contaCriadaEm.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-    if (parts) {
-      const d = new Date(Number(parts[3]), Number(parts[2]) - 1, Number(parts[1]));
-      const diff = Date.now() - d.getTime();
-      return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
-    }
-    const d = new Date(contaCriadaEm);
-    if (!isNaN(d.getTime())) {
-      const diff = Date.now() - d.getTime();
-      return Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
-    }
-    return 0;
-  } catch {
-    return 0;
+function ticketStatusBadge(status: number, bloqueado: boolean) {
+  if (bloqueado) return { className: "bg-red-100 text-red-800", label: "Bloqueado" };
+  switch (status) {
+    case 1: return { className: "bg-green-100 text-green-800", label: "Ativo" };
+    case 2: return { className: "bg-blue-100 text-blue-800", label: "Transferido" };
+    case 3: return { className: "bg-orange-100 text-orange-800", label: "Revendido" };
+    case 4: return { className: "bg-red-100 text-red-800", label: "Cancelado" };
+    default: return { className: "bg-gray-100 text-gray-700", label: `Status ${status}` };
+  }
+}
+
+function canalIcon(canal: string): string {
+  switch (canal.toLowerCase()) {
+    case "email": return "\u{1F4E7}";
+    case "whatsapp": return "\u{1F4AC}";
+    default: return "\u{1F4E8}";
   }
 }
 
@@ -293,11 +344,19 @@ function InfoCard({ label, value }: { label: string; value: React.ReactNode }) {
 /* ========== PAGE ========== */
 
 export default function EvidenciasPage() {
-  const [view, setView] = useState<"search" | "investigation">("search");
+  const [view, setView] = useState<"feed" | "search" | "investigation">("feed");
   const [searchTerm, setSearchTerm] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
+
+  /* live feed state */
+  const [recentTickets, setRecentTickets] = useState<RecentTicket[]>([]);
+  const [loadingFeed, setLoadingFeed] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [secondsAgo, setSecondsAgo] = useState(0);
+  const feedIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const tickerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
   const [data, setData] = useState<InvestigationData | null>(null);
@@ -306,12 +365,44 @@ export default function EvidenciasPage() {
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /* --- fetch live feed --- */
+
+  const fetchFeed = useCallback(async () => {
+    try {
+      const { data: res } = await api.get<{ data: RecentTicket[] }>(
+        "/admin/ingressos",
+        { params: { page: 1, limit: 10 } }
+      );
+      setRecentTickets(res.data);
+      setLastRefresh(new Date());
+      setSecondsAgo(0);
+    } catch {
+      /* silently fail on auto-refresh */
+    } finally {
+      setLoadingFeed(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchFeed();
+    feedIntervalRef.current = setInterval(fetchFeed, 30000);
+    tickerRef.current = setInterval(() => {
+      setSecondsAgo((prev) => prev + 1);
+    }, 1000);
+
+    return () => {
+      if (feedIntervalRef.current) clearInterval(feedIntervalRef.current);
+      if (tickerRef.current) clearInterval(tickerRef.current);
+    };
+  }, [fetchFeed]);
+
   /* --- search --- */
 
   const doSearch = useCallback(async (q: string) => {
     if (q.trim().length < 2) return;
     setSearching(true);
     setSearched(true);
+    setView("search");
     try {
       const { data: res } = await api.get<SearchResult[]>(
         "/admin/evidencias/investigar",
@@ -319,7 +410,7 @@ export default function EvidenciasPage() {
       );
       setResults(res);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Erro ao buscar evidencias."));
+      toast.error(getErrorMessage(err, "Erro ao buscar evidências."));
       setResults([]);
     } finally {
       setSearching(false);
@@ -331,6 +422,10 @@ export default function EvidenciasPage() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (value.trim().length >= 2) {
       debounceRef.current = setTimeout(() => doSearch(value), 500);
+    } else if (value.trim().length === 0) {
+      setView("feed");
+      setSearched(false);
+      setResults([]);
     }
   }
 
@@ -353,15 +448,15 @@ export default function EvidenciasPage() {
       );
       setData(res);
     } catch (err) {
-      toast.error(getErrorMessage(err, "Erro ao carregar investigacao."));
+      toast.error(getErrorMessage(err, "Erro ao carregar investigação."));
       setData(null);
     } finally {
       setLoadingInvestigation(false);
     }
   }
 
-  function backToSearch() {
-    setView("search");
+  function backToFeed() {
+    setView(searched && results.length > 0 ? "search" : "feed");
     setData(null);
     setSelectedTicketId(null);
   }
@@ -382,12 +477,127 @@ export default function EvidenciasPage() {
       a.download = `dossie-${data.ingresso.codigo}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Dossie baixado com sucesso.");
+      toast.success("Dossiê baixado com sucesso.");
     } catch (err) {
-      toast.error(getErrorMessage(err, "Erro ao gerar dossie PDF."));
+      toast.error(getErrorMessage(err, "Erro ao gerar dossiê PDF."));
     } finally {
       setDownloadingPdf(false);
     }
+  }
+
+  /* ---------- HEADER (always visible) ---------- */
+
+  const header = (
+    <>
+      <div>
+        <div className="flex items-center gap-2 mb-1">
+          <Shield size={22} className="text-violet-600" />
+          <h1 className="text-2xl font-bold text-gray-800">Nokta Protect</h1>
+        </div>
+        <p className="text-sm text-gray-500">
+          Sistema de evidências e defesa contra disputas
+        </p>
+      </div>
+
+      {/* Search bar */}
+      <div className="relative">
+        <Search
+          size={16}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+        />
+        <Input
+          placeholder="Buscar por pedido, ingresso, CPF, email, telefone ou nome..."
+          className="pl-9"
+          value={searchTerm}
+          onChange={(e) => handleSearchInput(e.target.value)}
+          onKeyDown={handleSearchKeyDown}
+        />
+      </div>
+    </>
+  );
+
+  /* ---------- FEED VIEW ---------- */
+
+  if (view === "feed") {
+    return (
+      <div className="space-y-6">
+        {header}
+
+        {/* Feed heading */}
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-800">
+            Últimos ingressos vendidos
+          </h2>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-400">
+              Atualizado há {secondsAgo}s
+            </span>
+            <button
+              type="button"
+              onClick={() => { fetchFeed(); setSecondsAgo(0); }}
+              className="text-violet-600 hover:text-violet-800 transition-colors"
+              title="Atualizar agora"
+            >
+              <RefreshCw size={14} />
+            </button>
+          </div>
+        </div>
+
+        {loadingFeed ? (
+          <p className="text-sm text-gray-500 animate-pulse">
+            Carregando ingressos recentes...
+          </p>
+        ) : recentTickets.length === 0 ? (
+          <div className="rounded-xl border bg-white p-8 text-center text-gray-500">
+            Nenhum ingresso encontrado
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-gray-500 bg-gray-50">
+                  <th className="px-4 py-3 font-medium">Código</th>
+                  <th className="px-4 py-3 font-medium">Evento</th>
+                  <th className="px-4 py-3 font-medium">Comprador</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">Data</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentTickets.map((t) => {
+                  const badge = ticketStatusBadge(t.status, t.bloqueado);
+                  return (
+                    <tr
+                      key={t.id}
+                      onClick={() => loadInvestigation(t.id)}
+                      className="border-b last:border-0 hover:bg-violet-50 cursor-pointer transition-colors"
+                    >
+                      <td className="px-4 py-3 font-mono text-gray-800">
+                        {t.code}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">
+                        {t.evento.nome}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">
+                        {t.dono.nome} {t.dono.sobrenome}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge className={badge.className}>
+                          {badge.label}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">
+                        {t.createdAt}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
   }
 
   /* ---------- SEARCH VIEW ---------- */
@@ -395,36 +605,8 @@ export default function EvidenciasPage() {
   if (view === "search") {
     return (
       <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Shield size={22} className="text-violet-600" />
-            <h1 className="text-2xl font-bold text-gray-800">
-              Central de Evidencias
-            </h1>
-          </div>
-          <p className="text-sm text-gray-500">
-            Investigue a jornada completa de um ingresso para disputas e
-            chargebacks
-          </p>
-        </div>
+        {header}
 
-        {/* Search */}
-        <div className="relative">
-          <Search
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-          />
-          <Input
-            placeholder="Buscar por pedido, ingresso, CPF, email, telefone ou nome..."
-            className="pl-9"
-            value={searchTerm}
-            onChange={(e) => handleSearchInput(e.target.value)}
-            onKeyDown={handleSearchKeyDown}
-          />
-        </div>
-
-        {/* Results */}
         {searching && (
           <p className="text-sm text-gray-500 animate-pulse">Buscando...</p>
         )}
@@ -469,56 +651,51 @@ export default function EvidenciasPage() {
       <div className="space-y-6">
         <button
           type="button"
-          onClick={backToSearch}
+          onClick={backToFeed}
           className="flex items-center gap-1 text-sm text-violet-600 hover:underline"
         >
-          <ArrowLeft size={14} /> Voltar a busca
+          <ArrowLeft size={14} /> Voltar
         </button>
         <p className="text-sm text-gray-500 animate-pulse">
-          Carregando investigacao...
+          Carregando investigação...
         </p>
       </div>
     );
   }
 
   const { score, veredito } = data;
-  const pct = score.maximo > 0
-    ? Math.round((score.total / score.maximo) * 100)
-    : 0;
   const vs = veredictoStyle(veredito.tipo);
 
   const totalFav = data.evidenciasFavoraveis.length;
   const presentFav = data.evidenciasFavoraveis.filter((e) => e.presente).length;
 
   function favConclusion() {
-    if (totalFav === 0) return "Sem evidencias registradas.";
+    if (totalFav === 0) return "Sem evidências registradas.";
     const ratio = presentFav / totalFav;
-    if (ratio === 1) return "Ha fortes indicios de que o servico foi efetivamente prestado.";
-    if (ratio >= 0.6) return "A maioria das evidencias indica prestacao efetiva do servico.";
-    return "Evidencias insuficientes para conclusao definitiva.";
+    if (ratio >= 0.9) return "Há fortes indícios de que o serviço foi efetivamente prestado.";
+    if (ratio >= 0.5) return "A maioria das evidências indica prestação efetiva do serviço.";
+    return "Evidências insuficientes para conclusão definitiva.";
   }
-
-  const diasConta = calcDiasConta(data.comprador.contaCriadaEm);
 
   return (
     <div className="space-y-6">
       {/* Back */}
       <button
         type="button"
-        onClick={backToSearch}
+        onClick={backToFeed}
         className="flex items-center gap-1 text-sm text-violet-600 hover:underline"
       >
-        <ArrowLeft size={14} /> Voltar a busca
+        <ArrowLeft size={14} /> Voltar
       </button>
 
-      {/* ===== TOP SECTION ===== */}
+      {/* ===== TOP SECTION (3 columns) ===== */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Left: Resumo */}
         <div className="rounded-xl border bg-white p-5 shadow-sm space-y-2">
-          <p className="font-bold text-gray-800">Resumo</p>
+          <p className="font-bold text-gray-800 text-lg">Resumo</p>
           <p className="text-sm text-gray-600">
             <span className="text-gray-500">Ingresso:</span>{" "}
-            <span className="font-medium">{data.ingresso.codigo}</span>
+            <span className="font-mono font-medium">{data.ingresso.codigo}</span>
           </p>
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-500">Status:</span>
@@ -535,38 +712,49 @@ export default function EvidenciasPage() {
             </Badge>
           </div>
           <p className="text-sm text-gray-600">
-            <span className="text-gray-500">Evento:</span>{" "}
-            {data.evento.nome}
+            <span className="text-gray-500">Evento:</span> {data.evento.nome}
           </p>
           <p className="text-sm text-gray-600">
-            <span className="text-gray-500">Comprador:</span>{" "}
-            {data.comprador.nome}
+            <span className="text-gray-500">Comprador:</span> {data.comprador.nome}
           </p>
           <p className="text-xs text-gray-500">
-            Compra: {data.pedido?.criadoEm ?? "---"}
+            Compra: {data.pedido?.criadoEm ?? "—"}
           </p>
           <p className="text-xs text-gray-500">
-            Check-in:{" "}
-            {data.checkin.utilizado ? data.checkin.dataHora : "Nao utilizado"}
+            Check-in: {data.checkin.utilizado ? data.checkin.dataHora : "Não utilizado"}
           </p>
         </div>
 
-        {/* Center: Score */}
+        {/* Center: Score de Defesa */}
         <div className="rounded-xl border bg-white p-5 shadow-sm flex flex-col items-center justify-center">
           <p className="text-xs text-gray-500 mb-3 font-medium uppercase tracking-wide">
             Score de Defesa
           </p>
           <div
-            className={`w-24 h-24 rounded-full border-4 flex items-center justify-center ${scoreColor(score.nivel)} ${scoreBg(score.nivel)}`}
+            className={`w-28 h-28 rounded-full border-4 flex items-center justify-center ${scoreColor(score.nivel)} ${scoreBg(score.nivel)}`}
           >
             <div className="text-center">
-              <span className="text-2xl font-bold">{score.total}</span>
-              <span className="text-xs text-gray-400">/{score.maximo}</span>
+              <span className="text-3xl font-bold">{score.total}</span>
+              <span className="text-sm text-gray-400">/{score.maximo}</span>
             </div>
           </div>
           <p className={`mt-2 text-sm font-semibold ${scoreColor(score.nivel)}`}>
             {scoreLabel(score.nivel)}
           </p>
+          {/* Score breakdown */}
+          {score.itens.length > 0 && (
+            <div className="mt-3 w-full space-y-1">
+              {score.itens.map((item, i) => (
+                <div key={i} className="flex items-center gap-2 text-xs text-gray-600">
+                  <span className={item.ativo ? "text-green-600" : "text-gray-300"}>
+                    {item.ativo ? "✓" : "✗"}
+                  </span>
+                  <span>{item.evidencia}</span>
+                  <span className="text-gray-400 ml-auto">+{item.pontos}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Right: Veredito */}
@@ -593,19 +781,24 @@ export default function EvidenciasPage() {
           disabled={downloadingPdf}
           className="bg-violet-600 hover:bg-violet-700 text-white"
         >
-          <FileText size={16} className="mr-2" />
-          {downloadingPdf ? "Gerando..." : "Gerar Dossie PDF"}
+          <Download size={16} className="mr-2" />
+          {downloadingPdf ? "Gerando..." : "Gerar Dossiê PDF"}
         </Button>
       </div>
 
       {/* ===== COLLAPSIBLE SECTIONS ===== */}
 
-      {/* Section 1 - Evidencias Favoraveis a Nokta */}
+      {/* 1. Evidências Favoráveis à Nokta */}
       <CollapsibleSection
-        title="Evidencias Favoraveis a Nokta"
+        title="Evidências Favoráveis à Nokta"
         defaultOpen
         borderColor="border-l-green-500"
       >
+        <div className="flex items-center gap-2 mb-4">
+          <span className="text-sm text-gray-600">
+            {presentFav} de {totalFav} evidências presentes
+          </span>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           {data.evidenciasFavoraveis.map((ev, i) => (
             <div
@@ -614,9 +807,9 @@ export default function EvidenciasPage() {
             >
               <span className="mt-0.5 shrink-0">
                 {ev.presente ? (
-                  <span className="text-green-600">&#10003;</span>
+                  <span className="text-green-600 font-bold">{"✅"}</span>
                 ) : (
-                  <span className="text-red-500">&#10007;</span>
+                  <span className="text-red-500 font-bold">{"❌"}</span>
                 )}
               </span>
               <span className="text-sm text-gray-700">{ev.descricao}</span>
@@ -628,7 +821,7 @@ export default function EvidenciasPage() {
         </p>
       </CollapsibleSection>
 
-      {/* Section 2 - Identidade do Comprador */}
+      {/* 2. Identidade do Comprador */}
       <CollapsibleSection title="Identidade do Comprador" defaultOpen>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <InfoCard label="Nome" value={data.comprador.nome} />
@@ -639,46 +832,43 @@ export default function EvidenciasPage() {
             label="Telefone verificado"
             value={
               data.comprador.telefoneVerificado ? (
-                <span className="text-green-600 font-semibold">Verificado</span>
+                <span className="text-green-600 font-semibold">{"✓"} Verificado</span>
               ) : (
-                <span className="text-red-500 font-semibold">Nao verificado</span>
+                <span className="text-red-500 font-semibold">{"✗"} Não verificado</span>
               )
             }
           />
           <InfoCard
-            label="Status da conta"
+            label="Conta ativa"
             value={
               data.comprador.contaAtiva ? (
-                <span className="text-green-600 font-semibold">Ativa</span>
+                <span className="text-green-600 font-semibold">{"✓"} Ativa</span>
               ) : (
-                <span className="text-red-500 font-semibold">Inativa</span>
+                <span className="text-red-500 font-semibold">{"✗"} Inativa</span>
               )
             }
           />
+          <InfoCard label="Conta criada em" value={data.comprador.contaCriadaEm} />
           <InfoCard
-            label="Conta criada em"
-            value={data.comprador.contaCriadaEm}
+            label="Conta bloqueada"
+            value={
+              data.comprador.bloqueado ? (
+                <span className="text-red-600 font-semibold">Sim</span>
+              ) : (
+                <span className="text-green-600 font-semibold">Não</span>
+              )
+            }
           />
         </div>
       </CollapsibleSection>
 
-      {/* Section 3 - Historico do Usuario */}
-      <CollapsibleSection title="Historico do Usuario" defaultOpen>
+      {/* 3. Histórico do Usuário */}
+      <CollapsibleSection title="Histórico do Usuário" defaultOpen>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <InfoCard label="Pedidos pagos" value={data.historicoComprador.pedidosPagos} />
+          <InfoCard label="Total de ingressos" value={data.historicoComprador.totalIngressos} />
           <InfoCard
-            label="Conta criada ha"
-            value={`${diasConta} dias`}
-          />
-          <InfoCard
-            label="Pedidos pagos"
-            value={data.historicoComprador.pedidosPagos}
-          />
-          <InfoCard
-            label="Total de ingressos"
-            value={data.historicoComprador.totalIngressos}
-          />
-          <InfoCard
-            label="Transferencias realizadas"
+            label="Transferências realizadas"
             value={data.historicoComprador.transferenciasRealizadas}
           />
           <InfoCard
@@ -704,7 +894,7 @@ export default function EvidenciasPage() {
         </div>
       </CollapsibleSection>
 
-      {/* Section 4 - Dados da Compra */}
+      {/* 4. Dados da Compra */}
       <CollapsibleSection title="Dados da Compra">
         {data.pedido ? (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -726,14 +916,15 @@ export default function EvidenciasPage() {
                 </Badge>
               }
             />
-            <InfoCard label="Pago em" value={data.pedido.pagoEm || "---"} />
-            <InfoCard
-              label="Quantidade de ingressos"
-              value={data.pedido.quantidade}
-            />
+            <InfoCard label="Pago em" value={data.pedido.pagoEm || "—"} />
+            <InfoCard label="Criado em" value={data.pedido.criadoEm} />
+            <InfoCard label="Quantidade" value={data.pedido.quantidade} />
+            <InfoCard label="Itens" value={data.pedido.itens} />
+            <InfoCard label="Transações" value={data.pedido.transacoes} />
             <InfoCard label="Lote" value={data.lote.nome} />
-            <InfoCard label="Numero do lote" value={data.lote.lote} />
+            <InfoCard label="Número do lote" value={data.lote.lote} />
             <InfoCard label="Tipo do ingresso" value={loteTipoNome(data.lote.tipo)} />
+            <InfoCard label="Valor do lote" value={data.lote.valor} />
           </div>
         ) : (
           <p className="text-sm text-gray-500">
@@ -742,73 +933,166 @@ export default function EvidenciasPage() {
         )}
       </CollapsibleSection>
 
-      {/* Section 5 - Evidencias Tecnicas */}
-      <CollapsibleSection title="Evidencias Tecnicas">
-        {data.eventosSeguranca.length === 0 ? (
-          <p className="text-sm text-gray-500">
-            Nenhuma evidencia tecnica registrada
-          </p>
+      {/* 5. Gateway / 3DS / Antifraude */}
+      <CollapsibleSection title="Gateway / 3DS / Antifraude" borderColor="border-l-violet-500">
+        {data.gateway && (data.gateway.gatewayId || data.gateway.threedsStatus || data.gateway.antifraudeStatus) ? (
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <InfoCard label="Gateway ID" value={data.gateway.gatewayId ?? "—"} />
+              <InfoCard
+                label="3DS"
+                value={
+                  data.gateway.threedsStatus ? (
+                    <Badge className="bg-green-100 text-green-800">3DS Autenticado</Badge>
+                  ) : (
+                    <Badge className="bg-gray-100 text-gray-700">Sem 3DS</Badge>
+                  )
+                }
+              />
+              <InfoCard
+                label="Antifraude"
+                value={
+                  data.gateway.antifraudeStatus ? (
+                    <Badge className="bg-green-100 text-green-800">
+                      {data.gateway.antifraudeStatus}
+                    </Badge>
+                  ) : (
+                    <span className="text-gray-400">—</span>
+                  )
+                }
+              />
+            </div>
+          </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-gray-500">
-                  <th className="pb-2 pr-4 font-medium">Tipo</th>
-                  <th className="pb-2 pr-4 font-medium">IP</th>
-                  <th className="pb-2 pr-4 font-medium">Fingerprint</th>
-                  <th className="pb-2 font-medium">Data</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.eventosSeguranca.map((ev, i) => (
-                  <tr key={i} className="border-b last:border-0">
-                    <td className="py-2 pr-4 text-gray-700">{ev.tipo}</td>
-                    <td className="py-2 pr-4 text-gray-700">{ev.ip ?? "---"}</td>
-                    <td className="py-2 pr-4 text-gray-700 font-mono text-xs">
-                      {ev.fingerprint ?? "---"}
-                    </td>
-                    <td className="py-2 text-gray-500">{ev.data}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <p className="text-sm text-gray-500">
+            Sem dados do gateway disponíveis
+          </p>
+        )}
+      </CollapsibleSection>
+
+      {/* 6. Contexto Técnico do Checkout */}
+      <CollapsibleSection title="Contexto Técnico do Checkout">
+        {data.contextoCheckout ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            <InfoCard label="IP" value={data.contextoCheckout.ip ?? "—"} />
+            <InfoCard
+              label="Fingerprint"
+              value={
+                data.contextoCheckout.fingerprint ? (
+                  <span className="font-mono text-xs">{data.contextoCheckout.fingerprint}</span>
+                ) : "—"
+              }
+            />
+            <InfoCard
+              label="User Agent"
+              value={
+                data.contextoCheckout.userAgent ? (
+                  <span className="text-xs break-all">{data.contextoCheckout.userAgent}</span>
+                ) : "—"
+              }
+            />
+            <InfoCard
+              label="Telefone verificado (checkout)"
+              value={
+                data.contextoCheckout.buyerPhoneVerified === true ? (
+                  <span className="text-green-600 font-semibold">{"✓"} Sim</span>
+                ) : data.contextoCheckout.buyerPhoneVerified === false ? (
+                  <span className="text-red-500 font-semibold">{"✗"} Não</span>
+                ) : "—"
+              }
+            />
+            <InfoCard
+              label="Conta ativa (checkout)"
+              value={
+                data.contextoCheckout.buyerAccountActive === true ? (
+                  <span className="text-green-600 font-semibold">{"✓"} Sim</span>
+                ) : data.contextoCheckout.buyerAccountActive === false ? (
+                  <span className="text-red-500 font-semibold">{"✗"} Não</span>
+                ) : "—"
+              }
+            />
+            <InfoCard
+              label="Idade da conta"
+              value={
+                data.contextoCheckout.buyerAccountAgeDays != null
+                  ? `${data.contextoCheckout.buyerAccountAgeDays} dias`
+                  : "—"
+              }
+            />
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">
+            Compra anterior ao Nokta Protect — sem contexto técnico
+          </p>
+        )}
+      </CollapsibleSection>
+
+      {/* 7. Aceite de Termos */}
+      <CollapsibleSection title="Aceite de Termos">
+        {data.termosAceitos ? (
+          <div className="rounded-lg bg-green-50 border border-green-200 p-4">
+            <p className="text-green-800 font-medium">
+              {"✅"} Termos aceitos — versão {data.termosAceitos.versao} — em {data.termosAceitos.aceiteEm}
+            </p>
+          </div>
+        ) : (
+          <div className="rounded-lg bg-gray-50 border border-gray-200 p-4">
+            <p className="text-gray-500">Sem registro de aceite de termos</p>
           </div>
         )}
       </CollapsibleSection>
 
-      {/* Section 6 - Evidencias de Entrega */}
-      <CollapsibleSection title="Evidencias de Entrega">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="flex items-center gap-2 rounded-lg border p-3 bg-white">
-            <span className="text-green-600">&#10003;</span>
-            <span className="text-sm text-gray-700">QR gerado</span>
+      {/* 8. Evidências de Entrega */}
+      <CollapsibleSection title="Evidências de Entrega">
+        {(data.comunicacoes && data.comunicacoes.length > 0) || (data.acessosIngresso && data.acessosIngresso.totalAcessos > 0) ? (
+          <div className="space-y-4">
+            {/* Comunicações */}
+            {data.comunicacoes && data.comunicacoes.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-700 mb-2">Comunicações enviadas</p>
+                {data.comunicacoes.map((c, i) => (
+                  <div key={i} className="flex items-center gap-3 rounded-lg border p-3 bg-white">
+                    <span className="text-lg">{canalIcon(c.canal)}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-800">{c.tipo}</p>
+                      <p className="text-xs text-gray-500">
+                        Para: {c.destinatario} — {c.data}
+                      </p>
+                    </div>
+                    <Badge
+                      className={
+                        c.status === "enviado" || c.status === "entregue"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-700"
+                      }
+                    >
+                      {c.status}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Acessos */}
+            {data.acessosIngresso && data.acessosIngresso.totalAcessos > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <InfoCard label="Total de acessos" value={data.acessosIngresso.totalAcessos} />
+                <InfoCard label="Visualizações do QR" value={data.acessosIngresso.qrViews} />
+                <InfoCard label="Último acesso" value={data.acessosIngresso.ultimoAcesso ?? "—"} />
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-2 rounded-lg border p-3 bg-white">
-            <span className="text-gray-400">&#8212;</span>
-            <span className="text-sm text-gray-500">
-              Email enviado: Sem dados (rastreamento futuro)
-            </span>
-          </div>
-          <div className="flex items-center gap-2 rounded-lg border p-3 bg-white">
-            <span className="text-gray-400">&#8212;</span>
-            <span className="text-sm text-gray-500">
-              WhatsApp enviado: Sem dados (rastreamento futuro)
-            </span>
-          </div>
-          <div className="flex items-center gap-2 rounded-lg border p-3 bg-white">
-            <span className="text-gray-400">&#8212;</span>
-            <span className="text-sm text-gray-500">
-              Meus Ingressos acessado: Sem dados (rastreamento futuro)
-            </span>
-          </div>
-        </div>
+        ) : (
+          <p className="text-sm text-gray-500">
+            Sem evidências de entrega registradas
+          </p>
+        )}
       </CollapsibleSection>
 
-      {/* Section 7 - Historico de Posse */}
-      <CollapsibleSection title="Historico de Posse">
+      {/* 9. Histórico de Posse */}
+      <CollapsibleSection title="Histórico de Posse">
         {data.transferencias.length === 0 && data.revendas.length === 0 ? (
           <p className="text-sm text-gray-500">
-            Nenhuma transferencia ou revenda registrada
+            Nenhuma transferência ou revenda registrada
           </p>
         ) : (
           <div className="relative pl-6 space-y-4">
@@ -833,18 +1117,13 @@ export default function EvidenciasPage() {
               <div key={`r-${r.id}`} className="relative">
                 <div className="absolute -left-4 top-1.5 w-3 h-3 rounded-full bg-orange-500" />
                 <p className="text-sm text-gray-700">
-                  Revendido por{" "}
-                  <span className="font-medium">{r.vendedor.nome}</span>{" "}
-                  <span className="text-xs text-gray-400">({r.vendedor.email})</span>
-                  {r.comprador && (
-                    <>
-                      {" "}para{" "}
-                      <span className="font-medium">{r.comprador.nome}</span>{" "}
-                      <span className="text-xs text-gray-400">({r.comprador.email})</span>
-                    </>
-                  )}
-                  {" "}&mdash; Original: {r.precoOriginal} / Revenda: {r.precoRevenda}
-                  {" "}&mdash; {r.criadaEm}
+                  Revenda por{" "}
+                  <span className="font-medium">{r.precoRevenda}</span>{" "}
+                  &mdash;{" "}
+                  <Badge className="bg-gray-100 text-gray-700 text-xs">
+                    Status {r.status}
+                  </Badge>{" "}
+                  &mdash; {r.criadaEm}
                 </p>
               </div>
             ))}
@@ -852,44 +1131,40 @@ export default function EvidenciasPage() {
         )}
       </CollapsibleSection>
 
-      {/* Section 8 - Check-in do Evento */}
+      {/* 10. Check-in do Evento */}
       <CollapsibleSection title="Check-in do Evento">
         {data.checkin.utilizado ? (
           <div className="space-y-3">
-            <div className="rounded-lg bg-green-50 border border-green-200 p-4 text-center">
-              <p className="text-lg font-bold text-green-700">
-                SERVICO EFETIVAMENTE UTILIZADO
+            <div className="rounded-lg bg-green-50 border-2 border-green-300 p-5 text-center">
+              <p className="text-xl font-bold text-green-700">
+                {"✅"} SERVIÇO EFETIVAMENTE UTILIZADO
               </p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <InfoCard label="Data/hora da validação" value={data.checkin.dataHora ?? "—"} />
+              <InfoCard label="Operador ID" value={data.checkin.operadorId ?? "—"} />
+              <InfoCard label="IP da validação" value={data.checkin.ip ?? "—"} />
               <InfoCard
-                label="Data/hora da validacao"
-                value={data.checkin.dataHora ?? "---"}
+                label="Fingerprint"
+                value={
+                  data.checkin.fingerprint ? (
+                    <span className="font-mono text-xs">{data.checkin.fingerprint}</span>
+                  ) : "—"
+                }
               />
-              <InfoCard
-                label="Operador"
-                value={data.checkin.operadorId ?? "---"}
-              />
-              <InfoCard
-                label="IP da validacao"
-                value={data.checkin.ip ?? "---"}
-              />
-              <InfoCard
-                label="Tentativas anteriores"
-                value={data.checkin.tentativasAntes}
-              />
+              <InfoCard label="Tentativas anteriores" value={data.checkin.tentativasAntes} />
             </div>
           </div>
         ) : (
-          <div className="rounded-lg bg-gray-50 border border-gray-200 p-4 text-center">
+          <div className="rounded-lg bg-gray-50 border border-gray-200 p-5 text-center">
             <p className="text-gray-500 font-medium">
-              Ingresso ainda nao utilizado
+              Ingresso ainda não utilizado
             </p>
           </div>
         )}
       </CollapsibleSection>
 
-      {/* Section 9 - Timeline Completa */}
+      {/* 11. Timeline Completa */}
       <CollapsibleSection title="Timeline Completa">
         {data.timeline.length === 0 ? (
           <p className="text-sm text-gray-500">Nenhum evento registrado</p>
@@ -906,6 +1181,7 @@ export default function EvidenciasPage() {
                   <p className="text-xs text-gray-400">
                     {ev.data}
                     {ev.ator && ` — ${ev.ator}`}
+                    {ev.ip && ` — IP: ${ev.ip}`}
                   </p>
                 </div>
               </div>
@@ -914,34 +1190,26 @@ export default function EvidenciasPage() {
         )}
       </CollapsibleSection>
 
-      {/* Section 10 - Indicadores de Risco */}
+      {/* 12. Indicadores de Risco */}
       <CollapsibleSection title="Indicadores de Risco" borderColor="border-l-red-400">
         {data.indicadores.length === 0 ? (
           <div className="rounded-lg bg-green-50 border border-green-200 p-4 text-center">
             <p className="text-green-700 font-medium">
-              Nenhum indicador de risco encontrado
+              {"✅"} Nenhum indicador de risco encontrado
             </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {data.indicadores.map((ind, i) => (
-              <div
-                key={i}
-                className="rounded-lg border p-4 bg-white space-y-2"
-              >
+              <div key={i} className="rounded-lg border p-4 bg-white space-y-2">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium text-gray-800">
                     {ind.descricao}
                   </p>
-                  <Badge
-                    className={`text-xs ${severityColor(ind.severidade)}`}
-                  >
+                  <Badge className={`text-xs ${severityColor(ind.severidade)}`}>
                     {ind.severidade}
                   </Badge>
                 </div>
-                <p className="text-xs text-gray-500">
-                  Tipo: {ind.tipo} | Valor: {ind.valor}
-                </p>
               </div>
             ))}
           </div>
@@ -949,7 +1217,8 @@ export default function EvidenciasPage() {
       </CollapsibleSection>
 
       {/* Footer: Auditoria */}
-      <div className="rounded-xl border bg-white p-4 shadow-sm flex items-center justify-between">
+      <div className="rounded-xl border bg-white p-5 shadow-sm space-y-4">
+        <p className="font-semibold text-gray-800">Auditoria</p>
         <div className="flex items-center gap-2">
           <div
             className={`w-3 h-3 rounded-full ${
@@ -957,14 +1226,61 @@ export default function EvidenciasPage() {
             }`}
           />
           <p className="text-sm text-gray-700">
+            Integridade:{" "}
             {data.auditoria.integridadeVerificada
-              ? "Integridade da auditoria verificada"
-              : "Falha na verificacao de integridade"}
+              ? `✅ Verificada (${data.auditoria.totalRegistros} registros)`
+              : "❌ Comprometida"}
           </p>
         </div>
-        <p className="text-xs text-gray-500">
-          {data.auditoria.totalRegistros} registros auditados
-        </p>
+
+        {/* Webhooks */}
+        {data.webhooks && data.webhooks.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-gray-700">Webhooks recebidos</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-gray-500">
+                    <th className="pb-2 pr-4 font-medium">Evento</th>
+                    <th className="pb-2 pr-4 font-medium">Assinatura</th>
+                    <th className="pb-2 pr-4 font-medium">Processado</th>
+                    <th className="pb-2 font-medium">Data</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.webhooks.map((wh, i) => (
+                    <tr key={i} className="border-b last:border-0">
+                      <td className="py-2 pr-4 text-gray-700">{wh.eventType}</td>
+                      <td className="py-2 pr-4">
+                        <Badge
+                          className={
+                            wh.signatureValid
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }
+                        >
+                          {wh.signatureValid ? "Válida" : "Inválida"}
+                        </Badge>
+                      </td>
+                      <td className="py-2 pr-4">
+                        <Badge
+                          className={
+                            wh.processedOk
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }
+                        >
+                          {wh.processedOk ? "OK" : "Falha"}
+                        </Badge>
+                      </td>
+                      <td className="py-2 text-gray-500">{wh.data}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

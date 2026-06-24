@@ -53,7 +53,7 @@ export const sidebarLinks: SidebarLink[] = [
     href: "/admin/auditoria",
   },
   {
-    label: "Evidências",
+    label: "Nokta Protect",
     icon: <Shield size={16} />,
     href: "/admin/evidencias",
   },
