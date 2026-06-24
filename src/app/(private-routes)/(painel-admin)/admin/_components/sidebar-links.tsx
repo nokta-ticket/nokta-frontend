@@ -53,6 +53,11 @@ export const sidebarLinks: SidebarLink[] = [
     href: "/admin/auditoria",
   },
   {
+    label: "Evidências",
+    icon: <Shield size={16} />,
+    href: "/admin/evidencias",
+  },
+  {
     label: "Segurança",
     icon: <Shield size={16} />,
     href: "/admin/seguranca",
