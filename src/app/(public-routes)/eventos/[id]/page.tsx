@@ -106,6 +106,7 @@ export default function IngressoDetalhesPage() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState('');
   const [couponApplied, setCouponApplied] = useState<{ code: string; desconto: number } | null>(null);
+  const [maxSemJuros, setMaxSemJuros] = useState(0);
 
   const [sliderRef, instRef] = useKeenSlider<HTMLDivElement>(
     { loop: true, slideChanged(s) { setSlide(s.track.details.rel); } },
@@ -117,11 +118,13 @@ export default function IngressoDetalhesPage() {
     Promise.all([
       api.get<EventDetails>(`/eventos/${id}`),
       api.get(`/eventos/${id}/ingressos`),
+      api.get('/pagamento/info-parcelas').catch(() => ({ data: { maxParcelasSemJuros: 0 } })),
     ])
-      .then(([evtRes, ingRes]) => {
+      .then(([evtRes, ingRes, parcelasRes]) => {
         setEvento(evtRes.data);
         const raw: Ticket[] = (ingRes.data as any).data ?? ingRes.data ?? [];
         setTickets(raw.map(t => ({ ...t, valor: Number(t.valor) })));
+        setMaxSemJuros(parcelasRes.data.maxParcelasSemJuros ?? 0);
       })
       .catch((err: any) => toast.error(err.message ?? 'Erro ao carregar evento.'))
       .finally(() => setLoading(false));
@@ -476,6 +479,9 @@ export default function IngressoDetalhesPage() {
                                   {' '}(+{taxa.toFixed(2).replace('.', ',')} taxa)
                                 </span>
                               </p>
+                              {maxSemJuros > 0 && (
+                                <p className="text-[12px] font-semibold text-emerald-600">em até {maxSemJuros}x sem juros</p>
+                              )}
                               {valorFinal >= 60 && (
                                 <p className="text-[11px] text-gray-400 flex items-center gap-1">
                                   ou 12x R$ {calcParcelamento(valorFinal)}
