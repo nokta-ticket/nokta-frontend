@@ -1,6 +1,7 @@
 import {
   BarChart2,
   ClipboardCheck,
+  CreditCard,
   LayoutList,
   ScrollText,
   Shield,
@@ -56,6 +57,11 @@ export const sidebarLinks: SidebarLink[] = [
     label: "Nokta Protect",
     icon: <Shield size={16} />,
     href: "/admin/evidencias",
+  },
+  {
+    label: "Taxas do Gateway",
+    icon: <CreditCard size={16} />,
+    href: "/admin/taxas-gateway",
   },
   {
     label: "Segurança",
