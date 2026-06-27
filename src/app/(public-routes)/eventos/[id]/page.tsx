@@ -963,13 +963,9 @@ export default function IngressoDetalhesPage() {
                       R$ {(p.installmentCents / 100).toFixed(2).replace('.', ',')}
                     </span>
                   </span>
-                  <span className="text-xs text-gray-400">
-                    {p.semJuros ? (
-                      <span className="text-emerald-600 font-medium">sem juros</span>
-                    ) : (
-                      `total R$ ${(p.totalCents / 100).toFixed(2).replace('.', ',')}`
-                    )}
-                  </span>
+                  {p.semJuros && (
+                    <span className="text-xs text-emerald-600 font-medium">sem juros</span>
+                  )}
                 </div>
               ))}
             </div>
