@@ -70,7 +70,7 @@ export default function TaxasGatewayPage() {
         setConfig(c);
         setPixRate(bpsToPercent(c.pixRateBps));
         setPixFixed(centsToReais(c.pixFixedCents));
-        setCardRates(c.cardRateBps.map((bps) => bpsToPercent(bps)));
+        setCardRates((c.cardRateBps ?? []).map((bps) => bpsToPercent(bps ?? 0)));
         setCardFixed(centsToReais(c.cardFixedCents));
         setWithdrawalFixed(centsToReais(c.withdrawalFixedCents));
         setAnticipationRate(bpsToPercent(c.anticipationRateBps));

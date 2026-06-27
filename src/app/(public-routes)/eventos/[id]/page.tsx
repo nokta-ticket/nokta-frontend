@@ -31,7 +31,9 @@ import { AgeRestrictionIcon } from "@/components/icons/AgeRestrictionIcon";
 import { CancellationIcon } from "@/components/icons/CancellationIcon";
 import { CouponIcon } from "@/components/icons/CouponIcon";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import {
+  Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle,
+} from "@/components/ui/sheet";
 import api from "@/lib/axios";
 import { EventDetails } from "@/interfaces/events";
 import { AutoplayPlugin, cn } from "@/lib/utils";
@@ -107,6 +109,9 @@ export default function IngressoDetalhesPage() {
   const [couponError, setCouponError] = useState('');
   const [couponApplied, setCouponApplied] = useState<{ code: string; desconto: number } | null>(null);
   const [maxSemJuros, setMaxSemJuros] = useState(0);
+  const [parcelasSheet, setParcelasSheet] = useState(false);
+  const [parcelasData, setParcelasData] = useState<{ n: number; installmentCents: number; totalCents: number; semJuros: boolean }[]>([]);
+  const [parcelasLoading, setParcelasLoading] = useState(false);
 
   const [sliderRef, instRef] = useKeenSlider<HTMLDivElement>(
     { loop: true, slideChanged(s) { setSlide(s.track.details.rel); } },
@@ -129,6 +134,21 @@ export default function IngressoDetalhesPage() {
       .catch((err: any) => toast.error(err.message ?? 'Erro ao carregar evento.'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  async function openParcelasSheet(subtotalReais: number) {
+    const subtotalCents = Math.round(subtotalReais * 100);
+    if (subtotalCents <= 0) return;
+    setParcelasSheet(true);
+    setParcelasLoading(true);
+    try {
+      const { data } = await api.get(`/pagamento/tabela-parcelas?subtotalCents=${subtotalCents}`);
+      setParcelasData(data.card ?? []);
+    } catch {
+      setParcelasData([]);
+    } finally {
+      setParcelasLoading(false);
+    }
+  }
 
   function changeQty(ticketId: number, delta: number, max: number) {
     setQuantities(prev => {
@@ -485,14 +505,9 @@ export default function IngressoDetalhesPage() {
                               {valorFinal >= 60 && (
                                 <p className="text-[11px] text-gray-400 flex items-center gap-1">
                                   ou 12x R$ {calcParcelamento(valorFinal)}
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Info size={12} className="text-gray-400 cursor-help" />
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top" className="max-w-[200px] text-center">
-                                      Taxas de processamento aplicadas conforme método de pagamento e parcelas.
-                                    </TooltipContent>
-                                  </Tooltip>
+                                  <button type="button" onClick={() => openParcelasSheet(valorFinal)} className="inline-flex">
+                                    <Info size={12} className="text-gray-400 hover:text-violet-500 transition-colors" />
+                                  </button>
                                 </p>
                               )}
                             </>
@@ -853,14 +868,9 @@ export default function IngressoDetalhesPage() {
               </span>
               <span className="text-[12px] text-gray-400 flex items-center gap-1">
                 ou 12x R$ {totalParcelado}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Info size={12} className="text-gray-400 cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent side="top" className="max-w-[200px] text-center">
-                    Taxas de processamento aplicadas conforme método de pagamento e parcelas.
-                  </TooltipContent>
-                </Tooltip>
+                <button type="button" onClick={() => openParcelasSheet(totalValor * 1.1)} className="inline-flex">
+                  <Info size={12} className="text-gray-400 hover:text-violet-500 transition-colors" />
+                </button>
               </span>
             </div>
           )}
@@ -929,6 +939,43 @@ export default function IngressoDetalhesPage() {
         </div>
       )}
       <div className="h-28 lg:hidden" />
+
+      <Sheet open={parcelasSheet} onOpenChange={setParcelasSheet}>
+        <SheetContent side="bottom" className="rounded-t-2xl max-h-[70vh] overflow-y-auto">
+          <SheetHeader className="pb-3">
+            <SheetTitle className="text-lg">Opções de parcelamento</SheetTitle>
+          </SheetHeader>
+
+          {parcelasLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-600 border-t-transparent" />
+            </div>
+          ) : (
+            <div className="space-y-1 pb-4">
+              {parcelasData.map((p) => (
+                <div
+                  key={p.n}
+                  className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-gray-50"
+                >
+                  <span className="text-sm font-medium text-gray-800">
+                    {p.n}x de{' '}
+                    <span className="font-semibold">
+                      R$ {(p.installmentCents / 100).toFixed(2).replace('.', ',')}
+                    </span>
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    {p.semJuros ? (
+                      <span className="text-emerald-600 font-medium">sem juros</span>
+                    ) : (
+                      `total R$ ${(p.totalCents / 100).toFixed(2).replace('.', ',')}`
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </main>
   );
 }
