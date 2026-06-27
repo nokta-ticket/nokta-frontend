@@ -12,9 +12,7 @@ interface GatewayConfig {
   name: string;
   pixRateBps: number;
   pixFixedCents: number;
-  card1xRateBps: number;
-  card26RateBps: number;
-  card712RateBps: number;
+  cardRateBps: number[];
   cardFixedCents: number;
   withdrawalFixedCents: number;
   anticipationRateBps: number;
@@ -27,7 +25,7 @@ function bpsToPercent(bps: number): string {
 }
 
 function percentToBps(pct: string): number {
-  return Math.round(parseFloat(pct) * 100);
+  return Math.round(parseFloat(pct || "0") * 100);
 }
 
 function centsToReais(cents: number): string {
@@ -35,7 +33,7 @@ function centsToReais(cents: number): string {
 }
 
 function reaisToCents(reais: string): number {
-  return Math.round(parseFloat(reais) * 100);
+  return Math.round(parseFloat(reais || "0") * 100);
 }
 
 export default function TaxasGatewayPage() {
@@ -45,9 +43,7 @@ export default function TaxasGatewayPage() {
 
   const [pixRate, setPixRate] = useState("");
   const [pixFixed, setPixFixed] = useState("");
-  const [card1x, setCard1x] = useState("");
-  const [card26, setCard26] = useState("");
-  const [card712, setCard712] = useState("");
+  const [cardRates, setCardRates] = useState<string[]>(Array(12).fill(""));
   const [cardFixed, setCardFixed] = useState("");
   const [withdrawalFixed, setWithdrawalFixed] = useState("");
   const [anticipationRate, setAnticipationRate] = useState("");
@@ -56,6 +52,14 @@ export default function TaxasGatewayPage() {
   useEffect(() => {
     loadConfig();
   }, []);
+
+  function setCardRate(index: number, value: string) {
+    setCardRates((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  }
 
   async function loadConfig() {
     setLoading(true);
@@ -66,9 +70,7 @@ export default function TaxasGatewayPage() {
         setConfig(c);
         setPixRate(bpsToPercent(c.pixRateBps));
         setPixFixed(centsToReais(c.pixFixedCents));
-        setCard1x(bpsToPercent(c.card1xRateBps));
-        setCard26(bpsToPercent(c.card26RateBps));
-        setCard712(bpsToPercent(c.card712RateBps));
+        setCardRates(c.cardRateBps.map((bps) => bpsToPercent(bps)));
         setCardFixed(centsToReais(c.cardFixedCents));
         setWithdrawalFixed(centsToReais(c.withdrawalFixedCents));
         setAnticipationRate(bpsToPercent(c.anticipationRateBps));
@@ -87,9 +89,7 @@ export default function TaxasGatewayPage() {
       const payload = {
         pixRateBps: percentToBps(pixRate),
         pixFixedCents: reaisToCents(pixFixed),
-        card1xRateBps: percentToBps(card1x),
-        card26RateBps: percentToBps(card26),
-        card712RateBps: percentToBps(card712),
+        cardRateBps: cardRates.map((r) => percentToBps(r)),
         cardFixedCents: reaisToCents(cardFixed),
         withdrawalFixedCents: reaisToCents(withdrawalFixed),
         anticipationRateBps: percentToBps(anticipationRate),
@@ -136,12 +136,26 @@ export default function TaxasGatewayPage() {
           <Field label="Taxa fixa (R$)" value={pixFixed} onChange={setPixFixed} placeholder="0.55" />
         </Section>
 
-        <Section title="Cartão de Crédito">
-          <Field label="À vista - 1x (%)" value={card1x} onChange={setCard1x} placeholder="3.19" />
-          <Field label="Parcelado 2-6x (%)" value={card26} onChange={setCard26} placeholder="4.49" />
-          <Field label="Parcelado 7-12x (%)" value={card712} onChange={setCard712} placeholder="4.99" />
-          <Field label="Taxa fixa por transação (R$)" value={cardFixed} onChange={setCardFixed} placeholder="0.99" hint="Gateway + Antifraude" />
-        </Section>
+        <div className="rounded-lg border bg-white p-5 space-y-4">
+          <h2 className="text-lg font-medium">Cartão de Crédito — Taxa por parcela (%)</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {cardRates.map((rate, i) => (
+              <div key={i} className="space-y-1">
+                <label className="text-sm font-medium text-gray-700">{i + 1}x</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={rate}
+                  onChange={(e) => setCardRate(i, e.target.value)}
+                  placeholder="0.00"
+                />
+              </div>
+            ))}
+          </div>
+          <div className="pt-2 border-t">
+            <Field label="Taxa fixa por transação (R$)" value={cardFixed} onChange={setCardFixed} placeholder="0.99" hint="Gateway + Antifraude" />
+          </div>
+        </div>
 
         <Section title="Outros">
           <Field label="Taxa de saque (R$)" value={withdrawalFixed} onChange={setWithdrawalFixed} placeholder="3.67" />
