@@ -10,6 +10,7 @@ import { toast } from "@/lib/toast";
 import {
   CalendarDays,
   Clock,
+  Info,
   MapPin,
   Ticket,
   Share2,
@@ -30,6 +31,7 @@ import { AgeRestrictionIcon } from "@/components/icons/AgeRestrictionIcon";
 import { CancellationIcon } from "@/components/icons/CancellationIcon";
 import { CouponIcon } from "@/components/icons/CouponIcon";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import api from "@/lib/axios";
 import { EventDetails } from "@/interfaces/events";
 import { AutoplayPlugin, cn } from "@/lib/utils";
@@ -474,9 +476,18 @@ export default function IngressoDetalhesPage() {
                                   {' '}(+{taxa.toFixed(2).replace('.', ',')} taxa)
                                 </span>
                               </p>
-                              <p className="text-[12px] font-semibold text-emerald-600">em até 3x sem juros</p>
                               {valorFinal >= 60 && (
-                                <p className="text-[11px] text-gray-400">ou 12x R$ {calcParcelamento(valorFinal)}</p>
+                                <p className="text-[11px] text-gray-400 flex items-center gap-1">
+                                  ou 12x R$ {calcParcelamento(valorFinal)}
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Info size={12} className="text-gray-400 cursor-help" />
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="max-w-[200px] text-center">
+                                      Taxas de processamento aplicadas conforme método de pagamento e parcelas.
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </p>
                               )}
                             </>
                           )}
@@ -834,7 +845,17 @@ export default function IngressoDetalhesPage() {
               <span className="text-[14px] font-bold text-[#0F172A]">
                 Total <span className="text-[15px]">R$ {totalValor.toFixed(2).replace('.', ',')}</span>
               </span>
-              <span className="text-[12px] text-gray-400">ou 12x R$ {totalParcelado}</span>
+              <span className="text-[12px] text-gray-400 flex items-center gap-1">
+                ou 12x R$ {totalParcelado}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info size={12} className="text-gray-400 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-[200px] text-center">
+                    Taxas de processamento aplicadas conforme método de pagamento e parcelas.
+                  </TooltipContent>
+                </Tooltip>
+              </span>
             </div>
           )}
 
