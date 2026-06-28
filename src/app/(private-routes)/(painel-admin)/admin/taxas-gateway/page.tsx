@@ -14,6 +14,7 @@ interface GatewayConfig {
   pixFixedCents: number;
   cardRateBps: number[];
   cardFixedCents: number;
+  maxInstallments: number;
   withdrawalFixedCents: number;
   anticipationRateBps: number;
   settlementDays: number;
@@ -45,6 +46,7 @@ export default function TaxasGatewayPage() {
   const [pixFixed, setPixFixed] = useState("");
   const [cardRates, setCardRates] = useState<string[]>(Array(12).fill(""));
   const [cardFixed, setCardFixed] = useState("");
+  const [maxInstallments, setMaxInstallments] = useState(12);
   const [withdrawalFixed, setWithdrawalFixed] = useState("");
   const [anticipationRate, setAnticipationRate] = useState("");
   const [settlementDays, setSettlementDays] = useState("");
@@ -72,6 +74,7 @@ export default function TaxasGatewayPage() {
         setPixFixed(centsToReais(c.pixFixedCents));
         setCardRates((c.cardRateBps ?? []).map((bps) => bpsToPercent(bps ?? 0)));
         setCardFixed(centsToReais(c.cardFixedCents));
+        setMaxInstallments(c.maxInstallments ?? 12);
         setWithdrawalFixed(centsToReais(c.withdrawalFixedCents));
         setAnticipationRate(bpsToPercent(c.anticipationRateBps));
         setSettlementDays(String(c.settlementDays));
@@ -91,6 +94,7 @@ export default function TaxasGatewayPage() {
         pixFixedCents: reaisToCents(pixFixed),
         cardRateBps: cardRates.map((r) => percentToBps(r)),
         cardFixedCents: reaisToCents(cardFixed),
+        maxInstallments,
         withdrawalFixedCents: reaisToCents(withdrawalFixed),
         anticipationRateBps: percentToBps(anticipationRate),
         settlementDays: parseInt(settlementDays, 10),
@@ -137,21 +141,46 @@ export default function TaxasGatewayPage() {
         </Section>
 
         <div className="rounded-lg border bg-white p-5 space-y-4">
-          <h2 className="text-lg font-medium">Cartão de Crédito — Taxa por parcela (%)</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {cardRates.map((rate, i) => (
-              <div key={i} className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">{i + 1}x</label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={rate}
-                  onChange={(e) => setCardRate(i, e.target.value)}
-                  placeholder="0.00"
-                />
-              </div>
-            ))}
+          <h2 className="text-lg font-medium">Cartão de Crédito</h2>
+
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Máximo de parcelas oferecidas ao cliente</label>
+            <select
+              value={maxInstallments}
+              onChange={(e) => setMaxInstallments(parseInt(e.target.value, 10))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+            >
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>{n}x</option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Parcelas acima desse limite não aparecem no checkout. (Taxas abaixo ficam desativadas.)
+            </p>
           </div>
+
+          <div className="pt-2 border-t">
+            <p className="text-sm font-medium text-gray-700 mb-3">Taxa por parcela (%)</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {cardRates.map((rate, i) => {
+                const disabled = i + 1 > maxInstallments;
+                return (
+                  <div key={i} className={`space-y-1 ${disabled ? "opacity-40" : ""}`}>
+                    <label className="text-sm font-medium text-gray-700">{i + 1}x</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={rate}
+                      disabled={disabled}
+                      onChange={(e) => setCardRate(i, e.target.value)}
+                      placeholder="0.00"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="pt-2 border-t">
             <Field label="Taxa fixa por transação (R$)" value={cardFixed} onChange={setCardFixed} placeholder="0.99" hint="Gateway + Antifraude" />
           </div>
