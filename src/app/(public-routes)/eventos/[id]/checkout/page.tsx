@@ -51,6 +51,21 @@ const TDS_SCRIPT_URL =
     ? "https://3ds-nx-js.stone.com.br/live/v2/3ds2.min.js"
     : "https://3ds-nx-js.stone.com.br/test/v2/3ds2.min.js";
 
+const PAGARME_PUBLIC_KEY = process.env.NEXT_PUBLIC_PAGARME_PUBLIC_KEY ?? "";
+
+async function tokenizeCard(card: {
+  number: string; holder_name: string; exp_month: number; exp_year: number; cvv: string;
+  billing_address: Record<string, string>;
+}): Promise<string> {
+  const { data } = await axios.post(
+    `https://api.pagar.me/core/v5/tokens?appId=${PAGARME_PUBLIC_KEY}`,
+    { type: "card", card },
+    { headers: { "Content-Type": "application/json" } },
+  );
+  if (!data?.id) throw new Error("Falha ao tokenizar o cartão.");
+  return data.id;
+}
+
 let tdsScriptPromise: Promise<void> | null = null;
 function loadTdsScript(): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
@@ -677,7 +692,17 @@ function CheckoutContent() {
         throw new Error("Autenticação do cartão não concluída. Tente novamente.");
       }
 
-      // ── 2) Checkout com o resultado do 3DS ──────────────────────────
+      // ── 2) Tokeniza o cartão (número não vai pro nosso servidor) ─────
+      const cardToken = await tokenizeCard({
+        number: cardNumber,
+        holder_name: form.cardName,
+        exp_month: Number(month),
+        exp_year: expYear,
+        cvv: form.cvv,
+        billing_address: billingAddress,
+      });
+
+      // ── 3) Checkout com token + resultado do 3DS ────────────────────
       const res = await api.post("/pagamento/checkout", {
         type: "card",
         reservationCode,
@@ -687,8 +712,7 @@ function CheckoutContent() {
         termsAcceptedAt: new Date().toISOString(),
         parcelas,
         protecao: protecaoSelected,
-        address: { cep: form.cep, state: form.state, city: form.city, number: form.number, neighborhood: form.neighborhood, street: form.street },
-        card: { holderName: form.cardName, number: cardNumber, ccv: form.cvv, expiryMonth: month, expiryYear: year },
+        cardToken,
         tdsTransactionId: tds.tds_server_trans_id,
         tdsTransStatus: tds.trans_status,
         tdsVersion: "2.2.0",
