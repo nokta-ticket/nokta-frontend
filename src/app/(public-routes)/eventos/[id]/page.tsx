@@ -505,7 +505,7 @@ export default function IngressoDetalhesPage() {
                               {valorFinal >= 60 && (
                                 <p className="text-[11px] text-gray-400 flex items-center gap-1">
                                   ou 12x R$ {calcParcelamento(valorFinal)}
-                                  <button type="button" onClick={() => openParcelasSheet(valorFinal)} className="inline-flex">
+                                  <button type="button" onClick={() => openParcelasSheet(valorFinal + taxa)} className="inline-flex">
                                     <Info size={12} className="text-gray-400 hover:text-violet-500 transition-colors" />
                                   </button>
                                 </p>
@@ -951,7 +951,7 @@ export default function IngressoDetalhesPage() {
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-600 border-t-transparent" />
             </div>
           ) : (
-            <div className="space-y-1 pb-4">
+            <div className="space-y-1">
               {parcelasData.map((p) => (
                 <div
                   key={p.n}
@@ -969,6 +969,9 @@ export default function IngressoDetalhesPage() {
                 </div>
               ))}
             </div>
+            <p className="text-[11px] text-gray-400 text-center pt-3 pb-4 border-t mt-2">
+              Valores já incluem taxa de serviço e processamento.
+            </p>
           )}
         </SheetContent>
       </Sheet>
