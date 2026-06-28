@@ -1176,7 +1176,7 @@ return (
                           </select>
                         </div>
 
-                        <p className="text-[13px] font-medium text-gray-600 pt-1">Endereço de cobrança</p>
+                        <p className="text-[13px] font-medium text-gray-600 pt-1">Endereço</p>
                         <div className="grid grid-cols-2 gap-3">
                           <Input placeholder="CEP" value={form.cep} onChange={(e) => setForm((p) => ({ ...p, cep: formatCep(e.target.value) }))} maxLength={9} className="h-11 text-[16px] sm:text-[14px]" />
                           <Input placeholder="Nº" value={form.number} onChange={fld("number")} className="h-11 text-[16px] sm:text-[14px]" />
