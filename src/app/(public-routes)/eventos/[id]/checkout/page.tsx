@@ -530,7 +530,6 @@ function CheckoutContent() {
     setProcessing(true);
     try {
       const [month, year] = form.expiryDate.split("/");
-      const m = form.phone.match(/^\s*\(?(\d{2})\)?\s*(\d{4,5})-?(\d{4})\s*$/);
       await api.post("/pagamento/checkout", {
         type: "card",
         reservationCode,
@@ -538,8 +537,6 @@ function CheckoutContent() {
         codigoCupom: cupomCodigo || undefined,
         termsVersion: "v1",
         termsAcceptedAt: new Date().toISOString(),
-        phone: { areaCode: m?.[1], number: m ? m[2] + m[3] : "" },
-        address: { cep: form.cep, state: form.state, city: form.city, number: form.number, neighborhood: form.neighborhood, street: form.street },
         card: { holderName: form.cardName, number: form.cardNumber.replace(/\s+/g, ""), ccv: form.cvv, expiryMonth: month, expiryYear: year },
       });
       setSuccess(true);
@@ -948,13 +945,6 @@ return (
                           <Input placeholder="MM/AA" value={form.expiryDate} onChange={(e) => setForm((p) => ({ ...p, expiryDate: formatExpiry(e.target.value) }))} maxLength={5} className="h-11 text-[16px] sm:text-[14px]" />
                           <Input placeholder="CVV" value={form.cvv} onChange={fld("cvv")} maxLength={4} className="h-11 text-[16px] sm:text-[14px]" />
                         </div>
-                        <Input placeholder="Telefone" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: formatPhone(e.target.value) }))} maxLength={15} className="h-11 text-[16px] sm:text-[14px]" />
-                        <div className="grid grid-cols-3 gap-3">
-                          <Input placeholder="CEP" value={form.cep} onChange={fld("cep")} maxLength={9} className="h-11 text-[16px] sm:text-[14px]" />
-                          <Input placeholder="Nº" value={form.number} onChange={fld("number")} className="h-11 text-[16px] sm:text-[14px]" />
-                          <Input placeholder="UF" value={form.state} onChange={fld("state")} maxLength={2} className="h-11 text-[14px] uppercase" />
-                        </div>
-                        <Input placeholder="Cidade" value={form.city} onChange={fld("city")} className="h-11 text-[16px] sm:text-[14px]" />
                         <Button type="submit" disabled={processing || !termsAccepted} className="w-full h-12 font-bold text-[15px] bg-gradient-to-r from-[#9944CC] to-[#3399FF] text-white mt-1">
                           {processing ? <Loader2 size={18} className="animate-spin" /> : `Pagar ${formatCurrency(total)}`}
                         </Button>
