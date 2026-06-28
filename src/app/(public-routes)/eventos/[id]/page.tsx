@@ -535,9 +535,9 @@ export default function IngressoDetalhesPage() {
                                     </p>
                                   </>
                                 ) : (
-                                  <div className="text-[12px] font-semibold text-emerald-600 leading-tight">
-                                    <p>Parcelamento disponível em até</p>
-                                    <p className="flex items-center gap-1">
+                                  <div className="leading-tight">
+                                    <p className="text-[12px] font-semibold text-emerald-600">Parcelamento disponível em até</p>
+                                    <p className="text-[11px] text-gray-400 flex items-center gap-1">
                                       {maxParcelas}x R$ {parcelaMaxStr}
                                       <button type="button" onClick={() => openParcelasSheet(valorFinal + taxa)} className="inline-flex">
                                         <Info size={12} className="text-black hover:opacity-70 transition-opacity" />
