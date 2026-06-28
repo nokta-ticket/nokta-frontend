@@ -72,7 +72,7 @@ export default function EditarFotoPerfilPage() {
   }
 
   const initials = getInitials(nome, sobrenome);
-  const fotoSrc = fotoPreview ?? (fotoPerfil ? `${API_URL.replace("/api", "")}/uploads/${fotoPerfil}` : null);
+  const fotoSrc = fotoPreview ?? (fotoPerfil ? (fotoPerfil.startsWith("http") ? fotoPerfil : `${API_URL.replace("/api", "")}/uploads/${fotoPerfil}`) : null);
 
   return (
     <main className="min-h-screen bg-white text-[#0f172a]">

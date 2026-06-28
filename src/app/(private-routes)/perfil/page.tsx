@@ -173,7 +173,7 @@ export default function PerfilPage() {
 
   const initials = getInitials(user.nome, user.sobrenome);
   const nomeCompleto = [user.nome, user.sobrenome].filter(Boolean).join(" ");
-  const fotoSrc = user.fotoPerfil ? `${API_URL.replace("/api", "")}/uploads/${user.fotoPerfil}` : null;
+  const fotoSrc = user.fotoPerfil ? (user.fotoPerfil.startsWith("http") ? user.fotoPerfil : `${API_URL.replace("/api", "")}/uploads/${user.fotoPerfil}`) : null;
 
   const inputCls = "w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-100";
 
