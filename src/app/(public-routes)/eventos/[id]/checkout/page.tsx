@@ -45,6 +45,28 @@ const GATEWAY_CARD_26_RATE  = 0.0449;
 const GATEWAY_CARD_718_RATE = 0.0499;
 const GATEWAY_CARD_FIXED    = 0.99;
 
+// ── 3DS (Stone/Pagar.me) ──────────────────────────────────────
+const TDS_SCRIPT_URL =
+  process.env.NEXT_PUBLIC_PAGARME_ENV === "production"
+    ? "https://3ds-nx-js.stone.com.br/live/v2/3ds2.min.js"
+    : "https://3ds-nx-js.stone.com.br/test/v2/3ds2.min.js";
+
+let tdsScriptPromise: Promise<void> | null = null;
+function loadTdsScript(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  if ((window as any).TDS) return Promise.resolve();
+  if (tdsScriptPromise) return tdsScriptPromise;
+  tdsScriptPromise = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = TDS_SCRIPT_URL;
+    s.async = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error("Falha ao carregar a autenticação 3DS."));
+    document.body.appendChild(s);
+  });
+  return tdsScriptPromise;
+}
+
 // ── Helpers ───────────────────────────────────────────────────
 const isGratis = (v: number) => Number(v) === 0;
 
@@ -569,6 +591,57 @@ function CheckoutContent() {
     setProcessing(true);
     try {
       const [month, year] = form.expiryDate.split("/");
+      const expYear = year.length === 2 ? 2000 + Number(year) : Number(year);
+      const cardNumber = form.cardNumber.replace(/\s+/g, "");
+
+      // ── 1) Autenticação 3DS (obrigatória) ───────────────────────────
+      await loadTdsScript();
+      const { data: tokenRes } = await api.get("/pagamento/tds-token");
+
+      const orderData = {
+        payments: [{
+          payment_method: "credit_card",
+          credit_card: {
+            card: {
+              number: cardNumber,
+              holder_name: form.cardName,
+              exp_month: Number(month),
+              exp_year: expYear,
+              billing_address: {
+                country: "BR",
+                state: form.state,
+                city: form.city,
+                zip_code: form.cep.replace(/\D/g, ""),
+                line_1: `${form.number}, ${form.street}, ${form.neighborhood}`,
+              },
+            },
+          },
+          amount: Math.round(total * 100),
+        }],
+        customer: {
+          name: user?.nome ?? form.cardName,
+          email: user?.email ?? "",
+          document: (user?.cpf ?? "").replace(/\D/g, ""),
+          code: String((user as any)?.userId ?? (user as any)?.id ?? ""),
+        },
+        items: selectedItems.map(({ ticketId }) => ({ description: "Ingresso", code: String(ticketId) })),
+        requestor_url: window.location.origin,
+      };
+
+      const tdsResp = await (window as any).TDS.init({
+        token: tokenRes.tdsToken,
+        tds_method_container_element: document.getElementById("tdsMethodContainer"),
+        challenge_container_element: document.getElementById("challengeContainer"),
+        use_default_challenge_iframe_style: true,
+        challenge_window_size: "03",
+      }, orderData);
+
+      const tds = Array.isArray(tdsResp) ? tdsResp[0] : tdsResp;
+      if (!tds?.tds_server_trans_id || tds?.challenge_canceled) {
+        throw new Error("Autenticação do cartão não concluída. Tente novamente.");
+      }
+
+      // ── 2) Checkout com o resultado do 3DS ──────────────────────────
       const res = await api.post("/pagamento/checkout", {
         type: "card",
         reservationCode,
@@ -579,7 +652,10 @@ function CheckoutContent() {
         parcelas,
         protecao: protecaoSelected,
         address: { cep: form.cep, state: form.state, city: form.city, number: form.number, neighborhood: form.neighborhood, street: form.street },
-        card: { holderName: form.cardName, number: form.cardNumber.replace(/\s+/g, ""), ccv: form.cvv, expiryMonth: month, expiryYear: year },
+        card: { holderName: form.cardName, number: cardNumber, ccv: form.cvv, expiryMonth: month, expiryYear: year },
+        tdsTransactionId: tds.tds_server_trans_id,
+        tdsTransStatus: tds.trans_status,
+        tdsVersion: "2.2.0",
       });
       // Ingresso só é liberado quando a Pagar.me confirmar (webhook).
       // Acompanhamos o status até "paid".
@@ -1054,6 +1130,13 @@ return (
           onSuccess={() => setShowLoginModal(false)}
         />
       )}
+
+      {/* ── Containers do 3DS (preenchidos pela lib durante o desafio) ── */}
+      <div id="tdsMethodContainer" style={{ display: "none" }} />
+      <div
+        id="challengeContainer"
+        className="fixed inset-0 z-[60] flex items-center justify-center pointer-events-none [&:not(:empty)]:pointer-events-auto [&:not(:empty)]:bg-black/50"
+      />
     </>
   );
 }
