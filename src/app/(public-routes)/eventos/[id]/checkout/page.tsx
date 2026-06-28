@@ -30,7 +30,7 @@ type Ticket = {
 interface PaymentForm {
   cardNumber: string; cardName: string; expiryDate: string; cvv: string;
   phone: string; cep: string; city: string; state: string;
-  number: string; street: string; neighborhood: string;
+  number: string; street: string; neighborhood: string; complemento: string;
 }
 
 // ── Rate constants ─────────────────────────────────────────────
@@ -351,7 +351,7 @@ function CheckoutContent() {
 
   const [form, setForm] = useState<PaymentForm>({
     cardNumber: "", cardName: "", expiryDate: "", cvv: "",
-    phone: "", cep: "", city: "", state: "", number: "", street: "", neighborhood: "",
+    phone: "", cep: "", city: "", state: "", number: "", street: "", neighborhood: "", complemento: "",
   });
 
   // Parse URL params
@@ -617,7 +617,7 @@ function CheckoutContent() {
                 city: form.city,
                 zip_code: form.cep.replace(/\D/g, ""),
                 line_1: `${form.number}, ${form.street}, ${form.neighborhood}`,
-                line_2: "Sem complemento",
+                line_2: form.complemento.trim() || "Sem complemento",
               },
             },
           },
@@ -1098,6 +1098,7 @@ return (
                           <Input placeholder="UF" value={form.state} onChange={fld("state")} maxLength={2} className="h-11 text-[14px] uppercase" />
                         </div>
                         <Input placeholder="Cidade" value={form.city} onChange={fld("city")} className="h-11 text-[16px] sm:text-[14px]" />
+                        <Input placeholder="Complemento (opcional)" value={form.complemento} onChange={fld("complemento")} className="h-11 text-[16px] sm:text-[14px]" />
 
                         <Button type="submit" disabled={processing || confirming || !termsAccepted} className="w-full h-12 font-bold text-[15px] bg-gradient-to-r from-[#9944CC] to-[#3399FF] text-white mt-1">
                           {processing || confirming ? <Loader2 size={18} className="animate-spin" /> : `Pagar ${formatCurrency(total)}`}
