@@ -617,6 +617,7 @@ function CheckoutContent() {
                 city: form.city,
                 zip_code: form.cep.replace(/\D/g, ""),
                 line_1: `${form.number}, ${form.street}, ${form.neighborhood}`,
+                line_2: "Sem complemento",
               },
             },
           },
