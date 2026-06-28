@@ -55,8 +55,11 @@ const PAGARME_PUBLIC_KEY = process.env.NEXT_PUBLIC_PAGARME_PUBLIC_KEY ?? "";
 
 async function tokenizeCard(card: {
   number: string; holder_name: string; exp_month: number; exp_year: number; cvv: string;
-  billing_address: Record<string, string>;
 }): Promise<string> {
+  if (!PAGARME_PUBLIC_KEY) {
+    throw new Error("Chave pública da Pagar.me não configurada. Recarregue a página.");
+  }
+  // billing_address NÃO é tokenizado — vai separado no checkout
   const { data } = await axios.post(
     `https://api.pagar.me/core/v5/tokens?appId=${PAGARME_PUBLIC_KEY}`,
     { type: "card", card },
@@ -699,10 +702,9 @@ function CheckoutContent() {
         exp_month: Number(month),
         exp_year: expYear,
         cvv: form.cvv,
-        billing_address: billingAddress,
       });
 
-      // ── 3) Checkout com token + resultado do 3DS ────────────────────
+      // ── 3) Checkout com token + endereço + resultado do 3DS ─────────
       const res = await api.post("/pagamento/checkout", {
         type: "card",
         reservationCode,
@@ -713,6 +715,7 @@ function CheckoutContent() {
         parcelas,
         protecao: protecaoSelected,
         cardToken,
+        address: { cep: form.cep, state: form.state, city: form.city, number: form.number, neighborhood: form.neighborhood, street: form.street, complemento: form.complemento },
         tdsTransactionId: tds.tds_server_trans_id,
         tdsTransStatus: tds.trans_status,
         tdsVersion: "2.2.0",
