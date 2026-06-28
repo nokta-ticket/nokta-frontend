@@ -577,6 +577,7 @@ function CheckoutContent() {
         termsAcceptedAt: new Date().toISOString(),
         parcelas,
         protecao: protecaoSelected,
+        address: { cep: form.cep, state: form.state, city: form.city, number: form.number, neighborhood: form.neighborhood, street: form.street },
         card: { holderName: form.cardName, number: form.cardNumber.replace(/\s+/g, ""), ccv: form.cvv, expiryMonth: month, expiryYear: year },
       });
       setSuccess(true);
@@ -999,6 +1000,15 @@ return (
                             ))}
                           </select>
                         </div>
+
+                        <p className="text-[13px] font-medium text-gray-600 pt-1">Endereço de cobrança</p>
+                        <div className="grid grid-cols-3 gap-3">
+                          <Input placeholder="CEP" value={form.cep} onChange={fld("cep")} maxLength={9} className="h-11 text-[16px] sm:text-[14px]" />
+                          <Input placeholder="Nº" value={form.number} onChange={fld("number")} className="h-11 text-[16px] sm:text-[14px]" />
+                          <Input placeholder="UF" value={form.state} onChange={fld("state")} maxLength={2} className="h-11 text-[14px] uppercase" />
+                        </div>
+                        <Input placeholder="Cidade" value={form.city} onChange={fld("city")} className="h-11 text-[16px] sm:text-[14px]" />
+
                         <Button type="submit" disabled={processing || !termsAccepted} className="w-full h-12 font-bold text-[15px] bg-gradient-to-r from-[#9944CC] to-[#3399FF] text-white mt-1">
                           {processing ? <Loader2 size={18} className="animate-spin" /> : `Pagar ${formatCurrency(total)}`}
                         </Button>
