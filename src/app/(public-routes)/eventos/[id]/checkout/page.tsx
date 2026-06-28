@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useParams, useSearchParams } from "next/navigation";
-import { FormEvent, useEffect, useState, Suspense } from "react";
+import { FormEvent, useEffect, useRef, useState, Suspense } from "react";
 import Image from "next/image";
 import {
   Loader2, Ticket, Gift, CalendarDays, Clock, MapPin,
@@ -470,15 +470,27 @@ function CheckoutContent() {
   useEffect(() => { if (user?.telefone) setForm((f) => ({ ...f, phone: user.telefone ?? "" })); }, [user?.telefone]);
   useEffect(() => { if (user !== null && !user.cpf) setNeedsCpf(true); }, [user]);
 
+  const lastCepRef = useRef("");
   const fetchCep = async (cep: string) => {
     try {
       const res = await axios.get(`https://viacep.com.br/ws/${cep}/json/`);
-      if (!res.data.erro) setForm((f) => ({ ...f, state: res.data.uf, city: res.data.localidade, street: res.data.logradouro, neighborhood: res.data.bairro }));
+      if (!res.data.erro) {
+        setForm((f) => ({
+          ...f,
+          state: res.data.uf ?? f.state,
+          city: res.data.localidade ?? f.city,
+          street: res.data.logradouro ?? f.street,
+          neighborhood: res.data.bairro ?? f.neighborhood,
+        }));
+      }
     } catch {}
   };
   useEffect(() => {
     const cep = form.cep.replace(/\D/g, "");
-    if (cep.length === 8 && !form.city) fetchCep(cep);
+    if (cep.length === 8 && cep !== lastCepRef.current) {
+      lastCepRef.current = cep;
+      fetchCep(cep);
+    }
   }, [form.cep]);
 
   // ── Calculations (continuação) ────────────────────────────
@@ -602,6 +614,21 @@ function CheckoutContent() {
       await loadTdsScript();
       const { data: tokenRes } = await api.get("/pagamento/tds-token");
 
+      const billingAddress = {
+        country: "BR",
+        state: form.state,
+        city: form.city,
+        zip_code: form.cep.replace(/\D/g, ""),
+        line_1: `${form.number}, ${form.street}, ${form.neighborhood}`,
+        line_2: form.complemento.trim() || "Sem complemento",
+      };
+
+      // Telefone do usuário -> formato esperado pelo 3DS
+      const phoneDigits = ((user as any)?.telefone ?? "").replace(/\D/g, "");
+      const localPhone = phoneDigits.startsWith("55") && phoneDigits.length > 11 ? phoneDigits.slice(2) : phoneDigits;
+      const areaCode = localPhone.slice(0, 2);
+      const phoneNumber = localPhone.slice(2);
+
       const orderData = {
         payments: [{
           payment_method: "credit_card",
@@ -611,14 +638,7 @@ function CheckoutContent() {
               holder_name: form.cardName,
               exp_month: Number(month),
               exp_year: expYear,
-              billing_address: {
-                country: "BR",
-                state: form.state,
-                city: form.city,
-                zip_code: form.cep.replace(/\D/g, ""),
-                line_1: `${form.number}, ${form.street}, ${form.neighborhood}`,
-                line_2: form.complemento.trim() || "Sem complemento",
-              },
+              billing_address: billingAddress,
             },
           },
           amount: Math.round(total * 100),
@@ -628,8 +648,19 @@ function CheckoutContent() {
           email: user?.email ?? "",
           document: (user?.cpf ?? "").replace(/\D/g, ""),
           code: String((user as any)?.userId ?? (user as any)?.id ?? ""),
+          phones: {
+            mobile_phone: {
+              country_code: "55",
+              area_code: areaCode || "11",
+              number: phoneNumber || "999999999",
+            },
+          },
         },
         items: selectedItems.map(({ ticketId }) => ({ description: "Ingresso", code: String(ticketId) })),
+        shipping: {
+          recipient_name: user?.nome ?? form.cardName,
+          address: billingAddress,
+        },
         requestor_url: window.location.origin,
       };
 
@@ -680,6 +711,7 @@ function CheckoutContent() {
   const formatCard = (v: string) => (v.replace(/\D/g, "").match(/.{1,4}/g) ?? []).join(" ").slice(0, 19);
   const formatExpiry = (v: string) => { const c = v.replace(/\D/g, ""); return c.length >= 3 ? `${c.slice(0, 2)}/${c.slice(2, 4)}` : c; };
   const formatPhone = (v: string) => { const c = v.replace(/\D/g, ""); if (c.length <= 2) return `(${c}`; if (c.length <= 6) return `(${c.slice(0, 2)}) ${c.slice(2)}`; if (c.length <= 10) return `(${c.slice(0, 2)}) ${c.slice(2, 6)}-${c.slice(6)}`; return `(${c.slice(0, 2)}) ${c.slice(2, 7)}-${c.slice(7, 11)}`; };
+  const formatCep = (v: string) => { const c = v.replace(/\D/g, "").slice(0, 8); return c.length > 5 ? `${c.slice(0, 5)}-${c.slice(5)}` : c; };
 
   // ── Guards ────────────────────────────────────────────────
   if (!evento) {
@@ -1093,7 +1125,7 @@ return (
 
                         <p className="text-[13px] font-medium text-gray-600 pt-1">Endereço de cobrança</p>
                         <div className="grid grid-cols-3 gap-3">
-                          <Input placeholder="CEP" value={form.cep} onChange={fld("cep")} maxLength={9} className="h-11 text-[16px] sm:text-[14px]" />
+                          <Input placeholder="CEP" value={form.cep} onChange={(e) => setForm((p) => ({ ...p, cep: formatCep(e.target.value) }))} maxLength={9} className="h-11 text-[16px] sm:text-[14px]" />
                           <Input placeholder="Nº" value={form.number} onChange={fld("number")} className="h-11 text-[16px] sm:text-[14px]" />
                           <Input placeholder="UF" value={form.state} onChange={fld("state")} maxLength={2} className="h-11 text-[14px] uppercase" />
                         </div>
