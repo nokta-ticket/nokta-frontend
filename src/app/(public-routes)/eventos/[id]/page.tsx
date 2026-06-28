@@ -530,17 +530,17 @@ export default function IngressoDetalhesPage() {
                                     <p className="text-[11px] text-gray-400 flex items-center gap-1">
                                       ou {maxParcelas}x R$ {parcelaMaxStr}
                                       <button type="button" onClick={() => openParcelasSheet(valorFinal + taxa)} className="inline-flex">
-                                        <Info size={12} className="text-gray-400 hover:text-violet-500 transition-colors" />
+                                        <Info size={12} className="text-black hover:opacity-70 transition-opacity" />
                                       </button>
                                     </p>
                                   </>
                                 ) : (
-                                  <div className="text-[11px] text-gray-400 leading-tight">
+                                  <div className="text-[12px] font-semibold text-emerald-600 leading-tight">
                                     <p>Parcelamento disponível em até</p>
                                     <p className="flex items-center gap-1">
                                       {maxParcelas}x R$ {parcelaMaxStr}
                                       <button type="button" onClick={() => openParcelasSheet(valorFinal + taxa)} className="inline-flex">
-                                        <Info size={12} className="text-gray-400 hover:text-violet-500 transition-colors" />
+                                        <Info size={12} className="text-black hover:opacity-70 transition-opacity" />
                                       </button>
                                     </p>
                                   </div>
@@ -907,7 +907,7 @@ export default function IngressoDetalhesPage() {
                   ? `ou ${maxParcelas}x R$ ${totalParcelado}`
                   : `Parcele em até ${maxParcelas}x R$ ${totalParcelado}`}
                 <button type="button" onClick={() => openParcelasSheet(totalValor * 1.1)} className="inline-flex">
-                  <Info size={12} className="text-gray-400 hover:text-violet-500 transition-colors" />
+                  <Info size={12} className="text-black hover:opacity-70 transition-opacity" />
                 </button>
               </span>
             </div>
@@ -1008,7 +1008,7 @@ export default function IngressoDetalhesPage() {
                   </div>
                 ))}
               </div>
-              <p className="text-[11px] text-gray-400 text-center pt-3 pb-4 border-t mt-2">
+              <p className="text-[12px] font-medium text-black text-center pt-3 pb-4 border-t mt-2">
                 Valores já incluem taxa de serviço e processamento.
               </p>
             </>
