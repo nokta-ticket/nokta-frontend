@@ -321,6 +321,8 @@ function CheckoutContent() {
   const [maxSemJuros, setMaxSemJuros] = useState(0);
   const [cardRateBps, setCardRateBps] = useState<number[]>([]);
   const [cardFixedCfg, setCardFixedCfg] = useState<number | null>(null);
+  const [pixRateCfg, setPixRateCfg] = useState<number | null>(null);
+  const [pixFixedCfg, setPixFixedCfg] = useState<number | null>(null);
 
   const { display: timerDisplay, expired: timerExpired } = useDeadlineCountdown(expiresAt);
 
@@ -381,6 +383,8 @@ function CheckoutContent() {
         setMaxSemJuros(res.data.maxParcelasSemJuros ?? 0);
         setCardRateBps(res.data.cardRateBps ?? []);
         setCardFixedCfg(res.data.cardFixedCents ?? null);
+        setPixRateCfg(res.data.pixRateBps ?? null);
+        setPixFixedCfg(res.data.pixFixedCents ?? null);
       })
       .catch(() => {});
   }, []);
@@ -485,9 +489,16 @@ function CheckoutContent() {
   };
   const cardFixedFor = (n: number) => (n <= maxSemJuros ? 0 : cardFixedReais);
 
-  // Gross-up: o total cobrado cobre exatamente a taxa do gateway
-  const gatewayPct   = paymentMethod === "card" ? cardRateFor(parcelas)   : GATEWAY_PIX_RATE;
-  const gatewayFixed = paymentMethod === "card" ? cardFixedFor(parcelas)  : GATEWAY_PIX_FIXED;
+  const pixRate  = pixRateCfg  !== null ? pixRateCfg / 10000 : GATEWAY_PIX_RATE;
+  const pixFixed = pixFixedCfg !== null ? pixFixedCfg / 100  : GATEWAY_PIX_FIXED;
+
+  // Gross-up: só aplica taxa de processamento após escolher a forma de pagamento
+  const gatewayPct =
+    paymentMethod === "card" ? cardRateFor(parcelas) :
+    paymentMethod === "pix"  ? pixRate : 0;
+  const gatewayFixed =
+    paymentMethod === "card" ? cardFixedFor(parcelas) :
+    paymentMethod === "pix"  ? pixFixed : 0;
 
   const total = isFree ? 0 : round2((subtotalBase + gatewayFixed) / (1 - gatewayPct));
   const taxaProcessamento = isFree ? 0 : round2(total - subtotalBase);
