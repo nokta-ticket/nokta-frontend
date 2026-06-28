@@ -92,7 +92,22 @@ function formatTicketDate(raw?: string | null) {
 }
 
 function calcTaxa(valor: number) { return Math.round(valor * 0.1 * 100) / 100; }
-function calcParcelamento(valor: number) { return ((valor * 1.1) / 12).toFixed(2).replace('.', ','); }
+
+// Espelha o cálculo do backend (gross-up + split em centavos)
+function calcInstallmentCents(
+  subtotalCents: number,
+  n: number,
+  maxSemJuros: number,
+  cardRateBps: number[],
+  cardFixedCents: number,
+): number {
+  const isSemJuros = n <= maxSemJuros;
+  if (isSemJuros) return Math.floor(subtotalCents / n);
+  const rateBps = cardRateBps[n - 1] ?? 0;
+  const rate = rateBps / 10000;
+  const total = Math.round((subtotalCents + cardFixedCents) / (1 - rate));
+  return Math.floor(total / n);
+}
 
 export default function IngressoDetalhesPage() {
   const { id } = useParams<{ id: string }>();
@@ -109,6 +124,9 @@ export default function IngressoDetalhesPage() {
   const [couponError, setCouponError] = useState('');
   const [couponApplied, setCouponApplied] = useState<{ code: string; desconto: number } | null>(null);
   const [maxSemJuros, setMaxSemJuros] = useState(0);
+  const [maxParcelas, setMaxParcelas] = useState(12);
+  const [cardRateBps, setCardRateBps] = useState<number[]>([]);
+  const [cardFixedCents, setCardFixedCents] = useState(0);
   const [parcelasSheet, setParcelasSheet] = useState(false);
   const [parcelasData, setParcelasData] = useState<{ n: number; installmentCents: number; totalCents: number; semJuros: boolean }[]>([]);
   const [parcelasLoading, setParcelasLoading] = useState(false);
@@ -130,6 +148,9 @@ export default function IngressoDetalhesPage() {
         const raw: Ticket[] = (ingRes.data as any).data ?? ingRes.data ?? [];
         setTickets(raw.map(t => ({ ...t, valor: Number(t.valor) })));
         setMaxSemJuros(parcelasRes.data.maxParcelasSemJuros ?? 0);
+        setMaxParcelas(parcelasRes.data.maxParcelas ?? 12);
+        setCardRateBps(parcelasRes.data.cardRateBps ?? []);
+        setCardFixedCents(parcelasRes.data.cardFixedCents ?? 0);
       })
       .catch((err: any) => toast.error(err.message ?? 'Erro ao carregar evento.'))
       .finally(() => setLoading(false));
@@ -164,7 +185,8 @@ export default function IngressoDetalhesPage() {
     const qty = quantities[tk.id] ?? 0;
     return sum + precoComDesconto(tk.valor) * qty;
   }, 0);
-  const totalParcelado = ((totalValor * 1.1) / 12).toFixed(2).replace('.', ',');
+  const totalSubtotalCents = Math.round(totalValor * 1.1 * 100);
+  const totalParcelado = (calcInstallmentCents(totalSubtotalCents, maxParcelas, maxSemJuros, cardRateBps, cardFixedCents) / 100).toFixed(2).replace('.', ',');
 
   async function handleAplicarCupom() {
     if (!couponCode.trim()) return;
@@ -469,6 +491,8 @@ export default function IngressoDetalhesPage() {
                     const limitDate = formatTicketDate(tk.dataLimite);
                     const isGratuito = valorFinal === 0;
                     const disponivel = tk.disponivelParaVenda;
+                    const subtotalCents = Math.round((valorFinal + taxa) * 100);
+                    const parcelaMaxStr = (calcInstallmentCents(subtotalCents, maxParcelas, maxSemJuros, cardRateBps, cardFixedCents) / 100).toFixed(2).replace('.', ',');
 
                     return (
                       <div
@@ -499,16 +523,28 @@ export default function IngressoDetalhesPage() {
                                   {' '}(+{taxa.toFixed(2).replace('.', ',')} taxa)
                                 </span>
                               </p>
-                              {maxSemJuros > 0 && (
-                                <p className="text-[12px] font-semibold text-emerald-600">em até {maxSemJuros}x sem juros</p>
-                              )}
                               {valorFinal >= 60 && (
-                                <p className="text-[11px] text-gray-400 flex items-center gap-1">
-                                  ou 12x R$ {calcParcelamento(valorFinal)}
-                                  <button type="button" onClick={() => openParcelasSheet(valorFinal + taxa)} className="inline-flex">
-                                    <Info size={12} className="text-gray-400 hover:text-violet-500 transition-colors" />
-                                  </button>
-                                </p>
+                                maxSemJuros > 0 ? (
+                                  <>
+                                    <p className="text-[12px] font-semibold text-emerald-600">em até {maxSemJuros}x sem juros</p>
+                                    <p className="text-[11px] text-gray-400 flex items-center gap-1">
+                                      ou {maxParcelas}x R$ {parcelaMaxStr}
+                                      <button type="button" onClick={() => openParcelasSheet(valorFinal + taxa)} className="inline-flex">
+                                        <Info size={12} className="text-gray-400 hover:text-violet-500 transition-colors" />
+                                      </button>
+                                    </p>
+                                  </>
+                                ) : (
+                                  <div className="text-[11px] text-gray-400 leading-tight">
+                                    <p>Parcelamento disponível em até</p>
+                                    <p className="flex items-center gap-1">
+                                      {maxParcelas}x R$ {parcelaMaxStr}
+                                      <button type="button" onClick={() => openParcelasSheet(valorFinal + taxa)} className="inline-flex">
+                                        <Info size={12} className="text-gray-400 hover:text-violet-500 transition-colors" />
+                                      </button>
+                                    </p>
+                                  </div>
+                                )
                               )}
                             </>
                           )}
@@ -867,7 +903,9 @@ export default function IngressoDetalhesPage() {
                 Total <span className="text-[15px]">R$ {totalValor.toFixed(2).replace('.', ',')}</span>
               </span>
               <span className="text-[12px] text-gray-400 flex items-center gap-1">
-                ou 12x R$ {totalParcelado}
+                {maxSemJuros > 0
+                  ? `ou ${maxParcelas}x R$ ${totalParcelado}`
+                  : `Parcele em até ${maxParcelas}x R$ ${totalParcelado}`}
                 <button type="button" onClick={() => openParcelasSheet(totalValor * 1.1)} className="inline-flex">
                   <Info size={12} className="text-gray-400 hover:text-violet-500 transition-colors" />
                 </button>
