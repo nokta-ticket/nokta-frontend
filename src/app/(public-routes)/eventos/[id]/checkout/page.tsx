@@ -34,7 +34,7 @@ interface PaymentForm {
 }
 
 // ── Rate constants ─────────────────────────────────────────────
-const TAXA_SERVICO   = 0.07;    // Nokta platform fee
+const TAXA_SERVICO   = 0.10;    // Nokta platform fee
 const TAXA_PROTECAO  = 0.1284;
 
 // Pagar.me gateway rates
@@ -541,6 +541,7 @@ function CheckoutContent() {
         codigoCupom: cupomCodigo || undefined,
         termsVersion: "v1",
         termsAcceptedAt: new Date().toISOString(),
+        protecao: protecaoSelected,
       });
       if (res.data.pixUrl) setPixUrl(res.data.pixUrl);
       if (res.data.orderCode) setOrderCode(res.data.orderCode);
@@ -564,6 +565,7 @@ function CheckoutContent() {
         termsVersion: "v1",
         termsAcceptedAt: new Date().toISOString(),
         parcelas,
+        protecao: protecaoSelected,
         card: { holderName: form.cardName, number: form.cardNumber.replace(/\s+/g, ""), ccv: form.cvv, expiryMonth: month, expiryYear: year },
       });
       setSuccess(true);
@@ -706,7 +708,7 @@ return (
                         )}
                         {taxaServico > 0 && (
                           <div className="flex justify-between text-[13px] text-gray-500">
-                            <span>Taxa de serviço (7%)</span>
+                            <span>Taxa de serviço</span>
                             <span>{formatCurrency(taxaServico)}</span>
                           </div>
                         )}
