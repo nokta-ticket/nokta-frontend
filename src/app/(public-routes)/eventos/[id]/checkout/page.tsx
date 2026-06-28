@@ -588,6 +588,10 @@ function CheckoutContent() {
   async function handleCardCheckout(e: FormEvent) {
     e.preventDefault();
     if (!reservationCode) { toast.error("Reserva não encontrada. Recarregue a página."); return; }
+    if (!form.cep.trim() || !form.number.trim() || !form.city.trim() || !form.state.trim()) {
+      toast.error("Preencha o endereço de cobrança do cartão (CEP, número, cidade e UF).");
+      return;
+    }
     setProcessing(true);
     try {
       const [month, year] = form.expiryDate.split("/");
