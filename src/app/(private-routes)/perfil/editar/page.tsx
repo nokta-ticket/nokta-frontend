@@ -28,6 +28,14 @@ export default function EditarPerfilPage() {
   const [fotoPerfil, setFotoPerfil] = useState<string | null>(null);
   const [fotoPreview, setFotoPreview] = useState<string | null>(null);
 
+  const [endCep, setEndCep] = useState("");
+  const [endRua, setEndRua] = useState("");
+  const [endNumero, setEndNumero] = useState("");
+  const [endBairro, setEndBairro] = useState("");
+  const [endCidade, setEndCidade] = useState("");
+  const [endUf, setEndUf] = useState("");
+  const [endComplemento, setEndComplemento] = useState("");
+
   useEffect(() => {
     api
       .get("/auth/me")
@@ -35,6 +43,16 @@ export default function EditarPerfilPage() {
         setNome(res.data.nome ?? "");
         setSobrenome(res.data.sobrenome ?? "");
         setFotoPerfil(res.data.fotoPerfil ?? null);
+        const e = res.data.endereco;
+        if (e) {
+          setEndCep(e.cep ?? "");
+          setEndRua(e.logradouro ?? "");
+          setEndNumero(e.numero ?? "");
+          setEndBairro(e.bairro ?? "");
+          setEndCidade(e.cidade ?? "");
+          setEndUf(e.uf ?? "");
+          setEndComplemento(e.complemento ?? "");
+        }
       })
       .catch((err: any) => toast.error(err?.message ?? "Erro ao carregar dados"))
       .finally(() => setLoading(false));
@@ -67,6 +85,23 @@ export default function EditarPerfilPage() {
     }
   };
 
+  const formatCep = (v: string) => { const c = v.replace(/\D/g, "").slice(0, 8); return c.length > 5 ? `${c.slice(0, 5)}-${c.slice(5)}` : c; };
+
+  const buscarCep = async (raw: string) => {
+    const cep = raw.replace(/\D/g, "");
+    if (cep.length !== 8) return;
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const d = await r.json();
+      if (!d.erro) {
+        setEndRua(d.logradouro ?? "");
+        setEndBairro(d.bairro ?? "");
+        setEndCidade(d.localidade ?? "");
+        setEndUf(d.uf ?? "");
+      }
+    } catch {}
+  };
+
   const handleSave = async () => {
     setNomeTouched(true);
     if (!nome.trim()) {
@@ -75,7 +110,19 @@ export default function EditarPerfilPage() {
     }
     setSaving(true);
     try {
-      await api.put("/auth/me", { nome: nome.trim(), sobrenome: sobrenome.trim() });
+      await api.put("/auth/me", {
+        nome: nome.trim(),
+        sobrenome: sobrenome.trim(),
+        endereco: {
+          cep: endCep.replace(/\D/g, ""),
+          logradouro: endRua,
+          numero: endNumero,
+          bairro: endBairro,
+          cidade: endCidade,
+          uf: endUf,
+          complemento: endComplemento,
+        },
+      });
       toast.success("Perfil atualizado!");
       router.push("/perfil");
     } catch (err: any) {
@@ -199,6 +246,45 @@ export default function EditarPerfilPage() {
                   className="w-full bg-transparent text-sm outline-none"
                 />
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card de endereço */}
+        <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-4 font-semibold text-slate-800">Endereço de cobrança</h2>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">CEP</label>
+                <input value={endCep} onChange={(e) => { const v = formatCep(e.target.value); setEndCep(v); buscarCep(v); }} maxLength={9} placeholder="00000-000" className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">Número</label>
+                <input value={endNumero} onChange={(e) => setEndNumero(e.target.value)} placeholder="Nº" className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100" />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">Rua</label>
+              <input value={endRua} onChange={(e) => setEndRua(e.target.value)} placeholder="Logradouro" className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100" />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">Bairro</label>
+              <input value={endBairro} onChange={(e) => setEndBairro(e.target.value)} placeholder="Bairro" className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100" />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2">
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">Cidade</label>
+                <input value={endCidade} onChange={(e) => setEndCidade(e.target.value)} placeholder="Cidade" className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100" />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">UF</label>
+                <input value={endUf} onChange={(e) => setEndUf(e.target.value.toUpperCase())} maxLength={2} placeholder="UF" className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm uppercase outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100" />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">Complemento (opcional)</label>
+              <input value={endComplemento} onChange={(e) => setEndComplemento(e.target.value)} placeholder="Apto, bloco..." className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-purple-500 focus:ring-2 focus:ring-purple-100" />
             </div>
           </div>
         </div>
