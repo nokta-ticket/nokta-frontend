@@ -316,6 +316,11 @@ function CheckoutContent() {
   const [showDetails, setShowDetails] = useState(false);
   const [showCoverages, setShowCoverages] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [parcelas, setParcelas] = useState(1);
+  const [maxParcelas, setMaxParcelas] = useState(12);
+  const [maxSemJuros, setMaxSemJuros] = useState(0);
+  const [cardRateBps, setCardRateBps] = useState<number[]>([]);
+  const [cardFixedCfg, setCardFixedCfg] = useState<number | null>(null);
 
   const { display: timerDisplay, expired: timerExpired } = useDeadlineCountdown(expiresAt);
 
@@ -367,6 +372,18 @@ function CheckoutContent() {
       })
       .catch((err) => toast.error(getErrorMessage(err, "Erro ao carregar evento.")));
   }, [id]);
+
+  // Configuração de parcelamento (taxas e limite vêm do gateway)
+  useEffect(() => {
+    api.get("/pagamento/info-parcelas")
+      .then((res) => {
+        setMaxParcelas(res.data.maxParcelas ?? 12);
+        setMaxSemJuros(res.data.maxParcelasSemJuros ?? 0);
+        setCardRateBps(res.data.cardRateBps ?? []);
+        setCardFixedCfg(res.data.cardFixedCents ?? null);
+      })
+      .catch(() => {});
+  }, []);
 
   // Criar reserva quando os dados estiverem prontos
   useEffect(() => {
@@ -455,22 +472,31 @@ function CheckoutContent() {
   const taxaServico = round2(subtotal * TAXA_SERVICO);
   const taxaProtecao = round2(subtotal * TAXA_PROTECAO);
 
-  // Gross-up: o total cobrado cobre exatamente a taxa do gateway
-  const gatewayPct   = paymentMethod === "card" ? GATEWAY_CARD_1X_RATE : GATEWAY_PIX_RATE;
-  const gatewayFixed = paymentMethod === "card" ? GATEWAY_CARD_FIXED   : GATEWAY_PIX_FIXED;
-
   const subtotalBase = round2(
     subtotal + taxaServico + (protecaoSelected && !isFree ? taxaProtecao : 0)
   );
 
+  // Taxas de cartão por parcela (vêm do gateway; fallback nos defaults)
+  const cardFixedReais = cardFixedCfg !== null ? cardFixedCfg / 100 : GATEWAY_CARD_FIXED;
+  const cardRateFor = (n: number) => {
+    if (n <= maxSemJuros) return 0;
+    if (cardRateBps.length >= n) return cardRateBps[n - 1] / 10000;
+    return n <= 1 ? GATEWAY_CARD_1X_RATE : n <= 6 ? GATEWAY_CARD_26_RATE : GATEWAY_CARD_718_RATE;
+  };
+  const cardFixedFor = (n: number) => (n <= maxSemJuros ? 0 : cardFixedReais);
+
+  // Gross-up: o total cobrado cobre exatamente a taxa do gateway
+  const gatewayPct   = paymentMethod === "card" ? cardRateFor(parcelas)   : GATEWAY_PIX_RATE;
+  const gatewayFixed = paymentMethod === "card" ? cardFixedFor(parcelas)  : GATEWAY_PIX_FIXED;
+
   const total = isFree ? 0 : round2((subtotalBase + gatewayFixed) / (1 - gatewayPct));
   const taxaProcessamento = isFree ? 0 : round2(total - subtotalBase);
 
-  const taxaProcessamentoLabel = paymentMethod === "card"
-    ? "Taxa de processamento (3,19% + R$ 0,99)"
-    : "Taxa de processamento (1,09% + R$ 0,55)";
+  const taxaProcessamentoLabel = "Taxa de processamento";
 
-  const totalParcela = (total / 12).toFixed(2).replace(".", ",");
+  const installmentTotal = (n: number) => round2((subtotalBase + cardFixedFor(n)) / (1 - cardRateFor(n)));
+  const installmentValue = (n: number) => installmentTotal(n) / n;
+  const totalParcela = installmentValue(maxParcelas).toFixed(2).replace(".", ",");
 
   // ── Handlers ─────────────────────────────────────────────
   function handleCtaClick() {
@@ -537,6 +563,7 @@ function CheckoutContent() {
         codigoCupom: cupomCodigo || undefined,
         termsVersion: "v1",
         termsAcceptedAt: new Date().toISOString(),
+        parcelas,
         card: { holderName: form.cardName, number: form.cardNumber.replace(/\s+/g, ""), ccv: form.cvv, expiryMonth: month, expiryYear: year },
       });
       setSuccess(true);
@@ -700,7 +727,7 @@ return (
                       <p className={cn("font-bold text-[22px]", isFree ? "text-emerald-600" : "text-[#111]")}>
                         {isFree ? "Grátis" : formatCurrency(total)}
                       </p>
-                      {!isFree && <p className="text-[11px] text-gray-400">ou 12x R$ {totalParcela}</p>}
+                      {!isFree && <p className="text-[11px] text-gray-400">ou até {maxParcelas}x R$ {totalParcela}</p>}
                     </div>
                     {!isFree && (
                       <button
@@ -944,6 +971,20 @@ return (
                         <div className="grid grid-cols-2 gap-3">
                           <Input placeholder="MM/AA" value={form.expiryDate} onChange={(e) => setForm((p) => ({ ...p, expiryDate: formatExpiry(e.target.value) }))} maxLength={5} className="h-11 text-[16px] sm:text-[14px]" />
                           <Input placeholder="CVV" value={form.cvv} onChange={fld("cvv")} maxLength={4} className="h-11 text-[16px] sm:text-[14px]" />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[13px] font-medium text-gray-600">Parcelamento</label>
+                          <select
+                            value={parcelas}
+                            onChange={(e) => setParcelas(parseInt(e.target.value, 10))}
+                            className="w-full h-11 rounded-md border border-gray-200 px-3 text-[14px] bg-white focus:outline-none focus:ring-2 focus:ring-[#9944CC]/40"
+                          >
+                            {Array.from({ length: maxParcelas }, (_, i) => i + 1).map((n) => (
+                              <option key={n} value={n}>
+                                {n}x de {formatCurrency(installmentValue(n))}{n <= maxSemJuros ? " sem juros" : ""}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                         <Button type="submit" disabled={processing || !termsAccepted} className="w-full h-12 font-bold text-[15px] bg-gradient-to-r from-[#9944CC] to-[#3399FF] text-white mt-1">
                           {processing ? <Loader2 size={18} className="animate-spin" /> : `Pagar ${formatCurrency(total)}`}
