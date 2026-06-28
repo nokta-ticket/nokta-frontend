@@ -27,6 +27,20 @@ interface UserMe {
   genero?: number | null;
   ehEstudante?: boolean;
   faculdade?: string | null;
+  endereco?: {
+    cep?: string | null;
+    logradouro?: string | null;
+    numero?: string | null;
+    bairro?: string | null;
+    cidade?: string | null;
+    uf?: string | null;
+    complemento?: string | null;
+  } | null;
+}
+
+function maskCep(value: string): string {
+  const c = value.replace(/\D/g, "").slice(0, 8);
+  return c.length > 5 ? `${c.slice(0, 5)}-${c.slice(5)}` : c;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -212,6 +226,18 @@ export default function MeusDadosPage() {
   const [telefone, setTelefone] = useState("");
   const [telefoneTouched, setTelefoneTouched] = useState(false);
 
+  // Address
+  const [editEndereco, setEditEndereco] = useState(false);
+  const [savingEndereco, setSavingEndereco] = useState(false);
+  const [savedEndereco, setSavedEndereco] = useState(false);
+  const [endCep, setEndCep] = useState("");
+  const [endLogradouro, setEndLogradouro] = useState("");
+  const [endNumero, setEndNumero] = useState("");
+  const [endBairro, setEndBairro] = useState("");
+  const [endCidade, setEndCidade] = useState("");
+  const [endUf, setEndUf] = useState("");
+  const [endComplemento, setEndComplemento] = useState("");
+
   // Preferences
   const [editPrefs, setEditPrefs] = useState(false);
   const [savingPrefs, setSavingPrefs] = useState(false);
@@ -236,6 +262,16 @@ export default function MeusDadosPage() {
         setGenero(data.genero != null ? String(data.genero) : "");
         setEhEstudante(data.ehEstudante ?? false);
         setFaculdade(data.faculdade ?? "");
+        const e = data.endereco;
+        if (e) {
+          setEndCep(e.cep ? maskCep(e.cep) : "");
+          setEndLogradouro(e.logradouro ?? "");
+          setEndNumero(e.numero ?? "");
+          setEndBairro(e.bairro ?? "");
+          setEndCidade(e.cidade ?? "");
+          setEndUf(e.uf ?? "");
+          setEndComplemento(e.complemento ?? "");
+        }
       } catch (err: any) {
         toast.error(err.message ?? "Erro ao carregar dados");
       } finally {
@@ -296,6 +332,37 @@ export default function MeusDadosPage() {
     saveSection(
       { genero: genero !== "" ? parseInt(genero) : undefined, ehEstudante, faculdade },
       setSavingPrefs, setSavedPrefs, setEditPrefs,
+    );
+
+  const buscarCep = async (cepRaw: string) => {
+    const cep = cepRaw.replace(/\D/g, "");
+    if (cep.length !== 8) return;
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const d = await r.json();
+      if (!d.erro) {
+        setEndLogradouro(d.logradouro ?? "");
+        setEndBairro(d.bairro ?? "");
+        setEndCidade(d.localidade ?? "");
+        setEndUf(d.uf ?? "");
+      }
+    } catch {}
+  };
+
+  const saveEndereco = () =>
+    saveSection(
+      {
+        endereco: {
+          cep: endCep.replace(/\D/g, ""),
+          logradouro: endLogradouro,
+          numero: endNumero,
+          bairro: endBairro,
+          cidade: endCidade,
+          uf: endUf,
+          complemento: endComplemento,
+        },
+      },
+      setSavingEndereco, setSavedEndereco, setEditEndereco,
     );
 
   const hasCpf = !!user?.cpf;
@@ -472,6 +539,66 @@ export default function MeusDadosPage() {
           </div>
         ) : (
           <ReadField label="Telefone" value={telefone || null} />
+        )}
+      </Section>
+
+      {/* ── Endereço ────────────────────────────────────────────────────── */}
+      <Section
+        title="Endereço de cobrança"
+        editing={editEndereco}
+        onEdit={() => setEditEndereco(true)}
+        onSave={saveEndereco}
+        saving={savingEndereco}
+        saved={savedEndereco}
+      >
+        {editEndereco ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700">CEP</label>
+                <Input value={endCep} onChange={(e) => { const v = maskCep(e.target.value); setEndCep(v); buscarCep(v); }} maxLength={9} placeholder="00000-000" className="h-11 rounded-xl" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700">Número</label>
+                <Input value={endNumero} onChange={(e) => setEndNumero(e.target.value)} className="h-11 rounded-xl" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700">Rua</label>
+              <Input value={endLogradouro} onChange={(e) => setEndLogradouro(e.target.value)} className="h-11 rounded-xl" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700">Bairro</label>
+              <Input value={endBairro} onChange={(e) => setEndBairro(e.target.value)} className="h-11 rounded-xl" />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2 space-y-1.5">
+                <label className="text-sm font-medium text-gray-700">Cidade</label>
+                <Input value={endCidade} onChange={(e) => setEndCidade(e.target.value)} className="h-11 rounded-xl" />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700">UF</label>
+                <Input value={endUf} onChange={(e) => setEndUf(e.target.value.toUpperCase())} maxLength={2} className="h-11 rounded-xl uppercase" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-gray-700">Complemento (opcional)</label>
+              <Input value={endComplemento} onChange={(e) => setEndComplemento(e.target.value)} className="h-11 rounded-xl" />
+            </div>
+            <button type="button" onClick={() => setEditEndereco(false)} className="text-sm text-gray-400 hover:text-gray-600">
+              Cancelar
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <ReadField label="CEP" value={endCep || null} />
+            <ReadField label="Número" value={endNumero || null} />
+            <ReadField label="Rua" value={endLogradouro || null} />
+            <ReadField label="Bairro" value={endBairro || null} />
+            <ReadField label="Cidade" value={endCidade || null} />
+            <ReadField label="UF" value={endUf || null} />
+            <ReadField label="Complemento" value={endComplemento || null} />
+          </div>
         )}
       </Section>
 

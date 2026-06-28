@@ -498,6 +498,21 @@ function CheckoutContent() {
   }, [orderCode, success]);
 
   useEffect(() => { if (user?.telefone) setForm((f) => ({ ...f, phone: user.telefone ?? "" })); }, [user?.telefone]);
+  // Pré-preenche o endereço de cobrança salvo na conta
+  useEffect(() => {
+    const e = user?.endereco;
+    if (!e) return;
+    setForm((f) => ({
+      ...f,
+      cep: f.cep || (e.cep ?? ""),
+      street: f.street || (e.logradouro ?? ""),
+      number: f.number || (e.numero ?? ""),
+      neighborhood: f.neighborhood || (e.bairro ?? ""),
+      city: f.city || (e.cidade ?? ""),
+      state: f.state || (e.uf ?? ""),
+      complemento: f.complemento || (e.complemento ?? ""),
+    }));
+  }, [user?.endereco]);
   useEffect(() => { if (user !== null && !user.cpf) setNeedsCpf(true); }, [user]);
 
   const lastCepRef = useRef("");

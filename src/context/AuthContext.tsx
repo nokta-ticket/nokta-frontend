@@ -28,6 +28,15 @@ export interface UserData {
   nomeArtistico?: string | null;
   tipoPessoa?: "PF" | "PJ" | null;
   chavePix?: string | null;
+  endereco?: {
+    cep?: string | null;
+    logradouro?: string | null;
+    numero?: string | null;
+    bairro?: string | null;
+    cidade?: string | null;
+    uf?: string | null;
+    complemento?: string | null;
+  } | null;
 }
 
 interface AuthContextType {
@@ -92,6 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         nomeArtistico: data.nomeArtistico ?? null,
         tipoPessoa: data.tipoPessoa ?? null,
         chavePix: data.chavePix ?? null,
+        endereco: data.endereco ?? null,
       });
     } catch (err: any) {
       // Only sign out on 401 (token truly invalid/expired).
