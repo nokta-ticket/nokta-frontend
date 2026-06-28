@@ -316,6 +316,7 @@ function CheckoutContent() {
   const [showDetails, setShowDetails] = useState(false);
   const [showCoverages, setShowCoverages] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [parcelas, setParcelas] = useState(1);
   const [maxParcelas, setMaxParcelas] = useState(12);
   const [maxSemJuros, setMaxSemJuros] = useState(0);
@@ -568,7 +569,7 @@ function CheckoutContent() {
     setProcessing(true);
     try {
       const [month, year] = form.expiryDate.split("/");
-      await api.post("/pagamento/checkout", {
+      const res = await api.post("/pagamento/checkout", {
         type: "card",
         reservationCode,
         items: selectedItems,
@@ -580,7 +581,15 @@ function CheckoutContent() {
         address: { cep: form.cep, state: form.state, city: form.city, number: form.number, neighborhood: form.neighborhood, street: form.street },
         card: { holderName: form.cardName, number: form.cardNumber.replace(/\s+/g, ""), ccv: form.cvv, expiryMonth: month, expiryYear: year },
       });
-      setSuccess(true);
+      // Ingresso só é liberado quando a Pagar.me confirmar (webhook).
+      // Acompanhamos o status até "paid".
+      if (res.data.orderCode) {
+        setOrderCode(res.data.orderCode);
+        if (res.data.expiresAt) setExpiresAt(new Date(res.data.expiresAt));
+        setConfirming(true);
+      } else if (res.data.paid) {
+        setSuccess(true);
+      }
     } catch (err) {
       toast.error(getErrorMessage(err, "Erro ao processar pagamento. Verifique os dados do cartão."));
     } finally { setProcessing(false); }
@@ -1009,9 +1018,14 @@ return (
                         </div>
                         <Input placeholder="Cidade" value={form.city} onChange={fld("city")} className="h-11 text-[16px] sm:text-[14px]" />
 
-                        <Button type="submit" disabled={processing || !termsAccepted} className="w-full h-12 font-bold text-[15px] bg-gradient-to-r from-[#9944CC] to-[#3399FF] text-white mt-1">
-                          {processing ? <Loader2 size={18} className="animate-spin" /> : `Pagar ${formatCurrency(total)}`}
+                        <Button type="submit" disabled={processing || confirming || !termsAccepted} className="w-full h-12 font-bold text-[15px] bg-gradient-to-r from-[#9944CC] to-[#3399FF] text-white mt-1">
+                          {processing || confirming ? <Loader2 size={18} className="animate-spin" /> : `Pagar ${formatCurrency(total)}`}
                         </Button>
+                        {confirming && (
+                          <p className="text-[12px] text-center text-gray-500 mt-1">
+                            Confirmando o pagamento com o banco. Não feche esta tela…
+                          </p>
+                        )}
                       </form>
                     )}
                   </div>
