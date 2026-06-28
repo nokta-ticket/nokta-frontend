@@ -52,6 +52,9 @@ const TDS_SCRIPT_URL =
     : "https://3ds-nx-js.stone.com.br/test/v2/3ds2.min.js";
 
 const PAGARME_PUBLIC_KEY = process.env.NEXT_PUBLIC_PAGARME_PUBLIC_KEY ?? "";
+// 3DS ligado por padrão; defina NEXT_PUBLIC_3DS_ENABLED=false para testar o
+// restante do fluxo no sandbox (cartões 3DS não são Luhn-válidos p/ cobrança)
+const THREEDS_ENABLED = process.env.NEXT_PUBLIC_3DS_ENABLED !== "false";
 
 async function tokenizeCard(card: {
   number: string; holder_name: string; exp_month: number; exp_year: number; cvv: string;
@@ -637,10 +640,6 @@ function CheckoutContent() {
       const expYear = year.length === 2 ? 2000 + Number(year) : Number(year);
       const cardNumber = form.cardNumber.replace(/\s+/g, "");
 
-      // ── 1) Autenticação 3DS (obrigatória) ───────────────────────────
-      await loadTdsScript();
-      const { data: tokenRes } = await api.get("/pagamento/tds-token");
-
       const billingAddress = {
         country: "BR",
         state: form.state,
@@ -650,58 +649,61 @@ function CheckoutContent() {
         line_2: form.complemento.trim() || "Sem complemento",
       };
 
-      // Telefone do usuário -> formato esperado pelo 3DS
-      const phoneDigits = ((user as any)?.telefone ?? "").replace(/\D/g, "");
-      const localPhone = phoneDigits.startsWith("55") && phoneDigits.length > 11 ? phoneDigits.slice(2) : phoneDigits;
-      const areaCode = localPhone.slice(0, 2);
-      const phoneNumber = localPhone.slice(2);
+      let tdsTransactionId: string | undefined;
+      let tdsTransStatus: string | undefined;
 
-      const orderData = {
-        payments: [{
-          payment_method: "credit_card",
-          credit_card: {
-            card: {
-              number: cardNumber,
-              holder_name: form.cardName,
-              exp_month: Number(month),
-              exp_year: expYear,
-              billing_address: billingAddress,
+      // ── 1) Autenticação 3DS (quando habilitada) ─────────────────────
+      if (THREEDS_ENABLED) {
+        await loadTdsScript();
+        const { data: tokenRes } = await api.get("/pagamento/tds-token");
+
+        const phoneDigits = ((user as any)?.telefone ?? "").replace(/\D/g, "");
+        const localPhone = phoneDigits.startsWith("55") && phoneDigits.length > 11 ? phoneDigits.slice(2) : phoneDigits;
+        const areaCode = localPhone.slice(0, 2);
+        const phoneNumber = localPhone.slice(2);
+
+        const orderData = {
+          payments: [{
+            payment_method: "credit_card",
+            credit_card: {
+              card: {
+                number: cardNumber,
+                holder_name: form.cardName,
+                exp_month: Number(month),
+                exp_year: expYear,
+                billing_address: billingAddress,
+              },
+            },
+            amount: Math.round(total * 100),
+          }],
+          customer: {
+            name: user?.nome ?? form.cardName,
+            email: user?.email ?? "",
+            document: (user?.cpf ?? "").replace(/\D/g, ""),
+            code: String((user as any)?.userId ?? (user as any)?.id ?? ""),
+            phones: {
+              mobile_phone: { country_code: "55", area_code: areaCode || "11", number: phoneNumber || "999999999" },
             },
           },
-          amount: Math.round(total * 100),
-        }],
-        customer: {
-          name: user?.nome ?? form.cardName,
-          email: user?.email ?? "",
-          document: (user?.cpf ?? "").replace(/\D/g, ""),
-          code: String((user as any)?.userId ?? (user as any)?.id ?? ""),
-          phones: {
-            mobile_phone: {
-              country_code: "55",
-              area_code: areaCode || "11",
-              number: phoneNumber || "999999999",
-            },
-          },
-        },
-        items: selectedItems.map(({ ticketId }) => ({ description: "Ingresso", code: String(ticketId) })),
-        shipping: {
-          recipient_name: user?.nome ?? form.cardName,
-          address: billingAddress,
-        },
-        requestor_url: window.location.origin,
-      };
+          items: selectedItems.map(({ ticketId }) => ({ description: "Ingresso", code: String(ticketId) })),
+          shipping: { recipient_name: user?.nome ?? form.cardName, address: billingAddress },
+          requestor_url: window.location.origin,
+        };
 
-      const tdsResp = await (window as any).TDS.init({
-        token: tokenRes.tdsToken,
-        tds_method_container_element: document.getElementById("tdsMethodContainer"),
-        challenge_container_element: document.getElementById("challengeContainer"),
-        use_default_challenge_iframe_style: true,
-        challenge_window_size: "03",
-      }, orderData);
+        const tdsResp = await (window as any).TDS.init({
+          token: tokenRes.tdsToken,
+          tds_method_container_element: document.getElementById("tdsMethodContainer"),
+          challenge_container_element: document.getElementById("challengeContainer"),
+          use_default_challenge_iframe_style: true,
+          challenge_window_size: "03",
+        }, orderData);
 
-      const tds = Array.isArray(tdsResp) ? tdsResp[0] : tdsResp;
-      if (!tds?.tds_server_trans_id || tds?.challenge_canceled) {
-        throw new Error("Autenticação do cartão não concluída. Tente novamente.");
+        const tds = Array.isArray(tdsResp) ? tdsResp[0] : tdsResp;
+        if (!tds?.tds_server_trans_id || tds?.challenge_canceled) {
+          throw new Error("Autenticação do cartão não concluída. Tente novamente.");
+        }
+        tdsTransactionId = tds.tds_server_trans_id;
+        tdsTransStatus = tds.trans_status;
       }
 
       // ── 2) Tokeniza o cartão (número não vai pro nosso servidor) ─────
@@ -713,7 +715,7 @@ function CheckoutContent() {
         cvv: form.cvv,
       });
 
-      // ── 3) Checkout com token + endereço + resultado do 3DS ─────────
+      // ── 3) Checkout com token + endereço (+ 3DS se houver) ──────────
       const res = await api.post("/pagamento/checkout", {
         type: "card",
         reservationCode,
@@ -725,9 +727,9 @@ function CheckoutContent() {
         protecao: protecaoSelected,
         cardToken,
         address: { cep: form.cep, state: form.state, city: form.city, number: form.number, neighborhood: form.neighborhood, street: form.street, complemento: form.complemento },
-        tdsTransactionId: tds.tds_server_trans_id,
-        tdsTransStatus: tds.trans_status,
-        tdsVersion: "2.2.0",
+        tdsTransactionId,
+        tdsTransStatus,
+        tdsVersion: tdsTransactionId ? "2.2.0" : undefined,
       });
       // Ingresso só é liberado quando a Pagar.me confirmar (webhook).
       // Acompanhamos o status até "paid".
