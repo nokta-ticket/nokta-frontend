@@ -1161,12 +1161,16 @@ return (
                         </div>
 
                         <p className="text-[13px] font-medium text-gray-600 pt-1">Endereço de cobrança</p>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-2 gap-3">
                           <Input placeholder="CEP" value={form.cep} onChange={(e) => setForm((p) => ({ ...p, cep: formatCep(e.target.value) }))} maxLength={9} className="h-11 text-[16px] sm:text-[14px]" />
                           <Input placeholder="Nº" value={form.number} onChange={fld("number")} className="h-11 text-[16px] sm:text-[14px]" />
+                        </div>
+                        <Input placeholder="Rua" value={form.street} onChange={fld("street")} className="h-11 text-[16px] sm:text-[14px]" />
+                        <Input placeholder="Bairro" value={form.neighborhood} onChange={fld("neighborhood")} className="h-11 text-[16px] sm:text-[14px]" />
+                        <div className="grid grid-cols-3 gap-3">
+                          <Input placeholder="Cidade" value={form.city} onChange={fld("city")} className="col-span-2 h-11 text-[16px] sm:text-[14px]" />
                           <Input placeholder="UF" value={form.state} onChange={fld("state")} maxLength={2} className="h-11 text-[14px] uppercase" />
                         </div>
-                        <Input placeholder="Cidade" value={form.city} onChange={fld("city")} className="h-11 text-[16px] sm:text-[14px]" />
                         <Input placeholder="Complemento (opcional)" value={form.complemento} onChange={fld("complemento")} className="h-11 text-[16px] sm:text-[14px]" />
 
                         <Button type="submit" disabled={processing || confirming || !termsAccepted} className="w-full h-12 font-bold text-[15px] bg-gradient-to-r from-[#9944CC] to-[#3399FF] text-white mt-1">
