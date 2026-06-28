@@ -70,12 +70,11 @@ async function tokenizeCard(card: {
     return data.id;
   } catch (e: any) {
     const data = e?.response?.data;
-    const detail =
-      data?.message ||
-      (data?.errors ? JSON.stringify(data.errors) : "") ||
-      e?.message ||
-      "erro desconhecido";
-    throw new Error(`Tokenização falhou: ${detail}`);
+    const parts: string[] = [];
+    if (data?.message) parts.push(String(data.message));
+    if (data?.errors) parts.push(JSON.stringify(data.errors));
+    const detail = parts.join(" | ") || e?.message || "erro desconhecido";
+    throw new Error(`Tokenização: ${detail}`);
   }
 }
 
