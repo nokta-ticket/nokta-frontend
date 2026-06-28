@@ -951,27 +951,29 @@ export default function IngressoDetalhesPage() {
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-600 border-t-transparent" />
             </div>
           ) : (
-            <div className="space-y-1">
-              {parcelasData.map((p) => (
-                <div
-                  key={p.n}
-                  className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-gray-50"
-                >
-                  <span className="text-sm font-medium text-gray-800">
-                    {p.n}x de{' '}
-                    <span className="font-semibold">
-                      R$ {(p.installmentCents / 100).toFixed(2).replace('.', ',')}
+            <>
+              <div className="space-y-1">
+                {parcelasData.map((p) => (
+                  <div
+                    key={p.n}
+                    className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-gray-50"
+                  >
+                    <span className="text-sm font-medium text-gray-800">
+                      {p.n}x de{' '}
+                      <span className="font-semibold">
+                        R$ {(p.installmentCents / 100).toFixed(2).replace('.', ',')}
+                      </span>
                     </span>
-                  </span>
-                  {p.semJuros && (
-                    <span className="text-xs text-emerald-600 font-medium">sem juros</span>
-                  )}
-                </div>
-              ))}
-            </div>
-            <p className="text-[11px] text-gray-400 text-center pt-3 pb-4 border-t mt-2">
-              Valores já incluem taxa de serviço e processamento.
-            </p>
+                    {p.semJuros && (
+                      <span className="text-xs text-emerald-600 font-medium">sem juros</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="text-[11px] text-gray-400 text-center pt-3 pb-4 border-t mt-2">
+                Valores já incluem taxa de serviço e processamento.
+              </p>
+            </>
           )}
         </SheetContent>
       </Sheet>
