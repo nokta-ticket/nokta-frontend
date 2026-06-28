@@ -216,7 +216,7 @@ export default function HeaderPrivate() {
                 className="mt-4 inline-flex items-center gap-2 rounded-xl border border-purple-200 px-5 py-2 text-sm font-medium text-purple-500 bg-white/50"
               >
                 <Pencil size={16} />
-                Editar perfil
+                Editar foto
               </button>
             </div>
           </div>
