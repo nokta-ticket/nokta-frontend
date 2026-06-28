@@ -57,16 +57,26 @@ async function tokenizeCard(card: {
   number: string; holder_name: string; exp_month: number; exp_year: number; cvv: string;
 }): Promise<string> {
   if (!PAGARME_PUBLIC_KEY) {
-    throw new Error("Chave pública da Pagar.me não configurada. Recarregue a página.");
+    throw new Error("Chave pública da Pagar.me não configurada (NEXT_PUBLIC_PAGARME_PUBLIC_KEY). Recarregue após o redeploy.");
   }
   // billing_address NÃO é tokenizado — vai separado no checkout
-  const { data } = await axios.post(
-    `https://api.pagar.me/core/v5/tokens?appId=${PAGARME_PUBLIC_KEY}`,
-    { type: "card", card },
-    { headers: { "Content-Type": "application/json" } },
-  );
-  if (!data?.id) throw new Error("Falha ao tokenizar o cartão.");
-  return data.id;
+  try {
+    const { data } = await axios.post(
+      `https://api.pagar.me/core/v5/tokens?appId=${PAGARME_PUBLIC_KEY}`,
+      { type: "card", card },
+      { headers: { "Content-Type": "application/json" } },
+    );
+    if (!data?.id) throw new Error("Falha ao tokenizar o cartão.");
+    return data.id;
+  } catch (e: any) {
+    const data = e?.response?.data;
+    const detail =
+      data?.message ||
+      (data?.errors ? JSON.stringify(data.errors) : "") ||
+      e?.message ||
+      "erro desconhecido";
+    throw new Error(`Tokenização falhou: ${detail}`);
+  }
 }
 
 let tdsScriptPromise: Promise<void> | null = null;
