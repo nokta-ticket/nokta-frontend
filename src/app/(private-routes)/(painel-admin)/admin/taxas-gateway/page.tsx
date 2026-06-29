@@ -15,6 +15,7 @@ interface GatewayConfig {
   cardRateBps: number[];
   cardFixedCents: number;
   maxInstallments: number;
+  accept3dsAttempt: boolean;
   withdrawalFixedCents: number;
   anticipationRateBps: number;
   settlementDays: number;
@@ -47,6 +48,7 @@ export default function TaxasGatewayPage() {
   const [cardRates, setCardRates] = useState<string[]>(Array(12).fill(""));
   const [cardFixed, setCardFixed] = useState("");
   const [maxInstallments, setMaxInstallments] = useState(12);
+  const [accept3dsAttempt, setAccept3dsAttempt] = useState(false);
   const [withdrawalFixed, setWithdrawalFixed] = useState("");
   const [anticipationRate, setAnticipationRate] = useState("");
   const [settlementDays, setSettlementDays] = useState("");
@@ -75,6 +77,7 @@ export default function TaxasGatewayPage() {
         setCardRates((c.cardRateBps ?? []).map((bps) => bpsToPercent(bps ?? 0)));
         setCardFixed(centsToReais(c.cardFixedCents));
         setMaxInstallments(c.maxInstallments ?? 12);
+        setAccept3dsAttempt(c.accept3dsAttempt ?? false);
         setWithdrawalFixed(centsToReais(c.withdrawalFixedCents));
         setAnticipationRate(bpsToPercent(c.anticipationRateBps));
         setSettlementDays(String(c.settlementDays));
@@ -95,6 +98,7 @@ export default function TaxasGatewayPage() {
         cardRateBps: cardRates.map((r) => percentToBps(r)),
         cardFixedCents: reaisToCents(cardFixed),
         maxInstallments,
+        accept3dsAttempt,
         withdrawalFixedCents: reaisToCents(withdrawalFixed),
         anticipationRateBps: percentToBps(anticipationRate),
         settlementDays: parseInt(settlementDays, 10),
@@ -184,6 +188,31 @@ export default function TaxasGatewayPage() {
           <div className="pt-2 border-t">
             <Field label="Taxa fixa por transação (R$)" value={cardFixed} onChange={setCardFixed} placeholder="0.99" hint="Gateway + Antifraude" />
           </div>
+        </div>
+
+        <div className="rounded-lg border bg-white p-5 space-y-4">
+          <div>
+            <h2 className="text-lg font-medium">Autenticação 3DS (cartão)</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Define quais resultados de autenticação 3DS liberam a compra no cartão. O 3DS é obrigatório — cartão sem autenticação válida é sempre bloqueado.
+            </p>
+          </div>
+
+          <label className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer ${!accept3dsAttempt ? "border-violet-500 bg-violet-50" : "border-gray-200"}`}>
+            <input type="radio" name="threeds-policy" checked={!accept3dsAttempt} onChange={() => setAccept3dsAttempt(false)} className="mt-1 accent-violet-600" />
+            <div>
+              <p className="text-sm font-medium text-gray-800">Aceitar apenas Y</p>
+              <p className="text-xs text-muted-foreground">Mais seguro, menor risco de chargeback. Pode reduzir a aprovação de alguns cartões. (Padrão recomendado.)</p>
+            </div>
+          </label>
+
+          <label className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer ${accept3dsAttempt ? "border-violet-500 bg-violet-50" : "border-gray-200"}`}>
+            <input type="radio" name="threeds-policy" checked={accept3dsAttempt} onChange={() => setAccept3dsAttempt(true)} className="mt-1 accent-violet-600" />
+            <div>
+              <p className="text-sm font-medium text-gray-800">Aceitar Y e A</p>
+              <p className="text-xs text-muted-foreground">Maior conversão: aceita também tentativas de autenticação registradas (A). Pode aumentar o risco em alguns casos.</p>
+            </div>
+          </label>
         </div>
 
         <Section title="Outros">

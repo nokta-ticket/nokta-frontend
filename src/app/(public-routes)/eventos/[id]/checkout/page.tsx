@@ -52,9 +52,9 @@ const TDS_SCRIPT_URL =
     : "https://3ds-nx-js.stone.com.br/test/v2/3ds2.min.js";
 
 const PAGARME_PUBLIC_KEY = process.env.NEXT_PUBLIC_PAGARME_PUBLIC_KEY ?? "";
-const IS_LIVE_KEY = PAGARME_PUBLIC_KEY.startsWith("pk_live");
-// 3DS: só em produção (cartões de teste 3DS não são Luhn-válidos no sandbox)
-const THREEDS_ENABLED = IS_LIVE_KEY;
+// 3DS é OBRIGATÓRIO para cartão na Nokta (sandbox e produção). A URL do SDK
+// (test/live) é definida por NEXT_PUBLIC_PAGARME_ENV em TDS_SCRIPT_URL.
+const THREEDS_ENABLED = true;
 
 async function tokenizeCard(card: {
   number: string; holder_name: string; exp_month: number; exp_year: number; cvv: string;
@@ -716,6 +716,13 @@ function CheckoutContent() {
         const tds = Array.isArray(tdsResp) ? tdsResp[0] : tdsResp;
         if (!tds?.tds_server_trans_id || tds?.challenge_canceled) {
           throw new Error("Autenticação do cartão não concluída. Tente novamente.");
+        }
+        // Bloqueio antecipado (UX): só Y ou A seguem. A decisão final (Y vs A,
+        // conforme a política do admin) é do backend, usando o status que a
+        // própria Pagar.me devolve.
+        const status = String(tds.trans_status ?? "").toUpperCase();
+        if (status !== "Y" && status !== "A") {
+          throw new Error("Não foi possível autenticar o cartão (3DS). Tente outro cartão.");
         }
         tdsTransactionId = tds.tds_server_trans_id;
         tdsTransStatus = tds.trans_status;
