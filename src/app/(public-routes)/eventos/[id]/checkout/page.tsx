@@ -52,9 +52,10 @@ const TDS_SCRIPT_URL =
     : "https://3ds-nx-js.stone.com.br/test/v2/3ds2.min.js";
 
 const PAGARME_PUBLIC_KEY = process.env.NEXT_PUBLIC_PAGARME_PUBLIC_KEY ?? "";
-// 3DS ligado por padrão; defina NEXT_PUBLIC_3DS_ENABLED=false para testar o
-// restante do fluxo no sandbox (cartões 3DS não são Luhn-válidos p/ cobrança)
-const THREEDS_ENABLED = process.env.NEXT_PUBLIC_3DS_ENABLED !== "false";
+const IS_LIVE_KEY = PAGARME_PUBLIC_KEY.startsWith("pk_live");
+// 3DS e tokenização: ligados em produção, desligados em sandbox de teste
+const THREEDS_ENABLED = IS_LIVE_KEY && process.env.NEXT_PUBLIC_3DS_ENABLED !== "false";
+const TOKENIZE_ENABLED = IS_LIVE_KEY;
 
 async function tokenizeCard(card: {
   number: string; holder_name: string; exp_month: number; exp_year: number; cvv: string;
@@ -721,16 +722,29 @@ function CheckoutContent() {
         tdsTransStatus = tds.trans_status;
       }
 
-      // ── 2) Tokeniza o cartão (número não vai pro nosso servidor) ─────
-      const cardToken = await tokenizeCard({
-        number: cardNumber,
-        holder_name: form.cardName,
-        exp_month: Number(month),
-        exp_year: expYear,
-        cvv: form.cvv,
-      });
+      // ── 2) Tokeniza em produção / envia direto em sandbox ────────────
+      let cardToken: string | undefined;
+      let cardData: any | undefined;
 
-      // ── 3) Checkout com token + endereço (+ 3DS se houver) ──────────
+      if (TOKENIZE_ENABLED) {
+        cardToken = await tokenizeCard({
+          number: cardNumber,
+          holder_name: form.cardName,
+          exp_month: Number(month),
+          exp_year: expYear,
+          cvv: form.cvv,
+        });
+      } else {
+        cardData = {
+          holderName: form.cardName,
+          number: cardNumber,
+          ccv: form.cvv,
+          expiryMonth: month,
+          expiryYear: year,
+        };
+      }
+
+      // ── 3) Checkout ─────────────────────────────────────────────────
       const res = await api.post("/pagamento/checkout", {
         type: "card",
         reservationCode,
@@ -740,7 +754,7 @@ function CheckoutContent() {
         termsAcceptedAt: new Date().toISOString(),
         parcelas,
         protecao: protecaoSelected,
-        cardToken,
+        ...(cardToken ? { cardToken } : { card: cardData }),
         address: { cep: form.cep, state: form.state, city: form.city, number: form.number, neighborhood: form.neighborhood, street: form.street, complemento: form.complemento },
         tdsTransactionId,
         tdsTransStatus,
