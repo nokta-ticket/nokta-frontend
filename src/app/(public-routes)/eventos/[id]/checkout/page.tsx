@@ -53,9 +53,8 @@ const TDS_SCRIPT_URL =
 
 const PAGARME_PUBLIC_KEY = process.env.NEXT_PUBLIC_PAGARME_PUBLIC_KEY ?? "";
 const IS_LIVE_KEY = PAGARME_PUBLIC_KEY.startsWith("pk_live");
-// 3DS e tokenização: ligados em produção, desligados em sandbox de teste
-const THREEDS_ENABLED = IS_LIVE_KEY && process.env.NEXT_PUBLIC_3DS_ENABLED !== "false";
-const TOKENIZE_ENABLED = IS_LIVE_KEY;
+// 3DS: só em produção (cartões de teste 3DS não são Luhn-válidos no sandbox)
+const THREEDS_ENABLED = IS_LIVE_KEY;
 
 async function tokenizeCard(card: {
   number: string; holder_name: string; exp_month: number; exp_year: number; cvv: string;
@@ -722,29 +721,16 @@ function CheckoutContent() {
         tdsTransStatus = tds.trans_status;
       }
 
-      // ── 2) Tokeniza em produção / envia direto em sandbox ────────────
-      let cardToken: string | undefined;
-      let cardData: any | undefined;
+      // ── 2) Tokeniza o cartão (número não passa pelo nosso servidor) ──
+      const cardToken = await tokenizeCard({
+        number: cardNumber,
+        holder_name: form.cardName,
+        exp_month: Number(month),
+        exp_year: expYear,
+        cvv: form.cvv,
+      });
 
-      if (TOKENIZE_ENABLED) {
-        cardToken = await tokenizeCard({
-          number: cardNumber,
-          holder_name: form.cardName,
-          exp_month: Number(month),
-          exp_year: expYear,
-          cvv: form.cvv,
-        });
-      } else {
-        cardData = {
-          holderName: form.cardName,
-          number: cardNumber,
-          ccv: form.cvv,
-          expiryMonth: month,
-          expiryYear: year,
-        };
-      }
-
-      // ── 3) Checkout ─────────────────────────────────────────────────
+      // ── 3) Checkout com token (+ 3DS se houver) ─────────────────────
       const res = await api.post("/pagamento/checkout", {
         type: "card",
         reservationCode,
@@ -754,7 +740,7 @@ function CheckoutContent() {
         termsAcceptedAt: new Date().toISOString(),
         parcelas,
         protecao: protecaoSelected,
-        ...(cardToken ? { cardToken } : { card: cardData }),
+        cardToken,
         address: { cep: form.cep, state: form.state, city: form.city, number: form.number, neighborhood: form.neighborhood, street: form.street, complemento: form.complemento },
         tdsTransactionId,
         tdsTransStatus,
