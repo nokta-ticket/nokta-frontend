@@ -184,7 +184,7 @@ export default function HeaderPrivate() {
           <div className="relative px-6 pt-6 pb-5 bg-gradient-to-br from-purple-50 via-white to-blue-50 border-b">
             <button
               onClick={() => setMobileOpen(false)}
-              className="absolute top-4 right-4 text-indigo-400"
+              className="absolute top-4 right-4 z-10 text-indigo-400 p-1"
               aria-label="Fechar menu"
             >
               <X size={24} strokeWidth={2} />
