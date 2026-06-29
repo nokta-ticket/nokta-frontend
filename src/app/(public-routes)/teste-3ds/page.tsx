@@ -11,9 +11,10 @@
 
 import { useEffect, useState } from "react";
 import api from "@/lib/axios";
+import { TDS_SCRIPT_URL } from "@/lib/pagarme";
 
-// SDK 3DS sandbox (Stone). Produção: .../live/v2/3ds2.min.js
-const TDS_SCRIPT_URL = "https://3ds-nx-js.stone.com.br/test/v2/3ds2.min.js";
+// Página de diagnóstico do 3DS. Os cartões de teste abaixo só funcionam em
+// SANDBOX (NEXT_PUBLIC_PAGARME_ENV != "production").
 
 // Cartões de teste 3DS (doc Pagar.me — Manual de Integração 3DS)
 const TEST_CARDS = [

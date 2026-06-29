@@ -20,6 +20,7 @@ import axios from "axios";
 import { CpfGate } from "./_components/cpf-gate";
 import { cn } from "@/lib/utils";
 import { resolveThumbnailUrl } from "@/lib/media";
+import { PAGARME_PUBLIC_KEY, PAGARME_TOKENS_URL, TDS_SCRIPT_URL, THREEDS_ENABLED } from "@/lib/pagarme";
 
 // ── Types ─────────────────────────────────────────────────────
 type Ticket = {
@@ -45,17 +46,6 @@ const GATEWAY_CARD_26_RATE  = 0.0449;
 const GATEWAY_CARD_718_RATE = 0.0499;
 const GATEWAY_CARD_FIXED    = 0.99;
 
-// ── 3DS (Stone/Pagar.me) ──────────────────────────────────────
-const TDS_SCRIPT_URL =
-  process.env.NEXT_PUBLIC_PAGARME_ENV === "production"
-    ? "https://3ds-nx-js.stone.com.br/live/v2/3ds2.min.js"
-    : "https://3ds-nx-js.stone.com.br/test/v2/3ds2.min.js";
-
-const PAGARME_PUBLIC_KEY = process.env.NEXT_PUBLIC_PAGARME_PUBLIC_KEY ?? "";
-// 3DS é OBRIGATÓRIO para cartão na Nokta (sandbox e produção). A URL do SDK
-// (test/live) é definida por NEXT_PUBLIC_PAGARME_ENV em TDS_SCRIPT_URL.
-const THREEDS_ENABLED = true;
-
 async function tokenizeCard(card: {
   number: string; holder_name: string; exp_month: number; exp_year: number; cvv: string;
 }): Promise<string> {
@@ -65,7 +55,7 @@ async function tokenizeCard(card: {
   // billing_address NÃO é tokenizado — vai separado no checkout
   try {
     const { data } = await axios.post(
-      `https://api.pagar.me/core/v5/tokens?appId=${PAGARME_PUBLIC_KEY}`,
+      PAGARME_TOKENS_URL,
       { type: "card", card },
       { headers: { "Content-Type": "application/json" } },
     );
