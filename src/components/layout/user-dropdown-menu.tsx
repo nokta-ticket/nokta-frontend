@@ -26,7 +26,7 @@ export function UserDropdownMenu() {
   const router = useRouter()
   const pathname = usePathname()
   const menuRef = useRef<HTMLDivElement>(null)
-  const { role, signOut } = useAuth()
+  const { role, signOut, user } = useAuth()
   const isProdutor = role === 'PRODUTOR'
   const isAdmin = role === 'ADMIN'
   const [open, setOpen] = useState(false)
@@ -63,7 +63,11 @@ export function UserDropdownMenu() {
         className="cursor-pointer flex items-center rounded-full border border-gray-300 px-3 py-1 transition hover:shadow-sm"
       >
         <Avatar className="h-10 w-10 rounded-full">
-          <AvatarImage src="/user_default.png" alt="Usuário" />
+          {user?.fotoPerfil ? (
+            <AvatarImage src={user.fotoPerfil} alt="Usuário" />
+          ) : (
+            <AvatarImage src="/user_default.png" alt="Usuário" />
+          )}
           <AvatarFallback>
             <img src="/user_default.png" alt="Usuário padrão" />
           </AvatarFallback>
@@ -102,11 +106,11 @@ export function UserDropdownMenu() {
 
                 <li>
                   <Link
-                    href="/meus-dados"
+                    href="/perfil"
                     className="flex items-center gap-2 rounded-md px-3 py-2 hover:bg-gray-100"
                   >
                     <User size={16} className="text-gray-500" />
-                    Meus Dados
+                    Meu Perfil
                   </Link>
                 </li>
 

@@ -196,7 +196,7 @@ export default function HeaderPrivate() {
             <div className="relative flex flex-col items-center text-center">
               <div className="h-20 w-20 rounded-full bg-white p-1 shadow-md">
                 <Avatar className="h-full w-full rounded-full">
-                  <AvatarImage src={undefined} />
+                  {user?.fotoPerfil && <AvatarImage src={user.fotoPerfil} alt={fullName} />}
                   <AvatarFallback className="bg-violet-100 text-[#9944CC] font-bold text-2xl rounded-full h-full w-full">
                     {fullName ? fullName[0].toUpperCase() : <User size={24} />}
                   </AvatarFallback>

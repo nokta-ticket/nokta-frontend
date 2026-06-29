@@ -28,6 +28,7 @@ export interface UserData {
   nomeArtistico?: string | null;
   tipoPessoa?: "PF" | "PJ" | null;
   chavePix?: string | null;
+  fotoPerfil?: string | null;
   endereco?: {
     cep?: string | null;
     logradouro?: string | null;
@@ -101,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         nomeArtistico: data.nomeArtistico ?? null,
         tipoPessoa: data.tipoPessoa ?? null,
         chavePix: data.chavePix ?? null,
+        fotoPerfil: data.fotoPerfil ?? null,
         endereco: data.endereco ?? null,
       });
     } catch (err: any) {
