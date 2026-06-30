@@ -704,15 +704,17 @@ function CheckoutContent() {
         }, orderData);
 
         const tds = Array.isArray(tdsResp) ? tdsResp[0] : tdsResp;
+        // Diagnóstico: expõe o resultado bruto do 3DS no console do navegador.
+        try { console.log("[3DS] resultado TDS.init:", JSON.stringify(tds)); } catch { console.log("[3DS] resultado TDS.init:", tds); }
         if (!tds?.tds_server_trans_id || tds?.challenge_canceled) {
-          throw new Error("Autenticação do cartão não concluída. Tente novamente.");
+          throw new Error(`Autenticação 3DS não concluída (${tds?.challenge_canceled ? "cancelada pelo usuário" : "sem transaction_id"}).`);
         }
         // Bloqueio antecipado (UX): só Y ou A seguem. A decisão final (Y vs A,
         // conforme a política do admin) é do backend, usando o status que a
         // própria Pagar.me devolve.
         const status = String(tds.trans_status ?? "").toUpperCase();
         if (status !== "Y" && status !== "A") {
-          throw new Error("Não foi possível autenticar o cartão (3DS). Tente outro cartão.");
+          throw new Error(`Não foi possível autenticar o cartão (3DS status: ${status || "vazio"}).`);
         }
         tdsTransactionId = tds.tds_server_trans_id;
         tdsTransStatus = tds.trans_status;
