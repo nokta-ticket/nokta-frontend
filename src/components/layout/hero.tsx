@@ -61,15 +61,14 @@ export default function HeroSlider() {
 
   // Mobile
   const [mobileCurrent, setMobileCurrent] = useState(0);
-  const isDragging = useRef(false);
+  // Posição do toque inicial: distingue clique (navega) de arraste (desliza).
+  const pointerStart = useRef<{ x: number; y: number } | null>(null);
   const canLoop = eventos.length > 1;
   const [mobileSliderRef, mobileInstRef] = useKeenSlider<HTMLDivElement>(
     {
       loop: canLoop,
       slides: { perView: canLoop ? 1.15 : 1, spacing: 12, origin: 'center' },
       slideChanged(s) { setMobileCurrent(s.track.details.rel); },
-      dragStarted()   { isDragging.current = true; },
-      dragEnded()     { setTimeout(() => { isDragging.current = false; }, 50); },
       disabled: eventos.length === 0,
     },
     [canLoop ? NoAutoplayPlugin : NoAutoplayPlugin]
@@ -204,6 +203,9 @@ export default function HeroSlider() {
           ref={mobileSliderRef}
           className="keen-slider"
           style={{ height: SLIDE_H, touchAction: 'pan-y', overscrollBehavior: 'none' }}
+          onPointerDownCapture={(e) => {
+            pointerStart.current = { x: e.clientX, y: e.clientY };
+          }}
         >
           {eventos.map((ev, i) => {
             const src = resolveThumbnailUrl(ev.thumbnails?.[0], null);
@@ -212,9 +214,18 @@ export default function HeroSlider() {
               <div
                 key={ev.id}
                 className="keen-slider__slide relative cursor-pointer"
-                onClick={() => {
-                  if (!isDragging.current && isActive) {
+                onClick={(e) => {
+                  // Se o dedo percorreu distância, foi arraste — não navega.
+                  const start = pointerStart.current;
+                  const moved = start
+                    ? Math.hypot(e.clientX - start.x, e.clientY - start.y)
+                    : 0;
+                  if (moved > 10) return;
+                  if (isActive) {
                     router.push(`/eventos/${ev.slug ?? ev.id}`);
+                  } else {
+                    // Toque num banner lateral: traz ele para o centro.
+                    mobileInstRef.current?.moveToIdx(i);
                   }
                 }}
               >
