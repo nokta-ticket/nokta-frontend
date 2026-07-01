@@ -215,18 +215,23 @@ export default function HeroSlider() {
                 key={ev.id}
                 className="keen-slider__slide relative cursor-pointer"
                 onClick={(e) => {
-                  // Se o dedo percorreu distância, foi arraste — não navega.
                   const start = pointerStart.current;
-                  const moved = start
-                    ? Math.hypot(e.clientX - start.x, e.clientY - start.y)
-                    : 0;
-                  if (moved > 10) return;
-                  if (isActive) {
-                    router.push(`/eventos/${ev.slug ?? ev.id}`);
-                  } else {
-                    // Toque num banner lateral: traz ele para o centro.
-                    mobileInstRef.current?.moveToIdx(i);
+                  const dx = start ? Math.abs(e.clientX - start.x) : 0;
+                  const dy = start ? Math.abs(e.clientY - start.y) : 0;
+
+                  // Movimento total pequeno em qualquer direção = tap.
+                  if (dx <= 10 && dy <= 10) {
+                    if (isActive) {
+                      router.push(`/eventos/${ev.slug ?? ev.id}`);
+                    } else {
+                      // Tap num banner lateral: só centraliza.
+                      mobileInstRef.current?.moveToIdx(i);
+                    }
+                    return;
                   }
+
+                  // dx > 10 e dx > dy → swipe horizontal: não navega (o slider desliza).
+                  // dy > dx → gesto vertical: deixa o scroll rolar, não navega.
                 }}
               >
                 {/* inner div com altura variável, centralizado verticalmente */}
