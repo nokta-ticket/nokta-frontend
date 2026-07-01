@@ -2,11 +2,13 @@
 
 import "keen-slider/keen-slider.min.css";
 import { useKeenSlider } from "keen-slider/react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "@/lib/toast";
+import { useAuth } from "@/context/AuthContext";
+import { LoginModal } from "@/components/auth/login-modal";
 import {
   CalendarDays,
   Clock,
@@ -111,10 +113,13 @@ function calcInstallmentCents(
 
 export default function IngressoDetalhesPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const { isAuthenticated } = useAuth();
   const [evento, setEvento] = useState<EventDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentSlide, setSlide] = useState(0);
   const [policyModal, setPolicyModal] = useState<PolicyModal>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [routeOpen, setRouteOpen] = useState(false);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [quantities, setQuantities] = useState<Record<number, number>>({});
@@ -960,20 +965,25 @@ export default function IngressoDetalhesPage() {
             </button>
           )}
 
-          <Link href={totalSelecionado > 0 ? buildCheckoutUrl() : '#'} className="block">
-            <button
-              className={cn(
-                'w-full py-3.5 rounded-xl font-bold text-[15px] text-white transition',
-                totalSelecionado > 0
-                  ? 'bg-gradient-to-r from-[#9944CC] to-[#3399FF] hover:brightness-110 shadow-lg shadow-violet-200'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              )}
-            >
-              {totalSelecionado > 0
-                ? `Continuar · ${totalSelecionado} ingresso${totalSelecionado > 1 ? 's' : ''}`
-                : 'Selecione um ingresso'}
-            </button>
-          </Link>
+          <button
+            disabled={totalSelecionado === 0}
+            onClick={() => {
+              if (totalSelecionado === 0) return;
+              // Gate de login logo ao continuar (antes do checkout).
+              if (!isAuthenticated) { setShowLoginModal(true); return; }
+              router.push(buildCheckoutUrl());
+            }}
+            className={cn(
+              'block w-full py-3.5 rounded-xl font-bold text-[15px] text-white transition',
+              totalSelecionado > 0
+                ? 'bg-gradient-to-r from-[#9944CC] to-[#3399FF] hover:brightness-110 shadow-lg shadow-violet-200'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            )}
+          >
+            {totalSelecionado > 0
+              ? `Continuar · ${totalSelecionado} ingresso${totalSelecionado > 1 ? 's' : ''}`
+              : 'Selecione um ingresso'}
+          </button>
         </div>
       )}
       <div className="h-28 lg:hidden" />
@@ -1015,6 +1025,16 @@ export default function IngressoDetalhesPage() {
           )}
         </SheetContent>
       </Sheet>
+
+      {showLoginModal && (
+        <LoginModal
+          onClose={() => setShowLoginModal(false)}
+          onSuccess={() => {
+            setShowLoginModal(false);
+            router.push(buildCheckoutUrl());
+          }}
+        />
+      )}
     </main>
   );
 }
