@@ -704,8 +704,6 @@ function CheckoutContent() {
         }, orderData);
 
         const tds = Array.isArray(tdsResp) ? tdsResp[0] : tdsResp;
-        // Diagnóstico: expõe o resultado bruto do 3DS no console do navegador.
-        try { console.log("[3DS] resultado TDS.init:", JSON.stringify(tds)); } catch { console.log("[3DS] resultado TDS.init:", tds); }
         if (!tds?.tds_server_trans_id || tds?.challenge_canceled) {
           throw new Error(`Autenticação 3DS não concluída (${tds?.challenge_canceled ? "cancelada pelo usuário" : "sem transaction_id"}).`);
         }
