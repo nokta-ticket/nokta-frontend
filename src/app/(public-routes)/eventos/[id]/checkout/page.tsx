@@ -20,7 +20,7 @@ import axios from "axios";
 import { CpfGate } from "./_components/cpf-gate";
 import { cn } from "@/lib/utils";
 import { resolveThumbnailUrl } from "@/lib/media";
-import { PAGARME_PUBLIC_KEY, PAGARME_TOKENS_URL, TDS_SCRIPT_URL, THREEDS_ENABLED } from "@/lib/pagarme";
+import { THREEDS_ENABLED, tokenizeCard, loadTdsScript } from "@/lib/pagarme";
 
 // ── Types ─────────────────────────────────────────────────────
 type Ticket = {
@@ -45,47 +45,6 @@ const GATEWAY_CARD_1X_RATE  = 0.0319;
 const GATEWAY_CARD_26_RATE  = 0.0449;
 const GATEWAY_CARD_718_RATE = 0.0499;
 const GATEWAY_CARD_FIXED    = 0.99;
-
-async function tokenizeCard(card: {
-  number: string; holder_name: string; exp_month: number; exp_year: number; cvv: string;
-}): Promise<string> {
-  if (!PAGARME_PUBLIC_KEY) {
-    throw new Error("Chave pública da Pagar.me não configurada (NEXT_PUBLIC_PAGARME_PUBLIC_KEY). Recarregue após o redeploy.");
-  }
-  // billing_address NÃO é tokenizado — vai separado no checkout
-  try {
-    const { data } = await axios.post(
-      PAGARME_TOKENS_URL,
-      { type: "card", card },
-      { headers: { "Content-Type": "application/json" } },
-    );
-    if (!data?.id) throw new Error("Falha ao tokenizar o cartão.");
-    return data.id;
-  } catch (e: any) {
-    const data = e?.response?.data;
-    const parts: string[] = [];
-    if (data?.message) parts.push(String(data.message));
-    if (data?.errors) parts.push(JSON.stringify(data.errors));
-    const detail = parts.join(" | ") || e?.message || "erro desconhecido";
-    throw new Error(`Tokenização: ${detail}`);
-  }
-}
-
-let tdsScriptPromise: Promise<void> | null = null;
-function loadTdsScript(): Promise<void> {
-  if (typeof window === "undefined") return Promise.resolve();
-  if ((window as any).TDS) return Promise.resolve();
-  if (tdsScriptPromise) return tdsScriptPromise;
-  tdsScriptPromise = new Promise((resolve, reject) => {
-    const s = document.createElement("script");
-    s.src = TDS_SCRIPT_URL;
-    s.async = true;
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error("Falha ao carregar a autenticação 3DS."));
-    document.body.appendChild(s);
-  });
-  return tdsScriptPromise;
-}
 
 // ── Helpers ───────────────────────────────────────────────────
 const isGratis = (v: number) => Number(v) === 0;

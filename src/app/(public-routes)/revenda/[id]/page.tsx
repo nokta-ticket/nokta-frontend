@@ -8,6 +8,7 @@ import api, { getErrorMessage } from "@/lib/axios";
 import { resolveMediaUrl } from "@/lib/media";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
+import { ResalePaymentSheet } from "./_components/resale-payment-sheet";
 
 interface ResaleDetail {
   id: number;
@@ -49,6 +50,7 @@ export default function ComprarRevendaPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [buying, setBuying] = useState(false);
+  const [paying, setPaying] = useState(false);
   const [done, setDone] = useState(false);
   const [selectedTipo, setSelectedTipo] = useState<string>("");
   const [selectedCategoria, setSelectedCategoria] = useState<string>("");
@@ -81,22 +83,14 @@ export default function ComprarRevendaPage() {
     load();
   }, [id]);
 
-  async function handleBuy() {
+  function handleBuy() {
     if (!user) {
       toast.error("Você precisa estar logado para comprar.");
       router.push("/login");
       return;
     }
-    try {
-      setBuying(true);
-      await api.post(`/revenda/${id}/comprar`);
-      setDone(true);
-      toast.success("Ingresso comprado com sucesso!");
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message ?? getErrorMessage(err, "Erro ao comprar ingresso."));
-    } finally {
-      setBuying(false);
-    }
+    // Abre o fluxo de pagamento (PIX/cartão). O sucesso só aparece após pagamento confirmado.
+    setPaying(true);
   }
 
   if (loading) {
@@ -487,6 +481,16 @@ export default function ComprarRevendaPage() {
 
         </div>
       </div>
+
+      {paying && resale && (
+        <ResalePaymentSheet
+          resaleId={resale.id}
+          buyerPrice={resale.buyerPrice ?? resale.originalPrice}
+          eventoNome={resale.evento?.nome ?? "Evento"}
+          onClose={() => setPaying(false)}
+          onSuccess={() => { setPaying(false); setDone(true); }}
+        />
+      )}
     </>
   );
 }
