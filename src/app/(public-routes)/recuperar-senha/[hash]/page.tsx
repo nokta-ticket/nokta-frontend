@@ -20,7 +20,7 @@ export default function RecuperarSenha() {
     try {
       setLoading(true);
       const { data } = await api.get(
-        "/validate-reset-password-request/" + hash
+        "/auth/validate-reset-password-request/" + hash
       );
     } catch (error: unknown) {
       if (error instanceof AxiosError) {
@@ -47,7 +47,7 @@ export default function RecuperarSenha() {
 
     try {
       setLoading(true);
-      const { data } = await api.post("/reset-password/" + hash, { password });
+      const { data } = await api.post("/auth/reset-password/" + hash, { password });
       toast.success("Senha atualizada com sucesso");
       router.push("/login");
     } catch (error: unknown) {
