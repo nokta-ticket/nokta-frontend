@@ -1,47 +1,48 @@
 import {
   Home,
-  Ticket,
-  Store,
+  CalendarDays,
   DollarSign,
   BarChart3,
+  ScanLine,
+  UtensilsCrossed,
+  CalendarClock,
   Users,
   Settings,
 } from "lucide-react";
 import type { ReactNode } from "react";
+import type { ProductContextKey } from "@/context/ProductContext";
 
-export interface DashboardMenuItem {
+export interface MenuItem {
   label: string;
   icon: ReactNode;
   href: string;
 }
 
-/**
- * Monta o menu da sidebar a partir dos módulos ativos da org.
- * Regras:
- *  - Início, Financeiro, Insights, Equipe, Configurações: SEMPRE.
- *  - Tickets: só se o módulo "tickets" estiver ativo.
- *  - Venue: só se o módulo "venue" estiver ativo.
- */
-export function buildMenu(activeModules: string[]): DashboardMenuItem[] {
-  const has = (m: string) => activeModules.includes(m);
+// Menu de cada contexto de produto. Financeiro e Insights vivem DENTRO de cada
+// contexto (isolados) — nunca somam dados entre produtos.
+const CONTEXT_MENUS: Record<ProductContextKey, MenuItem[]> = {
+  tickets: [
+    { label: "Início", icon: <Home size={16} />, href: "/dashboard/tickets/inicio" },
+    { label: "Eventos", icon: <CalendarDays size={16} />, href: "/dashboard/tickets/eventos" },
+    { label: "Financeiro", icon: <DollarSign size={16} />, href: "/dashboard/tickets/financeiro" },
+    { label: "Insights", icon: <BarChart3 size={16} />, href: "/dashboard/tickets/insights" },
+  ],
+  venue: [
+    { label: "Início", icon: <Home size={16} />, href: "/dashboard/venue/inicio" },
+    { label: "POS", icon: <ScanLine size={16} />, href: "/dashboard/venue/pos" },
+    { label: "Cardápio", icon: <UtensilsCrossed size={16} />, href: "/dashboard/venue/cardapio" },
+    { label: "Reservas", icon: <CalendarClock size={16} />, href: "/dashboard/venue/reservas" },
+    { label: "Financeiro", icon: <DollarSign size={16} />, href: "/dashboard/venue/financeiro" },
+    { label: "Insights", icon: <BarChart3 size={16} />, href: "/dashboard/venue/insights" },
+  ],
+};
 
-  const items: DashboardMenuItem[] = [
-    { label: "Início", icon: <Home size={16} />, href: "/dashboard/inicio" },
-  ];
+// Seção global (da organização, não do produto) — sempre visível, abaixo.
+export const GLOBAL_MENU: MenuItem[] = [
+  { label: "Equipe", icon: <Users size={16} />, href: "/dashboard/equipe" },
+  { label: "Configurações", icon: <Settings size={16} />, href: "/dashboard/configuracoes" },
+];
 
-  if (has("tickets")) {
-    items.push({ label: "Tickets", icon: <Ticket size={16} />, href: "/dashboard/tickets" });
-  }
-  if (has("venue")) {
-    items.push({ label: "Venue", icon: <Store size={16} />, href: "/dashboard/venue" });
-  }
-
-  items.push(
-    { label: "Financeiro", icon: <DollarSign size={16} />, href: "/dashboard/financeiro" },
-    { label: "Insights", icon: <BarChart3 size={16} />, href: "/dashboard/insights" },
-    { label: "Equipe", icon: <Users size={16} />, href: "/dashboard/equipe" },
-    { label: "Configurações", icon: <Settings size={16} />, href: "/dashboard/configuracoes" },
-  );
-
-  return items;
+export function contextMenu(context: ProductContextKey): MenuItem[] {
+  return CONTEXT_MENUS[context];
 }

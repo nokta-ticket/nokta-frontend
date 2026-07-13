@@ -1,10 +1,5 @@
-import { Placeholder } from "../_components/placeholder";
+import { redirect } from "next/navigation";
 
-export default function VenuePage() {
-  return (
-    <Placeholder
-      title="Venue"
-      description="POS / caixa / comanda de bar & beach club. (módulo futuro — placeholder)"
-    />
-  );
+export default function VenueIndex() {
+  redirect("/dashboard/venue/inicio");
 }
