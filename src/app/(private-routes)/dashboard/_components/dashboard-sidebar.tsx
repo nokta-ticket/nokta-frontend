@@ -14,16 +14,15 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useOrganizations } from "@/context/OrganizationContext";
-import { buildMenu } from "./build-menu";
+import { useProductContext } from "@/context/ProductContext";
+import { contextMenu, GLOBAL_MENU, type MenuItem } from "./build-menu";
+import { ContextSwitcher } from "./context-switcher";
 
-function DashboardNav() {
+function NavList({ items }: { items: MenuItem[] }) {
   const pathname = usePathname();
-  const { activeModuleKeys } = useOrganizations();
-  const items = buildMenu(activeModuleKeys);
 
   return (
-    <nav className="flex flex-col gap-2 text-white text-md">
+    <nav className="flex flex-col gap-1 text-white text-md">
       {items.map((item) => {
         const isActive =
           pathname === item.href || pathname.startsWith(item.href + "/");
@@ -44,15 +43,24 @@ function DashboardNav() {
   );
 }
 
-// Sidebar = apenas logo + nav. O menu do usuário vive na topbar.
+// Sidebar: logo → switcher de contexto → menu do contexto → (rodapé) global.
 function SidebarInner() {
+  const { active } = useProductContext();
+
   return (
     <>
       <div className="flex justify-center">
         <Image src="/logo-painel.svg" alt="Nokta Tickets" width={80} height={80} />
       </div>
-      <Separator className="my-6 bg-white/10" />
-      <DashboardNav />
+
+      <div className="my-5">
+        <ContextSwitcher />
+      </div>
+
+      <NavList items={contextMenu(active)} />
+
+      <Separator className="my-4 bg-white/10 mt-auto" />
+      <NavList items={GLOBAL_MENU} />
     </>
   );
 }

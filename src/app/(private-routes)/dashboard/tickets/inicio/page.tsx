@@ -8,17 +8,17 @@ import {
   TicketCheck,
 } from "lucide-react";
 import api, { getErrorMessage } from "@/lib/axios";
-import { PageContainer } from "../_components/page/page-container";
-import { PageHeader } from "../_components/page/page-header";
-import { ContentGrid } from "../_components/page/content-grid";
-import { MetricCard } from "../_components/metric-card";
-import { DataTable, type Column } from "../_components/data-table";
-import { ErrorState } from "../_components/states/error-state";
-import { EmptyState } from "../_components/states/empty-state";
+import { PageContainer } from "../../_components/page/page-container";
+import { PageHeader } from "../../_components/page/page-header";
+import { ContentGrid } from "../../_components/page/content-grid";
+import { MetricCard } from "../../_components/metric-card";
+import { DataTable, type Column } from "../../_components/data-table";
+import { ErrorState } from "../../_components/states/error-state";
+import { EmptyState } from "../../_components/states/empty-state";
 import {
   MetricsSkeleton,
   TableSkeleton,
-} from "../_components/states/loading-state";
+} from "../../_components/states/loading-state";
 
 interface Metrics {
   ingressosVendidos: number;
@@ -44,7 +44,7 @@ const STATUS_LABEL: Record<number, string> = {
   4: "Finalizado",
 };
 
-export default function InicioPage() {
+export default function TicketsInicioPage() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [eventos, setEventos] = useState<EventoRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,8 +97,8 @@ export default function InicioPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="Início"
-        description="Resumo da operação da sua organização."
+        title="Início — Tickets"
+        description="Resumo da operação de bilheteria da sua organização."
       />
 
       {error ? (
@@ -142,7 +142,7 @@ export default function InicioPage() {
             {eventos.length === 0 ? (
               <EmptyState
                 title="Nenhum evento ainda"
-                description="Crie seu primeiro evento em Tickets para ver a atividade aqui."
+                description="Crie seu primeiro evento em Eventos para ver a atividade aqui."
               />
             ) : (
               <DataTable columns={columns} data={eventos} pageSize={5} />
