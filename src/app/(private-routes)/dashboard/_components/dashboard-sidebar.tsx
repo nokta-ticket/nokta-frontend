@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { useAuth } from "@/context/AuthContext";
 import { useOrganizations } from "@/context/OrganizationContext";
 import { buildMenu } from "./build-menu";
 
@@ -45,27 +44,7 @@ function DashboardNav() {
   );
 }
 
-function DashboardUserFooter() {
-  const { user } = useAuth();
-  const fullName = user
-    ? `${user.nome ?? ""} ${user.sobrenome ?? ""}`.trim()
-    : "";
-
-  return (
-    <div className="px-1 pb-2 text-xs text-white/70">
-      <span className="block font-semibold text-white truncate max-w-[180px]">
-        {fullName || "Usuário"}
-      </span>
-      <span className="block text-white/50 truncate max-w-[180px]">
-        {user?.email ?? ""}
-      </span>
-      <Link href="/" className="mt-2 inline-block text-white/60 hover:text-white">
-        Voltar para o site
-      </Link>
-    </div>
-  );
-}
-
+// Sidebar = apenas logo + nav. O menu do usuário vive na topbar.
 function SidebarInner() {
   return (
     <>
@@ -74,8 +53,6 @@ function SidebarInner() {
       </div>
       <Separator className="my-6 bg-white/10" />
       <DashboardNav />
-      <Separator className="my-4 bg-white/10 mt-auto" />
-      <DashboardUserFooter />
     </>
   );
 }
