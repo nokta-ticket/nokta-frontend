@@ -5,8 +5,8 @@ export default function VenueInsightsPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="Insights — Venue"
-        description="Inteligência de consumo do bar / beach club. Isolado do Tickets. (em construção)"
+        title="Insights"
+        description="Analise o desempenho operacional e comercial do estabelecimento."
       />
     </PageContainer>
   );
