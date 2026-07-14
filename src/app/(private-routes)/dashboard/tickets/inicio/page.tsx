@@ -1,13 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import {
   CalendarCheck,
   DollarSign,
   Ticket,
   TicketCheck,
 } from "lucide-react";
-import api, { getErrorMessage } from "@/lib/axios";
+import { getErrorMessage } from "@/lib/axios";
 import { PageContainer } from "../../_components/page/page-container";
 import { PageHeader } from "../../_components/page/page-header";
 import { ContentGrid } from "../../_components/page/content-grid";
@@ -19,20 +18,10 @@ import {
   MetricsSkeleton,
   TableSkeleton,
 } from "../../_components/states/loading-state";
-
-interface Metrics {
-  ingressosVendidos: number;
-  ingressosDisponiveis: number;
-  arrecadacaoTotal: number;
-  eventosCriados: number;
-}
-
-interface EventoRow {
-  id: number;
-  nome?: string;
-  data?: string;
-  status?: number | string;
-}
+import {
+  useTicketsInicio,
+  type EventoRow,
+} from "../../_hooks/use-tickets-inicio";
 
 const brl = (v: number) =>
   v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -45,36 +34,8 @@ const STATUS_LABEL: Record<number, string> = {
 };
 
 export default function TicketsInicioPage() {
-  const [metrics, setMetrics] = useState<Metrics | null>(null);
-  const [eventos, setEventos] = useState<EventoRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [m, e] = await Promise.all([
-        api.get<Metrics>("/produtor/metrics"),
-        api.get("/produtor/eventos"),
-      ]);
-      setMetrics(m.data);
-      const list = Array.isArray(e.data?.data)
-        ? e.data.data
-        : Array.isArray(e.data)
-          ? e.data
-          : [];
-      setEventos(list);
-    } catch (err) {
-      setError(getErrorMessage(err, "Não foi possível carregar o início."));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const { metrics, eventos, isLoading, isError, error, refetch } =
+    useTicketsInicio();
 
   const columns: Column<EventoRow>[] = [
     { key: "nome", header: "Evento", render: (r) => r.nome ?? "—" },
@@ -101,9 +62,15 @@ export default function TicketsInicioPage() {
         description="Resumo da operação de bilheteria da sua organização."
       />
 
-      {error ? (
-        <ErrorState description={error} onRetry={() => void load()} />
-      ) : loading ? (
+      {isError ? (
+        <ErrorState
+          description={getErrorMessage(
+            error,
+            "Não foi possível carregar o início.",
+          )}
+          onRetry={() => refetch()}
+        />
+      ) : isLoading ? (
         <>
           <MetricsSkeleton />
           <TableSkeleton />
