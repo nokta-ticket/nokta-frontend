@@ -5,8 +5,8 @@ export default function VenueFinanceiroPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="Financeiro — Venue"
-        description="Saldo e repasses do bar / beach club. Isolado do Tickets. (em construção)"
+        title="Financeiro"
+        description="Acompanhe vendas, caixas, despesas e o resultado do estabelecimento."
       />
     </PageContainer>
   );

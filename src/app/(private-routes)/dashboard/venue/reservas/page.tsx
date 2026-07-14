@@ -6,7 +6,7 @@ export default function VenueReservasPage() {
     <PageContainer>
       <PageHeader
         title="Reservas"
-        description="Mesas, comandas e reservas do Venue. (módulo futuro — placeholder)"
+        description="Organize reservas, confirmações, chegadas e fila de espera."
       />
     </PageContainer>
   );
