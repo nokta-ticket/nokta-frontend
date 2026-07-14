@@ -3,11 +3,13 @@ import "@/app/globals.css";
 import { OrganizationProvider } from "@/context/OrganizationContext";
 import { PeriodProvider } from "@/context/PeriodContext";
 import { ProductProvider } from "@/context/ProductContext";
+import { DashboardQueryProvider } from "./_components/query-provider";
 import { DashboardSidebar } from "./_components/dashboard-sidebar";
 import { Topbar } from "./_components/topbar";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
+    <DashboardQueryProvider>
     <OrganizationProvider>
       <PeriodProvider>
         <ProductProvider>
@@ -22,5 +24,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </ProductProvider>
       </PeriodProvider>
     </OrganizationProvider>
+    </DashboardQueryProvider>
   );
 }
