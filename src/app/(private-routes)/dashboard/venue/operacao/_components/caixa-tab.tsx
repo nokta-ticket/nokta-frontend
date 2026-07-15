@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,8 +52,11 @@ function RegisterFormDialog({
   loading: boolean;
 }) {
   const [nome, setNome] = useState("");
+  useEffect(() => {
+    if (open) setNome("");
+  }, [open]);
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (v) setNome(""); onOpenChange(v); }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader><DialogTitle>Novo caixa</DialogTitle></DialogHeader>
         <div className="space-y-2">
@@ -85,8 +88,13 @@ function OpenSessionDialog({
   const { open } = useVenueCashSessionMutations(orgId, locationId);
   const [openingCents, setOpeningCents] = useState(0);
 
+  useEffect(() => {
+    if (register !== null) setOpeningCents(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [register?.id]);
+
   return (
-    <Dialog open={register !== null} onOpenChange={(v) => { if (v) setOpeningCents(0); onOpenChange(v); }}>
+    <Dialog open={register !== null} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader><DialogTitle>Abrir caixa — {register?.nome}</DialogTitle></DialogHeader>
         <MoneyField label="Valor inicial" cents={openingCents} onChange={setOpeningCents} />
@@ -129,8 +137,16 @@ function MovementDialog({
   const [amountCents, setAmountCents] = useState(0);
   const [reason, setReason] = useState("");
 
+  useEffect(() => {
+    if (sessionId !== null) {
+      setType("SUPPLY");
+      setAmountCents(0);
+      setReason("");
+    }
+  }, [sessionId]);
+
   return (
-    <Dialog open={sessionId !== null} onOpenChange={(v) => { if (v) { setType("SUPPLY"); setAmountCents(0); setReason(""); } onOpenChange(v); }}>
+    <Dialog open={sessionId !== null} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader><DialogTitle>Movimentação de caixa</DialogTitle></DialogHeader>
         <div className="space-y-4">
@@ -191,8 +207,13 @@ function CloseSessionDialog({
   const [countedCents, setCountedCents] = useState(expectedCents);
   const difference = countedCents - expectedCents;
 
+  useEffect(() => {
+    if (sessionId !== null) setCountedCents(expectedCents);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]);
+
   return (
-    <Dialog open={sessionId !== null} onOpenChange={(v) => { if (v) setCountedCents(expectedCents); onOpenChange(v); }}>
+    <Dialog open={sessionId !== null} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader><DialogTitle>Fechar caixa</DialogTitle></DialogHeader>
         <div className="space-y-3">

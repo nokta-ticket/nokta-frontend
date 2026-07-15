@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,19 +53,18 @@ function VariantFormDialog({
   const [priceCents, setPriceCents] = useState(variant?.priceCents ?? 0);
   const [stockControl, setStockControl] = useState<VenueStockControl>(variant?.stockControl ?? "NONE");
 
+  useEffect(() => {
+    if (open) {
+      setNome(variant?.nome ?? "");
+      setSku(variant?.sku ?? "");
+      setPriceCents(variant?.priceCents ?? 0);
+      setStockControl(variant?.stockControl ?? "NONE");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, variant?.id]);
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (v) {
-          setNome(variant?.nome ?? "");
-          setSku(variant?.sku ?? "");
-          setPriceCents(variant?.priceCents ?? 0);
-          setStockControl(variant?.stockControl ?? "NONE");
-        }
-        onOpenChange(v);
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{variant ? "Editar variação" : "Nova variação"}</DialogTitle>

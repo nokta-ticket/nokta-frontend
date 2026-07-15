@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,8 +45,11 @@ function AreaFormDialog({
   loading: boolean;
 }) {
   const [nome, setNome] = useState("");
+  useEffect(() => {
+    if (open) setNome("");
+  }, [open]);
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (v) setNome(""); onOpenChange(v); }}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader><DialogTitle>Nova área</DialogTitle></DialogHeader>
         <div className="space-y-2">
@@ -81,11 +84,21 @@ function TableFormDialog({
   const [nome, setNome] = useState("");
   const [capacidade, setCapacidade] = useState("");
 
+  // Radix só chama onOpenChange para fechamentos internos (Escape, overlay,
+  // Close) — abrir o dialog é uma mudança de prop externa e NÃO dispara esse
+  // callback. Por isso o reset/preenchimento inicial precisa reagir a `open`
+  // via useEffect, nunca só dentro do onOpenChange.
+  useEffect(() => {
+    if (open) {
+      setAreaId(areas[0] ? String(areas[0].id) : "");
+      setNome("");
+      setCapacidade("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => { if (v) { setAreaId(areas[0] ? String(areas[0].id) : ""); setNome(""); setCapacidade(""); } onOpenChange(v); }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader><DialogTitle>Nova mesa</DialogTitle></DialogHeader>
         <div className="space-y-4">

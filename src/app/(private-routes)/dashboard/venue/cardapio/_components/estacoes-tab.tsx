@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,17 +39,16 @@ function StationFormDialog({
   const [nome, setNome] = useState(station?.nome ?? "");
   const [tipo, setTipo] = useState(station?.tipo ?? "");
 
+  useEffect(() => {
+    if (open) {
+      setNome(station?.nome ?? "");
+      setTipo(station?.tipo ?? "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, station?.id]);
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (v) {
-          setNome(station?.nome ?? "");
-          setTipo(station?.tipo ?? "");
-        }
-        onOpenChange(v);
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{station ? "Editar estação" : "Nova estação"}</DialogTitle>

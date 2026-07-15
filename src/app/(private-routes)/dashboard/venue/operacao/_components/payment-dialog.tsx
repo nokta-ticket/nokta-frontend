@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -75,18 +75,19 @@ export function PaymentDialog({
     );
   };
 
+  // Radix só chama onOpenChange em fechamentos internos — abrir é uma
+  // mudança de prop externa e não dispara esse callback (ver mesas-tab.tsx).
+  useEffect(() => {
+    if (open) {
+      setMethod("CASH");
+      setAmountCents(remainingCents);
+      setReceivedText(centsToInputValue(remainingCents));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (v) {
-          setMethod("CASH");
-          setAmountCents(remainingCents);
-          setReceivedText(centsToInputValue(remainingCents));
-        }
-        onOpenChange(v);
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Registrar pagamento</DialogTitle>
