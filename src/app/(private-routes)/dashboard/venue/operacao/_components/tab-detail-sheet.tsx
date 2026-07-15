@@ -127,6 +127,14 @@ export function TabDetailSheet({
     );
   }
 
+  // Espelha a regra do backend: só DELIVERED/CANCELED são terminais — qualquer
+  // outro status ainda depende de preparo/entrega e bloqueia o fechamento.
+  const pendingItemsCount =
+    tab?.orders.reduce(
+      (sum, order) => sum + order.items.filter((i) => i.status !== "DELIVERED" && i.status !== "CANCELED").length,
+      0,
+    ) ?? 0;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="flex w-full flex-col sm:max-w-xl">
@@ -166,29 +174,37 @@ export function TabDetailSheet({
             </div>
 
             {tab.status === "OPEN" ? (
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" onClick={() => setOrderBuilderOpen(true)}>
-                  <Plus size={14} /> Novo pedido
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => setPaymentOpen(true)} disabled={tab.remainingCents <= 0}>
-                  <Receipt size={14} /> Registrar pagamento
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={tab.remainingCents !== 0}
-                  onClick={() =>
-                    close.mutate(tab.id, {
-                      onSuccess: () => toast.success("Comanda fechada."),
-                      onError: (err) => toast.error(getErrorMessage(err, "Não foi possível fechar a comanda.")),
-                    })
-                  }
-                >
-                  Fechar comanda
-                </Button>
-                <Button size="sm" variant="ghost" className="text-red-600" onClick={() => setCancelOpen(true)}>
-                  Cancelar comanda
-                </Button>
+              <div className="space-y-1.5">
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" onClick={() => setOrderBuilderOpen(true)}>
+                    <Plus size={14} /> Novo pedido
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setPaymentOpen(true)} disabled={tab.remainingCents <= 0}>
+                    <Receipt size={14} /> Registrar pagamento
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={tab.remainingCents !== 0 || pendingItemsCount > 0}
+                    onClick={() =>
+                      close.mutate(tab.id, {
+                        onSuccess: () => toast.success("Comanda fechada."),
+                        onError: (err) => toast.error(getErrorMessage(err, "Não foi possível fechar a comanda.")),
+                      })
+                    }
+                  >
+                    Fechar comanda
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-red-600" onClick={() => setCancelOpen(true)}>
+                    Cancelar comanda
+                  </Button>
+                </div>
+                {pendingItemsCount > 0 ? (
+                  <p className="text-xs text-amber-600">
+                    Finalize ou cancele os pedidos pendentes antes de fechar a comanda.
+                    {" "}({pendingItemsCount} {pendingItemsCount === 1 ? "item pendente" : "itens pendentes"})
+                  </p>
+                ) : null}
               </div>
             ) : null}
 
