@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,7 +47,16 @@ function CashStatusPill({ orgId, locationId }: { orgId: number; locationId: numb
 }
 
 export default function VenueOperacaoPage() {
+  return (
+    <Suspense fallback={<PageContainer><BlockSkeleton className="h-96" /></PageContainer>}>
+      <VenueOperacaoPageContent />
+    </Suspense>
+  );
+}
+
+function VenueOperacaoPageContent() {
   const { currentOrg, activeModuleKeys, loadingOrgs, loadingModules } = useOrganizations();
+  const searchParams = useSearchParams();
   const [tab, setTab] = useState<TabKey>("mesas");
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
   const [createTabOpen, setCreateTabOpen] = useState(false);
@@ -64,9 +74,22 @@ export default function VenueOperacaoPage() {
 
   useEffect(() => {
     if (selectedLocationId !== null || !locations || locations.length === 0) return;
-    const main = locations.find((l) => l.isMain) ?? locations[0];
+    const paramLocationId = Number(searchParams.get("locationId"));
+    const fromParam = paramLocationId ? locations.find((l) => l.id === paramLocationId) : undefined;
+    const main = fromParam ?? locations.find((l) => l.isMain) ?? locations[0];
     setSelectedLocationId(main.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locations, selectedLocationId]);
+
+  // Deep link vindo de Reservas/Fila ("dar entrada" abre direto o detalhe da comanda criada).
+  useEffect(() => {
+    const paramTabId = Number(searchParams.get("tabId"));
+    if (paramTabId) {
+      setDetailTabId(paramTabId);
+      setTab("mesas");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (loadingOrgs || loadingModules) {
     return (

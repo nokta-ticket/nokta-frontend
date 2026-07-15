@@ -23,6 +23,8 @@ export interface VenueLocation {
   telefone: string | null;
   active: boolean;
   isMain: boolean;
+  timezone: string;
+  defaultReservationDurationMinutes: number;
   archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
