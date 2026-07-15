@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,18 +49,17 @@ function CategoryFormDialog({
   const [descricao, setDescricao] = useState(category?.descricao ?? "");
   const [imageUrl, setImageUrl] = useState<string | null>(category?.imageUrl ?? null);
 
+  useEffect(() => {
+    if (open) {
+      setNome(category?.nome ?? "");
+      setDescricao(category?.descricao ?? "");
+      setImageUrl(category?.imageUrl ?? null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, category?.id]);
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (v) {
-          setNome(category?.nome ?? "");
-          setDescricao(category?.descricao ?? "");
-          setImageUrl(category?.imageUrl ?? null);
-        }
-        onOpenChange(v);
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{category ? "Editar categoria" : "Nova categoria"}</DialogTitle>

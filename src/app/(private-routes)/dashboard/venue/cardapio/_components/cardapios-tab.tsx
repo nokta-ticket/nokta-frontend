@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { Plus, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,18 +43,17 @@ function MenuFormDialog({
   const [descricao, setDescricao] = useState(menu?.descricao ?? "");
   const [isMain, setIsMain] = useState(menu?.isMain ?? false);
 
+  useEffect(() => {
+    if (open) {
+      setNome(menu?.nome ?? "");
+      setDescricao(menu?.descricao ?? "");
+      setIsMain(menu?.isMain ?? false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, menu?.id]);
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (v) {
-          setNome(menu?.nome ?? "");
-          setDescricao(menu?.descricao ?? "");
-          setIsMain(menu?.isMain ?? false);
-        }
-        onOpenChange(v);
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{menu ? "Editar cardápio" : "Novo cardápio"}</DialogTitle>

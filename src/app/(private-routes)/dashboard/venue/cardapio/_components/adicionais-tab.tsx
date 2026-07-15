@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -52,14 +52,17 @@ function GroupFormDialog({
   loading: boolean;
 }) {
   const [nome, setNome] = useState(group?.nome ?? "");
+
+  // Radix só chama onOpenChange em fechamentos internos — abrir é uma
+  // mudança de prop externa e não dispara esse callback, por isso o
+  // preenchimento do form precisa reagir a `open`/`group` via useEffect.
+  useEffect(() => {
+    if (open) setNome(group?.nome ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, group?.id]);
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (v) setNome(group?.nome ?? "");
-        onOpenChange(v);
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{group ? "Editar grupo" : "Novo grupo de adicionais"}</DialogTitle>
@@ -102,17 +105,16 @@ function OptionFormDialog({
   const [nome, setNome] = useState(option?.nome ?? "");
   const [priceCents, setPriceCents] = useState(option?.priceCents ?? 0);
 
+  useEffect(() => {
+    if (open) {
+      setNome(option?.nome ?? "");
+      setPriceCents(option?.priceCents ?? 0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, option?.id]);
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (v) {
-          setNome(option?.nome ?? "");
-          setPriceCents(option?.priceCents ?? 0);
-        }
-        onOpenChange(v);
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{option ? "Editar opção" : "Nova opção"}</DialogTitle>
