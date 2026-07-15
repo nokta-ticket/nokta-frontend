@@ -44,7 +44,7 @@ export function ReservationFormDialog({
   onSaved?: (r: VenueReservation) => void;
 }) {
   const { data: areas } = useVenueAreas(orgId, locationId);
-  const { create, update } = useVenueReservationMutations(orgId, locationId);
+  const { create, update, setTables } = useVenueReservationMutations(orgId, locationId);
   const isEdit = !!reservation;
 
   const [customerName, setCustomerName] = useState("");
@@ -108,8 +108,17 @@ export function ReservationFormDialog({
       ? new Date(new Date(startAtIso).getTime() + Number(durationMinutes) * 60000).toISOString()
       : null;
 
-  const saving = create.isPending || update.isPending;
+  const saving = create.isPending || update.isPending || setTables.isPending;
   const canSubmit = !!customerName.trim() && !!customerPhoneDisplay.trim() && !!startAtIso && !!endAtIso && Number(partySize) > 0;
+
+  const tablesChanged = (() => {
+    if (!reservation) return false;
+    const original = reservation.tables.map((t) => t.tableId).slice().sort();
+    const next = [...tableIds].sort();
+    if (original.length !== next.length || original.some((id, i) => id !== next[i])) return true;
+    const originalPrimary = reservation.tables.find((t) => t.isPrimary)?.tableId;
+    return originalPrimary !== primaryTableId;
+  })();
 
   const handleSubmit = () => {
     if (!startAtIso || !endAtIso) return;
@@ -135,9 +144,26 @@ export function ReservationFormDialog({
         },
         {
           onSuccess: (r) => {
-            toast.success(`Reserva ${r.publicCode} atualizada.`);
-            onOpenChange(false);
-            onSaved?.(r);
+            if (!tablesChanged) {
+              toast.success(`Reserva ${r.publicCode} atualizada.`);
+              onOpenChange(false);
+              onSaved?.(r);
+              return;
+            }
+            // Mesas são uma entidade separada no backend (PUT /tables) — encadeia
+            // usando a version já incrementada pelo update acima.
+            setTables.mutate(
+              { reservationId: reservation.id, payload: { tableIds, primaryTableId, version: r.version } },
+              {
+                onSuccess: (r2) => {
+                  toast.success(`Reserva ${r2.publicCode} atualizada.`);
+                  onOpenChange(false);
+                  onSaved?.(r2);
+                },
+                onError: (err) =>
+                  toast.error(getErrorMessage(err, "Reserva salva, mas não foi possível atualizar as mesas.")),
+              },
+            );
           },
           onError: (err) => toast.error(getErrorMessage(err, "Não foi possível atualizar a reserva.")),
         },
