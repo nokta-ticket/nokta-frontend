@@ -40,11 +40,12 @@ export function useVenueReservation(orgId: number | null, reservationId: number 
 }
 
 export function useVenueReservationsSummary(orgId: number | null, locationId: number | null, date: string) {
+  const enabled = orgId !== null && locationId !== null && date !== "";
   return useQuery({
     queryKey: resKeys.summary(orgId ?? -1, locationId ?? -1, date),
     queryFn: () => venueReservationsApi.summary(orgId as number, locationId as number, date),
-    enabled: orgId !== null && locationId !== null,
-    refetchInterval: orgId !== null && locationId !== null ? 20000 : false,
+    enabled,
+    refetchInterval: enabled ? 20000 : false,
   });
 }
 
