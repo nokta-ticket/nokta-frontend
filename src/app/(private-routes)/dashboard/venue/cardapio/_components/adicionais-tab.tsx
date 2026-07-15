@@ -34,6 +34,7 @@ import { ActiveBadge } from "./venue-status-badge";
 import { ReorderControls, buildSwapReorderPayload } from "./reorder-controls";
 import { ConfirmDialog } from "./confirm-dialog";
 import { MoneyField } from "./money-field";
+import { ModifierComponentsDialog } from "../../estoque/_components/modifier-components-dialog";
 import { EmptyState } from "../../../_components/states/empty-state";
 import { TableSkeleton } from "../../../_components/states/loading-state";
 import { ErrorState } from "../../../_components/states/error-state";
@@ -160,6 +161,7 @@ function GroupOptionsSheet({
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<VenueModifierOption | null>(null);
   const [archiving, setArchiving] = useState<VenueModifierOption | null>(null);
+  const [stockOption, setStockOption] = useState<VenueModifierOption | null>(null);
 
   // Busca fresca sempre que o grupo muda — usa o endpoint de detalhe (já inclui options).
   const detail = useVenueModifierGroup(orgId, group?.id ?? null);
@@ -238,6 +240,9 @@ function GroupOptionsSheet({
                   )}
                   {!option.archivedAt ? (
                     <>
+                      <Button variant="outline" size="sm" onClick={() => setStockOption(option)}>
+                        Estoque
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -262,6 +267,13 @@ function GroupOptionsSheet({
           option={editing}
           onSubmit={handleSubmit}
           loading={create.isPending || update.isPending}
+        />
+        <ModifierComponentsDialog
+          orgId={orgId}
+          modifierOptionId={stockOption?.id ?? null}
+          optionName={stockOption?.nome}
+          open={stockOption !== null}
+          onOpenChange={(v) => !v && setStockOption(null)}
         />
         <ConfirmDialog
           open={archiving !== null}

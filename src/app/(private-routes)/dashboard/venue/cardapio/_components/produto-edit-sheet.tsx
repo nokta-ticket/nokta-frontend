@@ -31,8 +31,9 @@ import { ErrorState } from "../../../_components/states/error-state";
 import { ProdutoVariantesSection } from "./produto-variantes-section";
 import { ProdutoCardapiosSection } from "./produto-cardapios-section";
 import { ProdutoAdicionaisSection } from "./produto-adicionais-section";
+import { ProdutoEstoqueSection } from "./produto-estoque-section";
 
-export type ProdutoEditSection = "geral" | "variantes" | "cardapios" | "adicionais";
+export type ProdutoEditSection = "geral" | "variantes" | "cardapios" | "adicionais" | "estoque";
 
 const NO_STATION = "NONE";
 
@@ -41,6 +42,7 @@ const SECTIONS: { key: ProdutoEditSection; label: string }[] = [
   { key: "variantes", label: "Variações" },
   { key: "cardapios", label: "Cardápios" },
   { key: "adicionais", label: "Adicionais" },
+  { key: "estoque", label: "Estoque" },
 ];
 
 function DadosGeraisSection({ orgId, productId }: { orgId: number; productId: number }) {
@@ -226,8 +228,10 @@ export function ProdutoEditSheet({
             <ProdutoVariantesSection orgId={orgId} productId={productId} />
           ) : section === "cardapios" ? (
             <ProdutoCardapiosSection orgId={orgId} productId={productId} />
-          ) : (
+          ) : section === "adicionais" ? (
             <ProdutoAdicionaisSection orgId={orgId} productId={productId} />
+          ) : (
+            <ProdutoEstoqueSection orgId={orgId} productId={productId} />
           )}
         </div>
       </SheetContent>
