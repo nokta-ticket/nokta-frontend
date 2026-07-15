@@ -148,6 +148,8 @@ export interface VenueOrderItem {
   status: VenueOrderItemStatus;
   notes: string | null;
   cancellationReason: string | null;
+  canceledByUserId: number | null;
+  canceledAt: string | null;
   createdAt: string;
   updatedAt: string;
   modifiers: VenueOrderItemModifier[];
