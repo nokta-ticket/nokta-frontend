@@ -114,13 +114,15 @@ export default function VenueCardapioPage() {
       />
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
-        <TabsList>
-          <TabsTrigger value="produtos">Produtos</TabsTrigger>
-          <TabsTrigger value="categorias">Categorias</TabsTrigger>
-          <TabsTrigger value="adicionais">Adicionais</TabsTrigger>
-          <TabsTrigger value="estacoes">Estações</TabsTrigger>
-          <TabsTrigger value="cardapios">Cardápios</TabsTrigger>
-        </TabsList>
+        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+          <TabsList className="w-max min-w-full sm:w-fit">
+            <TabsTrigger value="produtos">Produtos</TabsTrigger>
+            <TabsTrigger value="categorias">Categorias</TabsTrigger>
+            <TabsTrigger value="adicionais">Adicionais</TabsTrigger>
+            <TabsTrigger value="estacoes">Estações</TabsTrigger>
+            <TabsTrigger value="cardapios">Cardápios</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="produtos">
           <ProdutosTab orgId={orgId} createOpen={createProductOpen} onCreateOpenChange={setCreateProductOpen} />
