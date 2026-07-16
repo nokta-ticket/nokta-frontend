@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrganizations } from "@/context/OrganizationContext";
+import { useVenueAccess } from "@/context/VenueAccessContext";
 import { PageContainer } from "../../_components/page/page-container";
 import { PageHeader } from "../../_components/page/page-header";
 import { EmptyState } from "../../_components/states/empty-state";
@@ -54,10 +55,30 @@ export default function VenueOperacaoPage() {
   );
 }
 
+const TAB_PERMISSIONS: Record<TabKey, string[]> = {
+  mesas: ["venue.operation.tables.view"],
+  comandas: ["venue.operation.tabs.view"],
+  pedidos: ["venue.operation.orders.view", "venue.operation.preparation.view"],
+  caixa: ["venue.operation.cash.manage"],
+};
+
+const ALL_TABS: { key: TabKey; label: string }[] = [
+  { key: "mesas", label: "Mesas" },
+  { key: "comandas", label: "Comandas" },
+  { key: "pedidos", label: "Pedidos" },
+  { key: "caixa", label: "Caixa" },
+];
+
 function VenueOperacaoPageContent() {
   const { currentOrg, activeModuleKeys, loadingOrgs, loadingModules } = useOrganizations();
+  const { can } = useVenueAccess();
+  const visibleTabs = ALL_TABS.filter((t) => TAB_PERMISSIONS[t.key].some((p) => can(p)));
   const searchParams = useSearchParams();
-  const [tab, setTab] = useState<TabKey>("mesas");
+  const [tab, setTab] = useState<TabKey>(() => {
+    const fromParam = searchParams.get("tab") as TabKey | null;
+    if (fromParam && visibleTabs.some((t) => t.key === fromParam)) return fromParam;
+    return visibleTabs[0]?.key ?? "mesas";
+  });
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
   const [createTabOpen, setCreateTabOpen] = useState(false);
   const [detailTabId, setDetailTabId] = useState<number | null>(null);
@@ -150,9 +171,11 @@ function VenueOperacaoPageContent() {
               </Select>
             ) : null}
             <CashStatusPill orgId={orgId} locationId={selectedLocationId} />
-            <Button onClick={() => setCreateTabOpen(true)}>
-              <Plus size={16} /> Nova comanda
-            </Button>
+            {can("venue.operation.tabs.open") ? (
+              <Button onClick={() => setCreateTabOpen(true)}>
+                <Plus size={16} /> Nova comanda
+              </Button>
+            ) : null}
           </div>
         }
       />
@@ -160,30 +183,37 @@ function VenueOperacaoPageContent() {
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
         <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
           <TabsList className="w-max min-w-full sm:w-fit">
-            <TabsTrigger value="mesas">Mesas</TabsTrigger>
-            <TabsTrigger value="comandas">Comandas</TabsTrigger>
-            <TabsTrigger value="pedidos">Pedidos</TabsTrigger>
-            <TabsTrigger value="caixa">Caixa</TabsTrigger>
+            {visibleTabs.map((t) => (
+              <TabsTrigger key={t.key} value={t.key}>{t.label}</TabsTrigger>
+            ))}
           </TabsList>
         </div>
 
-        <TabsContent value="mesas">
-          <MesasTab
-            orgId={orgId}
-            locationId={selectedLocationId}
-            onOpenTabDetail={setDetailTabId}
-            onAddOrder={setOrderBuilderTabId}
-          />
-        </TabsContent>
-        <TabsContent value="comandas">
-          <ComandasTab orgId={orgId} locationId={selectedLocationId} onOpenTabDetail={setDetailTabId} />
-        </TabsContent>
-        <TabsContent value="pedidos">
-          <PedidosTab orgId={orgId} locationId={selectedLocationId} />
-        </TabsContent>
-        <TabsContent value="caixa">
-          <CaixaTab orgId={orgId} locationId={selectedLocationId} />
-        </TabsContent>
+        {visibleTabs.some((t) => t.key === "mesas") ? (
+          <TabsContent value="mesas">
+            <MesasTab
+              orgId={orgId}
+              locationId={selectedLocationId}
+              onOpenTabDetail={setDetailTabId}
+              onAddOrder={setOrderBuilderTabId}
+            />
+          </TabsContent>
+        ) : null}
+        {visibleTabs.some((t) => t.key === "comandas") ? (
+          <TabsContent value="comandas">
+            <ComandasTab orgId={orgId} locationId={selectedLocationId} onOpenTabDetail={setDetailTabId} />
+          </TabsContent>
+        ) : null}
+        {visibleTabs.some((t) => t.key === "pedidos") ? (
+          <TabsContent value="pedidos">
+            <PedidosTab orgId={orgId} locationId={selectedLocationId} />
+          </TabsContent>
+        ) : null}
+        {visibleTabs.some((t) => t.key === "caixa") ? (
+          <TabsContent value="caixa">
+            <CaixaTab orgId={orgId} locationId={selectedLocationId} />
+          </TabsContent>
+        ) : null}
       </Tabs>
 
       <CreateTabDialog

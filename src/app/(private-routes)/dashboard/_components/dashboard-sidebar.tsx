@@ -15,7 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useProductContext } from "@/context/ProductContext";
-import { contextMenu, GLOBAL_MENU, type MenuItem } from "./build-menu";
+import { useVenueAccess } from "@/context/VenueAccessContext";
+import { contextMenu, filterMenuByAccess, GLOBAL_MENU, type MenuItem } from "./build-menu";
 import { ContextSwitcher } from "./context-switcher";
 
 function NavList({ items }: { items: MenuItem[] }) {
@@ -46,6 +47,11 @@ function NavList({ items }: { items: MenuItem[] }) {
 // Sidebar: logo → switcher de contexto → menu do contexto → (rodapé) global.
 function SidebarInner() {
   const { active } = useProductContext();
+  const { can } = useVenueAccess();
+
+  // Só o Venue tem RBAC por papel hoje — o Tickets mostra tudo, sem filtro.
+  const items = active === "venue" ? filterMenuByAccess(contextMenu(active), can) : contextMenu(active);
+  const globalItems = active === "venue" ? filterMenuByAccess(GLOBAL_MENU, can) : GLOBAL_MENU;
 
   return (
     <>
@@ -57,10 +63,10 @@ function SidebarInner() {
         <ContextSwitcher />
       </div>
 
-      <NavList items={contextMenu(active)} />
+      <NavList items={items} />
 
       <Separator className="my-4 bg-white/10 mt-auto" />
-      <NavList items={GLOBAL_MENU} />
+      <NavList items={globalItems} />
     </>
   );
 }

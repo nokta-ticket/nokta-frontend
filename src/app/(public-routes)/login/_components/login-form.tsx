@@ -60,6 +60,7 @@ export function LoginForm() {
   const router       = useRouter()
   const searchParams = useSearchParams()
   const ctx          = searchParams.get('ctx') || ''
+  const redirectTo   = searchParams.get('redirect') || ''
   const { signIn }   = useAuth()
 
   const [email,   setEmail]   = useState('')
@@ -98,7 +99,9 @@ export function LoginForm() {
       signIn(token, user)
       toast.success('Login realizado com sucesso!')
 
-      if (ctx === 'produtor') {
+      if (redirectTo.startsWith('/')) {
+        router.push(redirectTo)
+      } else if (ctx === 'produtor') {
         router.push(user.role === 'PRODUTOR' ? '/produtor/eventos' : '/produtor/onboarding')
       } else {
         router.push('/')
