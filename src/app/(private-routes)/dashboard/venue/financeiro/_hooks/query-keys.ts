@@ -1,0 +1,20 @@
+/** Query keys do domínio Financeiro — sempre incluem organizationId/locationId/período/regime (isolamento de cache). */
+export const financeKeys = {
+  overview: (orgId: number, locationId: number, params: Record<string, unknown>) => ["finance", orgId, "overview", locationId, params] as const,
+  timeline: (orgId: number, locationId: number, params: Record<string, unknown>) => ["finance", orgId, "timeline", locationId, params] as const,
+  paymentMethods: (orgId: number, locationId: number, params: Record<string, unknown>) => ["finance", orgId, "paymentMethods", locationId, params] as const,
+  expensesByCategory: (orgId: number, locationId: number, params: Record<string, unknown>) => ["finance", orgId, "expensesByCategory", locationId, params] as const,
+  compareLocations: (orgId: number, params: Record<string, unknown>) => ["finance", orgId, "compareLocations", params] as const,
+  sales: (orgId: number, locationId: number, params: Record<string, unknown>) => ["finance", orgId, "sales", locationId, params] as const,
+  saleDetail: (orgId: number, paymentId: number) => ["finance", orgId, "saleDetail", paymentId] as const,
+  receivables: (orgId: number, locationId: number) => ["finance", orgId, "receivables", locationId] as const,
+  categories: (orgId: number, type: string | undefined, includeArchived: boolean) => ["finance", orgId, "categories", type, includeArchived] as const,
+  payables: (orgId: number, params: Record<string, unknown>) => ["finance", orgId, "payables", params] as const,
+  payable: (orgId: number, payableId: number) => ["finance", orgId, "payable", payableId] as const,
+  payablePayments: (orgId: number, payableId: number) => ["finance", orgId, "payablePayments", payableId] as const,
+  otherIncome: (orgId: number, params: Record<string, unknown>) => ["finance", orgId, "otherIncome", params] as const,
+  feeRules: (orgId: number, locationId: number | undefined) => ["finance", orgId, "feeRules", locationId] as const,
+  reconciliations: (orgId: number, locationId: number, params: Record<string, unknown>) => ["finance", orgId, "reconciliations", locationId, params] as const,
+  cashSessions: (orgId: number, locationId: number, params: Record<string, unknown>) => ["finance", orgId, "cashSessions", locationId, params] as const,
+  cashSessionReport: (orgId: number, sessionId: number) => ["finance", orgId, "cashSessionReport", sessionId] as const,
+};
