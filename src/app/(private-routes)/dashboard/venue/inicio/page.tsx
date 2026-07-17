@@ -113,6 +113,20 @@ export default function VenueInicioPage() {
     );
   }
 
+  // A lista de unidades acima inclui arquivadas; a Início só considera unidades
+  // ativas. Se todas estiverem arquivadas, orienta em vez de mostrar um painel vazio.
+  if (!home.hasLocation) {
+    return (
+      <PageContainer>
+        <PageHeader title="Início" description="O que está acontecendo agora e o que precisa da sua atenção." />
+        <EmptyState
+          title="Nenhuma unidade ativa"
+          description="Ative uma unidade em Configurações > Unidades para ver o painel da Início."
+        />
+      </PageContainer>
+    );
+  }
+
   const shortcuts = home.shortcuts.map((key) => SHORTCUT_CONFIG[key]).filter(Boolean);
   const showFullChecklist = !home.onboarding.restricted && home.onboarding.profile?.status !== "DISMISSED";
   const showRestrictedNotice = home.onboarding.restricted && !home.onboarding.readyToOperate;
