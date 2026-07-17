@@ -65,14 +65,25 @@ export default function VenueInicioPage() {
   const redirecting = Boolean(defaultRoute && defaultRoute !== "/dashboard/venue/inicio");
 
   const { data: locations, isLoading: loadingLocations } = useVenueLocations(!redirecting ? orgId : null);
+  // A lista de unidades inclui arquivadas, mas /venue/home só considera
+  // unidades ATIVAS — nunca escolher/oferecer uma arquivada, senão a busca
+  // falha com 404 (já aconteceu em produção: unidade principal arquivada).
+  const activeLocations = locations?.filter((l) => l.active) ?? [];
   const [locationId, setLocationId] = useState<number | null>(null);
 
+  // Troca de organização — sem isso o locationId da org anterior ficava
+  // "preso" e nunca era recalculado, causando o mesmo 404 ao trocar de org.
   useEffect(() => {
-    if (locationId !== null || !locations || locations.length === 0) return;
-    setLocationId((locations.find((l) => l.isMain) ?? locations[0]).id);
-  }, [locations, locationId]);
+    setLocationId(null);
+  }, [orgId]);
 
-  const { data: home, isLoading: loadingHome } = useVenueHome(!redirecting ? orgId : null, locationId);
+  useEffect(() => {
+    if (locationId !== null || activeLocations.length === 0) return;
+    setLocationId((activeLocations.find((l) => l.isMain) ?? activeLocations[0]).id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeLocations.length, locationId]);
+
+  const { data: home, isLoading: loadingHome, isError: homeError } = useVenueHome(!redirecting ? orgId : null, locationId);
   const { dismiss } = useVenueSetupLifecycle(orgId ?? -1);
 
   const canManageSettings = can("organization.settings.manage");
@@ -100,6 +111,18 @@ export default function VenueInicioPage() {
       <PageContainer>
         <PageHeader title="Início" description="O que está acontecendo agora e o que precisa da sua atenção." />
         <OnboardingLocation orgId={orgId} />
+      </PageContainer>
+    );
+  }
+
+  if (homeError) {
+    return (
+      <PageContainer>
+        <PageHeader title="Início" description="O que está acontecendo agora e o que precisa da sua atenção." />
+        <EmptyState
+          title="Não foi possível carregar a Início"
+          description="Tente novamente em instantes. Se o problema continuar, avise o suporte."
+        />
       </PageContainer>
     );
   }
@@ -143,13 +166,13 @@ export default function VenueInicioPage() {
               : "O que está acontecendo agora e o que precisa da sua atenção."
         }
         actions={
-          locations && locations.length > 1 ? (
+          activeLocations.length > 1 ? (
             <Select value={locationId ? String(locationId) : ""} onValueChange={(v) => setLocationId(Number(v))}>
               <SelectTrigger className="w-56">
                 <SelectValue placeholder="Unidade" />
               </SelectTrigger>
               <SelectContent>
-                {locations.map((loc) => (
+                {activeLocations.map((loc) => (
                   <SelectItem key={loc.id} value={String(loc.id)}>
                     {loc.nome} {loc.isMain ? "· Principal" : ""}
                   </SelectItem>
