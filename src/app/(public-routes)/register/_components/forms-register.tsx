@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/axios";
 import { PhoneInput, validatePhone } from "@/components/ui/phone-input";
 import { getCountryCallingCode, type Country } from "react-phone-number-input";
+import { isSafeInternalRedirect } from "@/lib/safe-redirect";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -326,6 +327,8 @@ export function RegisterForm() {
   const router       = useRouter();
   const searchParams = useSearchParams();
   const ctx          = searchParams.get("ctx") || "";
+  const redirectParam = searchParams.get("redirect") || "";
+  const redirectTo   = isSafeInternalRedirect(redirectParam) ? redirectParam : "";
   const { signIn }   = useAuth();
 
   const [step,           setStep]          = useState<Step>("form");
@@ -338,7 +341,7 @@ export function RegisterForm() {
   const [phoneE164,  setPhoneE164]  = useState("");
 
   const [nome,            setNome]           = useState("");
-  const [email,           setEmail]          = useState("");
+  const [email,           setEmail]          = useState(() => searchParams.get("email") || "");
   const [telefone,        setTelefone]       = useState("");
   const [telefoneCountry, setTelefoneCountry] = useState<Country>("BR");
   const [senha,           setSenha]          = useState("");
@@ -421,7 +424,9 @@ export function RegisterForm() {
       signIn(token, user);
       setStep("done");
       setTimeout(() => {
-        if (ctx === "produtor") {
+        if (redirectTo) {
+          router.push(redirectTo);
+        } else if (ctx === "produtor") {
           router.push(user.role === "PRODUTOR" ? "/produtor/eventos" : "/produtor/onboarding");
         } else {
           router.push("/");
@@ -717,7 +722,7 @@ export function RegisterForm() {
       <p className="mt-1.5 text-center text-[13px] text-gray-500">
         Já tem uma conta?{" "}
         <Link
-          href="/login"
+          href={`/login${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`}
           className="font-medium text-violet-700 underline-offset-2 transition-colors hover:text-violet-800 hover:underline"
         >
           Entrar

@@ -86,6 +86,17 @@ function matchDynamicRoute(path: string, routePattern: string): boolean {
   return regex.test(path);
 }
 
+// Mesma checagem de segurança do lib/safe-redirect.ts (o middleware roda no
+// Edge Runtime, à parte do bundle da app — duplicado de propósito, nunca
+// confia em host externo nem em protocol-relative "//").
+function isSafeInternalRedirect(path: string | null): path is string {
+  if (!path) return false;
+  if (!path.startsWith("/")) return false;
+  if (path.startsWith("//") || path.startsWith("/\\")) return false;
+  if (path.includes("://")) return false;
+  return true;
+}
+
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
 
@@ -133,6 +144,17 @@ export function middleware(request: NextRequest) {
 
     if (path === "/login" && hasAdminRole(userPayload)) {
       redirectUrl.pathname = "/admin/login";
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // Usuário já autenticado abrindo /login ou /register com um redirect
+    // pendente (ex.: link de convite) — manda direto para lá em vez de para
+    // a home, desde que seja um caminho interno seguro.
+    const pendingRedirect = request.nextUrl.searchParams.get("redirect");
+    if (isSafeInternalRedirect(pendingRedirect)) {
+      const [redirectPath, redirectQuery] = pendingRedirect.split("?");
+      redirectUrl.pathname = redirectPath;
+      redirectUrl.search = redirectQuery ? `?${redirectQuery}` : "";
       return NextResponse.redirect(redirectUrl);
     }
 

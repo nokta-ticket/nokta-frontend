@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { toast } from '@/lib/toast'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
+import { isSafeInternalRedirect } from '@/lib/safe-redirect'
 import { ConfirmEmailModal } from './confirmar-email-modal'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL
@@ -99,7 +100,7 @@ export function LoginForm() {
       signIn(token, user)
       toast.success('Login realizado com sucesso!')
 
-      if (redirectTo.startsWith('/')) {
+      if (isSafeInternalRedirect(redirectTo)) {
         router.push(redirectTo)
       } else if (ctx === 'produtor') {
         router.push(user.role === 'PRODUTOR' ? '/produtor/eventos' : '/produtor/onboarding')

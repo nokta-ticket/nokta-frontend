@@ -76,10 +76,21 @@ export default function ConviteAcceptPage({ params }: { params: Promise<{ token:
             ) : (
               <div className="space-y-2">
                 <p className="text-xs text-black/50">Entre ou crie uma conta com o e-mail {preview.email} para aceitar.</p>
-                <Button className="w-full" onClick={() => router.push(`/login?redirect=/convites/${token}`)}>
+                <Button
+                  className="w-full"
+                  onClick={() => router.push(`/login?redirect=${encodeURIComponent(`/convites/${token}`)}`)}
+                >
                   Entrar
                 </Button>
-                <Button className="w-full" variant="outline" onClick={() => router.push(`/register?redirect=/convites/${token}`)}>
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  onClick={() =>
+                    router.push(
+                      `/register?redirect=${encodeURIComponent(`/convites/${token}`)}&email=${encodeURIComponent(preview.email)}`,
+                    )
+                  }
+                >
                   Criar conta
                 </Button>
               </div>

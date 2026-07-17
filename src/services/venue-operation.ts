@@ -25,6 +25,8 @@ export interface VenueLocation {
   isMain: boolean;
   timezone: string;
   defaultReservationDurationMinutes: number;
+  reservationMinAdvanceMinutes: number;
+  reservationLateToleranceMinutes: number | null;
   archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -259,6 +261,10 @@ export interface CreateVenueLocationPayload {
   telefone?: string;
   slug?: string;
   isMain?: boolean;
+  timezone?: string;
+  defaultReservationDurationMinutes?: number;
+  reservationMinAdvanceMinutes?: number;
+  reservationLateToleranceMinutes?: number;
 }
 export type UpdateVenueLocationPayload = Partial<CreateVenueLocationPayload>;
 
