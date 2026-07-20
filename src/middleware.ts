@@ -5,11 +5,34 @@ import {
 } from "next/server";
 import { UserPayload } from "./context/AuthContext";
 import {
-  getCanonicalSurfaceUrl,
   getSurfaceConfig,
   isSurfaceEnforced,
   resolveSurfaceFromHost,
+  type Surface,
 } from "./lib/surfaces";
+
+/**
+ * Fase 5.1 — URLs canônicas de destino de cross-domain redirect,
+ * declaradas AQUI DENTRO (não importadas de lib/surfaces.ts) de propósito.
+ *
+ * Histórico: `getCanonicalSurfaceUrl` (mesmo valor, mesma lógica, hardcoded,
+ * sem env var) vivia em lib/surfaces.ts e era importada aqui. Depois de
+ * dois deploys confirmados (GitHub "Deployment has completed", outras
+ * páginas do MESMO build já refletindo código novo) o valor usado pelo
+ * Middleware em produção continuava sendo o antigo — só quando um
+ * marcador de diagnóstico foi colocado como CONSTANTE LOCAL deste arquivo
+ * (não importada) é que ele refletiu o build certo. Isso isola o problema
+ * numa peculiaridade de bundling/propagação do Edge Middleware
+ * especificamente pra módulos IMPORTADOS, não pro arquivo do middleware
+ * em si — sem explicação encontrada no código, e sem acesso ao painel/
+ * build da Vercel pra investigar mais a fundo. Contorno: nenhuma
+ * dependência de import pra decidir o destino do redirect.
+ */
+const CANONICAL_SURFACE_URLS: Record<Surface, string> = {
+  PLATFORM: "https://app.nokta.live",
+  TICKETS_PUBLIC: "https://www.noktatickets.com.br",
+  MARKETING: "https://www.nokta.live",
+};
 
 const publicRoutes = [
   { path: "/login", whenAutenticated: "redirect" },
@@ -197,7 +220,7 @@ export function middleware(request: NextRequest) {
   const hostname = request.nextUrl.hostname;
 
   if (hostname.toLowerCase() === BARE_MARKETING_HOSTNAME) {
-    return crossOriginRedirect(getCanonicalSurfaceUrl("MARKETING"), path, request.nextUrl.search);
+    return crossOriginRedirect(CANONICAL_SURFACE_URLS["MARKETING"], path, request.nextUrl.search);
   }
   // Fase 5: o cookie de sessão real (nokta_session) é host-only da API
   // (api.nokta.live / api.noktatickets.com.br) — o middleware roda no host
@@ -228,11 +251,11 @@ export function middleware(request: NextRequest) {
     // TICKETS_PUBLIC — cruza pra fora igual às duas superfícies operacionais
     // já faziam entre si (mesma função, mesmo destino central).
     if (surface !== "PLATFORM" && matchesAnyPrefix(path, PLATFORM_ONLY_PREFIXES)) {
-      return crossOriginRedirect(getCanonicalSurfaceUrl("PLATFORM"), path, request.nextUrl.search);
+      return crossOriginRedirect(CANONICAL_SURFACE_URLS["PLATFORM"], path, request.nextUrl.search);
     }
 
     if (surface !== "TICKETS_PUBLIC" && matchesAnyPrefix(path, TICKETS_ONLY_PREFIXES)) {
-      return crossOriginRedirect(getCanonicalSurfaceUrl("TICKETS_PUBLIC"), path, request.nextUrl.search);
+      return crossOriginRedirect(CANONICAL_SURFACE_URLS["TICKETS_PUBLIC"], path, request.nextUrl.search);
     }
 
     // Raiz do domínio da plataforma não é a home pública — decide entre

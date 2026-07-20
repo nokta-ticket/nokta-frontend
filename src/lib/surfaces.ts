@@ -34,21 +34,22 @@ function stripPort(hostname: string): string {
 }
 
 /**
- * Fase 5.1 — fonte de verdade CANÔNICA e hardcoded pros destinos de
- * cross-domain redirect do Middleware. Deliberadamente SEM env var no
- * meio: `NEXT_PUBLIC_TICKETS_URL` estava correta no painel da Vercel, um
- * deploy novo confirmadamente foi ao ar (outras páginas já refletiam o
- * valor certo), e mesmo assim o Middleware (Edge Runtime, empacotado
- * separado do resto do app pela Vercel) continuou lendo o valor antigo —
- * sem bug de código encontrado, uma peculiaridade de propagação de env var
- * pro Edge que não dá pra depurar sem acesso ao painel/build da Vercel.
- * Essas três URLs são estáveis e conhecidas em code review — não mudam por
- * ambiente de produção — então não há motivo pra uma decisão tão crítica
- * (pra onde o Middleware manda o visitante) depender de env var em
- * runtime. `getPlatformUrl`/`getPublicTicketsUrl`/`getMarketingUrl` (usados
- * por componentes normais, Server/Client Components — nunca pelo
- * Middleware) continuam podendo ser sobrescritos por env var (local,
- * preview, override explícito) via `SURFACES` abaixo.
+ * Fase 5.1 — fonte de verdade CANÔNICA e hardcoded pras três superfícies,
+ * sem env var no meio. Essas URLs são estáveis e conhecidas em code
+ * review — não mudam por ambiente de produção.
+ *
+ * IMPORTANTE: `src/middleware.ts` mantém a SUA PRÓPRIA cópia local deste
+ * mesmo mapa (não importa daqui) — não é duplicação por descuido. Depois
+ * de dois deploys confirmados (GitHub "Deployment has completed", outras
+ * páginas do MESMO build já refletindo código novo) o Middleware em
+ * produção continuou usando um valor antigo só quando o destino do
+ * redirect vinha de uma função IMPORTADA; um marcador de diagnóstico
+ * declarado como constante local do próprio middleware.ts refletiu o
+ * build certo de primeira. Isso isolou uma peculiaridade de bundling do
+ * Edge Middleware especificamente pra módulos importados (sem explicação
+ * encontrada no código-fonte, sem acesso ao painel/build da Vercel pra
+ * investigar mais). Se alterar os hosts aqui, altere a cópia em
+ * middleware.ts também.
  */
 const CANONICAL_SURFACE_URLS: Record<Surface, string> = {
   PLATFORM: "https://app.nokta.live",
@@ -56,7 +57,7 @@ const CANONICAL_SURFACE_URLS: Record<Surface, string> = {
   MARKETING: "https://www.nokta.live",
 };
 
-/** Único ponto que o Middleware deveria chamar pra saber o destino de outra superfície — nunca `getSurfaceConfig(...).baseUrl` (esse é env-var-driven, pensado pra links de componente, não pra redirect cross-domain no Edge). */
+/** Pra código Node.js (Server Components, route handlers) que precise do host canônico sem risco de override por env var. Não usado pelo Middleware — ver comentário acima. */
 export function getCanonicalSurfaceUrl(surface: Surface): string {
   return CANONICAL_SURFACE_URLS[surface];
 }
