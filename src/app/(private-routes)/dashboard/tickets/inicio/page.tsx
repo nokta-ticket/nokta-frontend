@@ -7,6 +7,8 @@ import {
   TicketCheck,
 } from "lucide-react";
 import { getErrorMessage } from "@/lib/axios";
+import { isUnifiedDashboardEnabled } from "@/lib/feature-flags";
+import { RouteRedirect } from "../../_components/route-redirect";
 import { PageContainer } from "../../_components/page/page-container";
 import { PageHeader } from "../../_components/page/page-header";
 import { ContentGrid } from "../../_components/page/content-grid";
@@ -33,7 +35,7 @@ const STATUS_LABEL: Record<number, string> = {
   4: "Finalizado",
 };
 
-export default function TicketsInicioPage() {
+function TicketsInicioPage() {
   const { metrics, eventos, isLoading, isError, error, refetch } =
     useTicketsInicio();
 
@@ -119,4 +121,17 @@ export default function TicketsInicioPage() {
       )}
     </PageContainer>
   );
+}
+
+/**
+ * Com a navegação unificada (Fase 3) ligada, esta rota antiga vira um
+ * redirect fino para a Início unificada (`/dashboard/inicio`) — ver
+ * docs/platform/unified-navigation.md. Com a flag desligada, mantém o
+ * conteúdo original acima intacto (fallback de rollback).
+ */
+export default function TicketsInicioPageRoute() {
+  if (isUnifiedDashboardEnabled()) {
+    return <RouteRedirect to="/dashboard/inicio" />;
+  }
+  return <TicketsInicioPage />;
 }

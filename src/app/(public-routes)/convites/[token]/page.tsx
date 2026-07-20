@@ -41,7 +41,7 @@ export default function ConviteAcceptPage({ params }: { params: Promise<{ token:
     try {
       await venueTeamApi.acceptInvitation(token);
       toast.success("Convite aceito! Bem-vindo(a) à equipe.");
-      router.push("/dashboard/venue/inicio");
+      router.push("/dashboard/inicio");
     } catch (err) {
       toast.error(getErrorMessage(err, "Não foi possível aceitar o convite."));
     } finally {

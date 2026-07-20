@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
+import { isUnifiedDashboardEnabled } from "@/lib/feature-flags";
 
-// Contexto default. Todo producer tem "tickets" hoje; se a org for só-venue,
-// o ProductProvider corrige no client para /dashboard/venue/inicio.
+// Com a navegação unificada (Fase 3) ligada, /dashboard vai direto para a
+// Início unificada. Com a flag desligada, mantém o comportamento antigo:
+// contexto default "tickets" — se a org for só-venue, o ProductProvider
+// corrige no client para /dashboard/venue/inicio.
 export default function DashboardIndex() {
-  redirect("/dashboard/tickets/inicio");
+  redirect(isUnifiedDashboardEnabled() ? "/dashboard/inicio" : "/dashboard/tickets/inicio");
 }

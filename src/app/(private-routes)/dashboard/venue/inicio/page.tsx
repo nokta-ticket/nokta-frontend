@@ -23,6 +23,8 @@ import { Badge } from "@/components/ui/badge";
 import { useOrganizations } from "@/context/OrganizationContext";
 import { useVenueAccess } from "@/context/VenueAccessContext";
 import { formatCentsBRL } from "@/services/venue-finance";
+import { isUnifiedDashboardEnabled } from "@/lib/feature-flags";
+import { RouteRedirect } from "../../_components/route-redirect";
 import { PageContainer } from "../../_components/page/page-container";
 import { PageHeader } from "../../_components/page/page-header";
 import { BlockSkeleton } from "../../_components/states/loading-state";
@@ -50,7 +52,7 @@ const SHORTCUT_CONFIG: Record<string, { label: string; href: string }> = {
  * CASHIER ficam aqui e veem um painel real, recortado pelo que cada um pode
  * ver (`/organizations/:id/venue/home`, já filtrado por permissão).
  */
-export default function VenueInicioPage() {
+export function VenueInicioPageContent() {
   const router = useRouter();
   const { loading: loadingAccess, defaultRoute, can, venueRole } = useVenueAccess();
   const { currentOrg, loadingOrgs } = useOrganizations();
@@ -312,4 +314,18 @@ export default function VenueInicioPage() {
       ) : null}
     </PageContainer>
   );
+}
+
+/**
+ * Com a navegação unificada (Fase 3) ligada, esta rota antiga vira um
+ * redirect fino para a Início unificada (`/dashboard/inicio`, que reaproveita
+ * `VenueInicioPageContent` acima quando o Venue está ativo — ver
+ * dashboard/inicio/page.tsx). Com a flag desligada, mantém o conteúdo
+ * original (fallback de rollback).
+ */
+export default function VenueInicioPage() {
+  if (isUnifiedDashboardEnabled()) {
+    return <RouteRedirect to="/dashboard/inicio" />;
+  }
+  return <VenueInicioPageContent />;
 }

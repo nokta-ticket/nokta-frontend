@@ -17,9 +17,11 @@ import { Separator } from "@/components/ui/separator";
 import { useProductContext } from "@/context/ProductContext";
 import { useVenueAccess } from "@/context/VenueAccessContext";
 import { useOrganizations } from "@/context/OrganizationContext";
+import { isUnifiedDashboardEnabled } from "@/lib/feature-flags";
 import { usePlatformNavigation } from "../_hooks/use-platform";
 import { contextMenu, filterMenuByAccess, GLOBAL_MENU, appendExploreIfAllowed, type MenuItem } from "./build-menu";
 import { ContextSwitcher } from "./context-switcher";
+import { UnifiedSidebar } from "./unified-sidebar";
 
 function NavList({ items }: { items: MenuItem[] }) {
   const pathname = usePathname();
@@ -46,14 +48,12 @@ function NavList({ items }: { items: MenuItem[] }) {
   );
 }
 
-// Sidebar: logo → switcher de contexto → menu do contexto → (rodapé) global.
-function SidebarInner() {
+// Menu antigo (switcher Tickets|Venue) — fallback enquanto a flag estiver
+// desligada, ou se precisar de rollback rápido. Ver docs/platform/unified-navigation.md.
+function LegacySidebarInner() {
   const { active } = useProductContext();
   const { can } = useVenueAccess();
   const { currentOrg } = useOrganizations();
-  // canExplore vem do backend (OWNER ou MANAGER de algum módulo técnico —
-  // ver PlatformAccessResolverService) — funcionários operacionais nunca
-  // recebem "Explore a Nokta" no menu, independente de Tickets/Venue/híbrido.
   const { data: navigation } = usePlatformNavigation(currentOrg?.id ?? null);
 
   // Só o Venue tem RBAC por papel hoje — o Tickets mostra tudo, sem filtro.
@@ -63,10 +63,6 @@ function SidebarInner() {
 
   return (
     <>
-      <div className="flex justify-center">
-        <Image src="/logo-painel.svg" alt="Nokta Tickets" width={80} height={80} />
-      </div>
-
       <div className="my-5">
         <ContextSwitcher />
       </div>
@@ -75,6 +71,21 @@ function SidebarInner() {
 
       <Separator className="my-4 bg-white/10 mt-auto" />
       <NavList items={globalItems} />
+    </>
+  );
+}
+
+// Sidebar: logo → (unificada) grupos por capacidade OU (legado) switcher Tickets|Venue.
+function SidebarInner() {
+  const unified = isUnifiedDashboardEnabled();
+
+  return (
+    <>
+      <div className="flex justify-center">
+        <Image src="/logo-painel.svg" alt="Nokta Tickets" width={80} height={80} />
+      </div>
+
+      {unified ? <UnifiedSidebar /> : <LegacySidebarInner />}
     </>
   );
 }
