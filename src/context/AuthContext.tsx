@@ -5,6 +5,14 @@ import Cookies from "js-cookie";
 import api from "@/lib/axios";
 import { toast } from "@/lib/toast";
 
+/**
+ * Fase 5: só metadado não-sensível (papel, nível, id) — o token de sessão
+ * em si nunca passa pelo JavaScript. O backend grava um cookie HttpOnly
+ * (`nokta_session`) durante o login/OAuth/2FA e o navegador o envia
+ * automaticamente (`withCredentials`, ver lib/axios.ts); este cookie
+ * `user` só existe pra o middleware decidir rotas no Edge sem round-trip e
+ * pra UI decidir o que mostrar antes do primeiro `/auth/me` responder.
+ */
 const COOKIE_OPTIONS: Cookies.CookieAttributes = {
   expires: 7,
   secure: process.env.NODE_ENV === "production",
@@ -48,7 +56,9 @@ interface AuthContextType {
   user: UserData | null;
   userId: number | null;
 
-  signIn: (token: string, data: UserPayload) => void;
+  // Fase 5: sem token — o cookie de sessão HttpOnly já foi gravado pelo
+  // backend antes de signIn ser chamado (resposta de login/2FA/OAuth).
+  signIn: (data: UserPayload) => void;
   signOut: () => void;
   initiateRolePolling: () => void;
   updateNivelProdutor: (nivel: number) => void;
@@ -116,8 +126,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signIn = (token: string, payload: UserPayload) => {
-    Cookies.set("token", token, COOKIE_OPTIONS);
+  const signIn = (payload: UserPayload) => {
+    // Fase 5: o cookie de sessão (HttpOnly) já foi gravado pelo backend na
+    // própria resposta de login/2FA/OAuth — aqui só persiste o metadado não
+    // sensível que o middleware e a UI usam.
     Cookies.set(
       "user",
       JSON.stringify({
@@ -142,7 +154,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    Cookies.remove("token");
+    // Cookie HttpOnly não é removível por JS — pede pro backend limpar.
+    // Fire-and-forget: mesmo se a chamada falhar, o estado local (e o
+    // cookie "user") já são limpos abaixo, então a UI sempre reflete
+    // "deslogado" imediatamente.
+    api.post("/auth/logout").catch(() => {});
     Cookies.remove("user");
     setIsAuthenticated(false);
     setRole(null);
@@ -187,8 +203,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    const token = Cookies.get("token");
-    if (!token) {
+    // Fase 5: o cookie de sessão é HttpOnly (ilegível por JS) — "user" é o
+    // sinal local de "provavelmente autenticado"; loadUser() confirma via
+    // /auth/me e desloga sozinho num 401 se o cookie real não existir mais.
+    const hasLocalSession = Boolean(Cookies.get("user"));
+    if (!hasLocalSession) {
       setIsAuthResolved(true);
       return;
     }

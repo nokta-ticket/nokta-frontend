@@ -27,7 +27,6 @@ import { navLinks } from '@/lib/primaryMenuPaths';
 import { UserDropdownMenu } from './user-dropdown-menu';
 import { useAuth } from '@/context/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import Cookies from 'js-cookie';
 import { toast } from '@/lib/toast';
 
 function RevendaIcon({ size = 24, className }: { size?: number; className?: string }) {
@@ -71,13 +70,8 @@ export default function HeaderPrivate() {
   };
 
   const handleLogout = async () => {
-    const token = Cookies.get('token');
-    try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-    } catch {}
+    // Fase 5: signOut() já chama POST /auth/logout (limpa o cookie HttpOnly
+    // no backend) — não precisa duplicar a chamada aqui.
     signOut();
     setMobileOpen(false);
     setShowLogoutConfirm(false);

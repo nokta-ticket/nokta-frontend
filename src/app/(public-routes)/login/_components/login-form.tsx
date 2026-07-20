@@ -7,13 +7,15 @@ import { toast } from '@/lib/toast'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { isSafeInternalRedirect } from '@/lib/safe-redirect'
+import { currentSurfaceStateToken } from '@/lib/surfaces'
 import { ConfirmEmailModal } from './confirmar-email-modal'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
 function OAuthButtons({ ctx }: { ctx: string }) {
-  const handleGoogle = () => { window.location.href = `${API_URL}/auth/google?state=${ctx}` }
-  const handleApple = ()  => { window.location.href = `${API_URL}/auth/apple?state=${ctx}` }
+  const state = `${currentSurfaceStateToken()}:${ctx}`
+  const handleGoogle = () => { window.location.href = `${API_URL}/auth/google?state=${state}` }
+  const handleApple = ()  => { window.location.href = `${API_URL}/auth/apple?state=${state}` }
 
   return (
     <div className="space-y-2">
@@ -80,6 +82,9 @@ export function LoginForm() {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ email, senha }),
+        // Fase 5: sessão é cookie HttpOnly — sem isso o navegador não grava
+        // o Set-Cookie de uma resposta de outra origem (api.*).
+        credentials: 'include',
       })
       const data = await res.json()
 
@@ -94,10 +99,10 @@ export function LoginForm() {
         return
       }
 
-      const { token, user } = data
-      if (!token) throw new Error('Token não retornado pela API')
+      const { user } = data
+      if (!user) throw new Error('Não foi possível concluir o login.')
 
-      signIn(token, user)
+      signIn(user)
       toast.success('Login realizado com sucesso!')
 
       if (isSafeInternalRedirect(redirectTo)) {

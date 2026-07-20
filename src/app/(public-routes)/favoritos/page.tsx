@@ -55,7 +55,9 @@ export default function FavoritosPage() {
   const [requiresLogin, setRequiresLogin] = useState(false);
 
   async function loadFavorites() {
-    const token = Cookies.get('token');
+    // Fase 5: sessão é cookie HttpOnly (ilegível por JS) — "user" é o sinal
+    // local de "provavelmente autenticado" (ver AuthContext).
+    const token = Cookies.get('user');
 
     if (!token) {
       setRequiresLogin(true);
@@ -110,7 +112,9 @@ export default function FavoritosPage() {
   }, [page, totalPages]);
 
   async function unfavorite(eventId: string) {
-    const token = Cookies.get('token');
+    // Fase 5: sessão é cookie HttpOnly (ilegível por JS) — "user" é o sinal
+    // local de "provavelmente autenticado" (ver AuthContext).
+    const token = Cookies.get('user');
 
     if (!token) {
       setRequiresLogin(true);

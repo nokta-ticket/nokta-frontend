@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import Cookies from 'js-cookie'
 import { toast } from '@/lib/toast'
 import {
   Avatar,
@@ -44,13 +43,8 @@ export function UserDropdownMenu() {
   useEffect(() => setOpen(false), [pathname])
 
   const handleLogout = async () => {
-    const token = Cookies.get('token')
-    try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      })
-    } catch {}
+    // Fase 5: signOut() já chama POST /auth/logout (limpa o cookie HttpOnly
+    // no backend) — não precisa duplicar a chamada aqui.
     signOut()
     toast.success('Logout realizado com sucesso!')
     router.push('/')

@@ -18,7 +18,7 @@ interface Props {
   open: boolean;
   twoFactorToken: string;
   onClose: () => void;
-  onSuccess: (token: string, user: any) => void;
+  onSuccess: (user: any) => void;
 }
 
 export function TotpVerifyModal({ open, twoFactorToken, onClose, onSuccess }: Props) {
@@ -45,6 +45,8 @@ export function TotpVerifyModal({ open, twoFactorToken, onClose, onSuccess }: Pr
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ twoFactorToken, code: code.trim() }),
+        // Fase 5: sessão é cookie HttpOnly.
+        credentials: "include",
       });
       const data = await res.json();
 
@@ -55,7 +57,7 @@ export function TotpVerifyModal({ open, twoFactorToken, onClose, onSuccess }: Pr
         throw new Error(msg);
       }
 
-      onSuccess(data.token, data.user);
+      onSuccess(data.user);
     } catch (err: any) {
       toast.error(err.message || "Erro na verificação 2FA");
       setCode("");

@@ -11,11 +11,11 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination'
-import Cookies from 'js-cookie'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { formatarDataBR } from '@/lib/formatarData' 
+import { formatarDataBR } from '@/lib/formatarData'
 import { MEDIA_FALLBACK, resolveThumbnailUrl } from '@/lib/media'
+import api from '@/lib/axios'
 
 interface Evento {
   id: string
@@ -37,21 +37,11 @@ export default function EventosAtivos() {
 
   useEffect(() => {
     const fetchEventos = async () => {
-      const token = Cookies.get('token')
-      if (!token) return
-
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/eventos/ativos`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        })
-
-        if (!res.ok) throw new Error('Erro ao carregar eventos')
-
-        const data = await res.json()
-        setEventos(data)
+        // Fase 5: sessão é cookie HttpOnly enviado automaticamente — o
+        // client compartilhado já resolve a API certa e envia credenciais.
+        const res = await api.get('/eventos/ativos')
+        setEventos(res.data)
       } catch (err) {
         setErro(true)
       } finally {

@@ -5,10 +5,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Lock, Eye, EyeOff } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { useAuth } from "@/context/AuthContext";
+import api, { getErrorMessage } from "@/lib/axios";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 const PROVIDER_LABELS: Record<string, string> = {
   google: "Google",
@@ -16,11 +15,11 @@ const PROVIDER_LABELS: Record<string, string> = {
 };
 
 function MergeAccountForm({
-  conflictToken,
+  code,
   provider,
   ctx,
 }: {
-  conflictToken: string;
+  code: string;
   provider: string;
   ctx: string;
 }) {
@@ -37,23 +36,13 @@ function MergeAccountForm({
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_URL}/auth/vincular-oauth`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
-        },
-        body: JSON.stringify({ conflictToken, senha }),
-      });
+      // Fase 5: `code` é um handoff opaco de uso único (nunca um JWT) — ver
+      // OAuthHandoffService no backend. O cookie de sessão HttpOnly já vem
+      // gravado nesta mesma resposta.
+      const res = await api.post("/auth/vincular-oauth", { code, senha });
+      const { user } = res.data;
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Erro ao vincular conta");
-      }
-
-      const { token, user } = data;
-      signIn(token, user);
+      signIn(user);
       toast.success(`Conta ${providerLabel} vinculada com sucesso!`);
 
       if (ctx === "produtor") {
@@ -65,8 +54,8 @@ function MergeAccountForm({
       } else {
         router.replace("/");
       }
-    } catch (err: any) {
-      toast.error(err.message || "Senha incorreta. Tente novamente.");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Senha incorreta. Tente novamente."));
       setLoading(false);
     }
   };
@@ -133,38 +122,42 @@ export function AuthCallbackContent() {
   const { signIn } = useAuth();
 
   const conflict = searchParams.get("conflict") === "true";
-  const conflictToken = searchParams.get("conflictToken") ?? "";
+  const code = searchParams.get("code") ?? "";
   const provider = searchParams.get("provider") ?? "";
   const ctx = searchParams.get("ctx") ?? "";
 
   useEffect(() => {
     if (conflict) return; // renderiza o form de merge, não faz redirect
 
-    const token = searchParams.get("token");
-    const role = searchParams.get("role") as "COMUM" | "PRODUTOR" | "ADMIN" | null;
-    const nivelProdutorParam = searchParams.get("nivelProdutor");
+    // Fase 5: o callback OAuth nunca carrega o JWT na URL — o backend já
+    // gravou o cookie HttpOnly na própria resposta do redirect. Aqui só
+    // confirmamos a sessão via /auth/me pra saber o papel e decidir a rota.
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get("/auth/me");
+        if (cancelled) return;
+        const data = res.data;
+        signIn({ userId: data.id, role: data.role, nivelProdutor: data.nivelProdutor ?? null });
 
-    if (!token || !role) {
-      router.replace("/login");
-      return;
-    }
-
-    const nivelProdutor = nivelProdutorParam ? parseInt(nivelProdutorParam, 10) : null;
-    signIn(token, { userId: 0, role, nivelProdutor });
-
-    if (ctx === "produtor") {
-      if (role === "PRODUTOR") {
-        router.replace("/produtor/eventos");
-      } else {
-        router.replace("/produtor/onboarding");
+        if (ctx === "produtor") {
+          router.replace(data.role === "PRODUTOR" ? "/produtor/eventos" : "/produtor/onboarding");
+        } else {
+          router.replace("/");
+        }
+      } catch {
+        if (!cancelled) router.replace("/login");
       }
-    } else {
-      router.replace("/");
-    }
-  }, [searchParams, signIn, router, conflict, ctx]);
+    })();
 
-  if (conflict && conflictToken) {
-    return <MergeAccountForm conflictToken={conflictToken} provider={provider} ctx={ctx} />;
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conflict, ctx]);
+
+  if (conflict && code) {
+    return <MergeAccountForm code={code} provider={provider} ctx={ctx} />;
   }
 
   return (

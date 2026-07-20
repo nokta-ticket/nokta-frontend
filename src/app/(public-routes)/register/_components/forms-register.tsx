@@ -10,6 +10,7 @@ import api from "@/lib/axios";
 import { PhoneInput, validatePhone } from "@/components/ui/phone-input";
 import { getCountryCallingCode, type Country } from "react-phone-number-input";
 import { isSafeInternalRedirect } from "@/lib/safe-redirect";
+import { currentSurfaceStateToken } from "@/lib/surfaces";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -127,11 +128,12 @@ const inputBase =
 // ─── OAuth buttons ──────────────────────────────────────────────────────────
 
 function OAuthButtons({ ctx }: { ctx: string }) {
+  const state = `${currentSurfaceStateToken()}:${ctx}`
   return (
     <div className="space-y-2">
       <button
         type="button"
-        onClick={() => { window.location.href = `${API_URL}/auth/google?state=${ctx}`; }}
+        onClick={() => { window.location.href = `${API_URL}/auth/google?state=${state}`; }}
         className="group flex h-[42px] w-full items-center justify-center gap-2.5 rounded-xl border border-gray-200 bg-white px-4 text-[13px] font-medium text-gray-700 transition-all duration-150 hover:border-gray-300 hover:bg-gray-50/80 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] active:scale-[0.99]"
       >
         <svg width="17" height="17" viewBox="0 0 18 18" aria-hidden className="shrink-0">
@@ -145,7 +147,7 @@ function OAuthButtons({ ctx }: { ctx: string }) {
 
       <button
         type="button"
-        onClick={() => { window.location.href = `${API_URL}/auth/apple?state=${ctx}`; }}
+        onClick={() => { window.location.href = `${API_URL}/auth/apple?state=${state}`; }}
         className="group flex h-[42px] w-full items-center justify-center gap-2.5 rounded-xl border border-gray-200 bg-white px-4 text-[13px] font-medium text-gray-700 transition-all duration-150 hover:border-gray-300 hover:bg-gray-50/80 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] active:scale-[0.99]"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden className="shrink-0">
@@ -420,8 +422,8 @@ export function RegisterForm() {
         { token: phoneCode, phone: phoneE164 },
         { headers: { "X-Device-Fingerprint": getDeviceFingerprint() } },
       );
-      const { token, user } = res.data;
-      signIn(token, user);
+      const { user } = res.data;
+      signIn(user);
       setStep("done");
       setTimeout(() => {
         if (redirectTo) {

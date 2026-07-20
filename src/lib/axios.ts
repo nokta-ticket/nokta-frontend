@@ -1,19 +1,22 @@
 import axios from "axios";
 import Cookies from "js-cookie";
+import { getApiBaseUrl } from "./surfaces";
 
-// API URL can be configured via environment variable
-// Supports both Laravel and NestJS backends
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3333/api";
-
+// Fase 5: a API é resolvida em runtime a partir do host (app.nokta.live vs
+// noktatickets.com.br) — o mesmo build Vercel atende as duas superfícies,
+// então uma NEXT_PUBLIC_API_URL fixa não bastaria mais. Ver lib/surfaces.ts.
 const api = axios.create({
-  baseURL: apiUrl,
+  baseURL: getApiBaseUrl(),
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
     // Bypasses ngrok's browser interstitial page in non-browser environments
     "ngrok-skip-browser-warning": "true",
   },
-  withCredentials: false,
+  // Fase 5: sessão é cookie HttpOnly enviado automaticamente pelo
+  // navegador — nunca mais Authorization: Bearer lido de um cookie
+  // acessível por JS.
+  withCredentials: true,
 });
 
 export function getErrorMessage(error: unknown, fallback = "Ocorreu um erro."): string {
@@ -40,25 +43,22 @@ export function getErrorMessage(error: unknown, fallback = "Ocorreu um erro."): 
   return fallback;
 }
 
-// Request interceptor - adds auth token to all requests
-api.interceptors.request.use(
-  (config) => {
-    const token = Cookies.get("token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+// Fase 5: baseURL é fixado na criação do client (acima) a partir do host no
+// momento em que o módulo carrega no navegador — isso já é suficiente
+// porque uma navegação entre app.nokta.live e noktatickets.com.br sempre
+// recarrega a página (são origens diferentes), então o host nunca muda
+// durante o tempo de vida deste módulo.
 
-// Response interceptor - handles 401 errors (token expired)
+// Response interceptor - handles 401 errors (token expired/ausente)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       const userCookie = Cookies.get("user");
-      Cookies.remove("token");
+      // O cookie de sessão é HttpOnly — só o backend consegue limpá-lo
+      // (ver AuthContext.signOut, que chama POST /auth/logout). Aqui só
+      // limpamos o metadado local pra UI não continuar achando que está
+      // autenticada.
       Cookies.remove("user");
 
       if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {

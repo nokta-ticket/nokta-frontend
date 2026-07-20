@@ -4,6 +4,11 @@ import {
   NextResponse,
 } from "next/server";
 import { UserPayload } from "./context/AuthContext";
+import {
+  getSurfaceConfig,
+  isSurfaceEnforced,
+  resolveSurfaceFromHost,
+} from "./lib/surfaces";
 
 const publicRoutes = [
   { path: "/login", whenAutenticated: "redirect" },
@@ -44,6 +49,21 @@ const protectedAdminRoutes = [
   "/admin/auditoria",
   "/admin/evidencias",
   "/admin/seguranca",
+];
+
+// Fase 5 — Etapa 3: prefixos exclusivos de cada superfície. Fora daqui
+// (login, register, recuperar-senha, convites, auth/callback, termos,
+// privacidade) é rota compartilhada — a MESMA página funciona nos dois
+// hosts, sem duplicação (o host só muda pra onde os botões/links apontam).
+const PLATFORM_ONLY_PREFIXES = ["/dashboard", "/produtor", "/admin", "/solicitar-produtor"];
+const TICKETS_ONLY_PREFIXES = [
+  "/eventos",
+  "/revenda",
+  "/favoritos",
+  "/meus-ingressos",
+  "/minhas-revendas",
+  "/perfil",
+  "/para-produtores",
 ];
 
 const REDIRECT_WHEN_NOT_AUTHENTICATION_ROUTE = "/";
@@ -97,22 +117,65 @@ function isSafeInternalRedirect(path: string | null): path is string {
   return true;
 }
 
+function matchesAnyPrefix(path: string, prefixes: string[]): boolean {
+  return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+}
+
+// Fase 5, Etapa 11: app.nokta.live nunca deve ser indexado — header HTTP
+// (funciona pra qualquer resposta, não só HTML) além do robots.ts
+// específico do host (ver src/app/robots.ts).
+function withRobotsHeader(response: NextResponse, isPlatform: boolean): NextResponse {
+  if (isPlatform) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
+  return response;
+}
+
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
+  const hostname = request.nextUrl.hostname;
+  const authToken = request.cookies.get("nokta_session")?.value;
+  const userPayload = JSON.parse(request.cookies.get("user")?.value || "{}");
+  const isPlatformSurface = isSurfaceEnforced(hostname) && resolveSurfaceFromHost(hostname) === "PLATFORM";
+
+  // ── Fase 5, Etapa 3: separação de rotas por host ──────────────────────
+  // Roda ANTES de qualquer lógica de auth — troca de host é sempre a
+  // primeira decisão. Preserva path + query string (deep link) e nunca usa
+  // um host arbitrário como destino, só os dois definidos centralmente em
+  // lib/surfaces.ts.
+  if (isSurfaceEnforced(hostname)) {
+    const surface = resolveSurfaceFromHost(hostname);
+
+    if (surface === "TICKETS_PUBLIC" && matchesAnyPrefix(path, PLATFORM_ONLY_PREFIXES)) {
+      const target = new URL(`${path}${request.nextUrl.search}`, getSurfaceConfig("PLATFORM").baseUrl);
+      return NextResponse.redirect(target);
+    }
+
+    if (surface === "PLATFORM" && matchesAnyPrefix(path, TICKETS_ONLY_PREFIXES)) {
+      const target = new URL(`${path}${request.nextUrl.search}`, getSurfaceConfig("TICKETS_PUBLIC").baseUrl);
+      return NextResponse.redirect(target);
+    }
+
+    // Raiz do domínio da plataforma não é a home pública — decide entre
+    // login e a Início unificada, nunca renderiza a home de descoberta de
+    // eventos em app.nokta.live (Etapa 14).
+    if (surface === "PLATFORM" && path === "/") {
+      const target = request.nextUrl.clone();
+      target.pathname = authToken ? getSurfaceConfig("PLATFORM").defaultPath : "/login";
+      return NextResponse.redirect(target);
+    }
+  }
 
   const publicRoute = publicRoutes.find((route) =>
     matchDynamicRoute(path, route.path)
   );
-
-  const authToken = request.cookies.get("token")?.value;
-  const userPayload = JSON.parse(request.cookies.get("user")?.value || "{}");
 
   // Invalid Token - clear and redirect
   if (authToken && !isValidToken(authToken)) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = REDIRECT_WHEN_NOT_AUTHENTICATION_ROUTE;
     const response = NextResponse.redirect(redirectUrl);
-    response.cookies.delete("token");
+    response.cookies.delete("nokta_session");
     response.cookies.delete("user");
     return response;
   }
@@ -130,7 +193,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (!authToken && publicRoute) return NextResponse.next();
+  if (!authToken && publicRoute) return withRobotsHeader(NextResponse.next(), isPlatformSurface);
 
   // Authenticated → redirect away from login/register
   if (authToken && publicRoute?.whenAutenticated === "redirect") {
@@ -165,6 +228,8 @@ export function middleware(request: NextRequest) {
       } else {
         redirectUrl.pathname = "/produtor/onboarding";
       }
+    } else if (isSurfaceEnforced(hostname) && resolveSurfaceFromHost(hostname) === "PLATFORM") {
+      redirectUrl.pathname = getSurfaceConfig("PLATFORM").defaultPath;
     } else {
       redirectUrl.pathname = "/";
     }
@@ -187,7 +252,7 @@ export function middleware(request: NextRequest) {
       redirectUrl.search = "";
       return NextResponse.redirect(redirectUrl);
     }
-    return NextResponse.next();
+    return withRobotsHeader(NextResponse.next(), isPlatformSurface);
   }
 
   // Producer routes: require PRODUTOR role
@@ -210,7 +275,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  return NextResponse.next();
+  return withRobotsHeader(NextResponse.next(), isPlatformSurface);
 }
 
 export const config: MiddlewareConfig = {

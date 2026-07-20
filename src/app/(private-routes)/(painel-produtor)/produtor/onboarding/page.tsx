@@ -170,7 +170,7 @@ export default function ProdutorOnboardingPage() {
         aceitouTermos,
       });
 
-      signIn(response.data.token, response.data.user);
+      signIn(response.data.user);
       window.location.href = "/produtor/eventos";
     } catch (error) {
       toast.error(getErrorMessage(error, "Nao foi possivel ativar a conta."));

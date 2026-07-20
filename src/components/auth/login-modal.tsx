@@ -34,7 +34,7 @@ export function LoginModal({
     setLoading(true);
     try {
       const res = await api.post("/auth/login", { email, senha: password });
-      signIn(res.data.token, res.data.user);
+      signIn(res.data.user);
       toast.success("Login realizado!");
       onSuccess();
     } catch (err) {

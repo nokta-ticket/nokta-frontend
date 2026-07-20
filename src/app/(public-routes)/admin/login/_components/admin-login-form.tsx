@@ -29,6 +29,8 @@ export function AdminLoginForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, senha }),
+        // Fase 5: sessão é cookie HttpOnly.
+        credentials: "include",
       });
       const data = await res.json();
 
@@ -45,10 +47,10 @@ export function AdminLoginForm() {
         return;
       }
 
-      const { token, user } = data;
-      if (!token) throw new Error("Token não retornado pela API");
+      const { user } = data;
+      if (!user) throw new Error("Não foi possível concluir o login.");
 
-      signIn(token, user);
+      signIn(user);
       toast.success("Login administrativo realizado!");
       router.push("/admin/dashboard");
     } catch (err: any) {
@@ -58,9 +60,9 @@ export function AdminLoginForm() {
     }
   };
 
-  const handleTotpSuccess = (token: string, user: any) => {
+  const handleTotpSuccess = (user: any) => {
     setTotpOpen(false);
-    signIn(token, user);
+    signIn(user);
     toast.success("Login administrativo realizado!");
     router.push("/admin/dashboard");
   };
