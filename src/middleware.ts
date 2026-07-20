@@ -121,6 +121,19 @@ function matchesAnyPrefix(path: string, prefixes: string[]): boolean {
   return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
 
+/**
+ * Redirect pra outra origem (app.nokta.live <-> noktatickets.com.br).
+ * `NextResponse.redirect(new URL(...))` observado, em produção, reduzindo o
+ * Location a um caminho relativo quando os dois domínios estão no mesmo
+ * projeto Vercel — vira loop (redireciona pra si mesmo). Monta a resposta
+ * manualmente com Location absoluto por string pra não depender desse
+ * comportamento.
+ */
+function crossOriginRedirect(baseUrl: string, path: string, search: string): NextResponse {
+  const location = `${baseUrl}${path}${search}`;
+  return new NextResponse(null, { status: 307, headers: { Location: location } });
+}
+
 // Fase 5, Etapa 11: app.nokta.live nunca deve ser indexado — header HTTP
 // (funciona pra qualquer resposta, não só HTML) além do robots.ts
 // específico do host (ver src/app/robots.ts).
@@ -147,13 +160,11 @@ export function middleware(request: NextRequest) {
     const surface = resolveSurfaceFromHost(hostname);
 
     if (surface === "TICKETS_PUBLIC" && matchesAnyPrefix(path, PLATFORM_ONLY_PREFIXES)) {
-      const target = new URL(`${path}${request.nextUrl.search}`, getSurfaceConfig("PLATFORM").baseUrl);
-      return NextResponse.redirect(target);
+      return crossOriginRedirect(getSurfaceConfig("PLATFORM").baseUrl, path, request.nextUrl.search);
     }
 
     if (surface === "PLATFORM" && matchesAnyPrefix(path, TICKETS_ONLY_PREFIXES)) {
-      const target = new URL(`${path}${request.nextUrl.search}`, getSurfaceConfig("TICKETS_PUBLIC").baseUrl);
-      return NextResponse.redirect(target);
+      return crossOriginRedirect(getSurfaceConfig("TICKETS_PUBLIC").baseUrl, path, request.nextUrl.search);
     }
 
     // Raiz do domínio da plataforma não é a home pública — decide entre
