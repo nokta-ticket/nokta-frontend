@@ -149,16 +149,25 @@ function escapeHtmlAttribute(value: string): string {
     .replace(/>/g, '&gt;');
 }
 
+// DIAGNÓSTICO TEMPORÁRIO (Fase 5.1) — remover depois de confirmar qual
+// camada (Vercel vs Cloudflare) está entregando resposta antiga mesmo após
+// deploy confirmado. Não é feature, é instrumentação de investigação.
+const MIDDLEWARE_BUILD_MARKER = "5864139-canonical-fix";
+
 function crossOriginRedirect(baseUrl: string, path: string, search: string): NextResponse {
   const location = `${baseUrl}${path}${search}`;
   // JSON.stringify não escapa "</" — sem isso, um path/query malicioso
   // poderia fechar a </script> mais cedo e injetar HTML (o path/search vêm
   // da própria URL da requisição, então é atacante-controlável via link).
   const scriptSafeLocation = JSON.stringify(location).replace(/</g, '\\u003C');
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${escapeHtmlAttribute(location)}"><script>location.replace(${scriptSafeLocation});</script></head><body></body></html>`;
+  const html = `<!DOCTYPE html><html data-nokta-middleware-build="${MIDDLEWARE_BUILD_MARKER}"><head><meta charset="utf-8"><!-- middleware-build:${MIDDLEWARE_BUILD_MARKER} --><meta http-equiv="refresh" content="0;url=${escapeHtmlAttribute(location)}"><script>location.replace(${scriptSafeLocation});</script></head><body></body></html>`;
   return new NextResponse(html, {
     status: 200,
-    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+      "X-Nokta-Middleware-Build": MIDDLEWARE_BUILD_MARKER,
+    },
   });
 }
 
@@ -169,6 +178,7 @@ function withRobotsHeader(response: NextResponse, isPlatform: boolean): NextResp
   if (isPlatform) {
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
   }
+  response.headers.set("X-Nokta-Middleware-Build", MIDDLEWARE_BUILD_MARKER);
   return response;
 }
 
@@ -241,7 +251,9 @@ export function middleware(request: NextRequest) {
     if (surface === "MARKETING" && path === "/") {
       const target = request.nextUrl.clone();
       target.pathname = "/institucional";
-      return NextResponse.rewrite(target);
+      const rewriteResponse = NextResponse.rewrite(target);
+      rewriteResponse.headers.set("X-Nokta-Middleware-Build", MIDDLEWARE_BUILD_MARKER);
+      return rewriteResponse;
     }
   }
 
