@@ -83,7 +83,9 @@ export default function StepMedia({ prevTab }: Props) {
 
   const removeImage = useCallback(
     (idx: number) => {
-      // @ts-expect-error
+      // @ts-expect-error setThumbnails é tipado em EventoContext para receber o array
+      // direto, não uma função atualizadora — mas em runtime é um setState do React,
+      // que aceita as duas formas. Erro pré-existente corrigido na Fase 4 da unificação.
       setThumbnails((prev: string[]) => {
         const next = prev.filter((_: any, i: number) => i !== idx);
         setThumbnails(next);

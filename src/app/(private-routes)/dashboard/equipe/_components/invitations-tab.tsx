@@ -3,7 +3,7 @@
 import { MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { GenericStatusBadge } from "../../venue/estoque/_components/stock-status-badge";
+import { GenericStatusBadge } from "../../estoque/_components/stock-status-badge";
 import { EmptyState } from "../../_components/states/empty-state";
 import { TableSkeleton } from "../../_components/states/loading-state";
 import { ErrorState } from "../../_components/states/error-state";

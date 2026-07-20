@@ -1,13 +1,6 @@
-import { PageContainer } from "../../_components/page/page-container";
-import { PageHeader } from "../../_components/page/page-header";
+import { RouteRedirect } from "../../_components/route-redirect";
 
-export default function TicketsFinanceiroPage() {
-  return (
-    <PageContainer>
-      <PageHeader
-        title="Financeiro — Tickets"
-        description="Saldo, repasses e saques da bilheteria. Isolado do Venue. (em construção)"
-      />
-    </PageContainer>
-  );
+/** Compatibilidade — a implementação real mora em /dashboard/financeiro (Fase 4). */
+export default function TicketsFinanceiroLegacyPage() {
+  return <RouteRedirect to="/dashboard/financeiro" />;
 }

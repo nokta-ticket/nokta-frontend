@@ -1,13 +1,6 @@
-import { PageContainer } from "../../_components/page/page-container";
-import { PageHeader } from "../../_components/page/page-header";
+import { RouteRedirect } from "../../_components/route-redirect";
 
-export default function TicketsInsightsPage() {
-  return (
-    <PageContainer>
-      <PageHeader
-        title="Insights — Tickets"
-        description="Inteligência de vendas da bilheteria. Isolado do Venue. (em construção)"
-      />
-    </PageContainer>
-  );
+/** Compatibilidade — a implementação real mora em /dashboard/insights (Fase 4). */
+export default function TicketsInsightsLegacyPage() {
+  return <RouteRedirect to="/dashboard/insights" />;
 }

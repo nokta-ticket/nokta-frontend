@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
 import { WEEKDAY_LABEL, type VenueBusinessHourInterval } from "@/services/venue-settings";
-import { useVenueLocations } from "../../venue/operacao/_hooks/use-venue-locations";
+import { useVenueLocations } from "../../operacao/_hooks/use-venue-locations";
 import { BlockSkeleton } from "../../_components/states/loading-state";
 import { EmptyState } from "../../_components/states/empty-state";
 import { useSetVenueBusinessHours, useVenueBusinessHours } from "../_hooks/use-venue-settings";

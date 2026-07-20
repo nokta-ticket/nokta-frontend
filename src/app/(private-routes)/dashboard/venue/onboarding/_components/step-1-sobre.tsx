@@ -18,7 +18,7 @@ import {
   type VenueSetupStatus,
 } from "@/services/venue-setup";
 import type { VenueLocation } from "@/services/venue-operation";
-import { useVenueLocationMutations } from "../../operacao/_hooks/use-venue-locations";
+import { useVenueLocationMutations } from "../../../operacao/_hooks/use-venue-locations";
 import { useSaveVenueSetupProfile } from "../../../configuracoes/_hooks/use-venue-settings";
 
 export function Step1Sobre({

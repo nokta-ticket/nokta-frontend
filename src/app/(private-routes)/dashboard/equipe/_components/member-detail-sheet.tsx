@@ -5,7 +5,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { GenericStatusBadge } from "../../venue/estoque/_components/stock-status-badge";
+import { GenericStatusBadge } from "../../estoque/_components/stock-status-badge";
 import { BlockSkeleton } from "../../_components/states/loading-state";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";

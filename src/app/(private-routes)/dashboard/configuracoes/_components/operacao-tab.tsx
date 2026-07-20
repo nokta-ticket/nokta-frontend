@@ -97,7 +97,7 @@ export function OperacaoTab({ orgId, canManage }: { orgId: number; canManage: bo
         </CardHeader>
         <CardContent>
           <Button variant="outline" asChild>
-            <Link href="/dashboard/venue/estoque">Ir para Estoque</Link>
+            <Link href="/dashboard/estoque">Ir para Estoque</Link>
           </Button>
         </CardContent>
       </Card>

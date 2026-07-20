@@ -6,8 +6,8 @@ import { PageHeader } from "../_components/page/page-header";
 import { EmptyState } from "../_components/states/empty-state";
 import { BlockSkeleton } from "../_components/states/loading-state";
 import { selectFinanceDispatch } from "../_lib/finance-dispatch";
-import TicketsFinanceiroPage from "../tickets/financeiro/page";
-import VenueFinanceiroPage from "../venue/financeiro/page";
+import TicketsFinanceiroPage from "./_tickets/tickets-financeiro-content";
+import VenueFinanceiroPage from "./_venue/venue-financeiro-content";
 
 /**
  * Rota canônica de Financeiro. Tickets e Venue têm ledgers diferentes e

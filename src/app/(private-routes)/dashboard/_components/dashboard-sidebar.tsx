@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
@@ -13,79 +12,21 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { useProductContext } from "@/context/ProductContext";
-import { useVenueAccess } from "@/context/VenueAccessContext";
-import { useOrganizations } from "@/context/OrganizationContext";
-import { isUnifiedDashboardEnabled } from "@/lib/feature-flags";
-import { usePlatformNavigation } from "../_hooks/use-platform";
-import { contextMenu, filterMenuByAccess, GLOBAL_MENU, appendExploreIfAllowed, type MenuItem } from "./build-menu";
-import { ContextSwitcher } from "./context-switcher";
 import { UnifiedSidebar } from "./unified-sidebar";
 
-function NavList({ items }: { items: MenuItem[] }) {
-  const pathname = usePathname();
-
-  return (
-    <nav className="flex flex-col gap-1 text-white text-md">
-      {items.map((item) => {
-        const isActive =
-          pathname === item.href || pathname.startsWith(item.href + "/");
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={`flex items-center gap-3 px-3 py-2 rounded-md font-normal ${
-              isActive ? "bg-violet-600 text-white" : "hover:bg-white/10"
-            }`}
-          >
-            {item.icon}
-            {item.label}
-          </Link>
-        );
-      })}
-    </nav>
-  );
-}
-
-// Menu antigo (switcher Tickets|Venue) — fallback enquanto a flag estiver
-// desligada, ou se precisar de rollback rápido. Ver docs/platform/unified-navigation.md.
-function LegacySidebarInner() {
-  const { active } = useProductContext();
-  const { can } = useVenueAccess();
-  const { currentOrg } = useOrganizations();
-  const { data: navigation } = usePlatformNavigation(currentOrg?.id ?? null);
-
-  // Só o Venue tem RBAC por papel hoje — o Tickets mostra tudo, sem filtro.
-  const items = active === "venue" ? filterMenuByAccess(contextMenu(active), can) : contextMenu(active);
-  const baseGlobalItems = active === "venue" ? filterMenuByAccess(GLOBAL_MENU, can) : GLOBAL_MENU;
-  const globalItems = appendExploreIfAllowed(baseGlobalItems, navigation?.canExplore ?? false);
-
-  return (
-    <>
-      <div className="my-5">
-        <ContextSwitcher />
-      </div>
-
-      <NavList items={items} />
-
-      <Separator className="my-4 bg-white/10 mt-auto" />
-      <NavList items={globalItems} />
-    </>
-  );
-}
-
-// Sidebar: logo → (unificada) grupos por capacidade OU (legado) switcher Tickets|Venue.
+// Sidebar: logo → grupos de navegação por capacidade (Fase 4 — navegação
+// unificada definitiva; ver docs/platform/unified-navigation.md "Estruturas
+// transitórias removidas"). O fallback do switcher Tickets|Venue existiu
+// nas Fases 3-4 só como rede de segurança durante a migração; removido
+// depois de validado autenticado em produção. Rollback é por git revert.
 function SidebarInner() {
-  const unified = isUnifiedDashboardEnabled();
-
   return (
     <>
       <div className="flex justify-center">
         <Image src="/logo-painel.svg" alt="Nokta Tickets" width={80} height={80} />
       </div>
 
-      {unified ? <UnifiedSidebar /> : <LegacySidebarInner />}
+      <UnifiedSidebar />
     </>
   );
 }

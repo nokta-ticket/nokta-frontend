@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
 import type { VenueLocation, CreateVenueLocationPayload } from "@/services/venue-operation";
-import { useVenueLocationMutations } from "../../venue/operacao/_hooks/use-venue-locations";
+import { useVenueLocationMutations } from "../../operacao/_hooks/use-venue-locations";
 
 interface Props {
   orgId: number;

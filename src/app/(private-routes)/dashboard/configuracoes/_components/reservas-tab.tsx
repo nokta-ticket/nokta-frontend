@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useVenueLocations } from "../../venue/operacao/_hooks/use-venue-locations";
+import { useVenueLocations } from "../../operacao/_hooks/use-venue-locations";
 import { BlockSkeleton } from "../../_components/states/loading-state";
 import { EmptyState } from "../../_components/states/empty-state";
 

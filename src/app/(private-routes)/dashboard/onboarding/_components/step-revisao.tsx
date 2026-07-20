@@ -65,7 +65,7 @@ export function StepRevisao({ orgId, onBack }: { orgId: number; onBack: () => vo
           <div className="flex flex-wrap gap-2">
             {hasTickets ? (
               <Button asChild variant="outline" size="sm">
-                <Link href="/dashboard/tickets/eventos">Criar primeiro evento</Link>
+                <Link href="/dashboard/eventos">Criar primeiro evento</Link>
               </Button>
             ) : null}
             {hasVenue ? (

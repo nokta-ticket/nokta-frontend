@@ -105,7 +105,7 @@ export function Step3Cardapio({
         </CardHeader>
         <CardContent>
           <Button variant="outline" asChild>
-            <Link href="/dashboard/venue/cardapio">Ir para o Cardápio</Link>
+            <Link href="/dashboard/cardapio">Ir para o Cardápio</Link>
           </Button>
         </CardContent>
       </Card>

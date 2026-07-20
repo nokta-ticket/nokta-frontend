@@ -18,7 +18,7 @@ import {
   type VenueOperationMode,
 } from "@/services/venue-setup";
 import { BlockSkeleton } from "../../_components/states/loading-state";
-import { useVenueLocations } from "../../venue/operacao/_hooks/use-venue-locations";
+import { useVenueLocations } from "../../operacao/_hooks/use-venue-locations";
 import { useSaveVenueSetupProfile, useVenueSetupStatus } from "../_hooks/use-venue-settings";
 
 export function VenueTab({ orgId, canManage }: { orgId: number; canManage: boolean }) {

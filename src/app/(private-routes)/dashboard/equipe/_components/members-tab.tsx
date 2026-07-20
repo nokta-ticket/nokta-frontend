@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { GenericStatusBadge } from "../../venue/estoque/_components/stock-status-badge";
+import { GenericStatusBadge } from "../../estoque/_components/stock-status-badge";
 import { EmptyState } from "../../_components/states/empty-state";
 import { TableSkeleton } from "../../_components/states/loading-state";
 import { ErrorState } from "../../_components/states/error-state";

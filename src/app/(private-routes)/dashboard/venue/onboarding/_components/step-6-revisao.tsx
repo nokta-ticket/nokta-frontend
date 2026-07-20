@@ -16,7 +16,7 @@ export function Step6Revisao({ orgId, status, onBack }: { orgId: number; status:
     complete.mutate(undefined, {
       onSuccess: () => {
         toast.success("Configuração concluída! Seu Venue está pronto para operar.");
-        router.push("/dashboard/venue/inicio");
+        router.push("/dashboard/inicio");
       },
       onError: (err) => toast.error(getErrorMessage(err, "Ainda há itens obrigatórios pendentes.")),
     });

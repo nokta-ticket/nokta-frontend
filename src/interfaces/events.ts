@@ -43,4 +43,8 @@ export interface EventDetails {
   email?: string;
   instagram?: string;
   thumbnails: Thumbnail[];
+  // 1=Rascunho, 2=Publicado, 3=Cancelado, 4=Finalizado (EventStatus no
+  // backend) — já usado em runtime (eventos/[id]/page.tsx), só faltava no
+  // tipo. Erro pré-existente corrigido na Fase 4 da unificação.
+  status?: number;
 }

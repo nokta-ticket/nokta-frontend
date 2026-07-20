@@ -5,7 +5,7 @@ import { useOrganizations } from "@/context/OrganizationContext";
 import { PageContainer } from "../_components/page/page-container";
 import { PageHeader } from "../_components/page/page-header";
 import { BlockSkeleton } from "../_components/states/loading-state";
-import { VenueInicioPageContent } from "../venue/inicio/page";
+import { VenueInicioPageContent } from "../venue/inicio/venue-inicio-content";
 import { InicioContent } from "./_components/inicio-content";
 
 /**

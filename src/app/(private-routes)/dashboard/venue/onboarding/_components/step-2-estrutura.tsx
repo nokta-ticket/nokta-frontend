@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
-import { useVenueAreaMutations, useVenueTableMutations, useVenueTables } from "../../operacao/_hooks/use-venue-areas-tables";
-import { useVenueCashRegisterMutations, useVenueCashRegisters } from "../../operacao/_hooks/use-venue-cash";
+import { useVenueAreaMutations, useVenueTableMutations, useVenueTables } from "../../../operacao/_hooks/use-venue-areas-tables";
+import { useVenueCashRegisterMutations, useVenueCashRegisters } from "../../../operacao/_hooks/use-venue-cash";
 
 function ReadyRow({ done, label }: { done: boolean; label: string }) {
   return (

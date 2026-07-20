@@ -6,8 +6,8 @@ import { PageHeader } from "../_components/page/page-header";
 import { EmptyState } from "../_components/states/empty-state";
 import { BlockSkeleton } from "../_components/states/loading-state";
 import { selectFinanceDispatch } from "../_lib/finance-dispatch";
-import TicketsInsightsPage from "../tickets/insights/page";
-import VenueInsightsPage from "../venue/insights/page";
+import TicketsInsightsPage from "./_tickets/tickets-insights-content";
+import VenueInsightsPage from "./_venue/venue-insights-content";
 
 /** Rota canônica de Insights — mesma lógica de composição do Financeiro (nunca mistura origem). */
 export default function InsightsPage() {

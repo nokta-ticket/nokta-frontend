@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
 import type { VenueLocation } from "@/services/venue-operation";
-import { useVenueLocations, useVenueLocationMutations } from "../../venue/operacao/_hooks/use-venue-locations";
+import { useVenueLocations, useVenueLocationMutations } from "../../operacao/_hooks/use-venue-locations";
 import { EmptyState } from "../../_components/states/empty-state";
 import { BlockSkeleton } from "../../_components/states/loading-state";
 import { LocationFormDialog } from "./location-form-dialog";

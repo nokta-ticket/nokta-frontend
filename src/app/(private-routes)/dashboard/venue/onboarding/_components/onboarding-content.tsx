@@ -9,7 +9,7 @@ import { PageHeader } from "../../../_components/page/page-header";
 import { EmptyState } from "../../../_components/states/empty-state";
 import { BlockSkeleton } from "../../../_components/states/loading-state";
 import { useUrlTab } from "../../../_hooks/use-url-tab";
-import { useVenueLocations } from "../../operacao/_hooks/use-venue-locations";
+import { useVenueLocations } from "../../../operacao/_hooks/use-venue-locations";
 import { useVenueSetupLifecycle, useVenueSetupStatus } from "../../../configuracoes/_hooks/use-venue-settings";
 import { Step1Sobre } from "./step-1-sobre";
 import { Step2Estrutura } from "./step-2-estrutura";
