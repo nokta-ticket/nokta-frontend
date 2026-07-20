@@ -15,6 +15,18 @@ import { currentSurfaceStateToken, getApiBaseUrl } from "@/lib/surfaces";
 // Fase 5: API resolvida por host, não uma NEXT_PUBLIC_API_URL fixa.
 const API_URL = getApiBaseUrl();
 
+// Fase 5.1: alternar entre /login e /register nunca deve perder o `ctx`
+// (ex.: "produtor", vindo do CTA de cadastro empresarial da LP) — só
+// `redirect` era preservado antes, o que jogava quem clicasse em "Entrar"
+// de volta pro fluxo de comprador comum.
+function buildLoginQuery(ctx: string, redirectTo: string): string {
+  const params = new URLSearchParams();
+  if (ctx) params.set("ctx", ctx);
+  if (redirectTo) params.set("redirect", redirectTo);
+  const query = params.toString();
+  return query ? `?${query}` : "";
+}
+
 // ─── WhatsApp icon ──────────────────────────────────────────────────────────
 
 function WhatsAppIcon({ className }: { className?: string }) {
@@ -726,7 +738,7 @@ export function RegisterForm() {
       <p className="mt-1.5 text-center text-[13px] text-gray-500">
         Já tem uma conta?{" "}
         <Link
-          href={`/login${redirectTo ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`}
+          href={`/login${buildLoginQuery(ctx, redirectTo)}`}
           className="font-medium text-violet-700 underline-offset-2 transition-colors hover:text-violet-800 hover:underline"
         >
           Entrar

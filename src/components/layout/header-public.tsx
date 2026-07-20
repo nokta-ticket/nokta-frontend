@@ -115,8 +115,7 @@ export default function Header() {
               <div className="w-full h-[2px] bg-gradient-to-r from-[#9944CC] via-[#D86CFA] to-[#3399FF] mb-3" />
               <div className="flex flex-col gap-0.5">
                 {[
-                  { label: 'Central de ajuda', href: '/ajuda' },
-                  { label: 'Fale com suporte', href: '/suporte' },
+                  { label: 'Fale com suporte', href: 'mailto:contato@noktatickets.com.br' },
                   { label: 'Termos e políticas', href: '/termos' },
                 ].map(({ label, href }) => (
                   <Link key={href} href={href} className="font-sans px-4 py-2.5 text-[13px] text-gray-500 hover:text-[#9944CC] transition-colors rounded-xl hover:bg-gray-100">

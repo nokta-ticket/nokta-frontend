@@ -1,10 +1,10 @@
 /**
- * Fase 5 — configuração central das duas superfícies que este MESMO build
+ * Fase 5.1 — configuração central das três superfícies que este MESMO build
  * Next.js atende, reconhecendo o host da requisição. Nunca comparar
  * `hostname === "app.nokta.live"` espalhado por componentes — sempre passar
  * pelos helpers daqui. Ver docs/platform/surfaces.md.
  */
-export type Surface = "PLATFORM" | "TICKETS_PUBLIC";
+export type Surface = "PLATFORM" | "TICKETS_PUBLIC" | "MARKETING";
 
 interface SurfaceDefinition {
   hostnames: string[];
@@ -15,11 +15,18 @@ interface SurfaceDefinition {
 
 const PLATFORM_HOSTNAMES = ["app.nokta.live", "app.localhost"];
 const TICKETS_HOSTNAMES = ["noktatickets.com.br", "www.noktatickets.com.br", "tickets.localhost"];
+// "nokta.live" (sem www) entra aqui só pra nunca cair no público por
+// engano se, por algum motivo, a requisição chegar até este código sem
+// antes passar pelo redirect 308 pro www (ver middleware). O redirect de
+// verdade é responsabilidade da Vercel (domínio apex → www) — isto é rede
+// de segurança, não o mecanismo principal.
+const MARKETING_HOSTNAMES = ["www.nokta.live", "nokta.live", "marketing.localhost"];
 
 // localhost puro (sem subdomínio): modo de desenvolvimento "tudo junto",
 // como sempre funcionou — nenhuma regra de host é aplicada (ver
-// isSurfaceEnforced). app.localhost/tickets.localhost são pra quando
-// alguém quer testar a separação de verdade localmente (Etapa 20).
+// isSurfaceEnforced). app.localhost/tickets.localhost/marketing.localhost
+// são pra quando alguém quer testar a separação de verdade localmente
+// (Etapa 12/20).
 const UNENFORCED_LOCAL_HOSTNAMES = ["localhost", "127.0.0.1"];
 
 function stripPort(hostname: string): string {
@@ -39,6 +46,15 @@ const SURFACES: Record<Surface, SurfaceDefinition> = {
     apiBaseUrl: process.env.NEXT_PUBLIC_TICKETS_API_URL || "https://api.noktatickets.com.br/api",
     defaultPath: "/",
   },
+  MARKETING: {
+    hostnames: MARKETING_HOSTNAMES,
+    baseUrl: process.env.NEXT_PUBLIC_MARKETING_URL || "https://www.nokta.live",
+    // A LP é estática e não depende de autenticação (Etapa 7) — não tem uso
+    // conhecido hoje, mas resolve pra API pública caso algum bloco futuro
+    // precise (ex.: contagem de eventos), nunca pra API da plataforma.
+    apiBaseUrl: process.env.NEXT_PUBLIC_TICKETS_API_URL || "https://api.noktatickets.com.br/api",
+    defaultPath: "/",
+  },
 };
 
 const LOCAL_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3333/api";
@@ -47,6 +63,7 @@ const LOCAL_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3333/
 export function resolveSurfaceFromHost(hostname: string | null | undefined): Surface {
   const host = hostname ? stripPort(hostname) : "";
   if (PLATFORM_HOSTNAMES.includes(host)) return "PLATFORM";
+  if (MARKETING_HOSTNAMES.includes(host)) return "MARKETING";
   return "TICKETS_PUBLIC";
 }
 
@@ -96,8 +113,26 @@ export function getPublicTicketsUrl(path = ""): string {
   return `${SURFACES.TICKETS_PUBLIC.baseUrl}${path}`;
 }
 
+export function getMarketingUrl(path = ""): string {
+  return `${SURFACES.MARKETING.baseUrl}${path}`;
+}
+
 export function buildAbsoluteUrl(surface: Surface, path = ""): string {
   return `${SURFACES[surface].baseUrl}${path}`;
+}
+
+// Aliases explícitos por superfície — mesma implementação de
+// buildAbsoluteUrl, só pra quem prefere chamar sem passar o enum na mão.
+export function buildPlatformUrl(path = ""): string {
+  return buildAbsoluteUrl("PLATFORM", path);
+}
+
+export function buildTicketsUrl(path = ""): string {
+  return buildAbsoluteUrl("TICKETS_PUBLIC", path);
+}
+
+export function buildMarketingUrl(path = ""): string {
+  return buildAbsoluteUrl("MARKETING", path);
 }
 
 /**

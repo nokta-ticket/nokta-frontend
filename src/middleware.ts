@@ -171,9 +171,23 @@ function withRobotsHeader(response: NextResponse, isPlatform: boolean): NextResp
   return response;
 }
 
+// Fase 5.1, Etapa 3/10: domínio apex institucional sem "www" sempre vira o
+// canônico com www — 308 de verdade fica a cargo do redirect nativo da
+// Vercel (Domains → nokta.live → Redirect to www.nokta.live), que roda no
+// edge da Vercel ANTES de qualquer função rodar. Isto aqui é só rede de
+// segurança pro caso de a requisição chegar até o Next.js sem passar por
+// aquele redirect (ex.: domínio ainda não configurado assim) — por isso usa
+// o MESMO mecanismo seguro de crossOriginRedirect (não um NextResponse.
+// redirect de verdade), já provado imune ao bug de Location entre hosts.
+const BARE_MARKETING_HOSTNAME = "nokta.live";
+
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const hostname = request.nextUrl.hostname;
+
+  if (hostname.toLowerCase() === BARE_MARKETING_HOSTNAME) {
+    return crossOriginRedirect(getSurfaceConfig("MARKETING").baseUrl, path, request.nextUrl.search);
+  }
   // Fase 5: o cookie de sessão real (nokta_session) é host-only da API
   // (api.nokta.live / api.noktatickets.com.br) — o middleware roda no host
   // do FRONTEND (app.nokta.live / noktatickets.com.br), um host diferente,
@@ -199,11 +213,14 @@ export function middleware(request: NextRequest) {
   if (isSurfaceEnforced(hostname)) {
     const surface = resolveSurfaceFromHost(hostname);
 
-    if (surface === "TICKETS_PUBLIC" && matchesAnyPrefix(path, PLATFORM_ONLY_PREFIXES)) {
+    // Fase 5.1: MARKETING nunca hospeda rota exclusiva de PLATFORM nem de
+    // TICKETS_PUBLIC — cruza pra fora igual às duas superfícies operacionais
+    // já faziam entre si (mesma função, mesmo destino central).
+    if (surface !== "PLATFORM" && matchesAnyPrefix(path, PLATFORM_ONLY_PREFIXES)) {
       return crossOriginRedirect(getSurfaceConfig("PLATFORM").baseUrl, path, request.nextUrl.search);
     }
 
-    if (surface === "PLATFORM" && matchesAnyPrefix(path, TICKETS_ONLY_PREFIXES)) {
+    if (surface !== "TICKETS_PUBLIC" && matchesAnyPrefix(path, TICKETS_ONLY_PREFIXES)) {
       return crossOriginRedirect(getSurfaceConfig("TICKETS_PUBLIC").baseUrl, path, request.nextUrl.search);
     }
 
@@ -214,6 +231,16 @@ export function middleware(request: NextRequest) {
       const target = request.nextUrl.clone();
       target.pathname = authToken ? getSurfaceConfig("PLATFORM").defaultPath : "/login";
       return NextResponse.redirect(target);
+    }
+
+    // Raiz do domínio institucional é a landing page — rewrite interno
+    // (URL visível continua "/"), não redirect: é conteúdo, não troca de
+    // host. A LP não depende de autenticação (Etapa 7), por isso resolve
+    // aqui, antes de qualquer checagem de auth abaixo.
+    if (surface === "MARKETING" && path === "/") {
+      const target = request.nextUrl.clone();
+      target.pathname = "/institucional";
+      return NextResponse.rewrite(target);
     }
   }
 

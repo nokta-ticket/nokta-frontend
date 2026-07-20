@@ -2,7 +2,17 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { LoginForm } from "./_components/login-form";
 
-export default function LoginPage() {
+// Fase 5.1: "Cadastre-se grátis" precisa preservar o `ctx` (ex.: "produtor",
+// vindo do CTA de cadastro empresarial da LP) — sem isso, quem não tem conta
+// ainda perdia a indicação de superfície empresarial ao trocar pra /register.
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ctx?: string }>;
+}) {
+  const { ctx } = await searchParams;
+  const registerHref = ctx ? `/register?ctx=${encodeURIComponent(ctx)}` : "/register";
+
   return (
     <>
       {/* ── Fundo lavanda premium ───────────────────────────────────────── */}
@@ -148,7 +158,7 @@ export default function LoginPage() {
           <p className="mt-1.5 sm:mt-4 text-center text-[13px] text-gray-500">
             Não possui conta?{" "}
             <Link
-              href="/register"
+              href={registerHref}
               className="font-medium text-violet-700 underline-offset-2 transition-colors hover:text-violet-800 hover:underline"
             >
               Cadastre-se grátis

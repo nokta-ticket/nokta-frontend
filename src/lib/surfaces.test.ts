@@ -6,7 +6,11 @@ import {
   getApiBaseUrl,
   getPlatformUrl,
   getPublicTicketsUrl,
+  getMarketingUrl,
   buildAbsoluteUrl,
+  buildPlatformUrl,
+  buildTicketsUrl,
+  buildMarketingUrl,
   currentSurfaceStateToken,
 } from "./surfaces";
 
@@ -40,6 +44,12 @@ describe("resolveSurfaceFromHost", () => {
     expect(resolveSurfaceFromHost("app.localhost")).toBe("PLATFORM");
     expect(resolveSurfaceFromHost("tickets.localhost")).toBe("TICKETS_PUBLIC");
   });
+
+  it("Fase 5.1: reconhece www.nokta.live, nokta.live (sem www) e marketing.localhost como MARKETING", () => {
+    expect(resolveSurfaceFromHost("www.nokta.live")).toBe("MARKETING");
+    expect(resolveSurfaceFromHost("nokta.live")).toBe("MARKETING");
+    expect(resolveSurfaceFromHost("marketing.localhost")).toBe("MARKETING");
+  });
 });
 
 describe("isSurfaceEnforced", () => {
@@ -64,6 +74,12 @@ describe("isSurfaceEnforced", () => {
     expect(isSurfaceEnforced(null)).toBe(false);
     expect(isSurfaceEnforced("")).toBe(false);
   });
+
+  it("Fase 5.1: www.nokta.live, nokta.live e marketing.localhost também aplicam separação", () => {
+    expect(isSurfaceEnforced("www.nokta.live")).toBe(true);
+    expect(isSurfaceEnforced("nokta.live")).toBe(true);
+    expect(isSurfaceEnforced("marketing.localhost")).toBe(true);
+  });
 });
 
 describe("getApiBaseUrl — Etapa 5, seleção de API por host em runtime", () => {
@@ -80,8 +96,14 @@ describe("getApiBaseUrl — Etapa 5, seleção de API por host em runtime", () =
     expect(getApiBaseUrl("localhost:3000")).toBe(local);
     expect(getApiBaseUrl("app.localhost")).toBe(local);
     expect(getApiBaseUrl("tickets.localhost")).toBe(local);
+    expect(getApiBaseUrl("marketing.localhost")).toBe(local);
     expect(local).not.toContain("nokta.live");
     expect(local).not.toContain("noktatickets.com.br");
+  });
+
+  it("Fase 5.1: www.nokta.live usa a mesma API pública da bilheteria (LP é estática, sem API própria)", () => {
+    expect(getApiBaseUrl("www.nokta.live")).toBe(getSurfaceConfig("MARKETING").apiBaseUrl);
+    expect(getApiBaseUrl("www.nokta.live")).toBe(getSurfaceConfig("TICKETS_PUBLIC").apiBaseUrl);
   });
 });
 
@@ -94,6 +116,13 @@ describe("URLs absolutas centralizadas (Etapa 2/10)", () => {
   it("buildAbsoluteUrl é consistente com os helpers específicos", () => {
     expect(buildAbsoluteUrl("PLATFORM", "/equipe")).toBe(getPlatformUrl("/equipe"));
     expect(buildAbsoluteUrl("TICKETS_PUBLIC", "/perfil")).toBe(getPublicTicketsUrl("/perfil"));
+  });
+
+  it("Fase 5.1: getMarketingUrl e os aliases build*Url resolvem pro host institucional", () => {
+    expect(getMarketingUrl("/termos")).toBe("https://www.nokta.live/termos");
+    expect(buildMarketingUrl("/termos")).toBe(getMarketingUrl("/termos"));
+    expect(buildPlatformUrl("/login")).toBe(getPlatformUrl("/login"));
+    expect(buildTicketsUrl("/")).toBe(getPublicTicketsUrl("/"));
   });
 });
 

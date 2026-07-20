@@ -47,20 +47,18 @@ export default function Footer() {
           <div className="space-y-4">
             <h4 className="font-semibold text-lg uppercase text-black">CONTA</h4>
             <ul className="space-y-2 text-gray-700">
-              <li><Link href="/minha-conta" className="hover:underline">Minha Conta</Link></li>
-              <li><Link href="/ingressos" className="hover:underline">Meus Ingressos</Link></li>
+              <li><Link href="/perfil" className="hover:underline">Minha Conta</Link></li>
+              <li><Link href="/meus-ingressos" className="hover:underline">Meus Ingressos</Link></li>
               <li><Link href="/favoritos" className="hover:underline">Favoritos</Link></li>
-              <li><Link href="/notificacoes" className="hover:underline">Notificações</Link></li>
             </ul>
           </div>
 
           <div className="space-y-4">
             <h4 className="text-lg font-semibold uppercase text-black">SUPORTE</h4>
             <ul className="space-y-2 text-gray-700">
-              <li><Link href="/contato" className="hover:underline">Fale Conosco</Link></li>
+              <li><a href="mailto:contato@noktatickets.com.br" className="hover:underline">Fale Conosco</a></li>
               <li><Link href="/termos" className="hover:underline">Termos de Uso</Link></li>
               <li><Link href="/privacidade" className="hover:underline">Política de Privacidade</Link></li>
-              <li><Link href="/faq" className="hover:underline">FAQ</Link></li>
             </ul>
           </div>
         </div>
@@ -106,8 +104,6 @@ export default function Footer() {
             <Link href="/termos" className="hover:text-gray-600 transition whitespace-nowrap">Termos de Uso</Link>
             <span>·</span>
             <Link href="/privacidade" className="hover:text-gray-600 transition whitespace-nowrap">Política de Privacidade</Link>
-            <span>·</span>
-            <Link href="/faq" className="hover:text-gray-600 transition whitespace-nowrap">FAQ</Link>
           </div>
 
           <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />

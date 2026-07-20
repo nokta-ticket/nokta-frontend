@@ -14,7 +14,6 @@ import {
   Ticket,
   Heart,
   User,
-  HelpCircle,
   MessageSquare,
   Shield,
   LogOut,
@@ -66,6 +65,11 @@ export default function HeaderPrivate() {
 
   const handleNavClick = (href: string) => {
     setMobileOpen(false);
+    // mailto/tel não são rotas internas — router.push não navega pra eles.
+    if (href.startsWith('mailto:') || href.startsWith('tel:')) {
+      window.location.href = href;
+      return;
+    }
     if (pathname !== href) router.push(href);
   };
 
@@ -98,8 +102,7 @@ export default function HeaderPrivate() {
     ...(isProdutor
       ? [{ href: '/produtor/metricas', label: 'Área do produtor',  icon: <Briefcase size={20} /> }]
       : [{ href: '/produtor/onboarding', label: 'Seja produtor',   icon: <Briefcase size={20} /> }]),
-    { href: '/ajuda',   label: 'Central de ajuda',   icon: <HelpCircle size={20} /> },
-    { href: '/suporte', label: 'Fale com suporte',   icon: <MessageSquare size={20} /> },
+    { href: 'mailto:contato@noktatickets.com.br', label: 'Fale com suporte', icon: <MessageSquare size={20} /> },
     { href: '/termos',  label: 'Termos e políticas', icon: <Shield size={20} /> },
   ];
 
