@@ -5,8 +5,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useEffect, useRef, useState } from 'react'
 import { toast } from '@/lib/toast'
+import { getApiBaseUrl } from '@/lib/surfaces'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL
+// Fase 5: API resolvida por host, não uma NEXT_PUBLIC_API_URL fixa.
+const API_URL = getApiBaseUrl()
 
 // ─── OTP input ───────────────────────────────────────────────────────────────
 

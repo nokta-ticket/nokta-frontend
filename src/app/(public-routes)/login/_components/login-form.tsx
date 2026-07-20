@@ -7,10 +7,12 @@ import { toast } from '@/lib/toast'
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { isSafeInternalRedirect } from '@/lib/safe-redirect'
-import { currentSurfaceStateToken } from '@/lib/surfaces'
+import { currentSurfaceStateToken, getApiBaseUrl } from '@/lib/surfaces'
 import { ConfirmEmailModal } from './confirmar-email-modal'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL
+// Fase 5: API resolvida por host, não uma NEXT_PUBLIC_API_URL fixa — o
+// mesmo build atende app.nokta.live e noktatickets.com.br.
+const API_URL = getApiBaseUrl()
 
 function OAuthButtons({ ctx }: { ctx: string }) {
   const state = `${currentSurfaceStateToken()}:${ctx}`

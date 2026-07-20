@@ -7,8 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import api from "@/lib/axios";
 import { toast } from "@/lib/toast";
+import { getApiBaseUrl } from "@/lib/surfaces";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333/api";
+// Fase 5: API resolvida por host, não uma NEXT_PUBLIC_API_URL fixa.
+const API_URL = getApiBaseUrl();
 
 interface EnderecoData {
   cep?: string | null;

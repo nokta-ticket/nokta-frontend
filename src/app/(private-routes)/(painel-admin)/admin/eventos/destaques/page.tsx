@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
-import Cookies from "js-cookie";
 import { toast } from "@/lib/toast";
 import { Calendar, Star, StarOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -23,7 +22,6 @@ import { MEDIA_FALLBACK, resolveThumbnailUrl } from "@/lib/media";
 type Filtro = "todos" | "ativos" | "inativos" | null;
 
 /* ──────────────────────────── consts ────────────────────────────── */
-const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 const ITEMS_PER_PAGE = 6;
 
 /* ───────────────────────── componente ───────────────────────────── */

@@ -10,9 +10,10 @@ import api from "@/lib/axios";
 import { PhoneInput, validatePhone } from "@/components/ui/phone-input";
 import { getCountryCallingCode, type Country } from "react-phone-number-input";
 import { isSafeInternalRedirect } from "@/lib/safe-redirect";
-import { currentSurfaceStateToken } from "@/lib/surfaces";
+import { currentSurfaceStateToken, getApiBaseUrl } from "@/lib/surfaces";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+// Fase 5: API resolvida por host, não uma NEXT_PUBLIC_API_URL fixa.
+const API_URL = getApiBaseUrl();
 
 // ─── WhatsApp icon ──────────────────────────────────────────────────────────
 

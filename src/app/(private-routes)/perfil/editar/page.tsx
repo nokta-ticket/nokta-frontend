@@ -6,8 +6,10 @@ import { ArrowLeft, Camera, Loader2, ShieldCheck, User, ZoomIn, ZoomOut } from "
 import Cropper, { Area } from "react-easy-crop";
 import api from "@/lib/axios";
 import { toast } from "@/lib/toast";
+import { getApiBaseUrl } from "@/lib/surfaces";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3333/api";
+// Fase 5: API resolvida por host, não uma NEXT_PUBLIC_API_URL fixa.
+const API_URL = getApiBaseUrl();
 
 function getInitials(nome: string, sobrenome: string): string {
   return ((nome?.[0] ?? "") + (sobrenome?.[0] ?? "")).toUpperCase();

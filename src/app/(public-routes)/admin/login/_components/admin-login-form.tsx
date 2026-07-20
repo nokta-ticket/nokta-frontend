@@ -6,8 +6,10 @@ import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { toast } from "@/lib/toast";
 import { useAuth } from "@/context/AuthContext";
 import { TotpVerifyModal } from "./totp-verify-modal";
+import { getApiBaseUrl } from "@/lib/surfaces";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+// Fase 5: API resolvida por host, não uma NEXT_PUBLIC_API_URL fixa.
+const API_URL = getApiBaseUrl();
 
 export function AdminLoginForm() {
   const router = useRouter();

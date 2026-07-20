@@ -16,11 +16,15 @@ import type { NextConfig } from "next";
  */
 const CSP_DIRECTIVES = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://3ds-nx-js.stone.com.br",
+  // static.cloudflareinsights.com: beacon injetado automaticamente pelo
+  // Cloudflare nos domínios proxiados (Web Analytics) — não é algo que o
+  // app carrega por escolha, mas bloquear via CSP só gera erro de console
+  // sem nenhum ganho de segurança real (é o próprio Cloudflare na frente).
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://3ds-nx-js.stone.com.br https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
   "font-src 'self' data:",
-  "connect-src 'self' https://api.nokta.live https://api.noktatickets.com.br https://*.supabase.co https://api.pagar.me https://3ds-nx-js.stone.com.br http://localhost:3333",
+  "connect-src 'self' https://api.nokta.live https://api.noktatickets.com.br https://*.supabase.co https://api.pagar.me https://3ds-nx-js.stone.com.br https://cloudflareinsights.com http://localhost:3333",
   "frame-src https:",
   "frame-ancestors 'none'",
   "object-src 'none'",
