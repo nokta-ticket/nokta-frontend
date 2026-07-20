@@ -174,8 +174,21 @@ function withRobotsHeader(response: NextResponse, isPlatform: boolean): NextResp
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const hostname = request.nextUrl.hostname;
-  const authToken = request.cookies.get("nokta_session")?.value;
-  const userPayload = JSON.parse(request.cookies.get("user")?.value || "{}");
+  // Fase 5: o cookie de sessão real (nokta_session) é host-only da API
+  // (api.nokta.live / api.noktatickets.com.br) — o middleware roda no host
+  // do FRONTEND (app.nokta.live / noktatickets.com.br), um host diferente,
+  // então esse cookie nunca chega aqui (por design, não é bug de scope).
+  // `rawSessionCookie` só existe pra quando, por algum motivo, os dois
+  // coincidirem (nunca em produção) — best-effort, nunca a fonte principal
+  // de "está autenticado". O sinal real é o cookie "user": não sensível,
+  // gravado pelo próprio JS da página no signIn(), sempre na MESMA origem
+  // que está servindo a página, e por isso sempre visível aqui. A
+  // autorização de verdade continua sendo decidida pela API (cada request
+  // carrega o cookie real pro host certo) — o middleware só decide rota.
+  const rawSessionCookie = request.cookies.get("nokta_session")?.value;
+  const userCookieRaw = request.cookies.get("user")?.value;
+  const authToken = userCookieRaw;
+  const userPayload = JSON.parse(userCookieRaw || "{}");
   const isPlatformSurface = isSurfaceEnforced(hostname) && resolveSurfaceFromHost(hostname) === "PLATFORM";
 
   // ── Fase 5, Etapa 3: separação de rotas por host ──────────────────────
@@ -208,8 +221,11 @@ export function middleware(request: NextRequest) {
     matchDynamicRoute(path, route.path)
   );
 
-  // Invalid Token - clear and redirect
-  if (authToken && !isValidToken(authToken)) {
+  // Invalid Token - clear and redirect (best-effort: só dispara nos casos
+  // raros em que o cookie de sessão real é visível aqui — ver comentário
+  // acima; a expiração de verdade é sempre pega pela API, 401 + interceptor
+  // do axios já limpam o cookie "user" e mandam pro login).
+  if (rawSessionCookie && !isValidToken(rawSessionCookie)) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = REDIRECT_WHEN_NOT_AUTHENTICATION_ROUTE;
     const response = NextResponse.redirect(redirectUrl);
