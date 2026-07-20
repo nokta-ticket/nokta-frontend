@@ -16,7 +16,9 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { useProductContext } from "@/context/ProductContext";
 import { useVenueAccess } from "@/context/VenueAccessContext";
-import { contextMenu, filterMenuByAccess, GLOBAL_MENU, type MenuItem } from "./build-menu";
+import { useOrganizations } from "@/context/OrganizationContext";
+import { usePlatformNavigation } from "../_hooks/use-platform";
+import { contextMenu, filterMenuByAccess, GLOBAL_MENU, appendExploreIfAllowed, type MenuItem } from "./build-menu";
 import { ContextSwitcher } from "./context-switcher";
 
 function NavList({ items }: { items: MenuItem[] }) {
@@ -48,10 +50,16 @@ function NavList({ items }: { items: MenuItem[] }) {
 function SidebarInner() {
   const { active } = useProductContext();
   const { can } = useVenueAccess();
+  const { currentOrg } = useOrganizations();
+  // canExplore vem do backend (OWNER ou MANAGER de algum módulo técnico —
+  // ver PlatformAccessResolverService) — funcionários operacionais nunca
+  // recebem "Explore a Nokta" no menu, independente de Tickets/Venue/híbrido.
+  const { data: navigation } = usePlatformNavigation(currentOrg?.id ?? null);
 
   // Só o Venue tem RBAC por papel hoje — o Tickets mostra tudo, sem filtro.
   const items = active === "venue" ? filterMenuByAccess(contextMenu(active), can) : contextMenu(active);
-  const globalItems = active === "venue" ? filterMenuByAccess(GLOBAL_MENU, can) : GLOBAL_MENU;
+  const baseGlobalItems = active === "venue" ? filterMenuByAccess(GLOBAL_MENU, can) : GLOBAL_MENU;
+  const globalItems = appendExploreIfAllowed(baseGlobalItems, navigation?.canExplore ?? false);
 
   return (
     <>

@@ -9,6 +9,7 @@ import {
   Boxes,
   Users,
   Settings,
+  Compass,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import type { ProductContextKey } from "@/context/ProductContext";
@@ -67,6 +68,29 @@ export const GLOBAL_MENU: MenuItem[] = [
   { label: "Equipe", icon: <Users size={16} />, href: "/dashboard/equipe", requiredPermissions: ["organization.team.view"] },
   { label: "Configurações", icon: <Settings size={16} />, href: "/dashboard/configuracoes", requiredPermissions: ["organization.settings.view"] },
 ];
+
+/**
+ * "Explore a Nokta" — não usa `requiredPermissions` (chaves do catálogo do
+ * Venue) porque precisa aparecer também para organizações só-Tickets, que
+ * não têm esse RBAC. A visibilidade vem de `canExplore` (GET
+ * .../me/navigation, resolvido pelo backend via PlatformAccessResolverService
+ * — OWNER ou MANAGER de algum módulo técnico), montado à parte em
+ * `dashboard-sidebar.tsx`.
+ */
+export const EXPLORE_MENU_ITEM: MenuItem = {
+  label: "Explore a Nokta",
+  icon: <Compass size={16} />,
+  href: "/dashboard/explorar",
+};
+
+/**
+ * Anexa "Explore a Nokta" ao fim do menu global quando (e só quando)
+ * `canExplore` for true — nunca muta `items` (sempre retorna um array novo,
+ * já que `GLOBAL_MENU` é uma constante exportada e compartilhada).
+ */
+export function appendExploreIfAllowed(items: MenuItem[], canExplore: boolean): MenuItem[] {
+  return canExplore ? [...items, EXPLORE_MENU_ITEM] : items;
+}
 
 export function contextMenu(context: ProductContextKey): MenuItem[] {
   return CONTEXT_MENUS[context];

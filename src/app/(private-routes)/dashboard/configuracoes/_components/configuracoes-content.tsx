@@ -9,6 +9,7 @@ import { EmptyState } from "../../_components/states/empty-state";
 import { BlockSkeleton } from "../../_components/states/loading-state";
 import { useUrlTab } from "../../_hooks/use-url-tab";
 import { OrganizacaoTab } from "./organizacao-tab";
+import { PerfilOperacionalTab } from "./perfil-operacional-tab";
 import { VenueTab } from "./venue-tab";
 import { UnidadesTab } from "./unidades-tab";
 import { OperacaoTab } from "./operacao-tab";
@@ -16,11 +17,12 @@ import { ReservasTab } from "./reservas-tab";
 import { HorariosTab } from "./horarios-tab";
 import { SegurancaTab } from "./seguranca-tab";
 
-const TABS = ["organizacao", "venue", "unidades", "operacao", "reservas", "horarios", "seguranca"] as const;
+const TABS = ["organizacao", "perfil", "venue", "unidades", "operacao", "reservas", "horarios", "seguranca"] as const;
 type TabKey = (typeof TABS)[number];
 
 const TAB_LABEL: Record<TabKey, string> = {
   organizacao: "Organização",
+  perfil: "Perfil operacional",
   venue: "Venue",
   unidades: "Unidades",
   operacao: "Operação",
@@ -30,11 +32,11 @@ const TAB_LABEL: Record<TabKey, string> = {
 };
 
 export function ConfiguracoesContent() {
-  const { currentOrg, loadingOrgs } = useOrganizations();
+  const { currentOrg, activeModuleKeys, loadingOrgs, loadingModules } = useOrganizations();
   const { can, loading: loadingAccess } = useVenueAccess();
   const [tab, setTab] = useUrlTab<TabKey>(TABS, "organizacao");
 
-  if (loadingOrgs || loadingAccess) {
+  if (loadingOrgs || loadingAccess || loadingModules) {
     return (
       <PageContainer>
         <PageHeader title="Configurações" description="Dados e preferências da organização." />
@@ -52,7 +54,13 @@ export function ConfiguracoesContent() {
     );
   }
 
-  const canView = can("organization.settings.view");
+  // Tickets ainda não tem RBAC granular própria (ver PlatformAccessResolverService no
+  // backend): sem o módulo Venue ativo, `can()` sempre nega (não há venueAccess). Sem
+  // esse fallback, organizações só-Tickets nunca acessariam Configurações — inclusive a
+  // nova aba "Perfil operacional", que precisa funcionar para elas. As abas específicas
+  // do Venue continuam protegidas por `canManage` (abaixo), que não muda.
+  const hasVenueModule = activeModuleKeys.includes("venue");
+  const canView = hasVenueModule ? can("organization.settings.view") : true;
   if (!canView) {
     return (
       <PageContainer>
@@ -87,6 +95,9 @@ export function ConfiguracoesContent() {
 
         <TabsContent value="organizacao">
           <OrganizacaoTab orgId={currentOrg.id} />
+        </TabsContent>
+        <TabsContent value="perfil">
+          <PerfilOperacionalTab orgId={currentOrg.id} />
         </TabsContent>
         <TabsContent value="venue">
           <VenueTab orgId={currentOrg.id} canManage={canManage} />
