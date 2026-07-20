@@ -5,6 +5,7 @@ import {
 } from "next/server";
 import { UserPayload } from "./context/AuthContext";
 import {
+  getCanonicalSurfaceUrl,
   getSurfaceConfig,
   isSurfaceEnforced,
   resolveSurfaceFromHost,
@@ -186,7 +187,7 @@ export function middleware(request: NextRequest) {
   const hostname = request.nextUrl.hostname;
 
   if (hostname.toLowerCase() === BARE_MARKETING_HOSTNAME) {
-    return crossOriginRedirect(getSurfaceConfig("MARKETING").baseUrl, path, request.nextUrl.search);
+    return crossOriginRedirect(getCanonicalSurfaceUrl("MARKETING"), path, request.nextUrl.search);
   }
   // Fase 5: o cookie de sessão real (nokta_session) é host-only da API
   // (api.nokta.live / api.noktatickets.com.br) — o middleware roda no host
@@ -217,11 +218,11 @@ export function middleware(request: NextRequest) {
     // TICKETS_PUBLIC — cruza pra fora igual às duas superfícies operacionais
     // já faziam entre si (mesma função, mesmo destino central).
     if (surface !== "PLATFORM" && matchesAnyPrefix(path, PLATFORM_ONLY_PREFIXES)) {
-      return crossOriginRedirect(getSurfaceConfig("PLATFORM").baseUrl, path, request.nextUrl.search);
+      return crossOriginRedirect(getCanonicalSurfaceUrl("PLATFORM"), path, request.nextUrl.search);
     }
 
     if (surface !== "TICKETS_PUBLIC" && matchesAnyPrefix(path, TICKETS_ONLY_PREFIXES)) {
-      return crossOriginRedirect(getSurfaceConfig("TICKETS_PUBLIC").baseUrl, path, request.nextUrl.search);
+      return crossOriginRedirect(getCanonicalSurfaceUrl("TICKETS_PUBLIC"), path, request.nextUrl.search);
     }
 
     // Raiz do domínio da plataforma não é a home pública — decide entre

@@ -33,6 +33,34 @@ function stripPort(hostname: string): string {
   return hostname.split(":")[0].toLowerCase();
 }
 
+/**
+ * Fase 5.1 — fonte de verdade CANÔNICA e hardcoded pros destinos de
+ * cross-domain redirect do Middleware. Deliberadamente SEM env var no
+ * meio: `NEXT_PUBLIC_TICKETS_URL` estava correta no painel da Vercel, um
+ * deploy novo confirmadamente foi ao ar (outras páginas já refletiam o
+ * valor certo), e mesmo assim o Middleware (Edge Runtime, empacotado
+ * separado do resto do app pela Vercel) continuou lendo o valor antigo —
+ * sem bug de código encontrado, uma peculiaridade de propagação de env var
+ * pro Edge que não dá pra depurar sem acesso ao painel/build da Vercel.
+ * Essas três URLs são estáveis e conhecidas em code review — não mudam por
+ * ambiente de produção — então não há motivo pra uma decisão tão crítica
+ * (pra onde o Middleware manda o visitante) depender de env var em
+ * runtime. `getPlatformUrl`/`getPublicTicketsUrl`/`getMarketingUrl` (usados
+ * por componentes normais, Server/Client Components — nunca pelo
+ * Middleware) continuam podendo ser sobrescritos por env var (local,
+ * preview, override explícito) via `SURFACES` abaixo.
+ */
+const CANONICAL_SURFACE_URLS: Record<Surface, string> = {
+  PLATFORM: "https://app.nokta.live",
+  TICKETS_PUBLIC: "https://www.noktatickets.com.br",
+  MARKETING: "https://www.nokta.live",
+};
+
+/** Único ponto que o Middleware deveria chamar pra saber o destino de outra superfície — nunca `getSurfaceConfig(...).baseUrl` (esse é env-var-driven, pensado pra links de componente, não pra redirect cross-domain no Edge). */
+export function getCanonicalSurfaceUrl(surface: Surface): string {
+  return CANONICAL_SURFACE_URLS[surface];
+}
+
 const SURFACES: Record<Surface, SurfaceDefinition> = {
   PLATFORM: {
     hostnames: PLATFORM_HOSTNAMES,

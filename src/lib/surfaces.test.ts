@@ -3,6 +3,7 @@ import {
   resolveSurfaceFromHost,
   isSurfaceEnforced,
   getSurfaceConfig,
+  getCanonicalSurfaceUrl,
   getApiBaseUrl,
   getPlatformUrl,
   getPublicTicketsUrl,
@@ -123,6 +124,14 @@ describe("URLs absolutas centralizadas (Etapa 2/10)", () => {
     expect(buildMarketingUrl("/termos")).toBe(getMarketingUrl("/termos"));
     expect(buildPlatformUrl("/login")).toBe(getPlatformUrl("/login"));
     expect(buildTicketsUrl("/")).toBe(getPublicTicketsUrl("/"));
+  });
+});
+
+describe("getCanonicalSurfaceUrl — Fase 5.1: destino de cross-domain redirect do Middleware, sem env var no meio", () => {
+  it("as três superfícies resolvem pro host de produção fixo, independente de qualquer NEXT_PUBLIC_*", () => {
+    expect(getCanonicalSurfaceUrl("PLATFORM")).toBe("https://app.nokta.live");
+    expect(getCanonicalSurfaceUrl("TICKETS_PUBLIC")).toBe("https://www.noktatickets.com.br");
+    expect(getCanonicalSurfaceUrl("MARKETING")).toBe("https://www.nokta.live");
   });
 });
 
