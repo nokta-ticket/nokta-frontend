@@ -123,15 +123,42 @@ function matchesAnyPrefix(path: string, prefixes: string[]): boolean {
 
 /**
  * Redirect pra outra origem (app.nokta.live <-> noktatickets.com.br).
- * `NextResponse.redirect(new URL(...))` observado, em produção, reduzindo o
- * Location a um caminho relativo quando os dois domínios estão no mesmo
- * projeto Vercel — vira loop (redireciona pra si mesmo). Monta a resposta
- * manualmente com Location absoluto por string pra não depender desse
- * comportamento.
+ *
+ * Nem `NextResponse.redirect(new URL(...))` nem um Location absoluto por
+ * string funcionam aqui: em produção (confirmado com curl -I, x-vercel-id
+ * mudando a cada request — não é cache), o Location acaba virando um
+ * caminho relativo e o browser reenvia pro mesmo host, virando loop
+ * infinito. Os dois domínios são o MESMO projeto Vercel, e alguma camada
+ * de edge (Vercel ou Cloudflare na frente) reescreve/rebases o Location de
+ * um redirect HTTP entre eles.
+ *
+ * Contorno: não usar redirect HTTP nenhum pra troca de origem — devolve
+ * uma página HTML mínima com meta-refresh + fallback via JS. Isso é
+ * conteúdo de resposta, não um header, então nenhuma camada de proxy tem
+ * motivo pra reescrever a URL — o navegador só lê e navega.
  */
+// path/search vêm da URL da própria requisição (o visitante controla) —
+// nunca embutir cru em HTML/atributo, mesmo sendo só refletido pro próprio
+// navegador de quem pediu (reflected XSS via link malicioso pra vítima).
+function escapeHtmlAttribute(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 function crossOriginRedirect(baseUrl: string, path: string, search: string): NextResponse {
   const location = `${baseUrl}${path}${search}`;
-  return new NextResponse(null, { status: 307, headers: { Location: location } });
+  // JSON.stringify não escapa "</" — sem isso, um path/query malicioso
+  // poderia fechar a </script> mais cedo e injetar HTML (o path/search vêm
+  // da própria URL da requisição, então é atacante-controlável via link).
+  const scriptSafeLocation = JSON.stringify(location).replace(/</g, '\\u003C');
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${escapeHtmlAttribute(location)}"><script>location.replace(${scriptSafeLocation});</script></head><body></body></html>`;
+  return new NextResponse(html, {
+    status: 200,
+    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+  });
 }
 
 // Fase 5, Etapa 11: app.nokta.live nunca deve ser indexado — header HTTP
