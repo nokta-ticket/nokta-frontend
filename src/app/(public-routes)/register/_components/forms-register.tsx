@@ -432,7 +432,8 @@ export function RegisterForm() {
         } else if (ctx === "produtor") {
           router.push(user.role === "PRODUTOR" ? "/produtor/eventos" : "/produtor/onboarding");
         } else {
-          router.push("/");
+          // Navegação forçada — ver login-form.tsx.
+          window.location.href = "/";
         }
       }, 1200);
     } catch (err: any) {

@@ -52,7 +52,10 @@ function MergeAccountForm({
           router.replace("/produtor/onboarding");
         }
       } else {
-        router.replace("/");
+        // Navegação forçada — ver login-form.tsx (mesmo motivo: "/" decide
+        // a rota conforme autenticação, o cache de rota do Next pode servir
+        // uma resposta anônima anterior).
+        window.location.href = "/";
       }
     } catch (err) {
       toast.error(getErrorMessage(err, "Senha incorreta. Tente novamente."));
@@ -143,7 +146,8 @@ export function AuthCallbackContent() {
         if (ctx === "produtor") {
           router.replace(data.role === "PRODUTOR" ? "/produtor/eventos" : "/produtor/onboarding");
         } else {
-          router.replace("/");
+          // Navegação forçada — ver login-form.tsx.
+          window.location.href = "/";
         }
       } catch {
         if (!cancelled) router.replace("/login");

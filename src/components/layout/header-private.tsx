@@ -76,7 +76,10 @@ export default function HeaderPrivate() {
     setMobileOpen(false);
     setShowLogoutConfirm(false);
     toast.success('Logout realizado com sucesso!');
-    router.push('/');
+    // Navegação forçada (não router.push) — "/" decide a rota conforme
+    // autenticação no middleware; o cache de rota do Next no client pode
+    // servir uma resposta anterior (autenticada) mesmo depois do logout.
+    window.location.href = '/';
   };
 
   const fullName = user ? `${user.nome ?? ''} ${user.sobrenome ?? ''}`.trim() : '';

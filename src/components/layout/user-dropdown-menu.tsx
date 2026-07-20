@@ -47,7 +47,8 @@ export function UserDropdownMenu() {
     // no backend) — não precisa duplicar a chamada aqui.
     signOut()
     toast.success('Logout realizado com sucesso!')
-    router.push('/')
+    // Navegação forçada — ver header-private.tsx.
+    window.location.href = '/'
   }
 
   return (

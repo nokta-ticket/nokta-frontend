@@ -112,7 +112,12 @@ export function LoginForm() {
       } else if (ctx === 'produtor') {
         router.push(user.role === 'PRODUTOR' ? '/produtor/eventos' : '/produtor/onboarding')
       } else {
-        router.push('/')
+        // Navegação forçada (não router.push): "/" decide a rota conforme
+        // autenticação no middleware (app.nokta.live) — o cache de rota do
+        // Next no client pode servir uma resposta anterior (anônima) e
+        // nunca sair do /login. Só um request de verdade garante que o
+        // middleware reavalie com o cookie que acabou de ser gravado.
+        window.location.href = '/'
       }
     } catch (err: any) {
       toast.error(err.message || 'Erro ao fazer login')
