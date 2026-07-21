@@ -40,6 +40,7 @@ const publicRoutes = [
   { path: "/recuperar-senha", whenAutenticated: "next" },
   { path: "/recuperar-senha/[id]", whenAutenticated: "next" },
   { path: "/convites/[id]", whenAutenticated: "next" },
+  { path: "/convites-promotor/[id]", whenAutenticated: "next" },
   { path: "/register", whenAutenticated: "redirect" },
   { path: "/eventos", whenAutenticated: "next" },
   { path: "/eventos/[id]", whenAutenticated: "next" },
