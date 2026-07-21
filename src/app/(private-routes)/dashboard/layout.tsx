@@ -3,6 +3,7 @@ import "@/app/globals.css";
 import { OrganizationProvider } from "@/context/OrganizationContext";
 import { PeriodProvider } from "@/context/PeriodContext";
 import { VenueAccessProvider } from "@/context/VenueAccessContext";
+import { TicketsAccessProvider } from "@/context/TicketsAccessContext";
 import { DashboardQueryProvider } from "./_components/query-provider";
 import { DashboardSidebar } from "./_components/dashboard-sidebar";
 import { Topbar } from "./_components/topbar";
@@ -12,6 +13,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <DashboardQueryProvider>
     <OrganizationProvider>
       <VenueAccessProvider>
+      <TicketsAccessProvider>
         <PeriodProvider>
           <div className="fixed inset-0 flex flex-col lg:flex-row bg-[#151619] text-white overflow-hidden">
             <DashboardSidebar />
@@ -22,6 +24,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
         </PeriodProvider>
+      </TicketsAccessProvider>
       </VenueAccessProvider>
     </OrganizationProvider>
     </DashboardQueryProvider>
