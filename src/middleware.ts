@@ -191,15 +191,27 @@ function crossOriginRedirect(baseUrl: string, path: string, search: string): Nex
 //
 // Fase 5.2, Etapa 5: Cache-Control por superfície, nunca um `no-store`
 // genérico pra tudo. PLATFORM sempre `private, no-store` — reforço
-// explícito (o Next já não gera estático pra rota dinâmica, mas não
-// depender só do default implícito). MARKETING (institucional, sem
-// personalização, sem autenticação) pode ter cache público curto de
-// verdade. TICKETS_PUBLIC fica de fora de propósito: `/eventos` (a home
-// pública) já é personalizada por auth opcional (isFavorite) — sem uma
-// auditoria página a página pra separar o que é seguro cachear do que não
-// é, cachear às cegas arrisca expor dado privado num cache compartilhado
-// (ponto de parada explícito desta fase). Mantém o default seguro do Next
-// (private/no-cache/no-store) até essa auditoria existir.
+// explícito (o Next já aplica algo ainda mais restritivo por padrão em
+// rota 100% dinâmica: `private, no-cache, no-store, max-age=0,
+// must-revalidate` — checado em produção). TICKETS_PUBLIC fica de fora de
+// propósito: `/eventos` (a home pública) já é personalizada por auth
+// opcional (isFavorite) — sem uma auditoria página a página pra separar o
+// que é seguro cachear do que não é, cachear às cegas arrisca expor dado
+// privado num cache compartilhado (ponto de parada explícito desta fase).
+//
+// MARKETING tenta cache público curto aqui, mas isso é MELHOR-ESFORÇO,
+// não garantia: `src/app/layout.tsx` (Root Layout, envolve TODAS as
+// rotas) chama `headers()` pra decidir se pula o header/footer genérico da
+// bilheteria — qualquer uso de API dinâmica (headers/cookies/searchParams)
+// em Server Component força a rota inteira a renderizar 100% dinâmica no
+// Next.js, e nesse modo o próprio Next sobrescreve o Cache-Control da
+// resposta final com o mesmo `private, no-cache, no-store...` de cima,
+// ignorando o que o Middleware setou (confirmado em produção: X-Robots-Tag
+// sobrevive normalmente, Cache-Control não — o Next trata esse header de
+// forma especial por rota). Resolver isso de verdade exigiria desacoplar
+// a decisão host→header/footer do Root Layout de uma API dinâmica (ex.:
+// múltiplos Root Layouts por route group) — fora do escopo desta fase, e
+// não é risco de segurança (o default do Next pra tudo já é privado).
 function withSurfaceHeaders(response: NextResponse, surface: "PLATFORM" | "MARKETING" | null): NextResponse {
   if (surface === "PLATFORM") {
     response.headers.set("X-Robots-Tag", "noindex, nofollow");

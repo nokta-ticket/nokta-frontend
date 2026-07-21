@@ -91,7 +91,7 @@ describe("middleware — cruzamento entre as três superfícies", () => {
 });
 
 describe("middleware — Cache-Control por superfície (Fase 5.2, Etapa 5/18)", () => {
-  it("landing institucional (www.nokta.live) recebe cache público de curta duração — conteúdo estático, sem personalização", async () => {
+  it("landing institucional: o Middleware tenta cache público de curta duração (melhor-esforço — ver comentário em withSurfaceHeaders sobre o Root Layout forçar renderização dinâmica e o Next sobrescrever este header na resposta final)", async () => {
     const res = middleware(buildRequest("https://www.nokta.live/"));
     expect(res.headers.get("cache-control")).toMatch(/^public,/);
   });
