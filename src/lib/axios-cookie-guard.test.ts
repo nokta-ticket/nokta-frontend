@@ -34,3 +34,42 @@ describe("axios interceptor — cookie auxiliar nunca sobrevive a um 401", () =>
     expect(section).toMatch(/signOut\(\)/);
   });
 });
+
+/**
+ * Fase 5.2, Etapa 7 — conteúdo do cookie auxiliar reduzido ao mínimo:
+ * nunca JWT, email, CPF, telefone, permissões/papéis detalhados ou dados
+ * organizacionais. Prova estrutural: todo `Cookies.set("user", ...)` no
+ * AuthContext só serializa os 3 campos abaixo — nenhum outro em nenhum dos
+ * pontos de escrita.
+ */
+describe("cookie auxiliar 'user' — conteúdo mínimo (Etapa 7)", () => {
+  const AUTH_CONTEXT_SOURCE = fs.readFileSync(path.join(HERE, "..", "context", "AuthContext.tsx"), "utf8");
+
+  it("nenhum ponto de escrita do cookie serializa email/cpf/telefone/permissões/dados organizacionais", () => {
+    const forbidden = [
+      /token/i,
+      /\bemail\b/,
+      /\bcpf\b/,
+      /\btelefone\b/,
+      /permiss/i,
+      /organiza/i,
+    ];
+    const writeSites = [...AUTH_CONTEXT_SOURCE.matchAll(/Cookies\.set\(\s*["']user["'][\s\S]*?\)\s*;/g)].map((m) => m[0]);
+    expect(writeSites.length).toBeGreaterThan(0);
+    for (const site of writeSites) {
+      for (const pattern of forbidden) {
+        expect(site).not.toMatch(pattern);
+      }
+    }
+  });
+
+  it("os únicos campos gravados são userId, role e nivelProdutor — hint de roteamento, nunca autorização", () => {
+    const writeSites = [...AUTH_CONTEXT_SOURCE.matchAll(/Cookies\.set\(\s*["']user["'][\s\S]*?\)\s*;/g)].map((m) => m[0]);
+    for (const site of writeSites) {
+      const keys = [...site.matchAll(/(\w+):/g)].map((m) => m[1]);
+      for (const key of keys) {
+        expect(["userId", "role", "nivelProdutor"]).toContain(key);
+      }
+    }
+  });
+});

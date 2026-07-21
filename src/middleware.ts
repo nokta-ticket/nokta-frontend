@@ -188,9 +188,24 @@ function crossOriginRedirect(baseUrl: string, path: string, search: string): Nex
 // Fase 5, Etapa 11: app.nokta.live nunca deve ser indexado — header HTTP
 // (funciona pra qualquer resposta, não só HTML) além do robots.ts
 // específico do host (ver src/app/robots.ts).
-function withRobotsHeader(response: NextResponse, isPlatform: boolean): NextResponse {
-  if (isPlatform) {
+//
+// Fase 5.2, Etapa 5: Cache-Control por superfície, nunca um `no-store`
+// genérico pra tudo. PLATFORM sempre `private, no-store` — reforço
+// explícito (o Next já não gera estático pra rota dinâmica, mas não
+// depender só do default implícito). MARKETING (institucional, sem
+// personalização, sem autenticação) pode ter cache público curto de
+// verdade. TICKETS_PUBLIC fica de fora de propósito: `/eventos` (a home
+// pública) já é personalizada por auth opcional (isFavorite) — sem uma
+// auditoria página a página pra separar o que é seguro cachear do que não
+// é, cachear às cegas arrisca expor dado privado num cache compartilhado
+// (ponto de parada explícito desta fase). Mantém o default seguro do Next
+// (private/no-cache/no-store) até essa auditoria existir.
+function withSurfaceHeaders(response: NextResponse, surface: "PLATFORM" | "MARKETING" | null): NextResponse {
+  if (surface === "PLATFORM") {
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
+    response.headers.set("Cache-Control", "private, no-store");
+  } else if (surface === "MARKETING") {
+    response.headers.set("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
   }
   return response;
 }
@@ -227,7 +242,12 @@ export function middleware(request: NextRequest) {
   const userCookieRaw = request.cookies.get("user")?.value;
   const authToken = userCookieRaw;
   const userPayload = JSON.parse(userCookieRaw || "{}");
-  const isPlatformSurface = isSurfaceEnforced(hostname) && resolveSurfaceFromHost(hostname) === "PLATFORM";
+  // Fase 5.2, Etapa 5 — cache por superfície (ver withSurfaceHeaders). Só
+  // PLATFORM e MARKETING têm política explícita aqui; TICKETS_PUBLIC fica
+  // de fora de propósito (ver comentário em withSurfaceHeaders).
+  const enforcedSurface = isSurfaceEnforced(hostname) ? resolveSurfaceFromHost(hostname) : null;
+  const currentSurfaceForHeaders: "PLATFORM" | "MARKETING" | null =
+    enforcedSurface === "PLATFORM" || enforcedSurface === "MARKETING" ? enforcedSurface : null;
 
   // ── Fase 5, Etapa 3: separação de rotas por host ──────────────────────
   // Roda ANTES de qualquer lógica de auth — troca de host é sempre a
@@ -264,7 +284,7 @@ export function middleware(request: NextRequest) {
     if (surface === "MARKETING" && path === "/") {
       const target = request.nextUrl.clone();
       target.pathname = "/institucional";
-      return NextResponse.rewrite(target);
+      return withSurfaceHeaders(NextResponse.rewrite(target), "MARKETING");
     }
   }
 
@@ -298,7 +318,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (!authToken && publicRoute) return withRobotsHeader(NextResponse.next(), isPlatformSurface);
+  if (!authToken && publicRoute) return withSurfaceHeaders(NextResponse.next(), currentSurfaceForHeaders);
 
   // Authenticated → redirect away from login/register
   if (authToken && publicRoute?.whenAutenticated === "redirect") {
@@ -357,7 +377,7 @@ export function middleware(request: NextRequest) {
       redirectUrl.search = "";
       return NextResponse.redirect(redirectUrl);
     }
-    return withRobotsHeader(NextResponse.next(), isPlatformSurface);
+    return withSurfaceHeaders(NextResponse.next(), currentSurfaceForHeaders);
   }
 
   // Producer routes: require PRODUTOR role
@@ -380,7 +400,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  return withRobotsHeader(NextResponse.next(), isPlatformSurface);
+  return withSurfaceHeaders(NextResponse.next(), currentSurfaceForHeaders);
 }
 
 export const config: MiddlewareConfig = {
