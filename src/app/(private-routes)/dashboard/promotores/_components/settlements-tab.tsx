@@ -93,7 +93,13 @@ export function SettlementsTab({ orgId, canManageSettlements }: { orgId: number;
               {available.map((entry) => (
                 <div key={entry.id} className="flex items-center gap-2 text-sm">
                   <Checkbox checked={selectedEntryIds.includes(entry.id)} onCheckedChange={() => toggleEntry(entry.id)} />
-                  <span>Pedido #{entry.orderId} — {formatCents(entry.commissionCents)}</span>
+                  {entry.type === "ADJUSTMENT" ? (
+                    <span className="text-red-600">
+                      Ajuste (Pedido #{entry.orderId}){entry.reason ? ` — ${entry.reason}` : ""} — {formatCents(entry.commissionCents)}
+                    </span>
+                  ) : (
+                    <span>Pedido #{entry.orderId} — {formatCents(entry.commissionCents)}</span>
+                  )}
                 </div>
               ))}
             </div>

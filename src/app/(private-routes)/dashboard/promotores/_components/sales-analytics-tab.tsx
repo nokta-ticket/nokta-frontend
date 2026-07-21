@@ -45,7 +45,7 @@ export function SalesAnalyticsTab({ orgId, canExport }: { orgId: number; canExpo
       </div>
 
       {loadingMetrics || !metrics ? (
-        <MetricsSkeleton count={6} />
+        <MetricsSkeleton count={8} />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <MetricCard label="Promoters ativos" value={String(metrics.promotersAtivos)} />
@@ -54,6 +54,8 @@ export function SalesAnalyticsTab({ orgId, canExport }: { orgId: number; canExpo
           <MetricCard label="Valor líquido vendido" value={formatCents(metrics.netNominalCentsAfterDiscount)} />
           <MetricCard label="Comissão pendente" value={formatCents(metrics.commissionPendingCents)} />
           <MetricCard label="Comissão disponível" value={formatCents(metrics.commissionAvailableCents)} />
+          <MetricCard label="Ajustes (estorno/chargeback pós-acerto)" value={formatCents(metrics.commissionAdjustmentCents)} />
+          <MetricCard label="Saldo líquido" value={formatCents(metrics.netBalanceCents)} />
         </div>
       )}
 

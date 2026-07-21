@@ -129,6 +129,10 @@ export interface OrganizationPromoterMetrics {
   commissionAvailableCents: number;
   commissionSettledCents: number;
   commissionReversedCents: number;
+  /** Sempre <= 0 — soma dos ajustes (estorno/chargeback/bloqueio recebidos após um settlement já pago). */
+  commissionAdjustmentCents: number;
+  /** Disponível + liquidado + ajustes. Pode ser negativo (nunca clampado em zero). */
+  netBalanceCents: number;
   taxaConversaoAtribuicaoParaPagamento: number;
 }
 
@@ -141,16 +145,23 @@ export interface PromoterMetrics {
   commissionAvailableCents: number;
   commissionSettledCents: number;
   commissionReversedCents: number;
+  commissionAdjustmentCents: number;
+  netBalanceCents: number;
 }
+
+export type CommissionEntryType = 'EARNED' | 'ADJUSTMENT';
 
 export interface CommissionEntry {
   id: number;
+  /** EARNED (venda) ou ADJUSTMENT (correção negativa de uma comissão já liquidada). */
+  type: CommissionEntryType;
   eventId: number;
   orderId: number;
   orderItemId: number | null;
   userTicketId: number | null;
   grossTicketValueCents: number;
   commissionCents: number;
+  reason: string | null;
   createdAt: string;
 }
 
