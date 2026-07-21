@@ -90,10 +90,11 @@ describe("middleware — cruzamento entre as três superfícies", () => {
   });
 });
 
-describe("middleware — Cache-Control por superfície (Fase 5.2, Etapa 5/18)", () => {
-  it("landing institucional: o Middleware tenta cache público de curta duração (melhor-esforço — ver comentário em withSurfaceHeaders sobre o Root Layout forçar renderização dinâmica e o Next sobrescrever este header na resposta final)", async () => {
+describe("middleware — Cache-Control por superfície (Fase 5.2/5.3, Etapa 5/18)", () => {
+  it("landing institucional: o Middleware faz rewrite puro pra /institucional, sem setar Cache-Control — a página resolve cache real sozinha via `export const revalidate` (Fase 5.3, Etapa 4; o Root Layout não usa mais API dinâmica, então o Next consegue honrar isso de verdade)", async () => {
     const res = middleware(buildRequest("https://www.nokta.live/"));
-    expect(res.headers.get("cache-control")).toMatch(/^public,/);
+    expect(res.headers.get("x-middleware-rewrite")).toContain("/institucional");
+    expect(res.headers.get("cache-control")).toBeNull();
   });
 
   it("PLATFORM (app.nokta.live) nunca recebe cache público — reforço explícito de private/no-store, mesmo em rota pública compartilhada (ex.: /termos)", async () => {

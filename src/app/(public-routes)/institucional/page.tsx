@@ -17,10 +17,20 @@ import { getPlatformUrl, getPublicTicketsUrl } from "@/lib/surfaces";
 
 /**
  * Fase 5.1, Etapa 3/6 — landing institucional (www.nokta.live). Renderizada
- * via rewrite do middleware (surface MARKETING, path "/"), fora do layout
- * genérico de header/footer da bilheteria (ver src/app/layout.tsx). Título e
+ * via rewrite do middleware (surface MARKETING, path "/"). Título e
  * descrição aqui substituem os do layout raiz — canonical fixo no host
  * institucional, sempre indexável (ver src/app/robots.ts e sitemap.ts).
+ *
+ * Fase 5.3, Etapa 2: o Root Layout (src/app/layout.tsx) não decide mais
+ * por host — sempre renderiza o header/footer genérico da bilheteria (pra
+ * nunca precisar de `headers()`, o que forçaria toda a árvore a ser
+ * dinâmica e impediria cache real aqui). Esta página se sobrepõe a esse
+ * header/footer com um wrapper `fixed inset-0` — mesmo padrão que
+ * dashboard/admin/produtor já usam pra cobrir o shell público (ver
+ * dashboard/layout.tsx). É cobertura só visual (o header/footer de
+ * bilheteria continua no DOM, coberto) — mesma limitação de acessibilidade
+ * que o padrão já tem em dashboard/admin/produtor hoje, não uma regressão
+ * introduzida aqui.
  */
 export const metadata: Metadata = {
   title: "Nokta — a plataforma que conecta toda a operação do seu evento ou casa",
@@ -37,6 +47,14 @@ export const metadata: Metadata = {
     type: "website",
   },
 };
+
+// Fase 5.3, Etapa 4 — cache real, não só o header declarado: conteúdo
+// 100% estático (sem dados de usuário, sem chamada à API pra renderizar),
+// então o Next pode gerar uma vez e servir do cache de CDN da Vercel,
+// revalidando no máximo a cada 60s (ISR) — sem depender de nenhuma API
+// dinâmica em nenhum ancestral (ver Root Layout, Etapa 2). Funciona
+// através do rewrite do Middleware (alvo fixo, suportado pela Vercel).
+export const revalidate = 60;
 
 const JORNADA = [
   { label: "Aquisição", desc: "Eventos e venda de ingressos" },
@@ -86,7 +104,7 @@ export default function InstitucionalPage() {
   const ticketsUrl = getPublicTicketsUrl("/");
 
   return (
-    <div className="flex min-h-dvh flex-col bg-white">
+    <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-white">
       {/* ── HEADER ─────────────────────────────────────────── */}
       <header className="w-full">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center h-20">

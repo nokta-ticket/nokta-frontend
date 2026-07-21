@@ -189,35 +189,29 @@ function crossOriginRedirect(baseUrl: string, path: string, search: string): Nex
 // (funciona pra qualquer resposta, não só HTML) além do robots.ts
 // específico do host (ver src/app/robots.ts).
 //
-// Fase 5.2, Etapa 5: Cache-Control por superfície, nunca um `no-store`
-// genérico pra tudo. PLATFORM sempre `private, no-store` — reforço
-// explícito (o Next já aplica algo ainda mais restritivo por padrão em
-// rota 100% dinâmica: `private, no-cache, no-store, max-age=0,
-// must-revalidate` — checado em produção). TICKETS_PUBLIC fica de fora de
-// propósito: `/eventos` (a home pública) já é personalizada por auth
-// opcional (isFavorite) — sem uma auditoria página a página pra separar o
-// que é seguro cachear do que não é, cachear às cegas arrisca expor dado
-// privado num cache compartilhado (ponto de parada explícito desta fase).
+// Fase 5.2, Etapa 5 / Fase 5.3, Etapa 2: Cache-Control por superfície,
+// nunca um `no-store` genérico pra tudo. PLATFORM sempre `private,
+// no-store` — reforço explícito (o Next já aplica algo ainda mais
+// restritivo por padrão em rota 100% dinâmica: `private, no-cache,
+// no-store, max-age=0, must-revalidate` — checado em produção).
+// TICKETS_PUBLIC fica de fora de propósito: `/eventos` (a home pública) já
+// é personalizada por auth opcional (isFavorite) — sem uma auditoria
+// página a página pra separar o que é seguro cachear do que não é,
+// cachear às cegas arrisca expor dado privado num cache compartilhado
+// (ponto de parada explícito da Fase 5.2).
 //
-// MARKETING tenta cache público curto aqui, mas isso é MELHOR-ESFORÇO,
-// não garantia: `src/app/layout.tsx` (Root Layout, envolve TODAS as
-// rotas) chama `headers()` pra decidir se pula o header/footer genérico da
-// bilheteria — qualquer uso de API dinâmica (headers/cookies/searchParams)
-// em Server Component força a rota inteira a renderizar 100% dinâmica no
-// Next.js, e nesse modo o próprio Next sobrescreve o Cache-Control da
-// resposta final com o mesmo `private, no-cache, no-store...` de cima,
-// ignorando o que o Middleware setou (confirmado em produção: X-Robots-Tag
-// sobrevive normalmente, Cache-Control não — o Next trata esse header de
-// forma especial por rota). Resolver isso de verdade exigiria desacoplar
-// a decisão host→header/footer do Root Layout de uma API dinâmica (ex.:
-// múltiplos Root Layouts por route group) — fora do escopo desta fase, e
-// não é risco de segurança (o default do Next pra tudo já é privado).
+// MARKETING não precisa de nada aqui: na Fase 5.2, o Root Layout usava
+// `headers()`, forçando toda a árvore dinâmica e fazendo o Next
+// sobrescrever qualquer Cache-Control setado no Middleware (confirmado em
+// produção). Na Fase 5.3, Etapa 2, o Root Layout parou de usar API
+// dinâmica nenhuma — a página institucional (`export const revalidate =
+// 60`) agora é gerada estaticamente/revalidada pelo próprio Next, que
+// define o Cache-Control correto sozinho. Setar algo aqui só arriscaria
+// competir com o que o Next já acerta.
 function withSurfaceHeaders(response: NextResponse, surface: "PLATFORM" | "MARKETING" | null): NextResponse {
   if (surface === "PLATFORM") {
     response.headers.set("X-Robots-Tag", "noindex, nofollow");
     response.headers.set("Cache-Control", "private, no-store");
-  } else if (surface === "MARKETING") {
-    response.headers.set("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
   }
   return response;
 }
@@ -255,8 +249,9 @@ export function middleware(request: NextRequest) {
   const authToken = userCookieRaw;
   const userPayload = JSON.parse(userCookieRaw || "{}");
   // Fase 5.2, Etapa 5 — cache por superfície (ver withSurfaceHeaders). Só
-  // PLATFORM e MARKETING têm política explícita aqui; TICKETS_PUBLIC fica
-  // de fora de propósito (ver comentário em withSurfaceHeaders).
+  // PLATFORM tem política explícita aqui (MARKETING resolve sozinho via
+  // ISR na própria página — Fase 5.3, Etapa 4; TICKETS_PUBLIC fica de fora
+  // de propósito, ver comentário em withSurfaceHeaders).
   const enforcedSurface = isSurfaceEnforced(hostname) ? resolveSurfaceFromHost(hostname) : null;
   const currentSurfaceForHeaders: "PLATFORM" | "MARKETING" | null =
     enforcedSurface === "PLATFORM" || enforcedSurface === "MARKETING" ? enforcedSurface : null;
@@ -296,7 +291,7 @@ export function middleware(request: NextRequest) {
     if (surface === "MARKETING" && path === "/") {
       const target = request.nextUrl.clone();
       target.pathname = "/institucional";
-      return withSurfaceHeaders(NextResponse.rewrite(target), "MARKETING");
+      return NextResponse.rewrite(target);
     }
   }
 
