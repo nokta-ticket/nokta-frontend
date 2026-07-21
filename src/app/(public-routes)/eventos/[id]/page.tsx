@@ -2,7 +2,7 @@
 
 import "keen-slider/keen-slider.min.css";
 import { useKeenSlider } from "keen-slider/react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -40,6 +40,7 @@ import api from "@/lib/axios";
 import { EventDetails } from "@/interfaces/events";
 import { AutoplayPlugin, cn } from "@/lib/utils";
 import { resolveThumbnailUrl } from "@/lib/media";
+import { promoterTrackingApi } from "@/services/promoters";
 
 function formatDate(raw: string) {
   if (!raw) return "—";
@@ -114,6 +115,8 @@ function calcInstallmentCents(
 export default function IngressoDetalhesPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { isAuthenticated } = useAuth();
   const [evento, setEvento] = useState<EventDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -159,6 +162,31 @@ export default function IngressoDetalhesPage() {
       })
       .catch((err: any) => toast.error(err.message ?? 'Erro ao carregar evento.'))
       .finally(() => setLoading(false));
+  }, [id]);
+
+  // Tracking de link de promoter (?ref=): nunca redireciona, nunca bloqueia
+  // o carregamento da página, nunca vira loop (depende só de `id`, não de
+  // `searchParams` — a limpeza da URL abaixo não re-dispara isto). O
+  // backend é quem seta o cookie HttpOnly de atribuição; aqui só avisamos
+  // que o clique aconteceu e seguimos renderizando a página canônica normal.
+  useEffect(() => {
+    if (!id) return;
+    const ref = searchParams.get('ref');
+    if (!ref) return;
+
+    promoterTrackingApi
+      .resolveLink(ref, String(id), {
+        utmSource: searchParams.get('utm_source') ?? undefined,
+        utmMedium: searchParams.get('utm_medium') ?? undefined,
+        utmCampaign: searchParams.get('utm_campaign') ?? undefined,
+      })
+      .catch(() => {});
+
+    const cleanParams = new URLSearchParams(searchParams.toString());
+    ['ref', 'utm_source', 'utm_medium', 'utm_campaign'].forEach((key) => cleanParams.delete(key));
+    const query = cleanParams.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   async function openParcelasSheet(subtotalReais: number) {

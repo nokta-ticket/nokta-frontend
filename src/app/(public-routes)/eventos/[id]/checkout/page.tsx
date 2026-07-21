@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { resolveThumbnailUrl } from "@/lib/media";
 import { THREEDS_ENABLED, tokenizeCard, loadTdsScript } from "@/lib/pagarme";
 import { LoginModal } from "@/components/auth/login-modal";
+import { promoterTrackingApi } from "@/services/promoters";
 
 // ── Types ─────────────────────────────────────────────────────
 type Ticket = {
@@ -228,6 +229,17 @@ function CheckoutContent() {
   const [cupomDesconto, setCupomDesconto] = useState(0);
   const [cupomCodigo, setCupomCodigo] = useState("");
 
+  // Código do promoter — canal de atribuição DIGITADO explicitamente,
+  // separado do cupom (cupom é desconto puro; isto também atribui a venda a
+  // um promoter). Nunca herda o mecanismo do cupom: input próprio, nunca
+  // chega via ?cupom=. A reserva real só é criada depois que este campo
+  // "assenta" (debounce/confirmação), pra nunca perder a chance de anexar o
+  // código a uma reserva que já foi criada sem ele.
+  const [promoterCode, setPromoterCode] = useState("");
+  const [promoterCodeConfirmed, setPromoterCodeConfirmed] = useState(false);
+  const [promoterCodeChecking, setPromoterCodeChecking] = useState(false);
+  const [promoterCodePreview, setPromoterCodePreview] = useState<{ valid: boolean; discountApplicableCents: number; message: string } | null>(null);
+
   const [protecaoSelected, setProtecaoSelected] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<"pix" | "card" | null>(null);
   const [pixUrl, setPixUrl] = useState<string | null>(null);
@@ -292,6 +304,37 @@ function CheckoutContent() {
       .catch(() => {});
   }, [cupomCodigo, id]);
 
+  // Prévia do código do promoter (debounce) — só informativa; quem decide
+  // de fato se o código vale (e por quanto) é sempre o backend, no momento
+  // real da reserva. `promoterCodeConfirmed` é o que libera a criação da
+  // reserva — nunca deixamos a reserva "sair na frente" do que o usuário
+  // ainda está digitando.
+  useEffect(() => {
+    setPromoterCodeConfirmed(false);
+    const code = promoterCode.trim();
+    if (!code) {
+      setPromoterCodePreview(null);
+      setPromoterCodeChecking(false);
+      const t = setTimeout(() => setPromoterCodeConfirmed(true), 400);
+      return () => clearTimeout(t);
+    }
+    setPromoterCodeChecking(true);
+    const t = setTimeout(async () => {
+      try {
+        const items = selectedItems.map(({ ticketId, quantity }) => ({ ticketId, quantity }));
+        const preview = await promoterTrackingApi.validateCode(String(id), code, items);
+        setPromoterCodePreview(preview);
+      } catch {
+        setPromoterCodePreview({ valid: false, discountApplicableCents: 0, message: "Não foi possível validar o código agora." });
+      } finally {
+        setPromoterCodeChecking(false);
+        setPromoterCodeConfirmed(true);
+      }
+    }, 700);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [promoterCode, id]);
+
   useEffect(() => {
     if (!id) return;
     Promise.all([api.get(`/eventos/${id}`), api.get(`/eventos/${id}/ingressos`)])
@@ -317,19 +360,22 @@ function CheckoutContent() {
       .catch(() => {});
   }, []);
 
-  // Criar reserva quando os dados estiverem prontos
+  // Criar reserva quando os dados estiverem prontos — só depois que o campo
+  // de código do promoter "assentou" (ver efeito acima), pra sempre poder
+  // enviar o código explícito quando o usuário digitou um.
   useEffect(() => {
-    if (!isAuthResolved || !isAuthenticated || !id || selectedItems.length === 0 || reservationCode || isFree) return;
+    if (!isAuthResolved || !isAuthenticated || !id || selectedItems.length === 0 || reservationCode || isFree || !promoterCodeConfirmed) return;
     api.post("/pagamento/reservar", {
       items: selectedItems,
       codigoCupom: cupomCodigo || undefined,
+      promoterCode: promoterCode.trim() || undefined,
     })
       .then((res) => {
         setReservationCode(res.data.reservationCode);
         setExpiresAt(new Date(res.data.expiresAt));
       })
       .catch((err) => toast.error(getErrorMessage(err, "Erro ao reservar ingressos.")));
-  }, [isAuthResolved, isAuthenticated, id, selectedItems.length, isFree]);
+  }, [isAuthResolved, isAuthenticated, id, selectedItems.length, isFree, promoterCodeConfirmed]);
 
   // Quando o timer zera, consulta o backend antes de redirecionar
   useEffect(() => {
@@ -836,6 +882,33 @@ return (
               )}
             </div>
             <div className="coupon-edge coupon-edge-bottom" />
+          </div>
+
+          {/* ── Código do promoter (atribuição — não é cupom) ─── */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+            <p className="font-semibold text-[13px] text-[#0F172A] mb-1">Código do promoter (opcional)</p>
+            <p className="text-[12px] text-gray-400 mb-2.5">Recebeu um código de quem está divulgando este evento? Digite aqui.</p>
+            <Input
+              placeholder="Ex.: JOAO10"
+              value={promoterCode}
+              onChange={(e) => setPromoterCode(e.target.value.toUpperCase())}
+              disabled={!!reservationCode}
+              className="h-11 text-[16px] sm:text-[14px] uppercase"
+            />
+            {promoterCodeChecking ? (
+              <p className="text-[12px] text-gray-400 mt-1.5">Verificando código…</p>
+            ) : promoterCodePreview ? (
+              <p className={cn("text-[12px] mt-1.5", promoterCodePreview.valid ? "text-emerald-600" : "text-red-500")}>
+                {promoterCodePreview.valid
+                  ? promoterCodePreview.discountApplicableCents > 0
+                    ? `Código válido — ${formatCurrency(promoterCodePreview.discountApplicableCents / 100)} de desconto.`
+                    : "Código válido."
+                  : promoterCodePreview.message}
+              </p>
+            ) : null}
+            {reservationCode && (
+              <p className="text-[11px] text-gray-400 mt-1.5">Sua reserva já foi criada — para trocar o código, volte e recomece a compra.</p>
+            )}
           </div>
 
           {/* ── Proteção de compra ───────────────────────────── */}
