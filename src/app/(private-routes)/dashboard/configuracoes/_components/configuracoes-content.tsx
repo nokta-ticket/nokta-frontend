@@ -16,13 +16,15 @@ import { OperacaoTab } from "./operacao-tab";
 import { ReservasTab } from "./reservas-tab";
 import { HorariosTab } from "./horarios-tab";
 import { SegurancaTab } from "./seguranca-tab";
+import { DadosJuridicosFinanceirosTab } from "./dados-juridicos-financeiros-tab";
 
-const TABS = ["organizacao", "perfil", "venue", "unidades", "operacao", "reservas", "horarios", "seguranca"] as const;
+const TABS = ["organizacao", "perfil", "juridico-financeiro", "venue", "unidades", "operacao", "reservas", "horarios", "seguranca"] as const;
 type TabKey = (typeof TABS)[number];
 
 const TAB_LABEL: Record<TabKey, string> = {
   organizacao: "Organização",
   perfil: "Perfil operacional",
+  "juridico-financeiro": "Dados jurídicos e financeiros",
   venue: "Venue",
   unidades: "Unidades",
   operacao: "Operação",
@@ -98,6 +100,9 @@ export function ConfiguracoesContent() {
         </TabsContent>
         <TabsContent value="perfil">
           <PerfilOperacionalTab orgId={currentOrg.id} />
+        </TabsContent>
+        <TabsContent value="juridico-financeiro">
+          <DadosJuridicosFinanceirosTab orgId={currentOrg.id} canManage={can("organization.legal_profile.manage")} />
         </TabsContent>
         <TabsContent value="venue">
           <VenueTab orgId={currentOrg.id} canManage={canManage} />

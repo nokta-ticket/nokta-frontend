@@ -73,6 +73,8 @@ export interface VenueMeAccess {
   membershipStatus: MemberStatus;
   organizationRole: string;
   modules: { venue?: VenueAccessModuleAccess };
+  /** Permissões jurídico/financeiras — transversais, fora de `modules` (não são de um módulo contratável). */
+  organizationPermissions?: string[];
 }
 
 // ==================== PAYLOADS ====================

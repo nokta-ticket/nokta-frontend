@@ -50,7 +50,7 @@ export function VenueAccessProvider({ children }: { children: ReactNode }) {
   }, [currentOrg, version]);
 
   const venueModule = access?.modules.venue ?? null;
-  const permissions = new Set(venueModule?.permissions ?? []);
+  const permissions = new Set([...(venueModule?.permissions ?? []), ...(access?.organizationPermissions ?? [])]);
 
   return (
     <VenueAccessContext.Provider
