@@ -110,7 +110,7 @@ export function LoginForm() {
       if (isSafeInternalRedirect(redirectTo)) {
         router.push(redirectTo)
       } else if (ctx === 'produtor') {
-        router.push(user.role === 'PRODUTOR' ? '/produtor/eventos' : '/produtor/onboarding')
+        router.push(user.role === 'PRODUTOR' ? '/dashboard/eventos' : '/dashboard/eventos/onboarding')
       } else {
         // Navegação forçada (não router.push): "/" decide a rota conforme
         // autenticação no middleware (app.nokta.live) — o cache de rota do

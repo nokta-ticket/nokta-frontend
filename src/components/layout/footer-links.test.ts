@@ -27,9 +27,8 @@ const KNOWN_REAL_ROUTES = new Set([
   "/favoritos",
   "/login",
   "/register",
-  "/produtor/onboarding",
-  "/produtor/eventos",
-  "/produtor/metricas",
+  "/dashboard/eventos",
+  "/dashboard/eventos/onboarding",
   "/admin",
 ]);
 

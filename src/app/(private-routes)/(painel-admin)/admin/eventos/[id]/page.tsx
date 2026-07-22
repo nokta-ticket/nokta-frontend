@@ -6,8 +6,8 @@ import Link from "next/link";
 import { ArrowLeft, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import api from "@/lib/axios";
-import { EventoEditorLayout } from "@/app/(private-routes)/(painel-produtor)/produtor/eventos/[id]/_components/EventoEditorLayout";
-import type { EventoData } from "@/app/(private-routes)/(painel-produtor)/produtor/eventos/[id]/_components/types";
+import { EventoEditorLayout } from "@/app/(private-routes)/dashboard/eventos/[id]/_components/EventoEditorLayout";
+import type { EventoData } from "@/app/(private-routes)/dashboard/eventos/[id]/_components/types";
 
 export default function AdminEventoEditorPage() {
   const { id } = useParams<{ id: string }>();

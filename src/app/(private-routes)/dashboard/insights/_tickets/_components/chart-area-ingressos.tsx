@@ -28,7 +28,7 @@ const chartConfig: ChartConfig = {
   },
 };
 
-export function ChartAreaIngressos() {
+export function ChartAreaIngressos({ organizationId }: { organizationId: number }) {
   const [data, setData] = useState<LinhaAPI[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +38,7 @@ export function ChartAreaIngressos() {
     setError(null);
 
     try {
-      const res = await api.get("/produtor/vendas-mensais");
+      const res = await api.get("/produtor/vendas-mensais", { params: { organizationId } });
       const months: Record<string, number> = res.data.months;
       const monthsData = Object.keys(months).map((label) => ({
         mes: label,
@@ -61,7 +61,8 @@ export function ChartAreaIngressos() {
 
   useEffect(() => {
     void getMonthlyData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [organizationId]);
 
   const footerRange = () => {
     if (data.length === 0) return "--";

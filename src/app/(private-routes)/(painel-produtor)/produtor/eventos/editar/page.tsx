@@ -1,18 +1,6 @@
-"use client";
-import { useEffect } from "react";
-import EventoPage from "../_components/EventoPage";
-import { useEvento } from "@/context/EventoContext";
-import { useRouter } from "next/navigation";
+import { RouteRedirect } from "@/app/(private-routes)/dashboard/_components/route-redirect";
 
-export default function CriarEvento() {
-  const router = useRouter();
-  const { data } = useEvento();
-
-  useEffect(() => {
-    if (data.id === undefined) {
-      router.push("/produtor/eventos");
-    }
-  }, []);
-
-  return <EventoPage />;
+/** Compatibilidade — rota órfã do fluxo legado (nada mais linka aqui); mantida como redirect por segurança. */
+export default function ProdutorEventosEditarLegacyPage() {
+  return <RouteRedirect to="/dashboard/eventos" />;
 }

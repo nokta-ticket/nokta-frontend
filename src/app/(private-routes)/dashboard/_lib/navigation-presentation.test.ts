@@ -61,6 +61,18 @@ describe("buildUnifiedNavigation", () => {
     ]);
   });
 
+  it("Promotores é secundário e vem depois de Eventos no mesmo grupo, mesmo entrando primeiro do backend", () => {
+    const items: NavigationItem[] = [
+      item({ key: "PROMOTERS", label: "Promotores", route: "/dashboard/promotores", group: "EVENTS" }),
+      item({ key: "EVENTS", label: "Eventos", route: "/dashboard/eventos", group: "EVENTS" }),
+    ];
+    const groups = buildUnifiedNavigation(items);
+    const eventosGroup = groups.find((g) => g.group === "EVENTOS")!;
+    expect(eventosGroup.items.map((i) => i.key)).toEqual(["EVENTS", "PROMOTERS"]);
+    expect(eventosGroup.items.find((i) => i.key === "EVENTS")?.secondary).toBe(false);
+    expect(eventosGroup.items.find((i) => i.key === "PROMOTERS")?.secondary).toBe(true);
+  });
+
   it("preserva a ordem de exibição dos grupos independente da ordem de entrada", () => {
     const items: NavigationItem[] = [
       item({ key: "FINANCE", group: "MANAGEMENT", route: "/dashboard/financeiro" }),

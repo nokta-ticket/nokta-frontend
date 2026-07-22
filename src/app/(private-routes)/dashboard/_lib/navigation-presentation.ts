@@ -53,10 +53,12 @@ const EXCLUDED_KEYS = new Set(["LOCATIONS"]);
  * própria no dashboard multi-tenant — ver auditoria da Fase 3
  * (docs/platform/unified-navigation.md "Lacunas conhecidas"):
  *
- * - Tipos de ingresso, Lotes, Check-in e Convidados ainda não têm tela
- *   dedicada aqui (hoje, quando existem, vivem no fluxo antigo
- *   `/produtor/*`, fora do escopo desta fase — não organizacional). Até lá,
- *   apontam para Eventos.
+ * - Tipos de ingresso, Lotes e Convidados ainda não têm tela dedicada
+ *   própria — apontam para Eventos (Tipos/Lotes são uma aba dentro do
+ *   editor de evento, SectionIngressos; Convidados nunca existiu como
+ *   funcionalidade). Check-in ganhou rota própria na Fase 5
+ *   (`/dashboard/check-in`, migrado de `/produtor/validar`) — sem override,
+ *   usa a rota que o backend já manda.
  * - Fila de espera é uma aba dentro de Reservas (`?tab=fila`), não uma
  *   página própria.
  * - Preparo e Pagamentos não têm aba própria em Operação — vivem dentro de
@@ -68,7 +70,6 @@ const ROUTE_OVERRIDE_BY_KEY: Partial<Record<string, string>> = {
   TICKETING: "/dashboard/eventos",
   TICKET_TYPES: "/dashboard/eventos",
   LOTS: "/dashboard/eventos",
-  CHECK_IN: "/dashboard/eventos",
   GUEST_LISTS: "/dashboard/eventos",
   WAITLIST: "/dashboard/reservas?tab=fila",
   TABLES: "/dashboard/operacao/mesas",
@@ -120,11 +121,23 @@ const ICON_BY_GROUP: Record<CapabilityGroup, IconKey> = {
   MANAGEMENT: "dollar",
 };
 
+/**
+ * Itens que são função secundária de outra capacidade no mesmo grupo visual
+ * — hoje só Promotores em relação a Eventos (auditoria da unificação de
+ * Tickets: Promotores é uma funcionalidade interna de Tickets, não um
+ * produto irmão de Eventos, mas herdava o mesmo peso visual por estar no
+ * mesmo DisplayGroup). Puramente de apresentação: renderizado com recuo e
+ * texto mais discreto em `UnifiedSidebar`, mesmo componente `Link`, sem
+ * nova arquitetura de navegação aninhada.
+ */
+const SECONDARY_KEYS = new Set(["PROMOTERS"]);
+
 export interface UnifiedNavItem {
   key: string;
   label: string;
   route: string;
   iconKey: IconKey;
+  secondary: boolean;
 }
 
 export interface UnifiedNavGroup {
@@ -165,13 +178,19 @@ export function buildUnifiedNavigation(items: NavigationItem[]): UnifiedNavGroup
 
     const iconKey = ICON_BY_KEY[item.key] ?? ICON_BY_GROUP[item.group];
     const list = byGroup.get(displayGroup) ?? [];
-    list.push({ key: item.key, label: item.label, route, iconKey });
+    list.push({ key: item.key, label: item.label, route, iconKey, secondary: SECONDARY_KEYS.has(item.key) });
     byGroup.set(displayGroup, list);
   }
 
-  return DISPLAY_GROUP_ORDER.filter((g) => byGroup.has(g)).map((group) => ({
-    group,
-    groupLabel: DISPLAY_GROUP_LABEL[group],
-    items: byGroup.get(group)!,
-  }));
+  return DISPLAY_GROUP_ORDER.filter((g) => byGroup.has(g)).map((group) => {
+    const items = byGroup.get(group)!;
+    // Itens primários antes dos secundários — ordem estável dentro de cada bloco.
+    const primary = items.filter((i) => !i.secondary);
+    const secondary = items.filter((i) => i.secondary);
+    return {
+      group,
+      groupLabel: DISPLAY_GROUP_LABEL[group],
+      items: [...primary, ...secondary],
+    };
+  });
 }

@@ -54,15 +54,12 @@ const publicRoutes = [
   { path: "/", whenAutenticated: "next" },
 ] as const;
 
-const protectedProdutorRoutes = [
-  "/produtor/eventos",
-  "/produtor/metricas",
-  "/produtor/validar",
-  "/produtor/verificar-conta",
-];
-
-// Requires auth but NOT producer role (any logged-in user can access)
-const authOnlyRoutes = ["/produtor/onboarding"];
+// Fase 5: /produtor/* virou redirect fino pro dashboard unificado — não tem
+// mais gate de role própria (a autorização real é da API + contexto de
+// organização, mesmo padrão de qualquer outra rota /dashboard/*). Esta
+// lista serve só pra manter a UX de "volta pro onboarding após o login" pra
+// quem chega deslogado, tanto pela rota antiga quanto pela nova.
+const onboardingRoutes = ["/produtor/onboarding", "/dashboard/eventos/onboarding"];
 
 const protectedAdminRoutes = [
   "/admin/dashboard",
@@ -316,7 +313,7 @@ export function middleware(request: NextRequest) {
   // Not authenticated → public or redirect to home
   if (!authToken && !publicRoute) {
     const redirectUrl = request.nextUrl.clone();
-    const isAuthOnlyUnauthenticated = authOnlyRoutes.some((r) => path.startsWith(r));
+    const isAuthOnlyUnauthenticated = onboardingRoutes.some((r) => path.startsWith(r));
     if (isAuthOnlyUnauthenticated) {
       redirectUrl.pathname = "/login";
       redirectUrl.searchParams.set("ctx", "produtor");
@@ -356,45 +353,13 @@ export function middleware(request: NextRequest) {
 
     const ctx = request.nextUrl.searchParams.get("ctx");
     if (ctx === "produtor") {
-      if (hasProdutorRole(userPayload)) {
-        redirectUrl.pathname = "/produtor/eventos";
-      } else {
-        redirectUrl.pathname = "/produtor/onboarding";
-      }
+      redirectUrl.pathname = hasProdutorRole(userPayload) ? "/dashboard/eventos" : "/dashboard/eventos/onboarding";
     } else if (isSurfaceEnforced(hostname) && resolveSurfaceFromHost(hostname) === "PLATFORM") {
       redirectUrl.pathname = getSurfaceConfig("PLATFORM").defaultPath;
     } else {
       redirectUrl.pathname = "/";
     }
 
-    return NextResponse.redirect(redirectUrl);
-  }
-
-  // Auth-only routes (onboarding): require token, block if already a producer
-  const isAuthOnly = authOnlyRoutes.some((r) => path.startsWith(r));
-  if (isAuthOnly) {
-    if (!authToken) {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = "/login";
-      redirectUrl.searchParams.set("ctx", "produtor");
-      return NextResponse.redirect(redirectUrl);
-    }
-    if (hasProdutorRole(userPayload)) {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = "/produtor/eventos";
-      redirectUrl.search = "";
-      return NextResponse.redirect(redirectUrl);
-    }
-    return withSurfaceHeaders(NextResponse.next(), currentSurfaceForHeaders);
-  }
-
-  // Producer routes: require PRODUTOR role
-  const isProdutorRoute = protectedProdutorRoutes.some((route) =>
-    path.startsWith(route)
-  );
-  if (authToken && isProdutorRoute && !hasProdutorRole(userPayload) && !hasAdminRole(userPayload)) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = REDIRECT_WHEN_INVALID_ROLE_ROUTE;
     return NextResponse.redirect(redirectUrl);
   }
 

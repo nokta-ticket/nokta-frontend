@@ -59,7 +59,7 @@ export default function EventosAtivos() {
   )
 
   const handleClick = (id: string) => {
-    router.push(`/painel-produtor/eventos/${id}`)
+    router.push(`/admin/eventos/${id}`)
   }
 
   if (loading) {
@@ -77,7 +77,7 @@ export default function EventosAtivos() {
           <p className="text-lg font-medium text-gray-700">
             Não há nenhum evento ativo no momento.
           </p>
-          <Link href="/produtor/eventos/criar">
+          <Link href="/dashboard/eventos/criar">
             <Button className="cursor-pointer mt-6 bg-violet-600 text-white px-8 py-3">
               Criar novo evento
             </Button>

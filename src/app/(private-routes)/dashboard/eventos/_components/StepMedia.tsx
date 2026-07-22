@@ -7,7 +7,7 @@ import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { useEvento } from "../../../../../../context/EventoContext";
+import { useEvento } from "@/context/EventoContext";
 import api from "@/lib/axios";
 import { cn } from "@/lib/utils";
 

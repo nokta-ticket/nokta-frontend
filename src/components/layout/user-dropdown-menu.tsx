@@ -121,7 +121,7 @@ export function UserDropdownMenu() {
 
                 <li>
                   <Link
-                    href={isProdutor ? '/produtor/metricas' : '/para-produtores'}
+                    href={isProdutor ? '/dashboard/eventos' : '/para-produtores'}
                     className="flex items-center gap-2 rounded-md px-3 py-2 hover:bg-gray-100"
                   >
                     {isProdutor ? (

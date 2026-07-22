@@ -28,7 +28,7 @@ export function EventoEditorHeader({ event }: Props) {
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 mb-4">
         <Link
-          href="/produtor/eventos"
+          href="/dashboard/eventos"
           className="flex items-center gap-1.5 text-[13px] text-gray-500 hover:text-gray-800 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />

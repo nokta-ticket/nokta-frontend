@@ -5,6 +5,7 @@ import { toast } from "@/lib/toast";
 import { usePathname, useRouter } from "next/navigation";
 import api from "@/lib/axios";
 import { AxiosError } from "axios";
+import { useOrganizations } from "./OrganizationContext";
 
 type TipoContato = 0 | 1 | 2;
 type TipoIngresso = 0 | 1 | 2 | 3 | 4;
@@ -100,10 +101,10 @@ export function EventoProvider({ children }: { children: React.ReactNode }) {
   const [thumbnails, setThumbnails] = useState<string[]>([]);
   const router = useRouter();
   const pathname = usePathname();
+  const { currentOrg } = useOrganizations();
 
   useEffect(() => {
-    if (!pathname.startsWith("/produtor/eventos/editar"))
-      setDataRaw(initialData);
+    setDataRaw(initialData);
   }, [pathname]);
 
   const setData = (d: Partial<EventoPayload>) => {
@@ -144,14 +145,18 @@ export function EventoProvider({ children }: { children: React.ReactNode }) {
       };
 
       if (data.id) {
-        const res = await api.put("/produtor/eventos/" + data.id, body);
+        await api.put("/produtor/eventos/" + data.id, body);
         toast.success("Evento editado com sucesso!");
       } else {
-        const res = await api.post("/produtor/eventos", body);
+        if (!currentOrg) {
+          toast.error("Selecione uma organização antes de criar um evento.");
+          return;
+        }
+        await api.post("/produtor/eventos", { ...body, organizationId: currentOrg.id });
         toast.success("Evento criado com sucesso!");
       }
 
-      router.push("/produtor/eventos");
+      router.push("/dashboard/eventos");
     } catch (err: any) {
       if (err instanceof AxiosError) {
         const msg = err.response?.data?.message;

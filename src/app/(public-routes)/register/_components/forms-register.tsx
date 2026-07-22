@@ -442,7 +442,7 @@ export function RegisterForm() {
         if (redirectTo) {
           router.push(redirectTo);
         } else if (ctx === "produtor") {
-          router.push(user.role === "PRODUTOR" ? "/produtor/eventos" : "/produtor/onboarding");
+          router.push(user.role === "PRODUTOR" ? "/dashboard/eventos" : "/dashboard/eventos/onboarding");
         } else {
           // Navegação forçada — ver login-form.tsx.
           window.location.href = "/";

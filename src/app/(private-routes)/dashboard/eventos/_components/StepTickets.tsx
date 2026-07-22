@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { AddLoteDialog } from "./AddLoteDialog";
-import { IngressoLote, useEvento } from "../../../../../../context/EventoContext";
+import { IngressoLote, useEvento } from "@/context/EventoContext";
 import { Button } from "@/components/ui/button";
 import { BatchCard } from "@/app/(public-routes)/eventos/_components/BatchCard";
 import { Ticket, ArrowLeft, ArrowRight, TicketX, Plus } from "lucide-react";

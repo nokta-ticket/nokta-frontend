@@ -5,8 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Instagram, Mail, Phone, ArrowLeft, ArrowRight, Users, FileText, ShieldCheck, Headphones } from "lucide-react";
-import { useEvento } from "../../../../../../context/EventoContext";
-import { InputPhone } from "../../_components/form/input-phone";
+import { useEvento } from "@/context/EventoContext";
+import { InputPhone } from "./form/input-phone";
 import { cn } from "@/lib/utils";
 
 interface Props {

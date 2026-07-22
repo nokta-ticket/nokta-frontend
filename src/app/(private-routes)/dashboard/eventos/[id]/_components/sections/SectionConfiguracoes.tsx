@@ -103,7 +103,7 @@ export default function SectionConfiguracoes({ event, onRefresh }: SectionProps)
     try {
       await api.delete(`/produtor/eventos/${event.id}`)
       toast.success("Evento excluído.")
-      router.push("/produtor/eventos")
+      router.push("/dashboard/eventos")
     } catch (err: any) {
       const msg = err?.response?.data?.message
       toast.error(Array.isArray(msg) ? msg[0] : (msg || "Erro ao excluir evento"))

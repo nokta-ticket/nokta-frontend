@@ -9,7 +9,7 @@ import { toast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
 import api from "@/lib/axios"
 import { SectionProps } from "../types"
-import { InputPhone } from "@/app/(private-routes)/(painel-produtor)/produtor/_components/form/input-phone"
+import { InputPhone } from "@/app/(private-routes)/dashboard/eventos/_components/form/input-phone"
 
 function CardShell({ children }: { children: React.ReactNode }) {
   return (

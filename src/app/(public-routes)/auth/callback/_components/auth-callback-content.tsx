@@ -47,9 +47,9 @@ function MergeAccountForm({
 
       if (ctx === "produtor") {
         if (user.role === "PRODUTOR") {
-          router.replace("/produtor/eventos");
+          router.replace("/dashboard/eventos");
         } else {
-          router.replace("/produtor/onboarding");
+          router.replace("/dashboard/eventos/onboarding");
         }
       } else {
         // Navegação forçada — ver login-form.tsx (mesmo motivo: "/" decide
@@ -144,7 +144,7 @@ export function AuthCallbackContent() {
         signIn({ userId: data.id, role: data.role, nivelProdutor: data.nivelProdutor ?? null });
 
         if (ctx === "produtor") {
-          router.replace(data.role === "PRODUTOR" ? "/produtor/eventos" : "/produtor/onboarding");
+          router.replace(data.role === "PRODUTOR" ? "/dashboard/eventos" : "/dashboard/eventos/onboarding");
         } else {
           // Navegação forçada — ver login-form.tsx.
           window.location.href = "/";

@@ -51,9 +51,9 @@ export function UnifiedSidebar() {
                   <Link
                     key={item.key}
                     href={item.route}
-                    className={`flex items-center gap-3 rounded-md px-3 py-2 font-normal text-white ${
-                      isActive ? "bg-violet-600" : "hover:bg-white/10"
-                    }`}
+                    className={`flex items-center gap-3 rounded-md py-2 font-normal text-white ${
+                      item.secondary ? "ml-4 px-3 text-xs text-white/70" : "px-3"
+                    } ${isActive ? "bg-violet-600" : "hover:bg-white/10"}`}
                   >
                     <UnifiedNavIcon iconKey={item.iconKey} />
                     {item.label}

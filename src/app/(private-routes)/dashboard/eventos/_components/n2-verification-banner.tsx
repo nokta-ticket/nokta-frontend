@@ -65,7 +65,7 @@ export function N2VerificationBanner() {
           Seus dados não passaram na análise. Por favor, tente novamente.
         </p>
         <Link
-          href="/produtor/verificar-conta"
+          href="/dashboard/eventos/verificar-conta"
           className="flex items-center gap-1 whitespace-nowrap rounded-md bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700"
         >
           Tentar novamente <ArrowRight size={12} />
@@ -84,7 +84,7 @@ export function N2VerificationBanner() {
         </p>
       </div>
       <Link
-        href="/produtor/verificar-conta"
+        href="/dashboard/eventos/verificar-conta"
         className="flex items-center gap-1 whitespace-nowrap rounded-md bg-violet-600 px-3 py-1 text-xs font-medium text-white hover:bg-violet-700"
       >
         Verificar agora <ArrowRight size={12} />
