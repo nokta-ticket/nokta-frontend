@@ -2,6 +2,7 @@ import {
   BarChart2,
   ClipboardCheck,
   CreditCard,
+  Landmark,
   LayoutList,
   ScrollText,
   Shield,
@@ -42,6 +43,11 @@ export const sidebarLinks: SidebarLink[] = [
     label: "Pedidos de Produtor",
     icon: <ClipboardCheck size={16} />,
     href: "/admin/pedidos-produtor",
+  },
+  {
+    label: "Jurídico e Financeiro",
+    icon: <Landmark size={16} />,
+    href: "/admin/juridico-financeiro",
   },
   {
     label: "Eventos em Destaque",

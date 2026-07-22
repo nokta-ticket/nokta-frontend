@@ -6,13 +6,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
 import { formatCpf, formatCnpj, normalizeDigits, validateCpf, validateCnpj, validatePixKey } from "@/lib/br-data";
 import { VERIFICATION_STATUS_LABEL, type LegalType, type VerificationStatus } from "@/services/venue-legal-financial";
 import { BlockSkeleton } from "../../_components/states/loading-state";
 import {
+  useCreateRecipient,
   useLegalFinancialProfile,
+  useSetBankAccount,
   useSetFinancialDestination,
   useStartLegalProfile,
 } from "../_hooks/use-legal-financial-settings";
@@ -32,12 +41,22 @@ export function DadosJuridicosFinanceirosTab({ orgId, canManage }: { orgId: numb
   const { data: profile, isLoading } = useLegalFinancialProfile(orgId);
   const startProfile = useStartLegalProfile(orgId);
   const setDestination = useSetFinancialDestination(orgId);
+  const setBankAccount = useSetBankAccount(orgId);
+  const createRecipient = useCreateRecipient(orgId);
 
   const [legalType, setLegalType] = useState<LegalType>("INDIVIDUAL");
   const [legalName, setLegalName] = useState("");
   const [tradeName, setTradeName] = useState("");
   const [document, setDocument] = useState("");
   const [pixKey, setPixKey] = useState("");
+
+  const [holderName, setHolderName] = useState("");
+  const [bank, setBank] = useState("");
+  const [branchNumber, setBranchNumber] = useState("");
+  const [branchCheckDigit, setBranchCheckDigit] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [accountCheckDigit, setAccountCheckDigit] = useState("");
+  const [accountType, setAccountType] = useState<"checking" | "savings">("checking");
 
   useEffect(() => {
     if (profile?.legalType) {
@@ -88,6 +107,47 @@ export function DadosJuridicosFinanceirosTab({ orgId, canManage }: { orgId: numb
         onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar o destino financeiro.")),
       },
     );
+  };
+
+  const handleSaveBankAccount = () => {
+    if (!holderName.trim() || !bank || !branchNumber || !accountNumber || !accountCheckDigit) {
+      toast.error("Preencha todos os campos obrigatórios da conta bancária.");
+      return;
+    }
+    setBankAccount.mutate(
+      {
+        holderName: holderName.trim(),
+        bank,
+        branchNumber,
+        branchCheckDigit: branchCheckDigit || undefined,
+        accountNumber,
+        accountCheckDigit,
+        accountType,
+      },
+      {
+        onSuccess: () => {
+          toast.success(
+            profile?.verificationStatus === "VERIFIED"
+              ? "Conta bancária salva. O recebedor está sendo criado na Pagar.me."
+              : "Conta bancária salva. O recebedor será criado assim que a verificação for aprovada.",
+          );
+          setHolderName("");
+          setBank("");
+          setBranchNumber("");
+          setBranchCheckDigit("");
+          setAccountNumber("");
+          setAccountCheckDigit("");
+        },
+        onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar a conta bancária.")),
+      },
+    );
+  };
+
+  const handleCreateRecipient = () => {
+    createRecipient.mutate(undefined, {
+      onSuccess: () => toast.success("Recebedor criado na Pagar.me."),
+      onError: (err) => toast.error(getErrorMessage(err, "Não foi possível criar o recebedor.")),
+    });
   };
 
   return (
@@ -224,12 +284,78 @@ export function DadosJuridicosFinanceirosTab({ orgId, canManage }: { orgId: numb
         </CardContent>
       </Card>
 
+      {canManage && hasProfile && !profile?.hasRecipient ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Conta bancária</CardTitle>
+            <CardDescription>
+              Conta para onde os repasses da organização serão transferidos. Precisa estar no mesmo CPF/CNPJ da
+              organização.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {profile?.bankAccountMasked ? (
+              <p className="text-sm text-black/60">
+                Conta atual: <span className="font-medium text-black">{profile.bankAccountMasked}</span>
+              </p>
+            ) : null}
+
+            <div className="space-y-1.5">
+              <Label>Nome do titular</Label>
+              <Input value={holderName} onChange={(e) => setHolderName(e.target.value)} placeholder="Igual ao nome legal cadastrado" />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label>Banco (código)</Label>
+                <Input value={bank} onChange={(e) => setBank(e.target.value.replace(/\D/g, ""))} placeholder="Ex.: 001" inputMode="numeric" maxLength={3} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Agência</Label>
+                <Input value={branchNumber} onChange={(e) => setBranchNumber(e.target.value.replace(/\D/g, ""))} placeholder="0000" inputMode="numeric" maxLength={6} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Dígito da agência (opcional)</Label>
+                <Input value={branchCheckDigit} onChange={(e) => setBranchCheckDigit(e.target.value.replace(/\D/g, ""))} inputMode="numeric" maxLength={1} />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label>Conta</Label>
+                <Input value={accountNumber} onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))} placeholder="00000000" inputMode="numeric" maxLength={13} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Dígito da conta</Label>
+                <Input value={accountCheckDigit} onChange={(e) => setAccountCheckDigit(e.target.value.replace(/[^0-9xX]/g, ""))} inputMode="text" maxLength={2} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Tipo de conta</Label>
+                <Select value={accountType} onValueChange={(v) => setAccountType(v as "checking" | "savings")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="checking">Corrente</SelectItem>
+                    <SelectItem value="savings">Poupança</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <Button onClick={handleSaveBankAccount} disabled={setBankAccount.isPending}>
+              {setBankAccount.isPending ? "Salvando…" : "Salvar conta bancária"}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle>Recebedor e verificação</CardTitle>
           <CardDescription>Status do repasse e da verificação de identidade da organização.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <Label className="text-xs text-black/50">Recebedor</Label>
@@ -240,6 +366,18 @@ export function DadosJuridicosFinanceirosTab({ orgId, canManage }: { orgId: numb
               <p className="text-sm font-medium">{profile?.kycStatus === "APPROVED" ? "Aprovada" : "Pendente"}</p>
             </div>
           </div>
+
+          {canManage && !profile?.hasRecipient && profile?.verificationStatus === "VERIFIED" && profile?.bankAccountMasked ? (
+            <div>
+              <p className="text-xs text-black/50 mb-2">
+                O recebedor normalmente é criado automaticamente após a aprovação. Se isso não aconteceu, tente
+                manualmente:
+              </p>
+              <Button variant="outline" onClick={handleCreateRecipient} disabled={createRecipient.isPending}>
+                {createRecipient.isPending ? "Criando…" : "Criar recebedor agora"}
+              </Button>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>
