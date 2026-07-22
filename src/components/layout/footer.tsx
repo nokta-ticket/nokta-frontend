@@ -59,6 +59,7 @@ export default function Footer() {
               <li><a href="mailto:contato@noktatickets.com.br" className="hover:underline">Fale Conosco</a></li>
               <li><Link href="/termos" className="hover:underline">Termos de Uso</Link></li>
               <li><Link href="/privacidade" className="hover:underline">Política de Privacidade</Link></li>
+              <li><Link href="/politica-de-cancelamento" className="hover:underline">Cancelamento e Reembolso</Link></li>
             </ul>
           </div>
         </div>
@@ -104,6 +105,8 @@ export default function Footer() {
             <Link href="/termos" className="hover:text-gray-600 transition whitespace-nowrap">Termos de Uso</Link>
             <span>·</span>
             <Link href="/privacidade" className="hover:text-gray-600 transition whitespace-nowrap">Política de Privacidade</Link>
+            <span>·</span>
+            <Link href="/politica-de-cancelamento" className="hover:text-gray-600 transition whitespace-nowrap">Cancelamento e Reembolso</Link>
           </div>
 
           <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" />

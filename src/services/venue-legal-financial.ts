@@ -8,7 +8,8 @@ export type VerificationStatus =
   | "VERIFIED"
   | "REJECTED"
   | "SUSPENDED"
-  | "LEGACY_REVIEW_REQUIRED";
+  | "LEGACY_REVIEW_REQUIRED"
+  | "FINANCIAL_REVIEW_REQUIRED";
 export type FinancialDestinationStatus = "NOT_SET" | "UNVERIFIED" | "VERIFIED";
 
 export interface LegalFinancialProfile {
@@ -88,4 +89,5 @@ export const VERIFICATION_STATUS_LABEL: Record<VerificationStatus, string> = {
   REJECTED: "Rejeitado",
   SUSPENDED: "Suspenso",
   LEGACY_REVIEW_REQUIRED: "Regularização pendente",
+  FINANCIAL_REVIEW_REQUIRED: "Correção em revisão",
 };

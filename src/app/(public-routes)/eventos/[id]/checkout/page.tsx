@@ -1011,7 +1011,11 @@ return (
               Li e aceito os{" "}
               <a href="/termos" target="_blank" className="text-violet-600 underline">Termos de Uso</a>,{" "}
               <a href="/privacidade" target="_blank" className="text-violet-600 underline">Política de Privacidade</a>{" "}
-              e regras do evento. Estou ciente de que, após o check-in, o serviço será considerado utilizado.
+              e a{" "}
+              <a href="/politica-de-cancelamento" target="_blank" className="text-violet-600 underline">
+                Política de Cancelamento e Reembolso
+              </a>{" "}
+              (arrependimento em até 7 dias corridos; sem reembolso por desistência após esse prazo). Estou ciente de que, após o check-in, o serviço será considerado utilizado.
             </span>
           </label>
 

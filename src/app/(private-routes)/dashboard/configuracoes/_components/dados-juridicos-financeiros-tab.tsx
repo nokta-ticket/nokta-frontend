@@ -25,6 +25,7 @@ const STATUS_BADGE_VARIANT: Record<VerificationStatus, "default" | "secondary" |
   REJECTED: "destructive",
   SUSPENDED: "destructive",
   LEGACY_REVIEW_REQUIRED: "secondary",
+  FINANCIAL_REVIEW_REQUIRED: "secondary",
 };
 
 export function DadosJuridicosFinanceirosTab({ orgId, canManage }: { orgId: number; canManage: boolean }) {

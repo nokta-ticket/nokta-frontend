@@ -20,6 +20,7 @@ import { toast } from "@/lib/toast";
 import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/axios";
 import { resolveMediaUrl } from "@/lib/media";
+import { RefundRequestCard } from "./_components/refund-request-card";
 
 // ── API shape ──────────────────────────────────────────────────
 interface TicketDetail {
@@ -27,6 +28,7 @@ interface TicketDetail {
   code: string;
   status: number; // 1=not validated, 2=validated
   createdAt: string;
+  orderId: number;
   event: {
     id: number;
     nome: string;
@@ -484,6 +486,17 @@ export default function DetalheIngressoPage() {
           >
             <RefreshCcw size={13} /> Não poderei comparecer
           </button>
+        )}
+
+        {/* Cancelamento (arrependimento até 7 dias) */}
+        {tk.valor > 0 && (
+          <RefundRequestCard
+            orderId={item.orderId}
+            userTicketId={item.id}
+            ticketValue={tk.valor}
+            ticketStatus={item.status}
+            purchasedAt={item.createdAt}
+          />
         )}
 
         {/* Meta */}

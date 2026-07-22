@@ -13,6 +13,7 @@ import { BlockSkeleton } from "../../_components/states/loading-state";
 import { MetricCard } from "../../_components/metric-card";
 import { useDismissRecommendation, usePlatformHome, usePlatformNavigation, useRecommendations } from "../../_hooks/use-platform";
 import { RecommendationsPanel } from "../../explorar/_components/recommendations-panel";
+import { LegalFinancialPendingBanner } from "../../_components/legal-financial-pending-banner";
 
 const QUICK_LINKS = [
   { key: "FINANCE", label: "Financeiro", href: "/dashboard/financeiro", icon: DollarSign },
@@ -80,6 +81,8 @@ export function InicioContent() {
   return (
     <PageContainer>
       <PageHeader title={title} description="O que está acontecendo no seu negócio agora." />
+
+      <LegalFinancialPendingBanner orgId={orgId} />
 
       {!recommendations.isError && (recommendations.data?.length ?? 0) > 0 ? (
         <RecommendationsPanel recommendations={recommendations.data ?? []} onDismiss={handleDismiss} dismissingKey={dismissingKey} />
