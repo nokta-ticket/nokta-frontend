@@ -369,12 +369,31 @@ export function DadosJuridicosFinanceirosTab({ orgId, canManage }: { orgId: numb
 
           {canManage && !profile?.hasRecipient && profile?.verificationStatus === "VERIFIED" && profile?.bankAccountMasked ? (
             <div>
-              <p className="text-xs text-black/50 mb-2">
-                O recebedor normalmente é criado automaticamente após a aprovação. Se isso não aconteceu, tente
-                manualmente:
-              </p>
-              <Button variant="outline" onClick={handleCreateRecipient} disabled={createRecipient.isPending}>
-                {createRecipient.isPending ? "Criando…" : "Criar recebedor agora"}
+              {profile?.recipientAttemptState === "RECIPIENT_ERROR" ? (
+                <>
+                  <p className="text-xs text-red-600 mb-1">
+                    A última tentativa de criar o recebedor falhou{profile.recipientLastError ? `: ${profile.recipientLastError}` : "."}
+                  </p>
+                  <p className="text-xs text-black/50 mb-2">Corrija os dados se necessário e tente novamente.</p>
+                </>
+              ) : profile?.recipientAttemptState === "RECIPIENT_IN_PROGRESS" ? (
+                <p className="text-xs text-black/50 mb-2">Já existe uma tentativa de criação em andamento. Aguarde antes de tentar de novo.</p>
+              ) : (
+                <p className="text-xs text-black/50 mb-2">
+                  O recebedor normalmente é criado automaticamente após a aprovação. Se isso não aconteceu, tente
+                  manualmente:
+                </p>
+              )}
+              <Button
+                variant="outline"
+                onClick={handleCreateRecipient}
+                disabled={createRecipient.isPending || profile?.recipientAttemptState === "RECIPIENT_IN_PROGRESS"}
+              >
+                {createRecipient.isPending
+                  ? "Criando…"
+                  : profile?.recipientAttemptState === "RECIPIENT_ERROR"
+                    ? "Tentar novamente"
+                    : "Criar recebedor agora"}
               </Button>
             </div>
           ) : null}

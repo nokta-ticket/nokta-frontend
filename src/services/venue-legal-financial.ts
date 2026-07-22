@@ -11,6 +11,12 @@ export type VerificationStatus =
   | "LEGACY_REVIEW_REQUIRED"
   | "FINANCIAL_REVIEW_REQUIRED";
 export type FinancialDestinationStatus = "NOT_SET" | "UNVERIFIED" | "VERIFIED";
+export type RecipientAttemptState =
+  | "NOT_APPLICABLE"
+  | "RECIPIENT_PENDING"
+  | "RECIPIENT_IN_PROGRESS"
+  | "RECIPIENT_ERROR"
+  | "RECIPIENT_CREATED";
 
 export interface LegalFinancialProfile {
   organizationId: number;
@@ -23,6 +29,9 @@ export interface LegalFinancialProfile {
   recipientType: "individual" | "company" | null;
   recipientStatus: string | null;
   hasRecipient: boolean;
+  recipientAttemptState: RecipientAttemptState;
+  recipientLastError: string | null;
+  recipientAttemptedAt: string | null;
   kycStatus: string | null;
   bankAccountMasked: string | null;
   financialDestinationStatus: FinancialDestinationStatus;
