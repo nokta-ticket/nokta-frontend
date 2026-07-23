@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import {
   BarChart3,
@@ -14,6 +13,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { getPlatformUrl, getPublicTicketsUrl } from "@/lib/surfaces";
+import { NoktaBrandMark as BrandMark } from "@/components/layout/nokta-brand-mark";
 
 /**
  * Fase 5.1, Etapa 3/6 — landing institucional (www.nokta.live). Renderizada
@@ -85,15 +85,6 @@ const PARA_QUEM = [
   "Espaços de eventos",
   "Operações híbridas",
 ];
-
-function BrandMark({ className = "" }: { className?: string }) {
-  return (
-    <Link href="/" className={`flex items-center gap-2.5 ${className}`}>
-      <Image src="/logo-painel.svg" alt="Nokta" width={32} height={29} priority />
-      <span className="font-sans text-xl font-bold text-[#181d27]">nokta</span>
-    </Link>
-  );
-}
 
 export default function InstitucionalPage() {
   const entrarUrl = getPlatformUrl("/login");

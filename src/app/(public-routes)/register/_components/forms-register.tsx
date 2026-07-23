@@ -11,6 +11,7 @@ import { PhoneInput, validatePhone } from "@/components/ui/phone-input";
 import { getCountryCallingCode, type Country } from "react-phone-number-input";
 import { isSafeInternalRedirect } from "@/lib/safe-redirect";
 import { currentSurfaceStateToken, getApiBaseUrl } from "@/lib/surfaces";
+import { useSurface } from "@/lib/use-surface";
 
 // Fase 5: API resolvida por host, não uma NEXT_PUBLIC_API_URL fixa.
 const API_URL = getApiBaseUrl();
@@ -340,6 +341,7 @@ type Step = "form" | "otp" | "done";
 
 export function RegisterForm() {
   const router       = useRouter();
+  const surface      = useSurface();
   const searchParams = useSearchParams();
   const ctx          = searchParams.get("ctx") || "";
   const redirectParam = searchParams.get("redirect") || "";
@@ -598,10 +600,20 @@ export function RegisterForm() {
   return (
     <div className="space-y-3">
 
-      {/* Título */}
+      {/* Título — surface PLATFORM (app.nokta.live) usa texto voltado à
+          plataforma de gestão, nunca menciona ingresso/Nokta Tickets. */}
       <div className="text-center space-y-0.5">
-        <h1 className="text-[20px] font-bold tracking-[-0.4px] text-gray-950">Crie sua conta</h1>
-        <p className="text-[12px] text-gray-500">Rápido, gratuito e seguro</p>
+        {surface === "PLATFORM" ? (
+          <>
+            <h1 className="text-[20px] font-bold tracking-[-0.4px] text-gray-950">Crie sua conta na Nokta</h1>
+            <p className="text-[12px] text-gray-500">Uma única plataforma para gerenciar eventos, operação, equipe e resultados.</p>
+          </>
+        ) : (
+          <>
+            <h1 className="text-[20px] font-bold tracking-[-0.4px] text-gray-950">Crie sua conta</h1>
+            <p className="text-[12px] text-gray-500">Rápido, gratuito e seguro</p>
+          </>
+        )}
       </div>
 
       <OAuthButtons ctx={ctx} />
