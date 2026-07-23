@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
+import { useOrganizations } from "@/context/OrganizationContext";
 import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import { Check, ChevronLeft, ChevronRight, FileText, RefreshCw } from "lucide-react";
@@ -22,11 +23,13 @@ type PhoneRecheckPhase = "idle" | "sending" | "code" | "verifying";
 
 export default function PlatformOnboardingPage() {
   const { signIn, user, role, nivelProdutor } = useAuth();
+  const { organizations, loadingOrgs } = useOrganizations();
 
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [businessName, setBusinessName] = useState("");
   const [aceitouTermos, setAceitouTermos] = useState(false);
+  const [creatingWorkspaceOnly, setCreatingWorkspaceOnly] = useState(false);
 
   // Telefone já foi confirmado no cadastro (OTP via WhatsApp) — esta
   // reverificação só entra em cena se `telefoneVerificado` ficou `false`
@@ -37,7 +40,15 @@ export default function PlatformOnboardingPage() {
   const [phoneRecheckCode, setPhoneRecheckCode] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
 
-  const alreadyConfigured = role === "PRODUTOR" && (nivelProdutor ?? 0) >= 1;
+  const accessAlreadyActive = role === "PRODUTOR" && (nivelProdutor ?? 0) >= 1;
+  // Acesso ativado não significa workspace criado — ver
+  // handleSubmit/POST /organizations. Contas que ativaram o acesso antes
+  // dessa etapa existir (ou cuja criação de workspace falhou naquele
+  // momento) ficam com accessAlreadyActive=true e organizations=[]: sem
+  // esta checagem elas caíam na tela "Acesso já configurado" (que só linka
+  // pra /dashboard/inicio) sem NUNCA ter a chance de criar um workspace.
+  const needsWorkspaceOnly = accessAlreadyActive && !loadingOrgs && organizations.length === 0;
+  const alreadyConfigured = accessAlreadyActive && !needsWorkspaceOnly;
   const phoneNeedsRecheck = !!user && user.telefoneVerificado !== true;
   const isSendingPhoneCode = phoneRecheckPhase === "sending";
   const isVerifyingPhoneCode = phoneRecheckPhase === "verifying";
@@ -91,6 +102,20 @@ export default function PlatformOnboardingPage() {
     }
   };
 
+  const persistBusinessNameDraft = (name: string) => {
+    try {
+      window.localStorage.setItem(BUSINESS_NAME_DRAFT_KEY, name);
+    } catch {
+      // localStorage indisponível (modo privado etc.) — não bloqueia o fluxo.
+    }
+  };
+
+  const createWorkspace = async (name: string) => {
+    // Sem catch aqui — o caller decide como tratar a falha (bloqueante ou
+    // não, dependendo se o acesso à plataforma já estava ativo antes).
+    await api.post("/organizations", { nome: name });
+  };
+
   const handleSubmit = async () => {
     if (!aceitouTermos || !user?.telefone) return;
 
@@ -105,21 +130,16 @@ export default function PlatformOnboardingPage() {
         aceitouTermos,
       });
       signIn(response.data.user);
-
-      try {
-        window.localStorage.setItem(BUSINESS_NAME_DRAFT_KEY, businessName.trim());
-      } catch {
-        // localStorage indisponível (modo privado etc.) — não bloqueia o fluxo.
-      }
+      persistBusinessNameDraft(businessName.trim());
 
       // Cria o workspace com o mesmo nome já informado na etapa de
       // identificação — sem isso o usuário ficava com acesso ativado, mas
       // sem organização nenhuma (GET /me/organizations vazio), caindo num
       // "Nenhuma organização selecionada" sem saída em /dashboard/inicio.
       // Falha aqui não bloqueia o acesso (a conta já foi ativada) — só
-      // avisa; o dono pode tentar de novo depois.
+      // avisa; o dono pode tentar de novo depois (ver needsWorkspaceOnly).
       try {
-        await api.post("/organizations", { nome: businessName.trim() });
+        await createWorkspace(businessName.trim());
       } catch (orgError) {
         toast.error(getErrorMessage(orgError, "Não foi possível criar seu workspace agora. Tente novamente em instantes."));
       }
@@ -131,6 +151,75 @@ export default function PlatformOnboardingPage() {
       setLoading(false);
     }
   };
+
+  /**
+   * Caminho para contas cujo acesso já estava ativo (nivelProdutor >= 1)
+   * mas que nunca tiveram organização nenhuma criada — nunca passa por
+   * /auth/ativar-produtor de novo (o backend rejeitaria: conta já
+   * verificada), só cria o workspace em si.
+   */
+  const handleCreateWorkspaceOnly = async () => {
+    if (businessName.trim().length < 2) return;
+    setCreatingWorkspaceOnly(true);
+    try {
+      await createWorkspace(businessName.trim());
+      persistBusinessNameDraft(businessName.trim());
+      window.location.href = "/dashboard/inicio";
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Não foi possível criar seu workspace agora. Tente novamente."));
+    } finally {
+      setCreatingWorkspaceOnly(false);
+    }
+  };
+
+  if (loadingOrgs) {
+    return <div className="flex min-h-screen items-center justify-center bg-gray-50" />;
+  }
+
+  if (needsWorkspaceOnly) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 py-12">
+        <div className="w-full max-w-md">
+          <div className="mb-8 text-center">
+            <Image src="/logo-painel.svg" alt="Nokta" width={120} height={40} className="mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-gray-900">Só falta criar seu workspace</h1>
+            <p className="mt-1 text-sm text-gray-500">
+              Seu acesso já está ativo. Informe o nome do negócio ou operação para continuar.
+            </p>
+          </div>
+
+          <div className="rounded-3xl bg-white p-8 shadow-sm">
+            <div className="space-y-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">
+                <Check className="text-violet-600" size={22} />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="workspaceOnlyName" className="block text-sm font-medium text-gray-700">
+                  Nome do negócio ou operação
+                </label>
+                <Input
+                  id="workspaceOnlyName"
+                  value={businessName}
+                  onChange={(event) => setBusinessName(event.target.value)}
+                  placeholder="Ex.: Produtora Horizonte, Bar Central"
+                  className="h-11"
+                  autoFocus
+                  autoComplete="off"
+                />
+              </div>
+              <Button
+                onClick={handleCreateWorkspaceOnly}
+                disabled={businessName.trim().length < 2 || creatingWorkspaceOnly}
+                className="h-11 w-full bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
+              >
+                {creatingWorkspaceOnly ? "Criando..." : "Continuar para criar workspace"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (alreadyConfigured) {
     return (
