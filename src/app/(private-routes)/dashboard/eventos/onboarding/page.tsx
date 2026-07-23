@@ -290,12 +290,12 @@ export default function PlatformOnboardingPage() {
   };
 
   if (loadingOrgs || !progressChecked) {
-    return <div className="flex min-h-screen items-center justify-center bg-gray-50" />;
+    return <div className="flex h-full items-center justify-center bg-gray-50" />;
   }
 
   if (needsWorkspaceOnly) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 py-12">
+      <div className="flex h-full flex-col items-center justify-center bg-gray-50 px-4 py-12">
         <div className="w-full max-w-md">
           <div className="mb-8 text-center">
             <Image src="/logo-painel.svg" alt="Nokta" width={120} height={40} className="mx-auto mb-4" />
@@ -340,7 +340,7 @@ export default function PlatformOnboardingPage() {
 
   if (alreadyConfigured) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12">
+      <div className="flex h-full items-center justify-center bg-gray-50 px-4 py-12">
         <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-sm">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
             <Check className="text-green-600" size={26} />
@@ -358,21 +358,21 @@ export default function PlatformOnboardingPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center bg-gray-50 px-4 py-6">
+    <div className="flex h-full flex-col items-center bg-gray-50 px-4 py-8">
       <div className="w-full max-w-lg">
-        <div className="mb-4 text-center">
-          <Image src="/logo-painel.svg" alt="Nokta" width={96} height={32} className="mx-auto mb-2" />
-          <h1 className="text-lg font-bold text-gray-900">Configure seu acesso à Nokta</h1>
+        <div className="mb-8 text-center">
+          <Image src="/logo-painel.svg" alt="Nokta" width={120} height={40} className="mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900">Configure seu acesso à Nokta</h1>
           <p className="mt-1 text-sm text-gray-500">
             Conte um pouco sobre a operação que você deseja gerenciar.
           </p>
         </div>
 
-        <div className="mb-5 flex items-center justify-center gap-2 overflow-x-auto">
+        <div className="mb-8 flex items-center justify-center gap-2 overflow-x-auto">
           {STEPS.map((currentStep, index) => (
             <div key={currentStep.label} className="flex shrink-0 items-center gap-2">
               <div
-                className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
+                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
                   index < step
                     ? "bg-violet-600 text-white"
                     : index === step
@@ -380,21 +380,21 @@ export default function PlatformOnboardingPage() {
                       : "border-2 border-gray-200 bg-white text-gray-400"
                 }`}
               >
-                {index < step ? <Check size={13} /> : index + 1}
+                {index < step ? <Check size={14} /> : index + 1}
               </div>
               <span className={`text-xs ${index === step ? "font-medium text-gray-900" : "text-gray-400"}`}>
                 {currentStep.label}
               </span>
-              {index < STEPS.length - 1 && <div className="h-px w-6 bg-gray-200" />}
+              {index < STEPS.length - 1 && <div className="h-px w-8 bg-gray-200" />}
             </div>
           ))}
         </div>
 
-        <div className="max-h-[calc(100dvh-10rem)] overflow-y-auto rounded-3xl bg-white p-5 shadow-sm sm:p-6">
+        <div className="rounded-3xl bg-white p-8 shadow-sm">
           {step === 0 && (
             <div className="space-y-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-violet-100">
-                <Check className="text-violet-600" size={20} />
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">
+                <Check className="text-violet-600" size={22} />
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Como seu negócio será identificado?</h2>
@@ -421,8 +421,8 @@ export default function PlatformOnboardingPage() {
 
           {step === 1 && (
             <div className="space-y-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-violet-100">
-                <Layers className="text-violet-600" size={20} />
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">
+                <Layers className="text-violet-600" size={22} />
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Como sua operação funciona?</h2>
@@ -441,8 +441,8 @@ export default function PlatformOnboardingPage() {
 
           {step === 2 && (
             <div className="space-y-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-violet-100">
-                <FileText className="text-violet-600" size={20} />
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">
+                <FileText className="text-violet-600" size={22} />
               </div>
 
               {phoneNeedsRecheck ? (
@@ -538,8 +538,8 @@ export default function PlatformOnboardingPage() {
 
           {step === 3 && (
             <div className="space-y-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-violet-100">
-                <ListChecks className="text-violet-600" size={20} />
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">
+                <ListChecks className="text-violet-600" size={22} />
               </div>
               {catalog.data ? (
                 <BusinessNeedActivationSummary groups={catalog.data} preview={preview.data} isLoading={preview.isPending} />
@@ -547,7 +547,7 @@ export default function PlatformOnboardingPage() {
             </div>
           )}
 
-          <div className="mt-6 flex gap-3">
+          <div className="mt-8 flex gap-3">
             {step === 1 && (
               <Button variant="outline" onClick={() => setStep(0)} className="h-11 flex-1" disabled={accessAlreadyActive}>
                 <ChevronLeft size={16} className="mr-1" />

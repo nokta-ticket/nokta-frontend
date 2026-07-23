@@ -65,11 +65,11 @@ function GroupCapabilityRow({
 
   return (
     <div
-      className={`flex items-start gap-2 rounded-lg border px-2.5 py-2 text-sm transition-colors ${
+      className={`flex items-start gap-2.5 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
         dimmed ? "border-black/5 bg-black/[0.02] opacity-50" : locked ? "border-black/5 bg-black/[0.02]" : "border-black/10 hover:border-violet-300 hover:bg-violet-50/40"
       }`}
     >
-      <label className={`flex flex-1 items-start gap-2 ${interactive ? "cursor-pointer" : "cursor-default"}`}>
+      <label className={`flex flex-1 items-start gap-2.5 ${interactive ? "cursor-pointer" : "cursor-default"}`}>
         <Checkbox checked={checked} disabled={!interactive} onCheckedChange={onToggle} className="mt-0.5 shrink-0" />
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-1.5">
@@ -84,8 +84,9 @@ function GroupCapabilityRow({
               </span>
             ) : null}
           </span>
+          <span className="mt-0.5 block text-xs text-black/50">{capability.description}</span>
           {!alreadyActive && capability.required && groupSelected && capability.requiredReason ? (
-            <span className="mt-0.5 block text-xs text-violet-700">{capability.requiredReason}</span>
+            <span className="mt-1 block text-xs text-violet-700">{capability.requiredReason}</span>
           ) : null}
         </span>
       </label>
@@ -128,13 +129,13 @@ function GroupCard({
 
   return (
     <Collapsible open={open}>
-      <div className={`rounded-xl border transition-colors ${selected ? "border-violet-300 bg-violet-50/30" : "border-black/10 bg-white"}`}>
-        <div className="flex items-center gap-2.5 p-3">
-          <Checkbox checked={selected} onCheckedChange={onToggleGroup} className="shrink-0" aria-label={`Selecionar ${group.label}`} />
+      <div className={`rounded-2xl border transition-colors ${selected ? "border-violet-300 bg-violet-50/30" : "border-black/10 bg-white"}`}>
+        <div className="flex items-start gap-3 p-4">
+          <Checkbox checked={selected} onCheckedChange={onToggleGroup} className="mt-0.5 shrink-0" aria-label={`Selecionar ${group.label}`} />
           <button
             type="button"
             onClick={onToggleExpanded}
-            className="flex flex-1 items-center gap-2 text-left"
+            className="flex flex-1 items-start gap-3 text-left"
             aria-expanded={open}
           >
             <span className="min-w-0 flex-1">
@@ -146,14 +147,14 @@ function GroupCard({
                   </span>
                 ) : null}
               </span>
-              {!open ? <span className="mt-0.5 block truncate text-xs text-black/50">{group.description}</span> : null}
+              <span className="mt-0.5 block text-sm text-black/50">{group.description}</span>
             </span>
-            <ChevronDown size={15} className={`shrink-0 text-black/30 transition-transform ${open ? "rotate-180 text-violet-600" : ""}`} />
+            <ChevronDown size={16} className={`mt-1 shrink-0 text-black/30 transition-transform ${open ? "rotate-180 text-violet-600" : ""}`} />
           </button>
         </div>
 
         <CollapsibleContent>
-          <div className="space-y-1.5 px-3 pb-3">
+          <div className="space-y-2 px-4 pb-4">
             {group.capabilities.map((capability) => {
               const alreadyActive = activeCapabilityKeys?.has(capability.key) ?? false;
               // Item segue o grupo pai: grupo desmarcado = todos os itens
@@ -246,7 +247,7 @@ export function BusinessNeedGroupsPicker({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {groups.map((group) => (
         <GroupCard
           key={group.key}
