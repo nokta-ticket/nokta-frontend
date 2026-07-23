@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Cookies from "js-cookie";
 import {
@@ -16,6 +17,7 @@ import {
   Shield,
   Ticket,
   ShoppingCart,
+  Trash2,
   X,
 } from "lucide-react";
 
@@ -75,6 +77,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export default function TabDadosGerais({ user, onRefresh }: TabDadosGeraisProps) {
+  const router = useRouter();
   const role = getUserRole();
   const isSuperAdmin = role === "SUPER_ADMIN";
   const isSupport = role === "SUPPORT";
@@ -96,6 +99,10 @@ export default function TabDadosGerais({ user, onRefresh }: TabDadosGeraisProps)
 
   const [sessionOpen, setSessionOpen] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(false);
+
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState("");
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   function startEdit() {
     setForm({
@@ -168,6 +175,20 @@ export default function TabDadosGerais({ user, onRefresh }: TabDadosGeraisProps)
       toast.error(getErrorMessage(err, "Não foi possível invalidar as sessões."));
     } finally {
       setSessionLoading(false);
+    }
+  }
+
+  async function handleDeleteCompletely() {
+    if (deleteConfirmEmail.trim().toLowerCase() !== (user.email ?? "").toLowerCase()) return;
+    setDeleteLoading(true);
+    try {
+      await api.delete(`/admin/usuarios/${user.id}/completo`);
+      toast.success("Conta excluída completamente.");
+      router.push("/admin/usuarios");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Não foi possível excluir esta conta."));
+    } finally {
+      setDeleteLoading(false);
     }
   }
 
@@ -324,6 +345,17 @@ export default function TabDadosGerais({ user, onRefresh }: TabDadosGeraisProps)
             <LogOut className="mr-2 h-4 w-4" />
             Invalidar sessões
           </Button>
+
+          {isSuperAdmin && (
+            <Button
+              variant="outline"
+              onClick={() => { setDeleteConfirmEmail(""); setDeleteOpen(true); }}
+              className="border-red-700 text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Excluir conta
+            </Button>
+          )}
         </div>
       )}
 
@@ -374,6 +406,39 @@ export default function TabDadosGerais({ user, onRefresh }: TabDadosGeraisProps)
               className="bg-violet-600 text-white hover:bg-violet-700"
             >
               {sessionLoading ? "Processando..." : "Confirmar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog excluir conta completamente */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-red-700">Excluir conta permanentemente</DialogTitle>
+            <DialogDescription>
+              Isso apaga e-mail, telefone, nome, organização própria e tudo mais vinculado a esta conta — ação
+              irreversível. Contas com pedidos, ingressos ou transferências reais são recusadas automaticamente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2">
+            <label className="mb-1.5 block text-sm font-medium">
+              Digite <span className="font-semibold">{user.email}</span> para confirmar
+            </label>
+            <Input
+              placeholder="E-mail da conta..."
+              value={deleteConfirmEmail}
+              onChange={(e) => setDeleteConfirmEmail(e.target.value)}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancelar</Button>
+            <Button
+              onClick={() => void handleDeleteCompletely()}
+              disabled={deleteLoading || deleteConfirmEmail.trim().toLowerCase() !== (user.email ?? "").toLowerCase()}
+              className="bg-red-700 text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {deleteLoading ? "Excluindo..." : "Excluir permanentemente"}
             </Button>
           </DialogFooter>
         </DialogContent>
