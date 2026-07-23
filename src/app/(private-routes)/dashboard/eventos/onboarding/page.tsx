@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -8,193 +8,129 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import api, { getErrorMessage } from "@/lib/axios";
-import { formatPhone, normalizeDigits } from "@/lib/br-data";
+import { normalizeDigits } from "@/lib/br-data";
 import { toast } from "@/lib/toast";
-import {
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  FileText,
-  Mic2,
-  Phone,
-  RefreshCw,
-} from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, FileText, RefreshCw } from "lucide-react";
 
 const STEPS = [
-  { label: "Identidade", icon: Mic2 },
-  { label: "Contato", icon: Phone },
+  { label: "Identificação", icon: Check },
   { label: "Termos", icon: FileText },
 ];
 
-type SmsPhase = "input" | "code" | "verified";
+const BUSINESS_NAME_DRAFT_KEY = "nokta_onboarding_business_name_draft";
 
-export default function ProdutorOnboardingPage() {
+type PhoneRecheckPhase = "idle" | "sending" | "code" | "verifying";
+
+export default function PlatformOnboardingPage() {
   const { signIn, user, role, nivelProdutor } = useAuth();
 
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [nomeArtistico, setNomeArtistico] = useState("");
+  const [businessName, setBusinessName] = useState("");
   const [aceitouTermos, setAceitouTermos] = useState(false);
-  const [smsPhase, setSmsPhase] = useState<SmsPhase>("input");
-  const [telefone, setTelefone] = useState("");
-  const [smsCode, setSmsCode] = useState("");
-  const [smsSending, setSmsSending] = useState(false);
-  const [smsVerifying, setSmsVerifying] = useState(false);
+
+  // Telefone já foi confirmado no cadastro (OTP via WhatsApp) — esta
+  // reverificação só entra em cena se `telefoneVerificado` ficou `false`
+  // por alguma inconsistência (ex.: usuário trocou o telefone em Perfil
+  // entre o cadastro e completar este onboarding, ver auth.service.ts
+  // `updateProfile`). Nunca é o caminho normal.
+  const [phoneRecheckPhase, setPhoneRecheckPhase] = useState<PhoneRecheckPhase>("idle");
+  const [phoneRecheckCode, setPhoneRecheckCode] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
 
-  const telefoneDigits = useMemo(() => normalizeDigits(telefone).slice(0, 11), [telefone]);
-  const alreadyProducer = role === "PRODUTOR" && (nivelProdutor ?? 0) >= 1;
-
-  useEffect(() => {
-    if (!user) return;
-
-    if (!nomeArtistico.trim()) {
-      const fallbackName = [user.nome, user.sobrenome].filter(Boolean).join(" ").trim();
-      setNomeArtistico(user.nomeArtistico?.trim() || fallbackName);
-    }
-
-    if (!telefoneDigits && user.telefone) {
-      setTelefone(formatPhone(user.telefone));
-    }
-
-    if (user.telefone && user.telefoneVerificado) {
-      setSmsPhase("verified");
-    }
-  }, [
-    nomeArtistico,
-    telefoneDigits,
-    user,
-  ]);
-
-  useEffect(() => {
-    if (resendTimer <= 0) return;
-
-    const timer = window.setInterval(() => {
-      setResendTimer((currentValue) => {
-        if (currentValue <= 1) {
-          window.clearInterval(timer);
-          return 0;
-        }
-
-        return currentValue - 1;
-      });
-    }, 1000);
-
-    return () => window.clearInterval(timer);
-  }, [resendTimer]);
+  const alreadyConfigured = role === "PRODUTOR" && (nivelProdutor ?? 0) >= 1;
+  const phoneNeedsRecheck = !!user && user.telefoneVerificado !== true;
+  const isSendingPhoneCode = phoneRecheckPhase === "sending";
+  const isVerifyingPhoneCode = phoneRecheckPhase === "verifying";
+  const showPhoneCodeInput = phoneRecheckPhase === "code" || phoneRecheckPhase === "verifying";
 
   const canAdvance = () => {
-    if (step === 0) return nomeArtistico.trim().length >= 2;
-    if (step === 1) return smsPhase === "verified";
-    if (step === 2) return aceitouTermos;
+    if (step === 0) return businessName.trim().length >= 2;
+    if (step === 1) return aceitouTermos;
     return false;
   };
 
-  const handleSendSms = async () => {
-    if (telefoneDigits.length < 10) {
-      toast.error("Digite um telefone valido com DDD.");
-      return;
-    }
-
-    setSmsSending(true);
-
-    try {
-      await api.put("/produtor/atualizar-telefone-sms", {
-        telefone: telefoneDigits,
+  const startResendTimer = () => {
+    setResendTimer(60);
+    const timer = window.setInterval(() => {
+      setResendTimer((current) => {
+        if (current <= 1) {
+          window.clearInterval(timer);
+          return 0;
+        }
+        return current - 1;
       });
+    }, 1000);
+  };
 
-      await api.post("/produtor/enviar-sms-n2");
-
-      setSmsPhase("code");
-      setSmsCode("");
-      setResendTimer(60);
-      toast.success("Codigo enviado por SMS.");
+  const handleSendPhoneRecheckCode = async () => {
+    setPhoneRecheckPhase("sending");
+    try {
+      await api.post("/auth/reverificar-telefone/reenviar");
+      setPhoneRecheckPhase("code");
+      setPhoneRecheckCode("");
+      startResendTimer();
+      toast.success("Código enviado no WhatsApp.");
     } catch (error) {
-      toast.error(getErrorMessage(error, "Nao foi possivel enviar o SMS."));
-    } finally {
-      setSmsSending(false);
+      setPhoneRecheckPhase("idle");
+      toast.error(getErrorMessage(error, "Não foi possível enviar o código."));
     }
   };
 
-  const handleVerifySms = async () => {
-    if (smsCode.replace(/\D/g, "").length < 4) {
-      return;
-    }
-
-    setSmsVerifying(true);
-
+  const handleConfirmPhoneRecheck = async () => {
+    if (phoneRecheckCode.replace(/\D/g, "").length < 4) return;
+    setPhoneRecheckPhase("verifying");
     try {
-      const response = await api.post("/produtor/verificar-sms-n2", {
-        code: smsCode,
+      const response = await api.post("/auth/reverificar-telefone/confirmar", {
+        token: phoneRecheckCode,
       });
-
-      if (!response.data?.valid) {
-        toast.error("Codigo invalido ou expirado.");
-        return;
-      }
-
-      setSmsPhase("verified");
-      toast.success("Telefone verificado com sucesso.");
+      signIn(response.data.user);
+      toast.success("Telefone verificado.");
     } catch (error) {
-      toast.error(getErrorMessage(error, "Nao foi possivel validar o codigo."));
-    } finally {
-      setSmsVerifying(false);
-    }
-  };
-
-  const handleResendSms = async () => {
-    if (resendTimer > 0) return;
-
-    setSmsSending(true);
-
-    try {
-      await api.post("/produtor/enviar-sms-n2");
-      setResendTimer(60);
-      toast.success("Novo codigo enviado.");
-    } catch (error) {
-      toast.error(getErrorMessage(error, "Nao foi possivel reenviar o SMS."));
-    } finally {
-      setSmsSending(false);
+      setPhoneRecheckPhase("code");
+      toast.error(getErrorMessage(error, "Código inválido. Verifique e tente novamente."));
     }
   };
 
   const handleSubmit = async () => {
-    if (!aceitouTermos) return;
+    if (!aceitouTermos || !user?.telefone) return;
 
     setLoading(true);
 
     try {
       const response = await api.post("/auth/ativar-produtor", {
-        nomeArtistico: nomeArtistico.trim(),
-        telefone: telefoneDigits,
+        nomeArtistico: businessName.trim(),
+        telefone: normalizeDigits(user.telefone),
         aceitouTermos,
       });
 
+      try {
+        window.localStorage.setItem(BUSINESS_NAME_DRAFT_KEY, businessName.trim());
+      } catch {
+        // localStorage indisponível (modo privado etc.) — não bloqueia o fluxo.
+      }
+
       signIn(response.data.user);
-      window.location.href = "/dashboard/eventos";
+      window.location.href = "/dashboard/inicio";
     } catch (error) {
-      toast.error(getErrorMessage(error, "Nao foi possivel ativar a conta."));
+      toast.error(getErrorMessage(error, "Não foi possível continuar. Tente novamente."));
     } finally {
       setLoading(false);
     }
   };
 
-  if (alreadyProducer) {
+  if (alreadyConfigured) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12">
         <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-sm">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
             <Check className="text-green-600" size={26} />
           </div>
-          <h1 className="mt-5 text-2xl font-bold text-gray-900">
-            Conta de produtor ja ativada
-          </h1>
-          <p className="mt-2 text-sm text-gray-500">
-            Sua conta ja esta habilitada para acessar o painel do produtor.
-          </p>
-          <Link href="/dashboard/eventos" className="mt-6 inline-flex w-full">
+          <h1 className="mt-5 text-2xl font-bold text-gray-900">Acesso já configurado</h1>
+          <p className="mt-2 text-sm text-gray-500">Sua conta já está pronta para acessar a plataforma.</p>
+          <Link href="/dashboard/inicio" className="mt-6 inline-flex w-full">
             <Button className="h-11 w-full bg-violet-600 text-white hover:bg-violet-700">
-              Ir para meus eventos
+              Ir para o painel
             </Button>
           </Link>
         </div>
@@ -206,18 +142,10 @@ export default function ProdutorOnboardingPage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 py-12">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <Image
-            src="/logo.svg"
-            alt="Nokta"
-            width={120}
-            height={40}
-            className="mx-auto mb-4"
-          />
-          <h1 className="text-2xl font-bold text-gray-900">
-            Ative sua conta de produtor
-          </h1>
+          <Image src="/logo-painel.svg" alt="Nokta" width={120} height={40} className="mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900">Configure seu acesso à Nokta</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Complete os dados abaixo para liberar o painel.
+            Conte um pouco sobre a operação que você deseja gerenciar.
           </p>
         </div>
 
@@ -235,11 +163,7 @@ export default function ProdutorOnboardingPage() {
               >
                 {index < step ? <Check size={14} /> : index + 1}
               </div>
-              <span
-                className={`text-xs ${
-                  index === step ? "font-medium text-gray-900" : "text-gray-400"
-                }`}
-              >
+              <span className={`text-xs ${index === step ? "font-medium text-gray-900" : "text-gray-400"}`}>
                 {currentStep.label}
               </span>
               {index < STEPS.length - 1 && <div className="h-px w-8 bg-gray-200" />}
@@ -251,27 +175,26 @@ export default function ProdutorOnboardingPage() {
           {step === 0 && (
             <div className="space-y-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">
-                <Mic2 className="text-violet-600" size={22} />
+                <Check className="text-violet-600" size={22} />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Como voce quer aparecer?
-                </h2>
+                <h2 className="text-lg font-semibold text-gray-900">Como seu negócio será identificado?</h2>
                 <p className="mt-1 text-sm text-gray-500">
-                  Use seu nome artistico, empresa ou o nome que seu publico conhece.
+                  Informe o nome da empresa, produtora, bar, estabelecimento ou operação que você representa.
                 </p>
               </div>
               <div className="space-y-2">
-                <label htmlFor="nomeArtistico" className="block text-sm font-medium text-gray-700">
-                  Nome artistico ou empresa
+                <label htmlFor="businessName" className="block text-sm font-medium text-gray-700">
+                  Nome do negócio ou operação
                 </label>
                 <Input
-                  id="nomeArtistico"
-                  value={nomeArtistico}
-                  onChange={(event) => setNomeArtistico(event.target.value)}
-                  placeholder="Ex: DJ Marcos, Agencia Nova"
+                  id="businessName"
+                  value={businessName}
+                  onChange={(event) => setBusinessName(event.target.value)}
+                  placeholder="Ex.: Produtora Horizonte, Bar Central"
                   className="h-11"
                   autoFocus
+                  autoComplete="off"
                 />
               </div>
             </div>
@@ -280,170 +203,105 @@ export default function ProdutorOnboardingPage() {
           {step === 1 && (
             <div className="space-y-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">
-                <Phone className="text-violet-600" size={22} />
-              </div>
-
-              {smsPhase === "input" && (
-                <>
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      Verifique seu telefone
-                    </h2>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Esse numero sera usado nas etapas de seguranca da conta.
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="telefone" className="block text-sm font-medium text-gray-700">
-                      Celular
-                    </label>
-                    <Input
-                      id="telefone"
-                      type="tel"
-                      value={telefone}
-                      onChange={(event) => setTelefone(formatPhone(event.target.value))}
-                      placeholder="(11) 99999-9999"
-                      className="h-11"
-                      autoFocus
-                    />
-                  </div>
-                  <Button
-                    onClick={handleSendSms}
-                    disabled={smsSending || telefoneDigits.length < 10}
-                    className="h-11 w-full bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
-                  >
-                    {smsSending ? "Enviando..." : "Enviar codigo por SMS"}
-                  </Button>
-                </>
-              )}
-
-              {smsPhase === "code" && (
-                <>
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900">Digite o codigo</h2>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Enviamos um codigo para <span className="font-medium text-gray-700">{formatPhone(telefoneDigits)}</span>.
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="smsCode" className="block text-sm font-medium text-gray-700">
-                      Codigo SMS
-                    </label>
-                    <Input
-                      id="smsCode"
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={8}
-                      value={smsCode}
-                      onChange={(event) => setSmsCode(event.target.value.replace(/\D/g, ""))}
-                      placeholder="000000"
-                      className="h-11 text-center font-mono text-xl tracking-widest"
-                      autoFocus
-                    />
-                  </div>
-                  <Button
-                    onClick={handleVerifySms}
-                    disabled={smsVerifying || smsCode.length < 4}
-                    className="h-11 w-full bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
-                  >
-                    {smsVerifying ? "Verificando..." : "Confirmar codigo"}
-                  </Button>
-                  <div className="flex items-center justify-between text-xs text-gray-500">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSmsPhase("input");
-                        setSmsCode("");
-                      }}
-                      className="underline hover:text-gray-700"
-                    >
-                      Trocar numero
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleResendSms}
-                      disabled={resendTimer > 0 || smsSending}
-                      className="flex items-center gap-1 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <RefreshCw size={12} />
-                      {resendTimer > 0 ? `Reenviar em ${resendTimer}s` : "Reenviar codigo"}
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {smsPhase === "verified" && (
-                <div className="flex flex-col items-center gap-4 py-4 text-center">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
-                    <Check className="text-green-600" size={28} />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900">
-                      Telefone verificado
-                    </h2>
-                    <p className="mt-1 text-sm text-gray-500">{formatPhone(telefoneDigits)}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSmsPhase("input")}
-                    className="text-xs text-gray-500 underline hover:text-gray-700"
-                  >
-                    Alterar numero
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="space-y-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">
                 <FileText className="text-violet-600" size={22} />
               </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Termos do produtor</h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Aceite os termos para concluir a ativacao inicial.
-                </p>
-              </div>
-              <div className="max-h-44 space-y-2 overflow-y-auto rounded-xl border border-gray-200 p-4 text-xs text-gray-600">
-                <p><strong>1.</strong> Contas nivel 1 podem criar eventos gratuitos e rascunhos.</p>
-                <p><strong>2.</strong> Para vender eventos pagos, a conta precisa passar pela verificacao adicional.</p>
-                <p><strong>3.</strong> O produtor responde pela veracidade das informacoes publicadas.</p>
-                <p><strong>4.</strong> A plataforma pode remover eventos que violem os termos de uso.</p>
-                <p>
-                  <strong>5.</strong> Ao continuar, voce concorda com a{" "}
-                  <Link href="/privacidade" target="_blank" className="underline">
-                    Politica de Privacidade
-                  </Link>{" "}
-                  e os{" "}
-                  <Link href="/termos" target="_blank" className="underline">
-                    Termos de Servico
-                  </Link>
-                  .
-                </p>
-              </div>
-              <label htmlFor="termos" className="flex cursor-pointer items-start gap-3">
-                <Checkbox
-                  id="termos"
-                  checked={aceitouTermos}
-                  onCheckedChange={(value) => setAceitouTermos(Boolean(value))}
-                  className="mt-0.5 shrink-0"
-                />
-                <span className="text-sm leading-relaxed text-gray-700">
-                  Li e aceito os termos da conta de produtor da Nokta Tickets.
-                </span>
-              </label>
+
+              {phoneNeedsRecheck ? (
+                <>
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">Confirme seu telefone</h2>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Identificamos uma pendência na verificação do seu telefone. Confirme novamente para continuar.
+                    </p>
+                  </div>
+
+                  {!showPhoneCodeInput ? (
+                    <Button
+                      onClick={handleSendPhoneRecheckCode}
+                      disabled={isSendingPhoneCode}
+                      className="h-11 w-full bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
+                    >
+                      {isSendingPhoneCode ? "Enviando..." : "Enviar código no WhatsApp"}
+                    </Button>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <label htmlFor="phoneRecheckCode" className="block text-sm font-medium text-gray-700">
+                          Código recebido
+                        </label>
+                        <Input
+                          id="phoneRecheckCode"
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={8}
+                          value={phoneRecheckCode}
+                          onChange={(event) => setPhoneRecheckCode(event.target.value.replace(/\D/g, ""))}
+                          placeholder="000000"
+                          className="h-11 text-center font-mono text-xl tracking-widest"
+                          autoFocus
+                        />
+                      </div>
+                      <Button
+                        onClick={handleConfirmPhoneRecheck}
+                        disabled={isVerifyingPhoneCode || phoneRecheckCode.length < 4}
+                        className="h-11 w-full bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
+                      >
+                        {isVerifyingPhoneCode ? "Verificando..." : "Confirmar código"}
+                      </Button>
+                      <div className="flex justify-end text-xs text-gray-500">
+                        <button
+                          type="button"
+                          onClick={handleSendPhoneRecheckCode}
+                          disabled={resendTimer > 0 || isSendingPhoneCode}
+                          className="flex items-center gap-1 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <RefreshCw size={12} />
+                          {resendTimer > 0 ? `Reenviar em ${resendTimer}s` : "Reenviar código"}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">Termos de uso</h2>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Para continuar, confirme que leu e aceita os Termos de Uso da Nokta e a Política de Privacidade.
+                    </p>
+                  </div>
+                  <div className="space-y-2 rounded-xl border border-gray-200 p-4 text-sm text-gray-600">
+                    <p>
+                      Ao continuar, você concorda com os{" "}
+                      <Link href="/termos" target="_blank" className="underline">
+                        Termos de Uso
+                      </Link>{" "}
+                      e a{" "}
+                      <Link href="/privacidade" target="_blank" className="underline">
+                        Política de Privacidade
+                      </Link>{" "}
+                      da Nokta.
+                    </p>
+                  </div>
+                  <label htmlFor="termos" className="flex cursor-pointer items-start gap-3">
+                    <Checkbox
+                      id="termos"
+                      checked={aceitouTermos}
+                      onCheckedChange={(value) => setAceitouTermos(Boolean(value))}
+                      className="mt-0.5 shrink-0"
+                    />
+                    <span className="text-sm leading-relaxed text-gray-700">
+                      Li e aceito os Termos de Uso e a Política de Privacidade da Nokta.
+                    </span>
+                  </label>
+                </>
+              )}
             </div>
           )}
 
           <div className="mt-8 flex gap-3">
             {step > 0 && (
-              <Button
-                variant="outline"
-                onClick={() => setStep((currentStep) => currentStep - 1)}
-                className="h-11 flex-1"
-              >
+              <Button variant="outline" onClick={() => setStep((current) => current - 1)} className="h-11 flex-1">
                 <ChevronLeft size={16} className="mr-1" />
                 Voltar
               </Button>
@@ -451,7 +309,7 @@ export default function ProdutorOnboardingPage() {
 
             {step < STEPS.length - 1 ? (
               <Button
-                onClick={() => setStep((currentStep) => currentStep + 1)}
+                onClick={() => setStep((current) => current + 1)}
                 disabled={!canAdvance()}
                 className="h-11 flex-1 bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
               >
@@ -461,10 +319,10 @@ export default function ProdutorOnboardingPage() {
             ) : (
               <Button
                 onClick={handleSubmit}
-                disabled={!canAdvance() || loading}
+                disabled={!canAdvance() || loading || phoneNeedsRecheck}
                 className="h-11 flex-1 bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
               >
-                {loading ? "Ativando..." : "Ativar conta de produtor"}
+                {loading ? "Continuando..." : "Continuar para criar workspace"}
               </Button>
             )}
           </div>
