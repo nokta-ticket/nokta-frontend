@@ -43,6 +43,8 @@ function GroupCapabilityRow({
   capability,
   checked,
   alreadyActive,
+  locked,
+  groupSelected,
   onToggle,
   onDeactivate,
   deactivating,
@@ -50,20 +52,25 @@ function GroupCapabilityRow({
   capability: BusinessNeedGroup["capabilities"][number];
   checked: boolean;
   alreadyActive: boolean;
+  /** Não pode ser alternada pelo usuário (já ativa, ou obrigatória com o grupo selecionado). */
+  locked: boolean;
+  /** Grupo pai desmarcado — item aparece apagado/não interativo, mesmo sendo "Necessário" quando o grupo estiver ligado. */
+  groupSelected: boolean;
   onToggle: () => void;
   onDeactivate?: () => void;
   deactivating?: boolean;
 }) {
-  const locked = capability.required || alreadyActive;
+  const interactive = !locked && groupSelected;
+  const dimmed = !groupSelected && !alreadyActive;
 
   return (
     <div
       className={`flex items-start gap-2 rounded-lg border px-2.5 py-2 text-sm transition-colors ${
-        locked ? "border-black/5 bg-black/[0.02]" : "border-black/10 hover:border-violet-300 hover:bg-violet-50/40"
+        dimmed ? "border-black/5 bg-black/[0.02] opacity-50" : locked ? "border-black/5 bg-black/[0.02]" : "border-black/10 hover:border-violet-300 hover:bg-violet-50/40"
       }`}
     >
-      <label className={`flex flex-1 items-start gap-2 ${locked ? "cursor-default" : "cursor-pointer"}`}>
-        <Checkbox checked={checked} disabled={locked} onCheckedChange={onToggle} className="mt-0.5 shrink-0" />
+      <label className={`flex flex-1 items-start gap-2 ${interactive ? "cursor-pointer" : "cursor-default"}`}>
+        <Checkbox checked={checked} disabled={!interactive} onCheckedChange={onToggle} className="mt-0.5 shrink-0" />
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-1.5">
             <span className="font-medium text-gray-900">{capability.label}</span>
@@ -71,13 +78,13 @@ function GroupCapabilityRow({
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-700">
                 <CheckCircle2 size={9} /> Ativa
               </span>
-            ) : capability.required ? (
+            ) : capability.required && groupSelected ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-black/5 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-black/50">
                 <Lock size={9} /> Necessário
               </span>
             ) : null}
           </span>
-          {!alreadyActive && capability.required && capability.requiredReason ? (
+          {!alreadyActive && capability.required && groupSelected && capability.requiredReason ? (
             <span className="mt-0.5 block text-xs text-violet-700">{capability.requiredReason}</span>
           ) : null}
         </span>
@@ -149,12 +156,18 @@ function GroupCard({
           <div className="space-y-1.5 px-3 pb-3">
             {group.capabilities.map((capability) => {
               const alreadyActive = activeCapabilityKeys?.has(capability.key) ?? false;
+              // Item segue o grupo pai: grupo desmarcado = todos os itens
+              // aparecem desmarcados (mesmo os "Necessário", que só fazem
+              // sentido como obrigatórios quando o grupo está selecionado).
+              const checked = alreadyActive || (selected && (capability.required || !deselectedKeys.has(capability.key)));
               return (
                 <GroupCapabilityRow
                   key={capability.key}
                   capability={capability}
                   alreadyActive={alreadyActive}
-                  checked={alreadyActive || capability.required || !deselectedKeys.has(capability.key)}
+                  checked={checked}
+                  locked={alreadyActive || (selected && capability.required)}
+                  groupSelected={selected}
                   onToggle={() => onToggleCapability(capability.key)}
                   onDeactivate={onDeactivateCapability ? () => onDeactivateCapability(capability.key) : undefined}
                   deactivating={deactivatingKey === capability.key}
@@ -204,13 +217,19 @@ export function BusinessNeedGroupsPicker({
 
   const toggleGroup = (groupKey: string) => {
     const nextGroups = new Set(selection.selectedGroupKeys);
+    // Marcar ou desmarcar o grupo sempre reseta as exceções individuais
+    // dele: selecionar o grupo liga todas as capacidades (default limpo),
+    // desmarcar tira todas — sem sobras de uma seleção parcial anterior.
+    const nextDeselected = new Map(selection.deselectedCapabilityKeysByGroup);
+    nextDeselected.delete(groupKey);
+
     if (nextGroups.has(groupKey)) {
       nextGroups.delete(groupKey);
     } else {
       nextGroups.add(groupKey);
       setExpandedKeys((prev) => new Set(prev).add(groupKey));
     }
-    onChange({ ...selection, selectedGroupKeys: nextGroups });
+    onChange({ ...selection, selectedGroupKeys: nextGroups, deselectedCapabilityKeysByGroup: nextDeselected });
   };
 
   const toggleCapability = (groupKey: string, capability: BusinessNeedGroup["capabilities"][number]) => {

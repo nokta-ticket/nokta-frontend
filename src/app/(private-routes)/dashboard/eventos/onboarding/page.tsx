@@ -358,11 +358,11 @@ export default function PlatformOnboardingPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 py-8">
+    <div className="flex min-h-screen flex-col items-center bg-gray-50 px-4 py-6">
       <div className="w-full max-w-lg">
-        <div className="mb-5 text-center">
-          <Image src="/logo-painel.svg" alt="Nokta" width={104} height={34} className="mx-auto mb-3" />
-          <h1 className="text-xl font-bold text-gray-900">Configure seu acesso à Nokta</h1>
+        <div className="mb-4 text-center">
+          <Image src="/logo-painel.svg" alt="Nokta" width={96} height={32} className="mx-auto mb-2" />
+          <h1 className="text-lg font-bold text-gray-900">Configure seu acesso à Nokta</h1>
           <p className="mt-1 text-sm text-gray-500">
             Conte um pouco sobre a operação que você deseja gerenciar.
           </p>
@@ -390,7 +390,7 @@ export default function PlatformOnboardingPage() {
           ))}
         </div>
 
-        <div className="max-h-[calc(100vh-13rem)] overflow-y-auto rounded-3xl bg-white p-6 shadow-sm sm:p-7">
+        <div className="max-h-[calc(100dvh-10rem)] overflow-y-auto rounded-3xl bg-white p-5 shadow-sm sm:p-6">
           {step === 0 && (
             <div className="space-y-4">
               <div className="flex h-11 w-11 items-center justify-center rounded-full bg-violet-100">
