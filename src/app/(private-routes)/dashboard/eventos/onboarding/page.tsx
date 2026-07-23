@@ -104,6 +104,7 @@ export default function PlatformOnboardingPage() {
         nomeArtistico: businessName.trim(),
         aceitouTermos,
       });
+      signIn(response.data.user);
 
       try {
         window.localStorage.setItem(BUSINESS_NAME_DRAFT_KEY, businessName.trim());
@@ -111,7 +112,18 @@ export default function PlatformOnboardingPage() {
         // localStorage indisponível (modo privado etc.) — não bloqueia o fluxo.
       }
 
-      signIn(response.data.user);
+      // Cria o workspace com o mesmo nome já informado na etapa de
+      // identificação — sem isso o usuário ficava com acesso ativado, mas
+      // sem organização nenhuma (GET /me/organizations vazio), caindo num
+      // "Nenhuma organização selecionada" sem saída em /dashboard/inicio.
+      // Falha aqui não bloqueia o acesso (a conta já foi ativada) — só
+      // avisa; o dono pode tentar de novo depois.
+      try {
+        await api.post("/organizations", { nome: businessName.trim() });
+      } catch (orgError) {
+        toast.error(getErrorMessage(orgError, "Não foi possível criar seu workspace agora. Tente novamente em instantes."));
+      }
+
       window.location.href = "/dashboard/inicio";
     } catch (error) {
       toast.error(getErrorMessage(error, "Não foi possível continuar. Tente novamente."));
