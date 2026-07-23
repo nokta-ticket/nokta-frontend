@@ -368,11 +368,11 @@ export default function PlatformOnboardingPage() {
           </p>
         </div>
 
-        <div className="mb-8 flex items-center justify-center gap-2 overflow-x-auto">
+        <div className="mb-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-3">
           {STEPS.map((currentStep, index) => (
-            <div key={currentStep.label} className="flex shrink-0 items-center gap-2">
+            <div key={currentStep.label} className="flex items-center gap-2">
               <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
                   index < step
                     ? "bg-violet-600 text-white"
                     : index === step
@@ -382,10 +382,10 @@ export default function PlatformOnboardingPage() {
               >
                 {index < step ? <Check size={14} /> : index + 1}
               </div>
-              <span className={`text-xs ${index === step ? "font-medium text-gray-900" : "text-gray-400"}`}>
+              <span className={`whitespace-nowrap text-xs ${index === step ? "font-medium text-gray-900" : "text-gray-400"}`}>
                 {currentStep.label}
               </span>
-              {index < STEPS.length - 1 && <div className="h-px w-8 bg-gray-200" />}
+              {index < STEPS.length - 1 && <div className="h-px w-4 shrink-0 bg-gray-200 sm:w-8" />}
             </div>
           ))}
         </div>
