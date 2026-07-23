@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { LogOut } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,15 +15,25 @@ import {
   AvatarImage,
 } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "@/lib/toast";
 
 /** Avatar + menu do usuário (movido da sidebar para a topbar). */
 export function UserMenu() {
-  const { user, isAuthResolved } = useAuth();
+  const { user, isAuthResolved, signOut } = useAuth();
   const router = useRouter();
 
   if (!isAuthResolved || !user) {
     return <div className="h-9 w-9 animate-pulse rounded-full bg-black/10" />;
   }
+
+  // Navegação forçada (não router.push): o cache de rota do Next pode
+  // servir uma resposta anterior autenticada mesmo após o logout — mesmo
+  // padrão já usado em header-private.tsx/user-dropdown-menu.tsx.
+  const handleLogout = () => {
+    signOut();
+    toast.success("Logout realizado com sucesso!");
+    window.location.href = "/";
+  };
 
   const firstInitial = user.nome?.charAt(0).toUpperCase() || "?";
   const lastInitial = user.sobrenome?.charAt(0).toUpperCase() || "";
@@ -56,6 +67,11 @@ export function UserMenu() {
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => router.push("/")}>
           Voltar para o site
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" onClick={handleLogout}>
+          <LogOut className="mr-1 h-4 w-4" />
+          Sair
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

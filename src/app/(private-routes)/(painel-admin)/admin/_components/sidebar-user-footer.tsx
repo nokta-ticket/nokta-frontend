@@ -1,11 +1,13 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { LogOut } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/context/AuthContext'
 import {
@@ -13,13 +15,22 @@ import {
   AvatarFallback,
   AvatarImage,
 } from '@/components/ui/avatar'
+import { toast } from '@/lib/toast'
 
 export function SidebarUserFooter() {
-  const { user, isAuthResolved } = useAuth()
+  const { user, isAuthResolved, signOut } = useAuth()
   const router = useRouter()
 
   const handleRedirect = () => {
     router.push('/')
+  }
+
+  // Navegação forçada (não router.push): mesmo padrão de
+  // dashboard/_components/user-menu.tsx.
+  const handleLogout = () => {
+    signOut()
+    toast.success('Logout realizado com sucesso!')
+    window.location.href = '/'
   }
 
   if (!isAuthResolved || !user) {
@@ -72,6 +83,15 @@ export function SidebarUserFooter() {
           className="text-sm cursor-pointer hover:bg-muted font-medium px-3 py-2"
         >
           Voltar para o site
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          variant="destructive"
+          onClick={handleLogout}
+          className="text-sm cursor-pointer font-medium px-3 py-2"
+        >
+          <LogOut className="mr-1 h-4 w-4" />
+          Sair
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
