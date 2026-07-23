@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { CheckCircle2, ChevronDown, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -57,14 +58,14 @@ function GroupCapabilityRow({
 
   return (
     <div
-      className={`flex items-start gap-2.5 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+      className={`flex items-start gap-2 rounded-lg border px-2.5 py-2 text-sm transition-colors ${
         locked ? "border-black/5 bg-black/[0.02]" : "border-black/10 hover:border-violet-300 hover:bg-violet-50/40"
       }`}
     >
-      <label className={`flex flex-1 items-start gap-2.5 ${locked ? "cursor-default" : "cursor-pointer"}`}>
+      <label className={`flex flex-1 items-start gap-2 ${locked ? "cursor-default" : "cursor-pointer"}`}>
         <Checkbox checked={checked} disabled={locked} onCheckedChange={onToggle} className="mt-0.5 shrink-0" />
-        <span className="flex-1">
-          <span className="flex items-center gap-1.5">
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-1.5">
             <span className="font-medium text-gray-900">{capability.label}</span>
             {alreadyActive ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-700">
@@ -76,9 +77,8 @@ function GroupCapabilityRow({
               </span>
             ) : null}
           </span>
-          <span className="mt-0.5 block text-xs text-black/50">{capability.description}</span>
           {!alreadyActive && capability.required && capability.requiredReason ? (
-            <span className="mt-1 block text-xs text-violet-700">{capability.requiredReason}</span>
+            <span className="mt-0.5 block text-xs text-violet-700">{capability.requiredReason}</span>
           ) : null}
         </span>
       </label>
@@ -94,6 +94,8 @@ function GroupCapabilityRow({
 function GroupCard({
   group,
   selected,
+  expanded,
+  onToggleExpanded,
   deselectedKeys,
   activeCapabilityKeys,
   onToggleGroup,
@@ -104,6 +106,8 @@ function GroupCard({
 }: {
   group: BusinessNeedGroup;
   selected: boolean;
+  expanded: boolean;
+  onToggleExpanded: () => void;
   deselectedKeys: Set<string>;
   activeCapabilityKeys: Set<string> | null;
   onToggleGroup: () => void;
@@ -112,30 +116,37 @@ function GroupCard({
   deactivatingKey?: string | null;
   forceOpen: boolean;
 }) {
-  const open = selected || forceOpen;
+  const open = expanded || forceOpen;
   const activeCount = activeCapabilityKeys ? group.capabilities.filter((c) => activeCapabilityKeys.has(c.key)).length : 0;
 
   return (
     <Collapsible open={open}>
-      <div className={`rounded-2xl border transition-colors ${open ? "border-violet-300 bg-violet-50/30" : "border-black/10 bg-white"}`}>
-        <label className="flex cursor-pointer items-start gap-3 p-4">
-          <Checkbox checked={selected} onCheckedChange={onToggleGroup} className="mt-0.5 shrink-0" />
-          <span className="flex-1">
-            <span className="flex items-center gap-1.5">
-              <span className="font-medium text-gray-900">{group.label}</span>
-              {activeCount > 0 ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-700">
-                  {activeCount} ativa{activeCount > 1 ? "s" : ""}
-                </span>
-              ) : null}
+      <div className={`rounded-xl border transition-colors ${selected ? "border-violet-300 bg-violet-50/30" : "border-black/10 bg-white"}`}>
+        <div className="flex items-center gap-2.5 p-3">
+          <Checkbox checked={selected} onCheckedChange={onToggleGroup} className="shrink-0" aria-label={`Selecionar ${group.label}`} />
+          <button
+            type="button"
+            onClick={onToggleExpanded}
+            className="flex flex-1 items-center gap-2 text-left"
+            aria-expanded={open}
+          >
+            <span className="min-w-0 flex-1">
+              <span className="flex flex-wrap items-center gap-1.5">
+                <span className="font-medium text-gray-900">{group.label}</span>
+                {activeCount > 0 ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-700">
+                    {activeCount} ativa{activeCount > 1 ? "s" : ""}
+                  </span>
+                ) : null}
+              </span>
+              {!open ? <span className="mt-0.5 block truncate text-xs text-black/50">{group.description}</span> : null}
             </span>
-            <span className="mt-0.5 block text-sm text-black/50">{group.description}</span>
-          </span>
-          {open ? <ChevronDown size={16} className="mt-1 shrink-0 text-violet-600" /> : null}
-        </label>
+            <ChevronDown size={15} className={`shrink-0 text-black/30 transition-transform ${open ? "rotate-180 text-violet-600" : ""}`} />
+          </button>
+        </div>
 
         <CollapsibleContent>
-          <div className="space-y-2 px-4 pb-4">
+          <div className="space-y-1.5 px-3 pb-3">
             {group.capabilities.map((capability) => {
               const alreadyActive = activeCapabilityKeys?.has(capability.key) ?? false;
               return (
@@ -174,12 +185,30 @@ export function BusinessNeedGroupsPicker({
   onDeactivateCapability?: (capabilityKey: string) => void;
   deactivatingKey?: string | null;
 }) {
+  // Expandir/recolher é puramente visual (ver o que tem dentro do grupo) —
+  // deliberadamente separado de `selection`: clicar no card pra abrir não
+  // pode desmarcar o grupo sem querer (só o checkbox faz isso).
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set(selection.selectedGroupKeys));
+
+  const toggleExpanded = (groupKey: string) => {
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) {
+        next.delete(groupKey);
+      } else {
+        next.add(groupKey);
+      }
+      return next;
+    });
+  };
+
   const toggleGroup = (groupKey: string) => {
     const nextGroups = new Set(selection.selectedGroupKeys);
     if (nextGroups.has(groupKey)) {
       nextGroups.delete(groupKey);
     } else {
       nextGroups.add(groupKey);
+      setExpandedKeys((prev) => new Set(prev).add(groupKey));
     }
     onChange({ ...selection, selectedGroupKeys: nextGroups });
   };
@@ -198,12 +227,14 @@ export function BusinessNeedGroupsPicker({
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {groups.map((group) => (
         <GroupCard
           key={group.key}
           group={group}
           selected={selection.selectedGroupKeys.has(group.key)}
+          expanded={expandedKeys.has(group.key)}
+          onToggleExpanded={() => toggleExpanded(group.key)}
           deselectedKeys={selection.deselectedCapabilityKeysByGroup.get(group.key) ?? new Set()}
           activeCapabilityKeys={activeCapabilityKeys ?? null}
           forceOpen={Boolean(activeCapabilityKeys) && group.capabilities.some((c) => activeCapabilityKeys?.has(c.key))}
