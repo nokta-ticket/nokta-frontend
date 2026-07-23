@@ -14,6 +14,7 @@ import { MetricCard } from "../../_components/metric-card";
 import { useDismissRecommendation, usePlatformHome, usePlatformNavigation, useRecommendations } from "../../_hooks/use-platform";
 import { RecommendationsPanel } from "../../explorar/_components/recommendations-panel";
 import { LegalFinancialPendingBanner } from "../../_components/legal-financial-pending-banner";
+import { HomeChecklist } from "./home-checklist";
 
 const QUICK_LINKS = [
   { key: "FINANCE", label: "Financeiro", href: "/dashboard/financeiro", icon: DollarSign },
@@ -70,8 +71,9 @@ export function InicioContent() {
     );
   }
 
-  const { sections } = home.data;
+  const { sections, checklist } = home.data;
   const hasAnySection = Boolean(sections.events || sections.operation || sections.reservations);
+  const pendingChecklistGroups = checklist.filter((g) => g.items.some((i) => !i.done));
 
   const handleDismiss = (key: string) => {
     setDismissingKey(key);
@@ -88,12 +90,7 @@ export function InicioContent() {
         <RecommendationsPanel recommendations={recommendations.data ?? []} onDismiss={handleDismiss} dismissingKey={dismissingKey} />
       ) : null}
 
-      {!hasAnySection ? (
-        <EmptyState
-          title="Sua organização ainda não tem nada ativo"
-          description="Explore a Nokta para ativar as funcionalidades que fazem sentido para o seu negócio."
-        />
-      ) : (
+      {hasAnySection ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {sections.events ? (
             <Link href="/dashboard/eventos" className="contents">
@@ -117,7 +114,16 @@ export function InicioContent() {
             </Link>
           ) : null}
         </div>
-      )}
+      ) : null}
+
+      {pendingChecklistGroups.length > 0 ? (
+        <HomeChecklist groups={pendingChecklistGroups} />
+      ) : !hasAnySection ? (
+        <EmptyState
+          title="Sua organização ainda não tem nada ativo"
+          description="Explore a Nokta para ativar as funcionalidades que fazem sentido para o seu negócio."
+        />
+      ) : null}
 
       {sections.events?.nextEvent ? (
         <div className="rounded-lg border border-black/10 bg-white p-4 text-sm">

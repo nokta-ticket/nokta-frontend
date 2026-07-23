@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { platformApi, type SaveBusinessProfilePayload } from "@/services/platform";
+import { platformApi, type ActivateBusinessNeedsPayload, type SaveBusinessProfilePayload } from "@/services/platform";
 
 const platformKeys = {
   businessProfile: (orgId: number) => ["platform", orgId, "business-profile"] as const,
@@ -11,6 +11,7 @@ const platformKeys = {
   navigation: (orgId: number) => ["platform", orgId, "navigation"] as const,
   home: (orgId: number) => ["platform", orgId, "home"] as const,
   meContexts: () => ["platform", "me-contexts"] as const,
+  businessNeedsCatalog: (orgId: number) => ["platform", orgId, "business-needs-catalog"] as const,
 };
 
 export function useBusinessProfile(orgId: number | null) {
@@ -115,5 +116,29 @@ export function useMeContexts() {
   return useQuery({
     queryKey: platformKeys.meContexts(),
     queryFn: () => platformApi.getMeContexts(),
+  });
+}
+
+export function useBusinessNeedsCatalog(orgId: number | null) {
+  return useQuery({
+    queryKey: platformKeys.businessNeedsCatalog(orgId ?? -1),
+    queryFn: () => platformApi.getBusinessNeedsCatalog(orgId as number),
+    enabled: orgId !== null,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function usePreviewBusinessNeedsActivation(orgId: number) {
+  return useMutation({
+    mutationFn: (payload: ActivateBusinessNeedsPayload) => platformApi.previewBusinessNeedsActivation(orgId, payload),
+  });
+}
+
+/** Ativação em lote (onboarding por necessidades do negócio) — mesmo raio de invalidação de activate/deactivate individuais. */
+export function useActivateBusinessNeeds(orgId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: ActivateBusinessNeedsPayload) => platformApi.activateBusinessNeeds(orgId, payload),
+    onSuccess: () => invalidateAfterCapabilityChange(qc, orgId),
   });
 }

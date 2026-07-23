@@ -164,6 +164,18 @@ export interface Navigation {
 
 // ── Home (v1) ──
 
+export interface HomeChecklistItem {
+  key: string;
+  label: string;
+  route: string;
+  done: boolean;
+}
+
+export interface HomeChecklistGroup {
+  title: string;
+  items: HomeChecklistItem[];
+}
+
 export interface PlatformHome {
   organizationId: number;
   activeCapabilityKeys: string[];
@@ -172,6 +184,40 @@ export interface PlatformHome {
     operation?: { openTabsCount: number; openCashSessionsCount: number; activeLocationsCount: number };
     reservations?: { todayReservationsCount: number };
   };
+  checklist: HomeChecklistGroup[];
+}
+
+// ── Necessidades do negócio (onboarding + Explore por grupos) ──
+
+export type BusinessNeedKey = "EVENTS_TICKETING" | "RELATIONSHIP" | "OPERATION" | "MENU_PRODUCTS" | "STOCK_PURCHASING" | "MANAGEMENT";
+
+export interface BusinessNeedCapability {
+  key: string;
+  label: string;
+  description: string;
+  /** Não pode ser desmarcada — é dependência obrigatória de outra capacidade já selecionada. */
+  required: boolean;
+  requiredReason: string | null;
+}
+
+export interface BusinessNeedGroup {
+  key: BusinessNeedKey;
+  label: string;
+  description: string;
+  defaultSelected: boolean;
+  capabilities: BusinessNeedCapability[];
+}
+
+export interface BusinessNeedsActivationPreview {
+  groups: { key: string; label: string; capabilityKeys: string[] }[];
+  allCapabilityKeys: string[];
+  autoIncludedKeys: string[];
+}
+
+export interface ActivateBusinessNeedsPayload {
+  businessNeedKeys: string[];
+  /** Omitir ativa todas as capacidades default dos grupos escolhidos. */
+  capabilityKeys?: string[];
 }
 
 // ── /me/contexts ──
@@ -208,4 +254,11 @@ export const platformApi = {
   getHome: (organizationId: number) => api.get<PlatformHome>(`${base(organizationId)}/platform-home`).then((r) => r.data),
 
   getMeContexts: () => api.get<MeContexts>("/me/contexts").then((r) => r.data),
+
+  getBusinessNeedsCatalog: (organizationId: number) =>
+    api.get<BusinessNeedGroup[]>(`${base(organizationId)}/capabilities/business-needs/catalog`).then((r) => r.data),
+  previewBusinessNeedsActivation: (organizationId: number, payload: ActivateBusinessNeedsPayload) =>
+    api.post<BusinessNeedsActivationPreview>(`${base(organizationId)}/capabilities/business-needs/preview`, payload).then((r) => r.data),
+  activateBusinessNeeds: (organizationId: number, payload: ActivateBusinessNeedsPayload) =>
+    api.post(`${base(organizationId)}/capabilities/activate-business-needs`, payload).then((r) => r.data),
 };

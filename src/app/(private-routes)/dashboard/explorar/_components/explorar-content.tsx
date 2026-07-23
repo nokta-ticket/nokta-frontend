@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
@@ -13,19 +13,25 @@ import { EmptyState } from "../../_components/states/empty-state";
 import { ErrorState } from "../../_components/states/error-state";
 import { BlockSkeleton } from "../../_components/states/loading-state";
 import {
-  useActivateCapability,
+  BusinessNeedGroupsPicker,
+  flattenSelection,
+  type BusinessNeedSelectionState,
+} from "../../_components/business-needs/business-need-groups-picker";
+import { Button } from "@/components/ui/button";
+import {
+  useActivateBusinessNeeds,
+  useBusinessNeedsCatalog,
   useBusinessProfile,
+  useCapabilities,
   useDeactivateCapability,
   useDismissRecommendation,
-  useExplore,
   useRecommendations,
 } from "../../_hooks/use-platform";
-import { sortExploreGroups } from "../_lib/capability-display";
-import { ExploreCard } from "./explore-card";
 import { RecommendationsPanel } from "./recommendations-panel";
+import { DeactivateCapabilityDialog } from "./deactivate-capability-dialog";
 
 const TITLE = "Explore a Nokta";
-const DESCRIPTION = "Conheça e ative as funcionalidades disponíveis para o seu negócio.";
+const DESCRIPTION = "Conheça e ative as funcionalidades disponíveis para o seu negócio, organizadas por como você trabalha.";
 
 function Header() {
   return <PageHeader title={TITLE} description={DESCRIPTION} />;
@@ -35,15 +41,27 @@ export function ExplorarContent() {
   const { currentOrg, loadingOrgs } = useOrganizations();
   const orgId = currentOrg?.id ?? null;
 
-  const explore = useExplore(orgId);
+  const catalog = useBusinessNeedsCatalog(orgId);
+  const capabilities = useCapabilities(orgId);
   const recommendations = useRecommendations(orgId);
   const businessProfile = useBusinessProfile(orgId);
-  const activate = useActivateCapability(orgId ?? -1);
+  const activateNeeds = useActivateBusinessNeeds(orgId ?? -1);
   const deactivate = useDeactivateCapability(orgId ?? -1);
   const dismiss = useDismissRecommendation(orgId ?? -1);
 
-  const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const [selection, setSelection] = useState<BusinessNeedSelectionState | null>(null);
   const [dismissingKey, setDismissingKey] = useState<string | null>(null);
+  const [pendingDeactivateKey, setPendingDeactivateKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Explore parte de "nada novo marcado além do que já está ativo" —
+    // diferente do onboarding (que pré-marca o grupo default), aqui o
+    // usuário está adicionando por cima do que já existe.
+    if (catalog.data && !selection) {
+      setSelection({ selectedGroupKeys: new Set(), deselectedCapabilityKeysByGroup: new Map() });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalog.data]);
 
   if (loadingOrgs) {
     return (
@@ -63,8 +81,8 @@ export function ExplorarContent() {
     );
   }
 
-  if (explore.isError) {
-    const status = axios.isAxiosError(explore.error) ? explore.error.response?.status : undefined;
+  if (catalog.isError) {
+    const status = axios.isAxiosError(catalog.error) ? catalog.error.response?.status : undefined;
     if (status === 403) {
       return (
         <PageContainer>
@@ -79,12 +97,12 @@ export function ExplorarContent() {
     return (
       <PageContainer>
         <Header />
-        <ErrorState description={getErrorMessage(explore.error, "Não foi possível carregar o Explore a Nokta.")} onRetry={() => explore.refetch()} />
+        <ErrorState description={getErrorMessage(catalog.error, "Não foi possível carregar o Explore a Nokta.")} onRetry={() => catalog.refetch()} />
       </PageContainer>
     );
   }
 
-  if (explore.isLoading || !explore.data) {
+  if (catalog.isLoading || capabilities.isLoading || !catalog.data || !capabilities.data || !selection) {
     return (
       <PageContainer>
         <Header />
@@ -93,26 +111,7 @@ export function ExplorarContent() {
     );
   }
 
-  const groups = sortExploreGroups(explore.data).filter((g) => g.cards.length > 0);
-  const recommendationByKey = new Map((recommendations.data ?? []).map((r) => [r.capabilityKey, r.reason]));
-
-  const handleActivate = (key: string) => {
-    setPendingKey(key);
-    activate.mutate(key, {
-      onSuccess: () => toast.success("Capacidade ativada."),
-      onError: (err) => toast.error(getErrorMessage(err, "Não foi possível ativar.")),
-      onSettled: () => setPendingKey(null),
-    });
-  };
-
-  const handleDeactivate = (key: string) => {
-    setPendingKey(key);
-    deactivate.mutate(key, {
-      onSuccess: () => toast.success("Capacidade desativada."),
-      onError: (err) => toast.error(getErrorMessage(err, "Não foi possível desativar.")),
-      onSettled: () => setPendingKey(null),
-    });
-  };
+  const activeCapabilityKeys = new Set(capabilities.data.filter((c) => c.status === "ACTIVE").map((c) => c.key));
 
   const handleDismiss = (key: string) => {
     setDismissingKey(key);
@@ -121,6 +120,35 @@ export function ExplorarContent() {
       onSettled: () => setDismissingKey(null),
     });
   };
+
+  const handleDeactivate = (key: string) => setPendingDeactivateKey(key);
+
+  const confirmDeactivate = () => {
+    if (!pendingDeactivateKey) return;
+    const key = pendingDeactivateKey;
+    setPendingDeactivateKey(null);
+    deactivate.mutate(key, {
+      onSuccess: () => toast.success("Capacidade desativada."),
+      onError: (err) => toast.error(getErrorMessage(err, "Não foi possível desativar.")),
+    });
+  };
+
+  const handleActivateSelection = () => {
+    if (!catalog.data) return;
+    const payload = flattenSelection(catalog.data, selection);
+    if (payload.businessNeedKeys.length === 0) return;
+    activateNeeds.mutate(payload, {
+      onSuccess: () => {
+        toast.success("Funcionalidades ativadas.");
+        setSelection({ selectedGroupKeys: new Set(), deselectedCapabilityKeysByGroup: new Map() });
+      },
+      onError: (err) => toast.error(getErrorMessage(err, "Não foi possível ativar.")),
+    });
+  };
+
+  const pendingCapabilityLabel = pendingDeactivateKey
+    ? (catalog.data.flatMap((g) => g.capabilities).find((c) => c.key === pendingDeactivateKey)?.label ?? pendingDeactivateKey)
+    : "";
 
   return (
     <PageContainer>
@@ -140,30 +168,31 @@ export function ExplorarContent() {
         <RecommendationsPanel recommendations={recommendations.data ?? []} onDismiss={handleDismiss} dismissingKey={dismissingKey} />
       ) : null}
 
-      {groups.length === 0 ? (
-        <EmptyState title="Nada para explorar por aqui" description="Todas as funcionalidades disponíveis para o seu perfil já estão ativas." />
-      ) : (
-        <div className="space-y-8">
-          {groups.map((group) => (
-            <section key={group.group} className="space-y-3">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-black/50">{group.groupLabel}</h2>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {group.cards.map((card) => (
-                  <ExploreCard
-                    key={card.key}
-                    card={card}
-                    recommendationReason={recommendationByKey.get(card.key) ?? null}
-                    onActivate={() => handleActivate(card.key)}
-                    onDeactivate={() => handleDeactivate(card.key)}
-                    activating={activate.isPending && pendingKey === card.key}
-                    deactivating={deactivate.isPending && pendingKey === card.key}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      )}
+      <BusinessNeedGroupsPicker
+        groups={catalog.data}
+        selection={selection}
+        onChange={setSelection}
+        activeCapabilityKeys={activeCapabilityKeys}
+        onDeactivateCapability={handleDeactivate}
+        deactivatingKey={deactivate.isPending ? pendingDeactivateKey : null}
+      />
+
+      <div className="sticky bottom-4 flex justify-end">
+        <Button
+          onClick={handleActivateSelection}
+          disabled={selection.selectedGroupKeys.size === 0 || activateNeeds.isPending}
+          className="shadow-lg"
+        >
+          {activateNeeds.isPending ? "Ativando…" : "Ativar selecionadas"}
+        </Button>
+      </div>
+
+      <DeactivateCapabilityDialog
+        open={Boolean(pendingDeactivateKey)}
+        onOpenChange={(open) => !open && setPendingDeactivateKey(null)}
+        capabilityName={pendingCapabilityLabel}
+        onConfirm={confirmDeactivate}
+      />
     </PageContainer>
   );
 }

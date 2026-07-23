@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -10,11 +10,22 @@ import { useAuth } from "@/context/AuthContext";
 import { useOrganizations } from "@/context/OrganizationContext";
 import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
-import { Check, ChevronLeft, ChevronRight, FileText, RefreshCw } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, FileText, Layers, ListChecks, RefreshCw } from "lucide-react";
+import {
+  BusinessNeedGroupsPicker,
+  createDefaultSelection,
+  flattenSelection,
+  type BusinessNeedSelectionState,
+} from "../../_components/business-needs/business-need-groups-picker";
+import { BusinessNeedActivationSummary } from "../../_components/business-needs/business-need-activation-summary";
+import { useActivateBusinessNeeds, useBusinessNeedsCatalog, usePreviewBusinessNeedsActivation } from "../../_hooks/use-platform";
+import { BlockSkeleton } from "../../_components/states/loading-state";
 
 const STEPS = [
   { label: "Identificação", icon: Check },
   { label: "Termos", icon: FileText },
+  { label: "Operação", icon: Layers },
+  { label: "Resumo", icon: ListChecks },
 ];
 
 const BUSINESS_NAME_DRAFT_KEY = "nokta_onboarding_business_name_draft";
@@ -31,6 +42,14 @@ export default function PlatformOnboardingPage() {
   const [aceitouTermos, setAceitouTermos] = useState(false);
   const [creatingWorkspaceOnly, setCreatingWorkspaceOnly] = useState(false);
 
+  // Workspace criado ao sair da etapa de Termos — as etapas seguintes
+  // (Operação/Resumo) precisam de um organizationId real, já que a ativação
+  // de capacidades é sempre escopada por organização (resolve dependências
+  // contra o que já está ACTIVE nela). Sem isso não haveria como consultar
+  // o catálogo nem ativar nada antes de existir workspace.
+  const [createdOrgId, setCreatedOrgId] = useState<number | null>(null);
+  const [finishing, setFinishing] = useState(false);
+
   // Telefone já foi confirmado no cadastro (OTP via WhatsApp) — esta
   // reverificação só entra em cena se `telefoneVerificado` ficou `false`
   // por alguma inconsistência (ex.: usuário trocou o telefone em Perfil
@@ -40,15 +59,34 @@ export default function PlatformOnboardingPage() {
   const [phoneRecheckCode, setPhoneRecheckCode] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
 
+  const catalog = useBusinessNeedsCatalog(createdOrgId);
+  const [selection, setSelection] = useState<BusinessNeedSelectionState | null>(null);
+  const preview = usePreviewBusinessNeedsActivation(createdOrgId ?? -1);
+  const activateNeeds = useActivateBusinessNeeds(createdOrgId ?? -1);
+
+  useEffect(() => {
+    if (catalog.data && !selection) setSelection(createDefaultSelection(catalog.data));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalog.data]);
+
   const accessAlreadyActive = role === "PRODUTOR" && (nivelProdutor ?? 0) >= 1;
+
+  // Caminho "só falta criar workspace" (needsWorkspaceOnly, abaixo): o
+  // workspace acabou de ser criado agora mesmo — segue direto pra etapa
+  // "Operação", sem repetir Identificação/Termos (já não fazem sentido
+  // nesse caminho, o acesso já estava ativo antes desta tela).
+  useEffect(() => {
+    if (createdOrgId && accessAlreadyActive && step < 2) setStep(2);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [createdOrgId, accessAlreadyActive]);
   // Acesso ativado não significa workspace criado — ver
-  // handleSubmit/POST /organizations. Contas que ativaram o acesso antes
-  // dessa etapa existir (ou cuja criação de workspace falhou naquele
-  // momento) ficam com accessAlreadyActive=true e organizations=[]: sem
-  // esta checagem elas caíam na tela "Acesso já configurado" (que só linka
-  // pra /dashboard/inicio) sem NUNCA ter a chance de criar um workspace.
-  const needsWorkspaceOnly = accessAlreadyActive && !loadingOrgs && organizations.length === 0;
-  const alreadyConfigured = accessAlreadyActive && !needsWorkspaceOnly;
+  // handleCreateWorkspace. Contas que ativaram o acesso antes dessa etapa
+  // existir (ou cuja criação de workspace falhou naquele momento) ficam com
+  // accessAlreadyActive=true e organizations=[]: sem esta checagem elas
+  // caíam na tela "Acesso já configurado" (que só linka pra
+  // /dashboard/inicio) sem NUNCA ter a chance de criar um workspace.
+  const needsWorkspaceOnly = accessAlreadyActive && !loadingOrgs && organizations.length === 0 && !createdOrgId;
+  const alreadyConfigured = accessAlreadyActive && !needsWorkspaceOnly && !createdOrgId;
   const phoneNeedsRecheck = !!user && user.telefoneVerificado !== true;
   const isSendingPhoneCode = phoneRecheckPhase === "sending";
   const isVerifyingPhoneCode = phoneRecheckPhase === "verifying";
@@ -56,8 +94,9 @@ export default function PlatformOnboardingPage() {
 
   const canAdvance = () => {
     if (step === 0) return businessName.trim().length >= 2;
-    if (step === 1) return aceitouTermos;
-    return false;
+    if (step === 1) return aceitouTermos && !phoneNeedsRecheck;
+    if (step === 2) return (selection?.selectedGroupKeys.size ?? 0) > 0;
+    return true;
   };
 
   const startResendTimer = () => {
@@ -110,71 +149,72 @@ export default function PlatformOnboardingPage() {
     }
   };
 
-  const createWorkspace = async (name: string) => {
-    // Sem catch aqui — o caller decide como tratar a falha (bloqueante ou
-    // não, dependendo se o acesso à plataforma já estava ativo antes).
-    await api.post("/organizations", { nome: name });
-  };
-
-  const handleSubmit = async () => {
-    if (!aceitouTermos || !user?.telefone) return;
-
+  // Etapa 1→2: ativa o acesso (se ainda não ativo) e cria o workspace com o
+  // nome já informado. Não ativa nenhuma capacidade aqui — isso é decidido
+  // na etapa "Operação" logo em seguida, com o workspace já existindo.
+  const handleCreateWorkspace = async () => {
+    if (!aceitouTermos || phoneNeedsRecheck) return;
     setLoading(true);
 
     try {
-      // Sem `telefone` no payload — o backend usa o telefone já verificado
-      // no cadastro (user.telefone), evitando ter que adivinhar aqui o
-      // formato exato salvo no banco (E.164 do OTP por WhatsApp).
-      const response = await api.post("/auth/ativar-produtor", {
-        nomeArtistico: businessName.trim(),
-        aceitouTermos,
-      });
-      signIn(response.data.user);
-      persistBusinessNameDraft(businessName.trim());
-
-      // Cria o workspace com o mesmo nome já informado na etapa de
-      // identificação — sem isso o usuário ficava com acesso ativado, mas
-      // sem organização nenhuma (GET /me/organizations vazio), caindo num
-      // "Nenhuma organização selecionada" sem saída em /dashboard/inicio.
-      // Falha aqui não bloqueia o acesso (a conta já foi ativada) — só
-      // avisa; o dono pode tentar de novo depois (ver needsWorkspaceOnly).
-      try {
-        await createWorkspace(businessName.trim());
-      } catch (orgError) {
-        toast.error(getErrorMessage(orgError, "Não foi possível criar seu workspace agora. Tente novamente em instantes."));
+      if (!accessAlreadyActive) {
+        const response = await api.post("/auth/ativar-produtor", {
+          nomeArtistico: businessName.trim(),
+          aceitouTermos,
+        });
+        signIn(response.data.user);
       }
 
-      // Sem setLoading(false) aqui de propósito: window.location.href não
-      // navega no mesmo tick — resetar loading agora reabilitaria o
-      // formulário por uma fração de segundo antes do browser trocar de
-      // página (o "flash" de volta pro input do nome). loading só é
-      // resetado no catch (fluxo de erro, onde a navegação não acontece).
-      window.location.href = "/dashboard/inicio";
+      const orgResponse = await api.post("/organizations", { nome: businessName.trim() });
+      persistBusinessNameDraft(businessName.trim());
+      setCreatedOrgId(orgResponse.data.id);
+      setStep(2);
     } catch (error) {
       toast.error(getErrorMessage(error, "Não foi possível continuar. Tente novamente."));
+    } finally {
       setLoading(false);
     }
   };
 
-  /**
-   * Caminho para contas cujo acesso já estava ativo (nivelProdutor >= 1)
-   * mas que nunca tiveram organização nenhuma criada — nunca passa por
-   * /auth/ativar-produtor de novo (o backend rejeitaria: conta já
-   * verificada), só cria o workspace em si.
-   */
+  /** Caminho para contas com acesso já ativo mas sem organização nenhuma — pula direto pra criação do workspace, sem repassar por ativar-produtor. */
   const handleCreateWorkspaceOnly = async () => {
     if (businessName.trim().length < 2) return;
     setCreatingWorkspaceOnly(true);
     try {
-      await createWorkspace(businessName.trim());
+      const orgResponse = await api.post("/organizations", { nome: businessName.trim() });
       persistBusinessNameDraft(businessName.trim());
-      // Sem setCreatingWorkspaceOnly(false) aqui — mesmo motivo do
-      // handleSubmit acima: evita o flash de volta pro formulário antes
-      // do browser navegar de fato.
-      window.location.href = "/dashboard/inicio";
+      setCreatedOrgId(orgResponse.data.id);
     } catch (error) {
       toast.error(getErrorMessage(error, "Não foi possível criar seu workspace agora. Tente novamente."));
+    } finally {
       setCreatingWorkspaceOnly(false);
+    }
+  };
+
+  const goToSummary = async () => {
+    if (!createdOrgId || !catalog.data || !selection) return;
+    const payload = flattenSelection(catalog.data, selection);
+    try {
+      await preview.mutateAsync(payload);
+      setStep(3);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Não foi possível montar o resumo. Tente novamente."));
+    }
+  };
+
+  const handleFinish = async () => {
+    if (!createdOrgId || !catalog.data || !selection) return;
+    setFinishing(true);
+    try {
+      const payload = flattenSelection(catalog.data, selection);
+      await activateNeeds.mutateAsync(payload);
+      // Sem setFinishing(false) aqui de propósito: window.location.href não
+      // navega no mesmo tick — resetar o estado agora reabilitaria o botão
+      // por uma fração de segundo antes do browser trocar de página.
+      window.location.href = "/dashboard/inicio";
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Não foi possível concluir. Tente novamente."));
+      setFinishing(false);
     }
   };
 
@@ -218,7 +258,7 @@ export default function PlatformOnboardingPage() {
                 disabled={businessName.trim().length < 2 || creatingWorkspaceOnly}
                 className="h-11 w-full bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
               >
-                {creatingWorkspaceOnly ? "Criando..." : "Continuar para criar workspace"}
+                {creatingWorkspaceOnly ? "Criando..." : "Continuar"}
               </Button>
             </div>
           </div>
@@ -248,7 +288,7 @@ export default function PlatformOnboardingPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 py-12">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-lg">
         <div className="mb-8 text-center">
           <Image src="/logo-painel.svg" alt="Nokta" width={120} height={40} className="mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900">Configure seu acesso à Nokta</h1>
@@ -257,9 +297,9 @@ export default function PlatformOnboardingPage() {
           </p>
         </div>
 
-        <div className="mb-8 flex items-center justify-center gap-2">
+        <div className="mb-8 flex items-center justify-center gap-2 overflow-x-auto">
           {STEPS.map((currentStep, index) => (
-            <div key={currentStep.label} className="flex items-center gap-2">
+            <div key={currentStep.label} className="flex shrink-0 items-center gap-2">
               <div
                 className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
                   index < step
@@ -274,7 +314,7 @@ export default function PlatformOnboardingPage() {
               <span className={`text-xs ${index === step ? "font-medium text-gray-900" : "text-gray-400"}`}>
                 {currentStep.label}
               </span>
-              {index < STEPS.length - 1 && <div className="h-px w-8 bg-gray-200" />}
+              {index < STEPS.length - 1 && <div className="h-px w-6 bg-gray-200" />}
             </div>
           ))}
         </div>
@@ -405,30 +445,91 @@ export default function PlatformOnboardingPage() {
             </div>
           )}
 
+          {step === 2 && (
+            <div className="space-y-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">
+                <Layers className="text-violet-600" size={22} />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Como sua operação funciona?</h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Marque o que descreve o seu negócio — a Nokta ativa automaticamente o que for necessário.
+                </p>
+              </div>
+
+              {catalog.isLoading || !selection ? (
+                <BlockSkeleton className="h-72" />
+              ) : catalog.data ? (
+                <BusinessNeedGroupsPicker groups={catalog.data} selection={selection} onChange={setSelection} />
+              ) : null}
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">
+                <ListChecks className="text-violet-600" size={22} />
+              </div>
+              {catalog.data ? (
+                <BusinessNeedActivationSummary groups={catalog.data} preview={preview.data} isLoading={preview.isPending} />
+              ) : null}
+            </div>
+          )}
+
           <div className="mt-8 flex gap-3">
-            {step > 0 && (
+            {step > 0 && step < 3 && (
               <Button variant="outline" onClick={() => setStep((current) => current - 1)} className="h-11 flex-1">
                 <ChevronLeft size={16} className="mr-1" />
                 Voltar
               </Button>
             )}
+            {step === 3 && (
+              <Button variant="outline" onClick={() => setStep(2)} className="h-11 flex-1" disabled={finishing}>
+                <ChevronLeft size={16} className="mr-1" />
+                Voltar
+              </Button>
+            )}
 
-            {step < STEPS.length - 1 ? (
+            {step === 0 && (
               <Button
-                onClick={() => setStep((current) => current + 1)}
+                onClick={() => setStep(1)}
                 disabled={!canAdvance()}
                 className="h-11 flex-1 bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
               >
                 Continuar
                 <ChevronRight size={16} className="ml-1" />
               </Button>
-            ) : (
+            )}
+
+            {step === 1 && (
               <Button
-                onClick={handleSubmit}
-                disabled={!canAdvance() || loading || phoneNeedsRecheck}
+                onClick={handleCreateWorkspace}
+                disabled={!canAdvance() || loading}
                 className="h-11 flex-1 bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
               >
-                {loading ? "Continuando..." : "Continuar para criar workspace"}
+                {loading ? "Continuando..." : "Continuar"}
+                {!loading && <ChevronRight size={16} className="ml-1" />}
+              </Button>
+            )}
+
+            {step === 2 && (
+              <Button
+                onClick={goToSummary}
+                disabled={!canAdvance() || preview.isPending}
+                className="h-11 flex-1 bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
+              >
+                {preview.isPending ? "Preparando..." : "Continuar"}
+                {!preview.isPending && <ChevronRight size={16} className="ml-1" />}
+              </Button>
+            )}
+
+            {step === 3 && (
+              <Button
+                onClick={handleFinish}
+                disabled={finishing}
+                className="h-11 flex-1 bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
+              >
+                {finishing ? "Configurando..." : "Configurar meu workspace"}
               </Button>
             )}
           </div>
