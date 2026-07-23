@@ -296,7 +296,7 @@ export default function PlatformOnboardingPage() {
   if (needsWorkspaceOnly) {
     return (
       <div className="flex h-full flex-col items-center justify-center bg-gray-50 px-4 py-12">
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-lg">
           <div className="mb-8 text-center">
             <Image src="/logo-painel.svg" alt="Nokta" width={120} height={40} className="mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-gray-900">Só falta criar seu workspace</h1>
@@ -341,7 +341,7 @@ export default function PlatformOnboardingPage() {
   if (alreadyConfigured) {
     return (
       <div className="flex h-full items-center justify-center bg-gray-50 px-4 py-12">
-        <div className="w-full max-w-md rounded-3xl bg-white p-8 text-center shadow-sm">
+        <div className="w-full max-w-lg rounded-3xl bg-white p-8 text-center shadow-sm">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
             <Check className="text-green-600" size={26} />
           </div>
@@ -359,7 +359,7 @@ export default function PlatformOnboardingPage() {
 
   return (
     <div className="flex h-full flex-col items-center bg-gray-50 px-4 py-8">
-      <div className="w-full max-w-lg">
+      <div className="w-full max-w-2xl">
         <div className="mb-8 text-center">
           <Image src="/logo-painel.svg" alt="Nokta" width={120} height={40} className="mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900">Configure seu acesso à Nokta</h1>
@@ -368,24 +368,26 @@ export default function PlatformOnboardingPage() {
           </p>
         </div>
 
-        <div className="mb-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-3">
+        <div className="mb-8 flex items-center justify-center gap-3">
           {STEPS.map((currentStep, index) => (
-            <div key={currentStep.label} className="flex items-center gap-2">
-              <div
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors ${
-                  index < step
-                    ? "bg-violet-600 text-white"
-                    : index === step
-                      ? "border-2 border-violet-600 bg-white text-violet-600"
-                      : "border-2 border-gray-200 bg-white text-gray-400"
-                }`}
-              >
-                {index < step ? <Check size={14} /> : index + 1}
+            <div key={currentStep.label} className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <div
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition-colors ${
+                    index < step
+                      ? "bg-violet-600 text-white"
+                      : index === step
+                        ? "border-2 border-violet-600 bg-white text-violet-600"
+                        : "border-2 border-gray-200 bg-white text-gray-400"
+                  }`}
+                >
+                  {index < step ? <Check size={16} /> : index + 1}
+                </div>
+                <span className={`whitespace-nowrap text-sm ${index === step ? "font-medium text-gray-900" : "text-gray-400"}`}>
+                  {currentStep.label}
+                </span>
               </div>
-              <span className={`whitespace-nowrap text-xs ${index === step ? "font-medium text-gray-900" : "text-gray-400"}`}>
-                {currentStep.label}
-              </span>
-              {index < STEPS.length - 1 && <div className="h-px w-4 shrink-0 bg-gray-200 sm:w-8" />}
+              {index < STEPS.length - 1 && <div className="h-px w-8 shrink-0 bg-gray-200 sm:w-12" />}
             </div>
           ))}
         </div>
