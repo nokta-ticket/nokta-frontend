@@ -144,10 +144,14 @@ export default function PlatformOnboardingPage() {
         toast.error(getErrorMessage(orgError, "Não foi possível criar seu workspace agora. Tente novamente em instantes."));
       }
 
+      // Sem setLoading(false) aqui de propósito: window.location.href não
+      // navega no mesmo tick — resetar loading agora reabilitaria o
+      // formulário por uma fração de segundo antes do browser trocar de
+      // página (o "flash" de volta pro input do nome). loading só é
+      // resetado no catch (fluxo de erro, onde a navegação não acontece).
       window.location.href = "/dashboard/inicio";
     } catch (error) {
       toast.error(getErrorMessage(error, "Não foi possível continuar. Tente novamente."));
-    } finally {
       setLoading(false);
     }
   };
@@ -164,10 +168,12 @@ export default function PlatformOnboardingPage() {
     try {
       await createWorkspace(businessName.trim());
       persistBusinessNameDraft(businessName.trim());
+      // Sem setCreatingWorkspaceOnly(false) aqui — mesmo motivo do
+      // handleSubmit acima: evita o flash de volta pro formulário antes
+      // do browser navegar de fato.
       window.location.href = "/dashboard/inicio";
     } catch (error) {
       toast.error(getErrorMessage(error, "Não foi possível criar seu workspace agora. Tente novamente."));
-    } finally {
       setCreatingWorkspaceOnly(false);
     }
   };
