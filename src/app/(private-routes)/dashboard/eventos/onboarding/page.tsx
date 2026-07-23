@@ -8,7 +8,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import api, { getErrorMessage } from "@/lib/axios";
-import { normalizeDigits } from "@/lib/br-data";
 import { toast } from "@/lib/toast";
 import { Check, ChevronLeft, ChevronRight, FileText, RefreshCw } from "lucide-react";
 
@@ -98,9 +97,11 @@ export default function PlatformOnboardingPage() {
     setLoading(true);
 
     try {
+      // Sem `telefone` no payload — o backend usa o telefone já verificado
+      // no cadastro (user.telefone), evitando ter que adivinhar aqui o
+      // formato exato salvo no banco (E.164 do OTP por WhatsApp).
       const response = await api.post("/auth/ativar-produtor", {
         nomeArtistico: businessName.trim(),
-        telefone: normalizeDigits(user.telefone),
         aceitouTermos,
       });
 
@@ -270,20 +271,10 @@ export default function PlatformOnboardingPage() {
                       Para continuar, confirme que leu e aceita os Termos de Uso da Nokta e a Política de Privacidade.
                     </p>
                   </div>
-                  <div className="space-y-2 rounded-xl border border-gray-200 p-4 text-sm text-gray-600">
-                    <p>
-                      Ao continuar, você concorda com os{" "}
-                      <Link href="/termos" target="_blank" className="underline">
-                        Termos de Uso
-                      </Link>{" "}
-                      e a{" "}
-                      <Link href="/privacidade" target="_blank" className="underline">
-                        Política de Privacidade
-                      </Link>{" "}
-                      da Nokta.
-                    </p>
-                  </div>
-                  <label htmlFor="termos" className="flex cursor-pointer items-start gap-3">
+                  <label
+                    htmlFor="termos"
+                    className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 p-4 hover:border-gray-300"
+                  >
                     <Checkbox
                       id="termos"
                       checked={aceitouTermos}
@@ -291,7 +282,15 @@ export default function PlatformOnboardingPage() {
                       className="mt-0.5 shrink-0"
                     />
                     <span className="text-sm leading-relaxed text-gray-700">
-                      Li e aceito os Termos de Uso e a Política de Privacidade da Nokta.
+                      Li e aceito os{" "}
+                      <Link href="/termos" target="_blank" className="font-medium text-violet-700 underline">
+                        Termos de Uso
+                      </Link>{" "}
+                      e a{" "}
+                      <Link href="/privacidade" target="_blank" className="font-medium text-violet-700 underline">
+                        Política de Privacidade
+                      </Link>{" "}
+                      da Nokta.
                     </span>
                   </label>
                 </>
