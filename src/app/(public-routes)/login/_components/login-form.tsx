@@ -8,6 +8,7 @@ import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { isSafeInternalRedirect } from '@/lib/safe-redirect'
 import { currentSurfaceStateToken, getApiBaseUrl } from '@/lib/surfaces'
+import { useSurface } from '@/lib/use-surface'
 import { ConfirmEmailModal } from './confirmar-email-modal'
 
 // Fase 5: API resolvida por host, não uma NEXT_PUBLIC_API_URL fixa — o
@@ -63,8 +64,13 @@ function OAuthButtons({ ctx }: { ctx: string }) {
 
 export function LoginForm() {
   const router       = useRouter()
+  const surface      = useSurface()
   const searchParams = useSearchParams()
-  const ctx          = searchParams.get('ctx') || ''
+  // Em PLATFORM (app.nokta.live), login sempre segue o caminho de
+  // gestor/produtor — mesmo raciocínio de forms-register.tsx: sem isso,
+  // quem logasse direto (sem ?ctx=produtor) caía em "/" e nunca era
+  // levado a completar o onboarding pendente.
+  const ctx          = searchParams.get('ctx') || (surface === 'PLATFORM' ? 'produtor' : '')
   const redirectTo   = searchParams.get('redirect') || ''
   const { signIn }   = useAuth()
 
@@ -110,7 +116,13 @@ export function LoginForm() {
       if (isSafeInternalRedirect(redirectTo)) {
         router.push(redirectTo)
       } else if (ctx === 'produtor') {
-        router.push(user.role === 'PRODUTOR' ? '/dashboard/eventos' : '/dashboard/eventos/onboarding')
+        // Sempre onboarding, mesmo com role já PRODUTOR — a própria
+        // página decide (useOrganizations()) se mostra "já configurado"
+        // ou "falta só o workspace" (ver needsWorkspaceOnly em
+        // dashboard/eventos/onboarding/page.tsx). Decidir aqui pelo role
+        // sozinho reabria a mesma falha: usuário com acesso ativo mas sem
+        // organização caindo direto em /dashboard/eventos vazio.
+        router.push('/dashboard/eventos/onboarding')
       } else {
         // Navegação forçada (não router.push): "/" decide a rota conforme
         // autenticação no middleware (app.nokta.live) — o cache de rota do

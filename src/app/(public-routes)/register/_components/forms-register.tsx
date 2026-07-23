@@ -343,7 +343,12 @@ export function RegisterForm() {
   const router       = useRouter();
   const surface      = useSurface();
   const searchParams = useSearchParams();
-  const ctx          = searchParams.get("ctx") || "";
+  // Em PLATFORM (app.nokta.live) todo cadastro é sobre virar
+  // gestor/produtor — não só quando veio do CTA "Começar agora" da LP
+  // institucional (que explicitamente passa ?ctx=produtor). Sem isso,
+  // cadastro direto em app.nokta.live/register (sem esse parâmetro) caía
+  // no fallback "/", nunca no onboarding — usuário ficava sem workspace.
+  const ctx          = searchParams.get("ctx") || (surface === "PLATFORM" ? "produtor" : "");
   const redirectParam = searchParams.get("redirect") || "";
   const redirectTo   = isSafeInternalRedirect(redirectParam) ? redirectParam : "";
   const { signIn }   = useAuth();
@@ -444,7 +449,8 @@ export function RegisterForm() {
         if (redirectTo) {
           router.push(redirectTo);
         } else if (ctx === "produtor") {
-          router.push(user.role === "PRODUTOR" ? "/dashboard/eventos" : "/dashboard/eventos/onboarding");
+          // Sempre onboarding — ver mesmo comentário em login-form.tsx.
+          router.push("/dashboard/eventos/onboarding");
         } else {
           // Navegação forçada — ver login-form.tsx.
           window.location.href = "/";

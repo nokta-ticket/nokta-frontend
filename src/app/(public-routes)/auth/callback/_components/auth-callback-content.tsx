@@ -8,6 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import api, { getErrorMessage } from "@/lib/axios";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useSurface } from "@/lib/use-surface";
 
 const PROVIDER_LABELS: Record<string, string> = {
   google: "Google",
@@ -46,11 +47,10 @@ function MergeAccountForm({
       toast.success(`Conta ${providerLabel} vinculada com sucesso!`);
 
       if (ctx === "produtor") {
-        if (user.role === "PRODUTOR") {
-          router.replace("/dashboard/eventos");
-        } else {
-          router.replace("/dashboard/eventos/onboarding");
-        }
+        // Sempre onboarding — ver mesmo comentário em login-form.tsx: a
+        // própria página decide (useOrganizations()) entre "já
+        // configurado" e "falta só o workspace".
+        router.replace("/dashboard/eventos/onboarding");
       } else {
         // Navegação forçada — ver login-form.tsx (mesmo motivo: "/" decide
         // a rota conforme autenticação, o cache de rota do Next pode servir
@@ -122,12 +122,18 @@ function MergeAccountForm({
 export function AuthCallbackContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const surface = useSurface();
   const { signIn } = useAuth();
 
   const conflict = searchParams.get("conflict") === "true";
   const code = searchParams.get("code") ?? "";
   const provider = searchParams.get("provider") ?? "";
-  const ctx = searchParams.get("ctx") ?? "";
+  // Fallback de superfície — ver mesmo comentário em forms-register.tsx: o
+  // `state` do OAuth só carrega "produtor" se o botão foi clicado com
+  // ?ctx=produtor já na URL (ex.: veio do CTA da LP institucional).
+  // Cadastro/login via OAuth direto em app.nokta.live não tinha esse
+  // parâmetro e nunca chegava ao onboarding.
+  const ctx = searchParams.get("ctx") || (surface === "PLATFORM" ? "produtor" : "");
 
   useEffect(() => {
     if (conflict) return; // renderiza o form de merge, não faz redirect
@@ -144,7 +150,8 @@ export function AuthCallbackContent() {
         signIn({ userId: data.id, role: data.role, nivelProdutor: data.nivelProdutor ?? null });
 
         if (ctx === "produtor") {
-          router.replace(data.role === "PRODUTOR" ? "/dashboard/eventos" : "/dashboard/eventos/onboarding");
+          // Sempre onboarding — ver comentário acima e em login-form.tsx.
+          router.replace("/dashboard/eventos/onboarding");
         } else {
           // Navegação forçada — ver login-form.tsx.
           window.location.href = "/";
