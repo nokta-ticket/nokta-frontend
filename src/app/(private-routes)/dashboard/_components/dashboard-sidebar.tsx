@@ -23,7 +23,7 @@ function SidebarInner() {
   return (
     <>
       <div className="flex justify-center">
-        <Image src="/logo-painel.svg" alt="Nokta Tickets" width={80} height={80} />
+        <Image src="/logonokta-branca.svg" alt="Nokta" width={140} height={40} />
       </div>
 
       <UnifiedSidebar />
@@ -59,7 +59,7 @@ export function DashboardSidebar() {
             <SidebarInner />
           </SheetContent>
         </Sheet>
-        <Image src="/logo-painel.svg" alt="Nokta Tickets" width={32} height={32} />
+        <Image src="/logonokta-branca.svg" alt="Nokta" width={90} height={26} />
       </header>
 
       {/* Desktop: sidebar fixa */}

@@ -298,7 +298,7 @@ export default function PlatformOnboardingPage() {
       <div className="flex h-full flex-col items-center justify-center bg-gray-50 px-4 py-12">
         <div className="w-full max-w-lg">
           <div className="mb-8 text-center">
-            <Image src="/logo-painel.svg" alt="Nokta" width={120} height={40} className="mx-auto mb-4" />
+            <Image src="/logonokta-preta.svg" alt="Nokta" width={140} height={40} className="mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-gray-900">Só falta criar seu workspace</h1>
             <p className="mt-1 text-sm text-gray-500">
               Seu acesso já está ativo. Informe o nome do negócio ou operação para continuar.
@@ -361,7 +361,7 @@ export default function PlatformOnboardingPage() {
     <div className="flex h-full flex-col items-center bg-gray-50 px-4 py-8">
       <div className="w-full max-w-2xl">
         <div className="mb-8 text-center">
-          <Image src="/logo-painel.svg" alt="Nokta" width={120} height={40} className="mx-auto mb-4" />
+          <Image src="/logonokta-preta.svg" alt="Nokta" width={140} height={40} className="mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900">Configure seu acesso à Nokta</h1>
           <p className="mt-1 text-sm text-gray-500">
             Conte um pouco sobre a operação que você deseja gerenciar.
