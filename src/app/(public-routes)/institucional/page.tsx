@@ -1,21 +1,18 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import { Instrument_Sans, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import {
-  BarChart3,
   Boxes,
-  CalendarCheck,
   ClipboardList,
-  ShieldCheck,
+  DoorOpen,
+  LineChart,
+  ShoppingBag,
   Ticket,
-  UsersRound,
-  UtensilsCrossed,
   Wallet,
-  Zap,
-  Headset,
 } from "lucide-react";
 import { getPlatformUrl, getPublicTicketsUrl } from "@/lib/surfaces";
-import { NoktaBrandMark as BrandMark } from "@/components/layout/nokta-brand-mark";
+import { ScrollEffects } from "./_components/scroll-effects";
+import "./institucional.css";
 
 /**
  * Fase 5.1, Etapa 3/6 — landing institucional (www.nokta.live). Renderizada
@@ -29,10 +26,14 @@ import { NoktaBrandMark as BrandMark } from "@/components/layout/nokta-brand-mar
  * dinâmica e impediria cache real aqui). Esta página se sobrepõe a esse
  * header/footer com um wrapper `fixed inset-0` — mesmo padrão que
  * dashboard/admin/produtor já usam pra cobrir o shell público (ver
- * dashboard/layout.tsx). É cobertura só visual (o header/footer de
- * bilheteria continua no DOM, coberto) — mesma limitação de acessibilidade
- * que o padrão já tem em dashboard/admin/produtor hoje, não uma regressão
- * introduzida aqui.
+ * dashboard/layout.tsx).
+ *
+ * Fase 6 — redesign completo (bold/editorial): tipografia própria (Big
+ * Shoulders Display via <link>, next/font não cobre essa família nesta
+ * versão do Next; Instrument Sans e Geist Mono via next/font/google),
+ * ticker "ao vivo" ilustrativo, constelação animada e blocos de cor sólida
+ * por módulo. Estrutura de conteúdo (jornada, módulos, stats, CTA) mantida
+ * do redesign anterior — só a linguagem visual mudou.
  */
 export const metadata: Metadata = {
   title: "Nokta — a plataforma que conecta toda a operação do seu evento ou casa",
@@ -50,355 +51,576 @@ export const metadata: Metadata = {
   },
 };
 
-// Fase 5.3, Etapa 4 — cache real, não só o header declarado: conteúdo
-// 100% estático (sem dados de usuário, sem chamada à API pra renderizar),
-// então o Next pode gerar uma vez e servir do cache de CDN da Vercel,
-// revalidando no máximo a cada 60s (ISR) — sem depender de nenhuma API
-// dinâmica em nenhum ancestral (ver Root Layout, Etapa 2). Funciona
-// através do rewrite do Middleware (alvo fixo, suportado pela Vercel).
 export const revalidate = 60;
 
-const GRADIENT = "linear-gradient(100deg,#00DDFF 0%,#7B61FF 48%,#FF00D4 100%)";
+const instrumentSans = Instrument_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  variable: "--lp-font-body",
+});
 
-const TRUST = [
-  { icon: ShieldCheck, title: "Seguro e confiável", desc: "Dados protegidos e criptografados" },
-  { icon: Zap, title: "Tudo em tempo real", desc: "Informações atualizadas na hora" },
-  { icon: Headset, title: "Suporte próximo", desc: "Time especializado com você" },
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  variable: "--lp-font-mono",
+});
+
+// Dados ilustrativos — a operação em si é fictícia (não são números reais
+// de clientes), só pra dar textura de "atividade" ao ticker do topo.
+const TICKER_ITEMS = [
+  { label: "ARENA SP", detail: "1.240 ingressos", tone: "up" as const },
+  { label: "BEACH CLUB", detail: "32 mesas ativas", tone: "dot" as const },
+  { label: "CASA DE SHOW", detail: "R$ 127,9k em caixa", tone: "up" as const },
+  { label: "BAR CENTRO", detail: "18 comandas abertas", tone: "plain" as const },
+  { label: "ROOFTOP", detail: "94% check-in", tone: "up" as const },
+  { label: "CLUB NORTE", detail: "2 alertas de estoque", tone: "dot" as const },
 ];
 
 const JORNADA = [
-  { icon: Ticket, label: "Aquisição", desc: "Eventos e venda de ingressos" },
-  { icon: ClipboardList, label: "Entrada", desc: "Check-in e controle de acesso" },
-  { icon: UtensilsCrossed, label: "Operação", desc: "Mesas, comandas e pedidos" },
-  { icon: Boxes, label: "Consumo", desc: "Cardápio e produtos" },
-  { icon: Wallet, label: "Gestão", desc: "Estoque, equipe e financeiro" },
-  { icon: BarChart3, label: "Análise", desc: "Insights de toda a operação" },
+  { num: "01", icon: Ticket, title: "Aquisição", desc: "Eventos e ingressos" },
+  { num: "02", icon: DoorOpen, title: "Entrada", desc: "Check-in e acesso" },
+  { num: "03", icon: ClipboardList, title: "Operação", desc: "Mesas e comandas" },
+  { num: "04", icon: ShoppingBag, title: "Consumo", desc: "Cardápio e produtos" },
+  { num: "05", icon: Boxes, title: "Gestão", desc: "Estoque e equipe" },
+  { num: "06", icon: LineChart, title: "Análise", desc: "Insights da operação" },
 ];
 
-const CAPACIDADES = [
-  { icon: Ticket, title: "Eventos e ingressos", desc: "Criação de eventos, lotes, checkout e venda de ingressos." },
-  { icon: CalendarCheck, title: "Reservas e relacionamento", desc: "Reservas de mesa, fila de espera e relacionamento com o público." },
-  { icon: ClipboardList, title: "Operação e comandas", desc: "Mesas, comandas e pedidos em tempo real no salão." },
-  { icon: UtensilsCrossed, title: "Cardápio e produtos", desc: "Cardápio, categorias e produtos vendidos na operação." },
-  { icon: Boxes, title: "Estoque", desc: "Controle de estoque integrado ao que é vendido e consumido." },
-  { icon: Wallet, title: "Financeiro", desc: "Fechamento de caixa, repasses e visão financeira consolidada." },
-  { icon: BarChart3, title: "Insights", desc: "Indicadores de vendas, operação e desempenho num só lugar." },
-  { icon: UsersRound, title: "Equipe", desc: "Convites, papéis e permissões para quem opera o dia a dia." },
+const MODULOS_EXTRA = [
+  "Reservas & relacionamento",
+  "Cardápio & produtos",
+  "Check-in & controle de acesso",
+  "Equipe · papéis & permissões",
+  "Fila de espera",
+  "Repasses",
 ];
 
-const STATS = [
-  { icon: UsersRound, value: "+2.500", label: "Eventos realizados" },
-  { icon: Ticket, value: "+1,2M", label: "Ingressos emitidos" },
-  { icon: UtensilsCrossed, value: "+450", label: "Operações ativas" },
-  { icon: BarChart3, value: "98,7%", label: "Uptime da plataforma" },
-];
-
-const DEPOIMENTOS = [
-  {
-    initials: "RN",
-    quote:
-      "A Nokta mudou completamente a forma como operamos nossos eventos. Tudo integrado, suporte incrível e relatórios que realmente ajudam nas decisões.",
-    name: "Rafael Nascimento",
-    role: "Produtor de eventos",
-  },
-  {
-    initials: "JM",
-    quote:
-      "Com a Nokta, ganhamos agilidade no atendimento e total controle do caixa e das comandas. A equipe se adaptou rápido e os resultados apareceram desde o primeiro evento.",
-    name: "Juliana Martins",
-    role: "Beach Club & Restaurante",
-  },
-  {
-    initials: "LA",
-    quote:
-      "Plataforma completa, intuitiva e que acompanha o ritmo do nosso negócio. Recomendo para qualquer produtor ou gestor de operação.",
-    name: "Lucas Almeida",
-    role: "Casa de Shows",
-  },
-];
+function Brand({ className = "" }: { className?: string }) {
+  return (
+    <Link
+      href="/"
+      className={`flex items-center gap-[11px] font-[family-name:var(--lp-font-display)] font-bold text-[30px] lowercase tracking-[0.01em] text-[#140a24] ${className}`}
+    >
+      <span
+        className="lp-brand-b block h-[26px] w-[26px] rounded-full"
+        style={{
+          background: "conic-gradient(from 210deg,#7c3aed,#e5308f,#8b5cf6,#7c3aed)",
+          boxShadow: "0 0 16px rgba(139,92,246,.5)",
+        }}
+      />
+      nokta
+    </Link>
+  );
+}
 
 export default function InstitucionalPage() {
   const entrarUrl = getPlatformUrl("/login");
-  // /register (não /login) — quem clica em "Começar agora" ainda não tem
-  // conta; ctx=produtor garante onboarding empresarial após o cadastro (ver
-  // register/_components/forms-register.tsx).
   const cadastroUrl = getPlatformUrl("/register?ctx=produtor");
   const ticketsUrl = getPublicTicketsUrl("/");
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-white">
-      {/* ── HEADER ─────────────────────────────────────────── */}
-      <header className="w-full sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100">
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center h-20">
-          <BrandMark className="flex-1" />
-          <div className="flex items-center gap-2 sm:gap-3">
-            <a
-              href={entrarUrl}
-              className="inline-flex items-center rounded-lg border border-gray-200 px-3 sm:px-4 py-2 text-sm font-semibold text-[#181d27] hover:bg-gray-50 transition"
-            >
-              Entrar
-            </a>
-            <a
-              href={cadastroUrl}
-              className="inline-flex items-center rounded-lg px-3 sm:px-4 py-2 text-sm font-semibold text-white shadow-[0_8px_20px_-6px_rgba(123,97,255,0.45)] transition hover:opacity-90"
-              style={{ background: GRADIENT }}
-            >
-              Começar agora
-            </a>
+    <div
+      id="institucional-lp"
+      className="lp-root fixed inset-0 z-50 flex flex-col overflow-y-auto bg-white text-[#140a24]"
+      style={
+        {
+          "--lp-font-display": "'Big Shoulders Display', system-ui, sans-serif",
+          fontFamily: "var(--lp-font-body), system-ui, sans-serif",
+        } as React.CSSProperties
+      }
+    >
+      {/* Fonte sem suporte em next/font/google nesta versão do Next — carregada via link, escopo só desta página (não afeta o resto do app). */}
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;600;700&display=swap"
+      />
+      <div className={`${instrumentSans.variable} ${geistMono.variable} contents`}>
+        <ScrollEffects />
+
+        {/* ── TICKER ────────────────────────────────────────── */}
+        <div className="lp-ticker flex h-[46px] items-center overflow-hidden bg-[#0b0616] text-[13px] tracking-[0.04em] text-[#cdb9ff] font-[family-name:var(--lp-font-mono)]">
+          <div className="flex h-full flex-none items-center gap-[9px] bg-[#c9f24e] px-5 text-[11.5px] font-bold uppercase tracking-[0.18em] text-[#0b0616]">
+            <span className="lp-live-dot h-[7px] w-[7px] rounded-full bg-[#0b0616]" />
+            ao vivo
+          </div>
+          <div className="relative h-full flex-1 overflow-hidden">
+            <div className="lp-ticker-track flex h-full w-max items-center">
+              {[0, 1].map((copy) => (
+                <div key={copy} className="flex items-center">
+                  {TICKER_ITEMS.map((item, i) => (
+                    <div key={`${copy}-${item.label}-${i}`} className="flex items-center">
+                      <div className="inline-flex items-center gap-[9px] whitespace-nowrap px-[22px]">
+                        <b className="text-white">{item.label}</b>
+                        {item.tone === "up" && <span className="text-[#c9f24e]">↑</span>}
+                        {item.tone === "dot" && <span className="text-[#e5308f]">●</span>}
+                        <span>{item.detail}</span>
+                      </div>
+                      <span className="px-0.5 opacity-25">/</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </header>
 
-      <main className="flex-1">
-        {/* ── HERO ───────────────────────────────────────────── */}
-        <section className="relative overflow-hidden">
-          <div
-            className="pointer-events-none absolute -z-10 left-[38%] top-[60px] h-[280px] w-[260px] rounded-full opacity-60 blur-[70px]"
-            style={{ background: "rgba(0,180,216,0.35)" }}
-          />
-          <div
-            className="pointer-events-none absolute -z-10 -right-24 top-10 h-[380px] w-[320px] rounded-full opacity-50 blur-[80px]"
-            style={{ background: "rgba(255,0,212,0.3)" }}
-          />
-
-          <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-14 lg:pt-24 lg:pb-20 grid lg:grid-cols-[0.9fr_1.1fr] items-center gap-10 lg:gap-12">
-            <div>
-              <span
-                className="inline-flex items-center rounded-full px-3.5 py-1.5 text-[12px] font-bold mb-5"
-                style={{ background: "linear-gradient(90deg,#eaf9ff,#f4e9ff)", color: "#6d59ef" }}
+        {/* ── NAV ───────────────────────────────────────────── */}
+        <div className="sticky top-0 z-[60] border-b border-[#ece6f8] bg-white/[.82] backdrop-blur-md">
+          <div className="mx-auto flex max-w-[1320px] items-center justify-between px-5 py-[22px] sm:px-8">
+            <Brand />
+            <nav className="hidden gap-[38px] text-[13px] tracking-[0.06em] text-[#4a4066] font-[family-name:var(--lp-font-mono)] lg:flex">
+              <a href="#jornada" className="hover:text-[#7c3aed] transition-colors">JORNADA</a>
+              <a href="#modulos" className="hover:text-[#7c3aed] transition-colors">MÓDULOS</a>
+              <a href="#cta" className="hover:text-[#7c3aed] transition-colors">PLATAFORMA</a>
+            </nav>
+            <div className="flex items-center gap-5">
+              <a href={entrarUrl} className="text-[13px] font-[family-name:var(--lp-font-mono)] hover:text-[#7c3aed] transition-colors">
+                Entrar
+              </a>
+              <a
+                href={cadastroUrl}
+                className="inline-flex items-center gap-2 rounded-full bg-[#c9f24e] px-6 py-[14px] text-[13px] font-bold uppercase tracking-[0.09em] text-[#0b0616] font-[family-name:var(--lp-font-mono)] shadow-[0_12px_30px_-12px_rgba(201,242,78,.9)] transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_42px_-12px_rgba(201,242,78,1)]"
               >
-                Plataforma completa de eventos e operação
-              </span>
+                Começar agora
+              </a>
+            </div>
+          </div>
+        </div>
 
-              <h1 className="font-sans text-[42px] sm:text-[52px] lg:text-[60px] font-extrabold leading-[1.06] tracking-[-2px] text-[#181d27]">
-                Toda a operação
-                <br />
-                <span
-                  className="bg-clip-text text-transparent"
-                  style={{ backgroundImage: GRADIENT }}
-                >
-                  do seu evento
-                </span>
-                <br />
-                em um só lugar.
-              </h1>
+        <main className="flex-1">
+          {/* ── HERO ──────────────────────────────────────────── */}
+          <header className="relative overflow-hidden px-5 pb-14 pt-16 sm:px-8 lg:pb-14 lg:pt-16">
+            <div
+              className="lp-hero-glow pointer-events-none absolute inset-0 z-0"
+              style={{
+                background:
+                  "radial-gradient(44% 55% at 82% 30%,rgba(229,48,143,.12),transparent 60%),radial-gradient(50% 62% at 12% 8%,rgba(124,58,237,.14),transparent 62%),radial-gradient(60% 80% at 55% 108%,rgba(40,194,224,.08),transparent 60%)",
+              }}
+            />
+            <div className="relative z-[2] mx-auto grid max-w-[1320px] items-center gap-8 lg:grid-cols-2">
+              <div>
+                <div className="lp-anim lp-d1 mb-6 inline-flex items-center gap-2.5 rounded-full border border-[#ece6f8] bg-white px-4 py-2">
+                  <span className="lp-pulse-dot h-[7px] w-[7px] rounded-full bg-[#c9f24e] shadow-[0_0_8px_#c9f24e]" />
+                  <span className="text-[11.5px] uppercase tracking-[0.15em] text-[#4a4066] font-[family-name:var(--lp-font-mono)]">
+                    Plataforma completa de eventos e operação
+                  </span>
+                </div>
 
-              <p className="mt-6 text-[17px] leading-relaxed text-[#667085] max-w-[520px]">
-                Da venda de ingressos ao relatório final. Conectamos pessoas, processos e dados
-                para você focar no que realmente importa: fazer o seu evento acontecer.
-              </p>
+                <h1 className="lp-anim lp-d2 mb-6 font-[family-name:var(--lp-font-display)] text-[52px] font-bold uppercase leading-[.86] sm:text-[72px] lg:text-[92px]">
+                  Toda a
+                  <br />
+                  operação
+                  <br />
+                  <span
+                    className="bg-clip-text text-transparent"
+                    style={{ backgroundImage: "linear-gradient(96deg,#7c3aed,#e5308f)" }}
+                  >
+                    num só
+                  </span>{" "}
+                  lugar.
+                </h1>
 
-              <div className="mt-8 flex flex-col sm:flex-row gap-3">
-                <a
-                  href={cadastroUrl}
-                  className="inline-flex items-center justify-center rounded-lg px-6 py-3.5 text-sm font-bold text-white shadow-[0_10px_24px_-6px_rgba(123,97,255,0.4)] transition hover:-translate-y-0.5"
-                  style={{ background: GRADIENT }}
-                >
-                  Começar agora
-                </a>
-                <a
-                  href={ticketsUrl}
-                  className="inline-flex items-center justify-center rounded-lg border border-gray-200 px-6 py-3.5 text-sm font-bold text-[#181d27] hover:bg-gray-50 hover:border-violet-200 transition hover:-translate-y-0.5"
-                >
-                  Conhecer a bilheteria
-                </a>
+                <p className="lp-anim lp-d3 mb-[30px] max-w-[440px] text-[18px] leading-[1.55] text-[#4a4066]">
+                  Da venda de ingressos ao relatório final. Conecte pessoas, processos e dados — e
+                  foque no que importa: fazer o seu evento acontecer.
+                </p>
+
+                <div className="lp-anim lp-d4 mb-[38px] flex flex-wrap items-center gap-3.5">
+                  <a
+                    href={cadastroUrl}
+                    className="group inline-flex items-center gap-2 rounded-full bg-[#c9f24e] px-[30px] py-[17px] text-[14px] font-bold uppercase tracking-[0.09em] text-[#0b0616] font-[family-name:var(--lp-font-mono)] shadow-[0_12px_30px_-12px_rgba(201,242,78,.9)] transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_42px_-12px_rgba(201,242,78,1)]"
+                  >
+                    Começar agora
+                    <span className="transition-transform group-hover:translate-x-1">→</span>
+                  </a>
+                  <a
+                    href={ticketsUrl}
+                    className="inline-flex items-center gap-2 rounded-full border border-[#ece6f8] px-[30px] py-[17px] text-[14px] font-bold uppercase tracking-[0.09em] text-[#140a24] font-[family-name:var(--lp-font-mono)] transition-all hover:-translate-y-0.5 hover:border-[#7c3aed]"
+                  >
+                    Conhecer a bilheteria
+                  </a>
+                </div>
+
+                <div className="lp-anim lp-d5 flex flex-wrap gap-[34px]">
+                  <div className="max-w-[150px]">
+                    <b className="mb-[3px] block text-[12px] tracking-[0.06em] font-[family-name:var(--lp-font-mono)]">SEGURO</b>
+                    <span className="text-[12.5px] text-[#8b81a6]">Dados protegidos e criptografados</span>
+                  </div>
+                  <div className="max-w-[150px]">
+                    <b className="mb-[3px] block text-[12px] tracking-[0.06em] font-[family-name:var(--lp-font-mono)]">TEMPO REAL</b>
+                    <span className="text-[12.5px] text-[#8b81a6]">Informações atualizadas na hora</span>
+                  </div>
+                  <div className="max-w-[150px]">
+                    <b className="mb-[3px] block text-[12px] tracking-[0.06em] font-[family-name:var(--lp-font-mono)]">SUPORTE</b>
+                    <span className="text-[12.5px] text-[#8b81a6]">Time especializado com você</span>
+                  </div>
+                </div>
               </div>
 
-              <div className="mt-11 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-[560px]">
-                {TRUST.map(({ icon: Icon, title, desc }) => (
-                  <div key={title} className="flex items-start gap-2.5">
-                    <span
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
-                      style={{ background: "linear-gradient(135deg,#e8fbff,#f7e5ff)", color: "#6a5cf3" }}
-                    >
-                      <Icon size={18} />
-                    </span>
-                    <div>
-                      <strong className="block text-[12px] font-bold text-[#181d27] leading-tight">{title}</strong>
-                      <span className="block mt-1 text-[11px] text-[#7c8494] leading-snug">{desc}</span>
+              {/* CONSTELAÇÃO */}
+              <div className="lp-const relative mx-auto hidden h-[560px] w-full max-w-[560px] sm:block">
+                <svg
+                  className="lp-const-lines absolute inset-0 z-[1] h-full w-full"
+                  viewBox="0 0 620 560"
+                  fill="none"
+                  preserveAspectRatio="xMidYMid meet"
+                >
+                  <g stroke="rgba(124,58,237,.3)" strokeWidth="1.5">
+                    <path d="M120 110 L310 280" />
+                    <path d="M95 300 L310 280" />
+                    <path d="M150 470 L310 280" />
+                    <path d="M500 120 L310 280" />
+                    <path d="M525 320 L310 280" />
+                    <path d="M470 480 L310 280" />
+                  </g>
+                  <g fill="#e5308f">
+                    <circle cx="120" cy="110" r="3.5" />
+                    <circle cx="95" cy="300" r="3.5" />
+                    <circle cx="150" cy="470" r="3.5" />
+                    <circle cx="500" cy="120" r="3.5" />
+                    <circle cx="525" cy="320" r="3.5" />
+                    <circle cx="470" cy="480" r="3.5" />
+                  </g>
+                </svg>
+
+                <div
+                  className="lp-halo absolute left-[calc(50%-110px)] top-[calc(50%-110px)] z-[1] h-[220px] w-[220px] rounded-full"
+                  style={{ background: "radial-gradient(circle,rgba(139,92,246,.28),transparent 68%)" }}
+                />
+                <div className="lp-ring absolute left-[calc(50%-96px)] top-[calc(50%-96px)] z-[1] h-[192px] w-[192px] rounded-full border border-dashed border-[rgba(124,58,237,.3)]" />
+                <div className="absolute left-[calc(50%-66px)] top-[calc(50%-66px)] z-[3] flex h-[132px] w-[132px] items-center justify-center rounded-[34px] border border-[#ece6f8] bg-white shadow-[0_30px_60px_-20px_rgba(124,58,237,.55)]">
+                  <div
+                    className="lp-core-disc h-[52px] w-[52px] rounded-full"
+                    style={{ background: "conic-gradient(from 210deg,#7c3aed,#e5308f,#8b5cf6,#7c3aed)" }}
+                  />
+                </div>
+
+                <div className="lp-node-ico absolute left-[88px] top-[78px] z-[2] flex h-16 w-16 items-center justify-center rounded-2xl border border-[#ece6f8] bg-white shadow-[0_14px_30px_-14px_rgba(20,10,36,.3)]">
+                  <Ticket size={26} className="text-[#7c3aed]" strokeWidth={1.8} />
+                </div>
+                <div
+                  className="absolute left-[63px] top-[268px] z-[2] h-[60px] w-[60px] overflow-hidden rounded-2xl border border-[#ece6f8] shadow-[0_14px_30px_-14px_rgba(20,10,36,.3)]"
+                  style={{ background: "linear-gradient(135deg,#e5308f,#7c3aed)" }}
+                />
+                <div className="lp-node-ico absolute left-[118px] top-[438px] z-[2] flex h-16 w-16 items-center justify-center rounded-2xl border border-[#ece6f8] bg-white shadow-[0_14px_30px_-14px_rgba(20,10,36,.3)]">
+                  <ClipboardList size={26} className="text-[#7c3aed]" strokeWidth={1.8} />
+                </div>
+                <div className="lp-node-ico absolute left-[468px] top-[88px] z-[2] flex h-16 w-16 items-center justify-center rounded-2xl border border-[#ece6f8] bg-white shadow-[0_14px_30px_-14px_rgba(20,10,36,.3)]">
+                  <LineChart size={26} className="text-[#7c3aed]" strokeWidth={1.8} />
+                </div>
+                <div
+                  className="absolute left-[495px] top-[290px] z-[2] h-[60px] w-[60px] overflow-hidden rounded-2xl border border-[#ece6f8] shadow-[0_14px_30px_-14px_rgba(20,10,36,.3)]"
+                  style={{ background: "linear-gradient(135deg,#28c2e0,#7c3aed)" }}
+                />
+                <div className="lp-node-ico absolute left-[438px] top-[448px] z-[2] flex h-16 w-16 items-center justify-center rounded-2xl border border-[#ece6f8] bg-white shadow-[0_14px_30px_-14px_rgba(20,10,36,.3)]">
+                  <Wallet size={26} className="text-[#7c3aed]" strokeWidth={1.8} />
+                </div>
+
+                <div className="lp-float-a absolute left-[150px] top-[20px] z-[4] w-[186px] rounded-[14px] border border-[#ece6f8] bg-white p-[13px_15px] shadow-[0_22px_45px_-18px_rgba(20,10,36,.3)]">
+                  <div className="mb-1.5 text-[9.5px] uppercase tracking-[0.14em] text-[#8b81a6] font-[family-name:var(--lp-font-mono)]">
+                    Ingressos · lote 2
+                  </div>
+                  <div className="font-[family-name:var(--lp-font-display)] text-[30px] font-bold leading-none">R$ 48.250</div>
+                  <div className="mt-1 text-[11px] text-[#15a34a] font-[family-name:var(--lp-font-mono)]">↑ 1.240 emitidos hoje</div>
+                </div>
+
+                <div className="lp-float-b absolute right-0 top-[200px] z-[4] w-[196px] rounded-[14px] border border-[#ece6f8] bg-white p-[13px_15px] shadow-[0_22px_45px_-18px_rgba(20,10,36,.3)]">
+                  <div className="mb-1.5 text-[9.5px] uppercase tracking-[0.14em] text-[#8b81a6] font-[family-name:var(--lp-font-mono)]">
+                    Comandas · salão
+                  </div>
+                  <div className="flex items-center gap-2 py-[5px] text-[12.5px]">
+                    <span className="h-[7px] w-[7px] rounded-full bg-[#22c55e]" />
+                    Mesa 14 · 3 itens
+                    <b className="ml-auto font-[family-name:var(--lp-font-mono)]">R$ 186</b>
+                  </div>
+                  <div className="flex items-center gap-2 py-[5px] text-[12.5px]">
+                    <span className="h-[7px] w-[7px] rounded-full bg-[#22c55e]" />
+                    Mesa 07 · 1 item
+                    <b className="ml-auto font-[family-name:var(--lp-font-mono)]">R$ 54</b>
+                  </div>
+                  <div className="flex items-center gap-2 py-[5px] text-[12.5px]">
+                    <span className="h-[7px] w-[7px] rounded-full bg-[#f59e0b]" />
+                    Mesa 22 · abrir
+                    <b className="ml-auto font-[family-name:var(--lp-font-mono)]">—</b>
+                  </div>
+                </div>
+
+                <div className="lp-float-c absolute left-[120px] top-[470px] z-[4] w-[190px] rounded-[14px] border border-[#ece6f8] bg-white p-[13px_15px] shadow-[0_22px_45px_-18px_rgba(20,10,36,.3)]">
+                  <div className="mb-1.5 text-[9.5px] uppercase tracking-[0.14em] text-[#8b81a6] font-[family-name:var(--lp-font-mono)]">
+                    Financeiro · caixa
+                  </div>
+                  <div className="lp-spark mt-1.5 flex h-[38px] items-end gap-1">
+                    {[40, 62, 48, 82, 66, 100, 76].map((h, i) => (
+                      <i
+                        key={i}
+                        className="w-2 rounded-sm"
+                        style={{ height: `${h}%`, background: "linear-gradient(180deg,#e5308f,#7c3aed)" }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* ── STATS ─────────────────────────────────────────── */}
+          <div className="mx-auto max-w-[1320px] px-5 sm:px-8">
+            <div className="lp-reveal grid grid-cols-2 border-y border-[#ece6f8] lg:grid-cols-4">
+              {[
+                { value: 2500, decimals: 0, prefix: "+", emph: "prefix" as const, label: "Eventos realizados" },
+                { value: 1.2, decimals: 1, prefix: "+", suffix: "M", emph: "prefix" as const, label: "Ingressos emitidos" },
+                { value: 450, decimals: 0, prefix: "+", emph: "prefix" as const, label: "Operações ativas" },
+                { value: 98.7, decimals: 1, suffix: "%", emph: "suffix" as const, label: "Uptime da plataforma" },
+              ].map((s, i, arr) => (
+                <div key={s.label} className={`px-[30px] py-[34px] ${i < arr.length - 1 ? "border-r border-[#ece6f8]" : ""}`}>
+                  <div
+                    className="lp-stat-num font-[family-name:var(--lp-font-display)] text-[44px] font-bold leading-[.9] sm:text-[64px] [&_em]:not-italic [&_em]:text-[#e5308f]"
+                    data-value={s.value}
+                    data-decimals={s.decimals}
+                    data-prefix={s.prefix || ""}
+                    data-suffix={s.suffix || ""}
+                    data-emph={s.emph}
+                  />
+                  <div className="mt-2 text-[12px] uppercase tracking-[0.08em] text-[#8b81a6] font-[family-name:var(--lp-font-mono)]">
+                    {s.label}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── JORNADA ───────────────────────────────────────── */}
+          <section className="px-5 py-[88px] sm:px-8" id="jornada">
+            <div className="mx-auto max-w-[1320px]">
+              <div className="lp-reveal mb-12 max-w-[720px]">
+                <span className="mb-3.5 block text-[12px] uppercase tracking-[0.28em] text-[#7c3aed] font-[family-name:var(--lp-font-mono)]">
+                  Do começo ao fim
+                </span>
+                <h2 className="font-[family-name:var(--lp-font-display)] text-[40px] font-bold uppercase leading-[.9] sm:text-[56px] lg:text-[64px]">
+                  Uma jornada,
+                  <br />
+                  seis etapas
+                </h2>
+                <p className="mt-3.5 max-w-[520px] text-[17px] text-[#8b81a6]">
+                  Do primeiro ingresso ao relatório final. Ative só o que a sua operação precisa.
+                </p>
+              </div>
+
+              <div className="lp-reveal lp-rd1 grid grid-cols-2 overflow-hidden rounded-[20px] border border-[#ece6f8] bg-[#f7f4ff] sm:grid-cols-3 lg:grid-cols-6">
+                {JORNADA.map((etapa, i) => (
+                  <div
+                    key={etapa.num}
+                    className={`group relative bg-white p-[26px_22px_30px] transition-colors hover:bg-[#f7f4ff] ${
+                      i < JORNADA.length - 1 ? "border-r border-[#ece6f8]" : ""
+                    } ${i % 2 === 0 ? "" : ""}`}
+                  >
+                    <div className="text-[12px] tracking-[0.1em] text-[#7c3aed] font-[family-name:var(--lp-font-mono)]">
+                      {etapa.num}
                     </div>
+                    <div className="my-[18px] flex h-11 w-11 items-center justify-center rounded-xl bg-[rgba(124,58,237,.1)] transition-transform group-hover:-translate-y-1 group-hover:scale-[1.06]">
+                      <etapa.icon size={22} className="text-[#7c3aed]" strokeWidth={1.9} />
+                    </div>
+                    <h4 className="font-[family-name:var(--lp-font-display)] text-[27px] font-bold uppercase leading-[.95]">
+                      {etapa.title}
+                    </h4>
+                    <p className="mt-[7px] text-[12px] text-[#8b81a6] font-[family-name:var(--lp-font-mono)]">{etapa.desc}</p>
+                    {i < JORNADA.length - 1 && (
+                      <div className="lp-link-arrow absolute right-[-9px] top-[38px] z-[3] hidden bg-white p-0.5 text-[18px] text-[#e5308f] lg:block">
+                        →
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             </div>
+          </section>
 
-            <div className="relative">
-              <Image
-                src="/hero-laptop.png"
-                alt="Dashboard da Nokta em um notebook"
-                width={900}
-                height={620}
-                priority
-                className="w-full h-auto drop-shadow-[0_30px_40px_rgba(30,31,47,0.14)]"
-              />
-            </div>
-          </div>
-        </section>
+          {/* ── MÓDULOS ───────────────────────────────────────── */}
+          <section className="px-5 pb-[88px] sm:px-8" id="modulos">
+            <div className="mx-auto max-w-[1320px]">
+              <div className="lp-reveal mb-12 max-w-[720px]">
+                <span className="mb-3.5 block text-[12px] uppercase tracking-[0.28em] text-[#7c3aed] font-[family-name:var(--lp-font-mono)]">
+                  Tudo que você precisa
+                </span>
+                <h2 className="font-[family-name:var(--lp-font-display)] text-[40px] font-bold uppercase leading-[.9] sm:text-[56px] lg:text-[64px]">
+                  Módulos que
+                  <br />
+                  trabalham juntos
+                </h2>
+                <p className="mt-3.5 max-w-[520px] text-[17px] text-[#8b81a6]">
+                  Cada um resolve uma parte da operação. Juntos, resolvem o negócio inteiro.
+                </p>
+              </div>
 
-        {/* ── JORNADA COMPLETA ───────────────────────────────── */}
-        <section className="bg-gradient-to-b from-[#fbfcff] to-[#f9faff] py-20">
-          <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
-            <p className="text-center text-[11px] font-extrabold uppercase tracking-[0.08em] mb-2.5" style={{ color: "#7b70ff" }}>
-              Do começo ao fim
-            </p>
-            <h2 className="text-center font-sans text-2xl sm:text-3xl font-bold tracking-tight text-[#181d27]">
-              Uma jornada completa, do primeiro ingresso ao relatório final
-            </h2>
-
-            <div className="relative mt-16 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-6 gap-y-12">
-              <div className="hidden lg:block absolute left-[8.5%] right-[8.5%] top-[52px] h-px bg-[#dfe3ee]" />
-              {JORNADA.map((etapa, i) => (
-                <div key={etapa.label} className="relative flex flex-col items-center text-center gap-3">
-                  <div
-                    className="absolute -top-3 flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-extrabold text-white shadow-[0_7px_18px_-4px_rgba(126,87,244,0.4)]"
-                    style={{ background: GRADIENT }}
-                  >
-                    {i + 1}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="lp-blk lp-reveal lp-rd1 flex min-h-[320px] flex-col overflow-hidden rounded-[22px] bg-[#e5308f] p-[26px_24px_28px] text-white transition-transform hover:-translate-y-2 hover:shadow-[0_30px_60px_-20px_rgba(229,48,143,.6)]">
+                  <div className="text-[11px] uppercase tracking-[0.14em] opacity-80 font-[family-name:var(--lp-font-mono)]">
+                    01 · Aquisição
                   </div>
-                  <div
-                    className="flex h-[68px] w-[68px] items-center justify-center rounded-full border border-[#e7e6ef] bg-gradient-to-br from-white to-[#f4eaff] text-[#1f2440] shadow-[0_12px_28px_-8px_rgba(73,68,111,0.18)]"
-                  >
-                    <etapa.icon size={24} />
-                  </div>
-                  <h3 className="font-sans text-sm font-bold text-[#181d27]">{etapa.label}</h3>
-                  <p className="text-xs text-[#767f90] max-w-[150px] leading-relaxed">{etapa.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── CAPACIDADES ────────────────────────────────────── */}
-        <section className="py-20" id="recursos">
-          <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
-            <p className="text-center text-[11px] font-extrabold uppercase tracking-[0.08em] mb-2.5" style={{ color: "#7b70ff" }}>
-              Tudo que você precisa
-            </p>
-            <h2 className="text-center font-sans text-2xl sm:text-3xl font-bold tracking-tight text-[#181d27]">
-              Capacidades que trabalham juntas para simplificar sua operação
-            </h2>
-
-            <div className="mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {CAPACIDADES.map(({ icon: Icon, title, desc }) => (
-                <div
-                  key={title}
-                  className="group rounded-xl border border-gray-100 bg-white p-6 shadow-[0_3px_10px_-4px_rgba(28,34,54,0.06)] transition hover:-translate-y-1 hover:border-violet-200 hover:shadow-[0_16px_36px_-12px_rgba(54,43,111,0.16)]"
-                >
-                  <div
-                    className="flex h-11 w-11 items-center justify-center rounded-[11px] mb-5"
-                    style={{ background: "linear-gradient(135deg,#eaf9ff,#f6e6ff)", color: "#5545da" }}
-                  >
-                    <Icon size={20} />
-                  </div>
-                  <h3 className="font-sans text-[15px] font-bold text-[#181d27]">{title}</h3>
-                  <p className="mt-2 text-[13px] text-[#737c8d] leading-relaxed">{desc}</p>
-                  <span className="mt-4 inline-flex items-center gap-1.5 text-[12px] font-bold text-[#6d59ef] opacity-0 group-hover:opacity-100 transition">
+                  <h3 className="my-3 font-[family-name:var(--lp-font-display)] text-[36px] font-bold uppercase leading-[.9]">
+                    Eventos &amp; ingressos
+                  </h3>
+                  <p className="text-[14px] leading-[1.5] opacity-90">
+                    Crie eventos, configure lotes e receba com um checkout rápido e seguro.
+                  </p>
+                  <svg className="lp-blk-art mt-auto self-end opacity-55" width="110" height="82" viewBox="0 0 120 90" fill="none" stroke="#fff" strokeWidth="1.4">
+                    <rect x="8" y="20" width="70" height="46" rx="6" />
+                    <path d="M8 40h70M43 20v46" strokeDasharray="3 3" />
+                    <circle cx="95" cy="55" r="18" />
+                  </svg>
+                  <div className="lp-blk-go mt-4 text-[12px] uppercase tracking-[0.08em] font-[family-name:var(--lp-font-mono)]">
                     Saiba mais →
-                  </span>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
 
-        {/* ── STATS ──────────────────────────────────────────── */}
-        <section className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="rounded-2xl border border-[#f0f1f6] bg-gradient-to-r from-[#fbfcff] via-white to-[#fbfcff] px-6 sm:px-10 py-10">
-            <p className="text-center text-[12px] font-bold text-[#2f3444] mb-8">
-              Produtores e estabelecimentos que confiam na Nokta
-            </p>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-              {STATS.map(({ icon: Icon, value, label }) => (
-                <div key={label} className="flex items-center justify-center gap-3.5">
-                  <span
-                    className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl"
-                    style={{ background: "linear-gradient(135deg,#e8fbff,#f7e5ff)", color: "#6a5cf3" }}
+                <div className="lp-blk lp-reveal lp-rd2 flex min-h-[320px] flex-col overflow-hidden rounded-[22px] bg-[#7c3aed] p-[26px_24px_28px] text-white transition-transform hover:-translate-y-2 hover:shadow-[0_30px_60px_-20px_rgba(124,58,237,.6)]">
+                  <div className="text-[11px] uppercase tracking-[0.14em] opacity-80 font-[family-name:var(--lp-font-mono)]">
+                    03 · Operação
+                  </div>
+                  <h3 className="my-3 font-[family-name:var(--lp-font-display)] text-[36px] font-bold uppercase leading-[.9]">
+                    Comandas em tempo real
+                  </h3>
+                  <p className="text-[14px] leading-[1.5] opacity-90">
+                    Mesas, comandas e pedidos que se atualizam entre salão e cozinha.
+                  </p>
+                  <svg className="lp-blk-art mt-auto self-end opacity-55" width="110" height="82" viewBox="0 0 120 90" fill="none" stroke="#fff" strokeWidth="1.4">
+                    <rect x="10" y="14" width="100" height="62" rx="6" />
+                    <path d="M10 34h100M35 14v62M35 55h75" />
+                  </svg>
+                  <div className="lp-blk-go mt-4 text-[12px] uppercase tracking-[0.08em] font-[family-name:var(--lp-font-mono)]">
+                    Saiba mais →
+                  </div>
+                </div>
+
+                <div className="lp-blk lp-reveal lp-rd3 flex min-h-[320px] flex-col overflow-hidden rounded-[22px] bg-[#c9f24e] p-[26px_24px_28px] text-[#0b0616] transition-transform hover:-translate-y-2 hover:shadow-[0_30px_60px_-20px_rgba(201,242,78,.7)]">
+                  <div className="text-[11px] uppercase tracking-[0.14em] opacity-80 font-[family-name:var(--lp-font-mono)]">
+                    05 · Gestão
+                  </div>
+                  <h3 className="my-3 font-[family-name:var(--lp-font-display)] text-[36px] font-bold uppercase leading-[.9]">
+                    Estoque &amp; financeiro
+                  </h3>
+                  <p className="text-[14px] leading-[1.5] opacity-90">
+                    Baixa automática a cada venda e o caixa consolidado num painel só.
+                  </p>
+                  <svg className="lp-blk-art mt-auto self-end opacity-70" width="110" height="82" viewBox="0 0 120 90" fill="none" stroke="#0b0616" strokeWidth="1.4">
+                    <path d="M12 70V44M34 70V26M56 70V52M78 70V16M100 70V38" />
+                    <path d="M8 70h100" />
+                  </svg>
+                  <div className="lp-blk-go mt-4 text-[12px] uppercase tracking-[0.08em] font-[family-name:var(--lp-font-mono)]">
+                    Saiba mais →
+                  </div>
+                </div>
+
+                <div className="lp-blk lp-reveal lp-rd4 flex min-h-[320px] flex-col overflow-hidden rounded-[22px] bg-[#28c2e0] p-[26px_24px_28px] text-[#0b0616] transition-transform hover:-translate-y-2 hover:shadow-[0_30px_60px_-20px_rgba(40,194,224,.6)]">
+                  <div className="text-[11px] uppercase tracking-[0.14em] opacity-80 font-[family-name:var(--lp-font-mono)]">
+                    06 · Análise
+                  </div>
+                  <h3 className="my-3 font-[family-name:var(--lp-font-display)] text-[36px] font-bold uppercase leading-[.9]">
+                    Insights de tudo
+                  </h3>
+                  <p className="text-[14px] leading-[1.5] opacity-90">
+                    Vendas, operação e desempenho reunidos para decidir mais rápido.
+                  </p>
+                  <svg className="lp-blk-art mt-auto self-end opacity-70" width="110" height="82" viewBox="0 0 120 90" fill="none" stroke="#0b0616" strokeWidth="1.4">
+                    <path d="M10 66L40 40l22 16 38-42" />
+                    <circle cx="40" cy="40" r="4" />
+                    <circle cx="62" cy="56" r="4" />
+                  </svg>
+                  <div className="lp-blk-go mt-4 text-[12px] uppercase tracking-[0.08em] font-[family-name:var(--lp-font-mono)]">
+                    Saiba mais →
+                  </div>
+                </div>
+              </div>
+
+              <div className="lp-reveal lp-rd2 mt-4 flex flex-wrap gap-3">
+                {MODULOS_EXTRA.map((m) => (
+                  <div
+                    key={m}
+                    className="inline-flex items-center gap-2.5 rounded-full border border-[#ece6f8] bg-white px-5 py-3 text-[13px] text-[#4a4066] font-[family-name:var(--lp-font-mono)] transition-all hover:-translate-y-0.5 hover:border-[#7c3aed]"
                   >
-                    <Icon size={20} />
-                  </span>
-                  <div>
-                    <strong className="block text-[26px] font-extrabold tracking-tight text-[#181d27] leading-none">{value}</strong>
-                    <span className="block mt-1 text-[11px] text-[#7c8390]">{label}</span>
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#7c3aed]" />
+                    {m}
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* ── DEPOIMENTOS ────────────────────────────────────── */}
-        <section className="py-20">
-          <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
-            <h2 className="text-center font-sans text-2xl sm:text-3xl font-bold tracking-tight text-[#181d27]">
-              Quem usa, recomenda
-            </h2>
-
-            <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4">
-              {DEPOIMENTOS.map((d) => (
-                <div key={d.name} className="rounded-xl border border-gray-100 bg-white p-6 shadow-[0_3px_10px_-4px_rgba(28,34,54,0.05)]">
-                  <div className="grid grid-cols-[42px_1fr] gap-3.5 items-start">
-                    <span
-                      className="flex h-[42px] w-[42px] items-center justify-center rounded-full text-[13px] font-extrabold text-white"
-                      style={{ background: GRADIENT }}
-                    >
-                      {d.initials}
-                    </span>
-                    <p className="text-[12.5px] text-[#767e8d] leading-relaxed">{d.quote}</p>
-                  </div>
-                  <strong className="block mt-5 text-[13px] font-bold text-[#181d27]">{d.name}</strong>
-                  <span className="block mt-0.5 text-[11px] text-[#7d8492]">{d.role}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── CTA FINAL ──────────────────────────────────────── */}
-        <section className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 pb-20">
-          <div
-            className="rounded-2xl px-6 sm:px-16 py-10 sm:py-12 flex flex-col sm:flex-row items-center justify-between gap-8"
-            style={{ background: "linear-gradient(100deg,#eef7ff 0%,#eff0ff 48%,#fbe8fb 100%)" }}
-          >
-            <div className="text-center sm:text-left">
-              <h2 className="font-sans text-[26px] sm:text-3xl font-bold tracking-tight text-[#181d27] leading-tight">
-                Pronto para transformar
-                <br />a sua operação?
+          {/* ── CTA ───────────────────────────────────────────── */}
+          <div className="px-5 sm:px-8" id="cta">
+            <section
+              className="lp-cta-shimmer lp-reveal mx-auto max-w-[1320px] overflow-hidden rounded-[28px] px-6 py-20 text-center sm:px-10"
+              style={{ background: "linear-gradient(120deg,#4712a8,#7c3aed 40%,#e5308f 75%,#7c3aed)" }}
+            >
+              <h2 className="relative font-[family-name:var(--lp-font-display)] text-[44px] font-bold uppercase leading-[.86] text-white sm:text-[64px] lg:text-[80px]">
+                Pronto pra
+                <br />a próxima etapa?
               </h2>
-              <p className="mt-3 text-sm text-[#727b8d]">Comece agora e leve sua gestão para o próximo nível.</p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto shrink-0">
-              <a
-                href={cadastroUrl}
-                className="inline-flex items-center justify-center rounded-lg px-6 py-3.5 text-sm font-bold text-white shadow-[0_10px_24px_-6px_rgba(123,97,255,0.4)] transition hover:-translate-y-0.5 w-full sm:w-auto"
-                style={{ background: GRADIENT }}
-              >
-                Começar agora
-              </a>
-              <a
-                href="mailto:contato@noktatickets.com.br"
-                className="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-6 py-3.5 text-sm font-bold text-[#181d27] hover:bg-gray-50 transition w-full sm:w-auto"
-              >
-                Falar com especialista
-              </a>
-            </div>
+              <p className="relative mx-auto mt-5 max-w-[520px] text-[18px] text-[#f0e6ff]">
+                Comece agora e leve a gestão do seu evento pro próximo nível. Ative só os módulos
+                que você precisa.
+              </p>
+              <div className="relative mt-8 flex flex-wrap justify-center gap-3.5">
+                <a
+                  href={cadastroUrl}
+                  className="group inline-flex items-center gap-2 rounded-full bg-[#c9f24e] px-[30px] py-[17px] text-[14px] font-bold uppercase tracking-[0.09em] text-[#0b0616] font-[family-name:var(--lp-font-mono)] shadow-[0_12px_30px_-12px_rgba(201,242,78,.9)] transition-all hover:-translate-y-0.5"
+                >
+                  Começar agora
+                  <span className="transition-transform group-hover:translate-x-1">→</span>
+                </a>
+                <a
+                  href="mailto:contato@noktatickets.com.br"
+                  className="inline-flex items-center gap-2 rounded-full border border-white/50 px-[30px] py-[17px] text-[14px] font-bold uppercase tracking-[0.09em] text-white font-[family-name:var(--lp-font-mono)] transition-all hover:-translate-y-0.5"
+                >
+                  Falar com especialista
+                </a>
+              </div>
+            </section>
           </div>
-        </section>
-      </main>
+        </main>
 
-      {/* ── FOOTER ─────────────────────────────────────────── */}
-      <footer className="w-full border-t border-gray-100">
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <BrandMark />
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-[#717680]">
-            <Link href="/termos" className="hover:text-[#181d27] transition">Termos de Uso</Link>
-            <Link href="/privacidade" className="hover:text-[#181d27] transition">Política de Privacidade</Link>
-            <a href="mailto:contato@noktatickets.com.br" className="hover:text-[#181d27] transition">Contato</a>
+        {/* ── FOOTER ────────────────────────────────────────── */}
+        <footer className="mt-20 border-t border-[#ece6f8] px-5 py-[60px] sm:px-8">
+          <div className="mx-auto flex max-w-[1320px] flex-wrap justify-between gap-10">
+            <div className="max-w-[320px]">
+              <Brand />
+              <p className="mt-3.5 text-[12.5px] leading-[1.7] text-[#8b81a6] font-[family-name:var(--lp-font-mono)]">
+                Eventos, ingressos, reservas, operação, cardápio, estoque, financeiro e insights:
+                tudo numa única plataforma, com os módulos que a sua operação ativa.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-14 text-[13px] font-[family-name:var(--lp-font-mono)]">
+              <div>
+                <b className="mb-3.5 block text-[11px] uppercase tracking-[0.14em] text-[#7c3aed]">Plataforma</b>
+                <a href="#modulos" className="block py-1 text-[#4a4066] transition-all hover:translate-x-1 hover:text-[#140a24]">Módulos</a>
+                <a href="#jornada" className="block py-1 text-[#4a4066] transition-all hover:translate-x-1 hover:text-[#140a24]">Jornada</a>
+                <a href={ticketsUrl} className="block py-1 text-[#4a4066] transition-all hover:translate-x-1 hover:text-[#140a24]">Bilheteria</a>
+              </div>
+              <div>
+                <b className="mb-3.5 block text-[11px] uppercase tracking-[0.14em] text-[#7c3aed]">Empresa</b>
+                <a href={entrarUrl} className="block py-1 text-[#4a4066] transition-all hover:translate-x-1 hover:text-[#140a24]">Entrar</a>
+                <a href="mailto:contato@noktatickets.com.br" className="block py-1 text-[#4a4066] transition-all hover:translate-x-1 hover:text-[#140a24]">Contato</a>
+              </div>
+              <div>
+                <b className="mb-3.5 block text-[11px] uppercase tracking-[0.14em] text-[#7c3aed]">Legal</b>
+                <Link href="/termos" className="block py-1 text-[#4a4066] transition-all hover:translate-x-1 hover:text-[#140a24]">Termos de Uso</Link>
+                <Link href="/privacidade" className="block py-1 text-[#4a4066] transition-all hover:translate-x-1 hover:text-[#140a24]">Privacidade</Link>
+                <Link href="/politica-de-cancelamento" className="block py-1 text-[#4a4066] transition-all hover:translate-x-1 hover:text-[#140a24]">Reembolso</Link>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 pb-8 text-xs text-[#a4a7ae] text-center sm:text-left">
-          Nokta Tecnologia LTDA • CNPJ: 59.386.582/0001-39
-        </div>
-      </footer>
+          <div className="mx-auto mt-10 max-w-[1320px] text-xs text-[#a4a7ae]">
+            Nokta Tecnologia LTDA • CNPJ: 59.386.582/0001-39
+          </div>
+        </footer>
+      </div>
+
+      <svg className="lp-grain" xmlns="http://www.w3.org/2000/svg">
+        <filter id="lp-noise">
+          <feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves={3} stitchTiles="stitch" />
+          <feColorMatrix type="saturate" values="0" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#lp-noise)" />
+      </svg>
     </div>
   );
 }

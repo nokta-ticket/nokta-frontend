@@ -1,0 +1,198 @@
+/* Landing institucional (www.nokta.live) — animações que o Tailwind puro não
+   cobre sem config extra (ticker infinito, desenho de linha SVG, halo/anel
+   girando, contador, reveal on scroll). Escopado com prefixo `lp-` — nunca
+   reaproveitado fora desta página. */
+
+.lp-ticker-track {
+  animation: lp-scroll-x 42s linear infinite;
+}
+.lp-ticker:hover .lp-ticker-track {
+  animation-play-state: paused;
+}
+@keyframes lp-scroll-x {
+  to { transform: translateX(-50%); }
+}
+
+.lp-live-dot {
+  animation: lp-blink 1.4s steps(2, end) infinite;
+}
+@keyframes lp-blink {
+  50% { opacity: 0.25; }
+}
+
+.lp-pulse-dot {
+  animation: lp-pulse-dot 2s ease-in-out infinite;
+}
+@keyframes lp-pulse-dot {
+  50% { transform: scale(1.5); opacity: 0.6; }
+}
+
+.lp-hero-glow {
+  animation: lp-glow-drift 16s ease-in-out infinite alternate;
+}
+@keyframes lp-glow-drift {
+  to { transform: translate3d(1.5%, -1.5%, 0) scale(1.06); }
+}
+
+.lp-anim {
+  opacity: 0;
+  transform: translateY(24px);
+  animation: lp-rise 0.9s cubic-bezier(.16,1,.3,1) forwards;
+}
+.lp-d1 { animation-delay: 0.05s; }
+.lp-d2 { animation-delay: 0.15s; }
+.lp-d3 { animation-delay: 0.25s; }
+.lp-d4 { animation-delay: 0.35s; }
+.lp-d5 { animation-delay: 0.45s; }
+@keyframes lp-rise {
+  to { opacity: 1; transform: none; }
+}
+
+.lp-const {
+  opacity: 0;
+  transform: scale(0.96);
+  animation: lp-rise-scale 1s cubic-bezier(.16,1,.3,1) 0.3s forwards;
+}
+@keyframes lp-rise-scale {
+  to { opacity: 1; transform: none; }
+}
+
+.lp-const-lines path {
+  stroke-dasharray: 400;
+  stroke-dashoffset: 400;
+  animation: lp-draw 1.4s cubic-bezier(.16,1,.3,1) 0.6s forwards;
+}
+.lp-const-lines circle {
+  opacity: 0;
+  animation: lp-fade-in 0.5s ease 1.6s forwards;
+}
+@keyframes lp-draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes lp-fade-in {
+  to { opacity: 1; }
+}
+
+.lp-node-ico {
+  transition: transform 0.3s cubic-bezier(.16,1,.3,1), box-shadow 0.3s cubic-bezier(.16,1,.3,1);
+}
+.lp-node-ico:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px -14px rgba(124, 58, 237, 0.45);
+}
+
+.lp-halo {
+  animation: lp-halo 3.4s ease-in-out infinite;
+}
+@keyframes lp-halo {
+  50% { transform: scale(1.12); opacity: 0.7; }
+}
+
+.lp-core-disc,
+.lp-brand-b {
+  animation: lp-spin 8s linear infinite;
+}
+.lp-ring {
+  animation: lp-spin 24s linear infinite;
+}
+@keyframes lp-spin {
+  to { transform: rotate(360deg); }
+}
+
+.lp-float-a { animation: lp-float 6s ease-in-out infinite; }
+.lp-float-b { animation: lp-float 7s ease-in-out infinite 0.8s; }
+.lp-float-c { animation: lp-float 6.5s ease-in-out infinite 0.4s; }
+@keyframes lp-float {
+  50% { transform: translateY(-12px); }
+}
+
+.lp-spark i {
+  transform-origin: bottom;
+  animation: lp-eq 1.4s ease-in-out infinite;
+}
+.lp-spark i:nth-child(1) { animation-delay: 0s; }
+.lp-spark i:nth-child(2) { animation-delay: 0.1s; }
+.lp-spark i:nth-child(3) { animation-delay: 0.2s; }
+.lp-spark i:nth-child(4) { animation-delay: 0.3s; }
+.lp-spark i:nth-child(5) { animation-delay: 0.4s; }
+.lp-spark i:nth-child(6) { animation-delay: 0.5s; }
+.lp-spark i:nth-child(7) { animation-delay: 0.6s; }
+@keyframes lp-eq {
+  50% { transform: scaleY(0.62); }
+}
+
+.lp-link-arrow {
+  animation: lp-nudge 2s ease-in-out infinite;
+}
+@keyframes lp-nudge {
+  50% { transform: translateX(4px); }
+}
+
+.lp-blk-art {
+  transition: transform 0.4s cubic-bezier(.16,1,.3,1);
+}
+.lp-blk:hover .lp-blk-art {
+  transform: translate(-4px, -4px) rotate(-3deg);
+}
+.lp-blk:hover .lp-blk-ic {
+  transform: translateY(-4px) scale(1.06);
+}
+.lp-blk-go {
+  transition: letter-spacing 0.25s cubic-bezier(.16,1,.3,1);
+}
+.lp-blk:hover .lp-blk-go {
+  letter-spacing: 0.2em;
+}
+
+.lp-cta-shimmer {
+  background-size: 200% 200%;
+  animation: lp-shimmer 10s ease infinite;
+}
+@keyframes lp-shimmer {
+  50% { background-position: 100% 50%; }
+}
+
+.lp-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s cubic-bezier(.16,1,.3,1), transform 0.7s cubic-bezier(.16,1,.3,1);
+}
+.lp-reveal.lp-in {
+  opacity: 1;
+  transform: none;
+}
+.lp-reveal.lp-rd1 { transition-delay: 0.08s; }
+.lp-reveal.lp-rd2 { transition-delay: 0.16s; }
+.lp-reveal.lp-rd3 { transition-delay: 0.24s; }
+.lp-reveal.lp-rd4 { transition-delay: 0.32s; }
+
+.lp-grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: multiply;
+  z-index: 99;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-root * {
+    animation: none !important;
+    transition-duration: 0.001ms !important;
+  }
+  .lp-root .lp-const,
+  .lp-root .lp-anim {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .lp-root .lp-const-lines path {
+    stroke-dashoffset: 0 !important;
+  }
+  .lp-root .lp-const-lines circle {
+    opacity: 1 !important;
+  }
+  .lp-root .lp-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
