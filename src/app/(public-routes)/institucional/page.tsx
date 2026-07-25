@@ -314,7 +314,7 @@ export default function InstitucionalPage() {
                   <Wallet size={26} className="text-[#7c3aed]" strokeWidth={1.8} />
                 </div>
 
-                <div className="lp-float-a absolute left-[-18px] top-[-28px] z-[4] w-[186px] rounded-[14px] border border-[#ece6f8] bg-white p-[13px_15px] shadow-[0_22px_45px_-18px_rgba(20,10,36,.3)]">
+                <div className="lp-float-a absolute left-[calc(50%-82px)] top-[2px] z-[4] w-[186px] rounded-[14px] border border-[#ece6f8] bg-white p-[13px_15px] shadow-[0_22px_45px_-18px_rgba(20,10,36,.3)]">
                   <div className="mb-1.5 text-[9.5px] uppercase tracking-[0.14em] text-[#8b81a6] font-[family-name:var(--lp-font-mono)]">
                     Ingressos · lote 2
                   </div>
