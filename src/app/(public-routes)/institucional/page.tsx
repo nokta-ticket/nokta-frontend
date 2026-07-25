@@ -314,7 +314,7 @@ export default function InstitucionalPage() {
                   <Wallet size={26} className="text-[#7c3aed]" strokeWidth={1.8} />
                 </div>
 
-                <div className="lp-float-a absolute left-[150px] top-[20px] z-[4] w-[186px] rounded-[14px] border border-[#ece6f8] bg-white p-[13px_15px] shadow-[0_22px_45px_-18px_rgba(20,10,36,.3)]">
+                <div className="lp-float-a absolute left-[-18px] top-[-28px] z-[4] w-[186px] rounded-[14px] border border-[#ece6f8] bg-white p-[13px_15px] shadow-[0_22px_45px_-18px_rgba(20,10,36,.3)]">
                   <div className="mb-1.5 text-[9.5px] uppercase tracking-[0.14em] text-[#8b81a6] font-[family-name:var(--lp-font-mono)]">
                     Ingressos · lote 2
                   </div>
@@ -322,7 +322,7 @@ export default function InstitucionalPage() {
                   <div className="mt-1 text-[11px] text-[#15a34a] font-[family-name:var(--lp-font-mono)]">↑ 1.240 emitidos hoje</div>
                 </div>
 
-                <div className="lp-float-b absolute right-0 top-[200px] z-[4] w-[196px] rounded-[14px] border border-[#ece6f8] bg-white p-[13px_15px] shadow-[0_22px_45px_-18px_rgba(20,10,36,.3)]">
+                <div className="lp-float-b absolute right-[-30px] top-[228px] z-[4] w-[196px] rounded-[14px] border border-[#ece6f8] bg-white p-[13px_15px] shadow-[0_22px_45px_-18px_rgba(20,10,36,.3)]">
                   <div className="mb-1.5 text-[9.5px] uppercase tracking-[0.14em] text-[#8b81a6] font-[family-name:var(--lp-font-mono)]">
                     Comandas · salão
                   </div>
@@ -343,7 +343,7 @@ export default function InstitucionalPage() {
                   </div>
                 </div>
 
-                <div className="lp-float-c absolute left-[120px] top-[470px] z-[4] w-[190px] rounded-[14px] border border-[#ece6f8] bg-white p-[13px_15px] shadow-[0_22px_45px_-18px_rgba(20,10,36,.3)]">
+                <div className="lp-float-c absolute left-[calc(50%-80px)] top-[478px] z-[4] w-[190px] rounded-[14px] border border-[#ece6f8] bg-white p-[13px_15px] shadow-[0_22px_45px_-18px_rgba(20,10,36,.3)]">
                   <div className="mb-1.5 text-[9.5px] uppercase tracking-[0.14em] text-[#8b81a6] font-[family-name:var(--lp-font-mono)]">
                     Financeiro · caixa
                   </div>
