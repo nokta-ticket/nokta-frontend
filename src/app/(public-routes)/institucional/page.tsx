@@ -120,7 +120,7 @@ export default function InstitucionalPage() {
   return (
     <div
       id="institucional-lp"
-      className="lp-root fixed inset-0 z-50 flex flex-col overflow-x-hidden overflow-y-auto bg-white text-[#140a24]"
+      className={`lp-root fixed inset-0 z-50 flex w-full max-w-full flex-col overflow-x-hidden overflow-y-auto bg-white text-[#140a24] ${instrumentSans.variable} ${geistMono.variable}`}
       style={
         {
           "--lp-font-display": "'Big Shoulders Display', system-ui, sans-serif",
@@ -133,8 +133,7 @@ export default function InstitucionalPage() {
         rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@400;600;700&display=swap"
       />
-      <div className={`${instrumentSans.variable} ${geistMono.variable} contents`}>
-        <ScrollEffects />
+      <ScrollEffects />
 
         {/* ── TICKER ────────────────────────────────────────── */}
         <div className="lp-ticker flex h-[46px] items-center overflow-hidden bg-[#0b0616] text-[13px] tracking-[0.04em] text-[#cdb9ff] font-[family-name:var(--lp-font-mono)]">
@@ -142,7 +141,7 @@ export default function InstitucionalPage() {
             <span className="lp-live-dot h-[7px] w-[7px] rounded-full bg-[#0b0616]" />
             ao vivo
           </div>
-          <div className="relative h-full flex-1 overflow-hidden">
+          <div className="relative h-full min-w-0 flex-1 overflow-hidden">
             <div className="lp-ticker-track flex h-full w-max items-center">
               {[0, 1].map((copy) => (
                 <div key={copy} className="flex items-center">
@@ -612,7 +611,6 @@ export default function InstitucionalPage() {
             Nokta Tecnologia LTDA • CNPJ: 59.386.582/0001-39
           </div>
         </footer>
-      </div>
 
       <svg className="lp-grain" xmlns="http://www.w3.org/2000/svg">
         <filter id="lp-noise">
