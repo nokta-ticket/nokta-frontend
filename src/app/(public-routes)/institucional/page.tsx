@@ -163,7 +163,7 @@ export default function InstitucionalPage() {
         </div>
 
         {/* ── NAV ───────────────────────────────────────────── */}
-        <div className="sticky top-0 z-[60] border-b border-[#ece6f8] bg-white/[.82] backdrop-blur-md">
+        <div className="sticky top-0 z-[60] border-b border-[#ece6f8] bg-white/95">
           <div className="mx-auto flex max-w-[1320px] items-center justify-between gap-3 px-4 py-[18px] sm:px-8 sm:py-[22px]">
             <Brand className="text-[22px] sm:text-[30px]" />
             <nav className="hidden gap-[38px] text-[13px] tracking-[0.06em] text-[#4a4066] font-[family-name:var(--lp-font-mono)] lg:flex">
@@ -204,7 +204,7 @@ export default function InstitucionalPage() {
                   </span>
                 </div>
 
-                <h1 className="lp-anim lp-d2 mb-6 font-[family-name:var(--lp-font-display)] text-[52px] font-bold uppercase leading-[1.02] sm:text-[72px] lg:text-[92px]">
+                <h1 className="lp-anim lp-d2 mb-6 font-[family-name:var(--lp-font-display)] text-[52px] font-bold uppercase leading-[1.18] sm:text-[72px] lg:text-[92px]">
                   Toda a
                   <br />
                   operação
