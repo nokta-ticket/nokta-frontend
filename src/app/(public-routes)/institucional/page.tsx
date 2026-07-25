@@ -204,7 +204,7 @@ export default function InstitucionalPage() {
                   </span>
                 </div>
 
-                <h1 className="lp-anim lp-d2 mb-6 font-[family-name:var(--lp-font-display)] text-[52px] font-bold uppercase leading-[.86] sm:text-[72px] lg:text-[92px]">
+                <h1 className="lp-anim lp-d2 mb-6 font-[family-name:var(--lp-font-display)] text-[52px] font-bold uppercase leading-[1.02] sm:text-[72px] lg:text-[92px]">
                   Toda a
                   <br />
                   operação
@@ -550,8 +550,8 @@ export default function InstitucionalPage() {
               className="lp-cta-shimmer lp-reveal mx-auto max-w-[1320px] overflow-hidden rounded-[28px] px-6 py-20 text-center sm:px-10"
               style={{ background: "linear-gradient(120deg,#4712a8,#7c3aed 40%,#e5308f 75%,#7c3aed)" }}
             >
-              <h2 className="relative font-[family-name:var(--lp-font-display)] text-[44px] font-bold uppercase leading-[.86] text-white sm:text-[64px] lg:text-[80px]">
-                Pronto pra
+              <h2 className="relative font-[family-name:var(--lp-font-display)] text-[44px] font-bold uppercase leading-[1.02] text-white sm:text-[64px] lg:text-[80px]">
+                Pronto para
                 <br />a próxima etapa?
               </h2>
               <p className="relative mx-auto mt-5 max-w-[520px] text-[18px] text-[#f0e6ff]">
@@ -611,14 +611,6 @@ export default function InstitucionalPage() {
             Nokta Tecnologia LTDA • CNPJ: 59.386.582/0001-39
           </div>
         </footer>
-
-      <svg className="lp-grain" xmlns="http://www.w3.org/2000/svg">
-        <filter id="lp-noise">
-          <feTurbulence type="fractalNoise" baseFrequency="0.82" numOctaves={3} stitchTiles="stitch" />
-          <feColorMatrix type="saturate" values="0" />
-        </filter>
-        <rect width="100%" height="100%" filter="url(#lp-noise)" />
-      </svg>
     </div>
   );
 }

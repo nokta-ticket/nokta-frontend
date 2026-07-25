@@ -166,15 +166,6 @@
 .lp-reveal.lp-rd3 { transition-delay: 0.24s; }
 .lp-reveal.lp-rd4 { transition-delay: 0.32s; }
 
-.lp-grain {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.05;
-  mix-blend-mode: multiply;
-  z-index: 99;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .lp-root * {
     animation: none !important;
