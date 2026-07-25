@@ -94,11 +94,11 @@ const MODULOS_EXTRA = [
   "Repasses",
 ];
 
-function Brand({ className = "" }: { className?: string }) {
+function Brand({ className = "text-[30px]" }: { className?: string }) {
   return (
     <Link
       href="/"
-      className={`flex items-center gap-[11px] font-[family-name:var(--lp-font-display)] font-bold text-[30px] lowercase tracking-[0.01em] text-[#140a24] ${className}`}
+      className={`flex items-center gap-[11px] font-[family-name:var(--lp-font-display)] font-bold lowercase tracking-[0.01em] text-[#140a24] ${className}`}
     >
       <span
         className="lp-brand-b block h-[26px] w-[26px] rounded-full"
@@ -164,20 +164,20 @@ export default function InstitucionalPage() {
 
         {/* ── NAV ───────────────────────────────────────────── */}
         <div className="sticky top-0 z-[60] border-b border-[#ece6f8] bg-white/[.82] backdrop-blur-md">
-          <div className="mx-auto flex max-w-[1320px] items-center justify-between px-5 py-[22px] sm:px-8">
-            <Brand />
+          <div className="mx-auto flex max-w-[1320px] items-center justify-between gap-3 px-4 py-[18px] sm:px-8 sm:py-[22px]">
+            <Brand className="text-[22px] sm:text-[30px]" />
             <nav className="hidden gap-[38px] text-[13px] tracking-[0.06em] text-[#4a4066] font-[family-name:var(--lp-font-mono)] lg:flex">
               <a href="#jornada" className="hover:text-[#7c3aed] transition-colors">JORNADA</a>
               <a href="#modulos" className="hover:text-[#7c3aed] transition-colors">MÓDULOS</a>
               <a href="#cta" className="hover:text-[#7c3aed] transition-colors">PLATAFORMA</a>
             </nav>
-            <div className="flex items-center gap-5">
-              <a href={entrarUrl} className="text-[13px] font-[family-name:var(--lp-font-mono)] hover:text-[#7c3aed] transition-colors">
+            <div className="flex items-center gap-2.5 sm:gap-5">
+              <a href={entrarUrl} className="hidden text-[13px] font-[family-name:var(--lp-font-mono)] hover:text-[#7c3aed] transition-colors sm:inline">
                 Entrar
               </a>
               <a
                 href={cadastroUrl}
-                className="inline-flex items-center gap-2 rounded-full bg-[#c9f24e] px-6 py-[14px] text-[13px] font-bold uppercase tracking-[0.09em] text-[#0b0616] font-[family-name:var(--lp-font-mono)] shadow-[0_12px_30px_-12px_rgba(201,242,78,.9)] transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_42px_-12px_rgba(201,242,78,1)]"
+                className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[#c9f24e] px-4 py-[10px] text-[11px] font-bold uppercase tracking-[0.06em] text-[#0b0616] font-[family-name:var(--lp-font-mono)] shadow-[0_12px_30px_-12px_rgba(201,242,78,.9)] transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_42px_-12px_rgba(201,242,78,1)] sm:gap-2 sm:px-6 sm:py-[14px] sm:text-[13px] sm:tracking-[0.09em]"
               >
                 Começar agora
               </a>
