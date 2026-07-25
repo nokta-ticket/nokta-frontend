@@ -120,7 +120,7 @@ export default function InstitucionalPage() {
   return (
     <div
       id="institucional-lp"
-      className="lp-root fixed inset-0 z-50 flex flex-col overflow-y-auto bg-white text-[#140a24]"
+      className="lp-root fixed inset-0 z-50 flex flex-col overflow-x-hidden overflow-y-auto bg-white text-[#140a24]"
       style={
         {
           "--lp-font-display": "'Big Shoulders Display', system-ui, sans-serif",
