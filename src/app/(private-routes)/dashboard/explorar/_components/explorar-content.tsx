@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import Link from "next/link";
-import { Sparkles } from "lucide-react";
 import { useOrganizations } from "@/context/OrganizationContext";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
@@ -21,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import {
   useActivateBusinessNeeds,
   useBusinessNeedsCatalog,
-  useBusinessProfile,
   useCapabilities,
   useDeactivateCapability,
   useDismissRecommendation,
@@ -44,7 +41,6 @@ export function ExplorarContent() {
   const catalog = useBusinessNeedsCatalog(orgId);
   const capabilities = useCapabilities(orgId);
   const recommendations = useRecommendations(orgId);
-  const businessProfile = useBusinessProfile(orgId);
   const activateNeeds = useActivateBusinessNeeds(orgId ?? -1);
   const deactivate = useDeactivateCapability(orgId ?? -1);
   const dismiss = useDismissRecommendation(orgId ?? -1);
@@ -153,16 +149,6 @@ export function ExplorarContent() {
   return (
     <PageContainer>
       <Header />
-
-      {businessProfile.data && !businessProfile.data.profileCompletedAt ? (
-        <Link
-          href="/dashboard/onboarding"
-          className="flex items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 p-3 text-sm text-violet-800 hover:bg-violet-100"
-        >
-          <Sparkles size={16} />
-          Complete o perfil da sua organização para receber recomendações melhores.
-        </Link>
-      ) : null}
 
       {!recommendations.isError ? (
         <RecommendationsPanel recommendations={recommendations.data ?? []} onDismiss={handleDismiss} dismissingKey={dismissingKey} />

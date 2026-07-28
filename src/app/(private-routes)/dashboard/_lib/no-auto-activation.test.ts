@@ -11,10 +11,6 @@ import path from "node:path";
  */
 const FILES_TO_CHECK = [
   "explorar/_components/explorar-content.tsx",
-  "onboarding/_components/step-negocio.tsx",
-  "onboarding/_components/step-operacao.tsx",
-  "onboarding/_components/step-capacidades.tsx",
-  "onboarding/_components/step-revisao.tsx",
   "configuracoes/_components/perfil-operacional-tab.tsx",
 ];
 
