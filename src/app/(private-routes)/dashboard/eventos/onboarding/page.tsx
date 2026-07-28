@@ -34,6 +34,7 @@ import {
 import { BusinessNeedActivationSummary } from "../../_components/business-needs/business-need-activation-summary";
 import { useActivateBusinessNeeds, useBusinessNeedsCatalog, usePreviewBusinessNeedsActivation } from "../../_hooks/use-platform";
 import { BlockSkeleton } from "../../_components/states/loading-state";
+import { OnboardingExtras } from "./_components/onboarding-extras";
 
 const STEP_COUNT = 4;
 
@@ -463,6 +464,7 @@ export default function PlatformOnboardingPage() {
 
   if (step === 0) {
     return (
+      <>
       <div className="flex items-stretch gap-[22px]">
         <section className="flex flex-1 flex-col rounded-[20px] border border-[#ecebf1] bg-white px-5 pb-7 pt-[34px] md:px-10 md:pb-10">
           <OnboardingStepper step={step} />
@@ -580,6 +582,9 @@ export default function PlatformOnboardingPage() {
           })}
         </aside>
       </div>
+
+      <OnboardingExtras />
+      </>
     );
   }
 
