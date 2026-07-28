@@ -10,7 +10,21 @@ import { useAuth } from "@/context/AuthContext";
 import { useOrganizations } from "@/context/OrganizationContext";
 import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
-import { Check, ChevronLeft, ChevronRight, FileText, Layers, ListChecks, RefreshCw } from "lucide-react";
+import {
+  Building2,
+  Check,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Layers,
+  Lightbulb,
+  ListChecks,
+  RefreshCw,
+  Rocket,
+  Store,
+  UsersRound,
+} from "lucide-react";
 import {
   BusinessNeedGroupsPicker,
   createDefaultSelection,
@@ -21,12 +35,68 @@ import { BusinessNeedActivationSummary } from "../../_components/business-needs/
 import { useActivateBusinessNeeds, useBusinessNeedsCatalog, usePreviewBusinessNeedsActivation } from "../../_hooks/use-platform";
 import { BlockSkeleton } from "../../_components/states/loading-state";
 
-const STEPS = [
-  { label: "Identificação", icon: Check },
-  { label: "Operação", icon: Layers },
-  { label: "Termos", icon: FileText },
-  { label: "Resumo", icon: ListChecks },
+const STEP_COUNT = 4;
+
+const IDENTIFICATION_BENEFITS = [
+  {
+    icon: Building2,
+    title: "Centralize tudo em um só lugar",
+    description: "Gerencie eventos, vendas, equipe e finanças.",
+  },
+  {
+    icon: UsersRound,
+    title: "Convide sua equipe",
+    description: "Defina papéis e permissões para cada pessoa.",
+  },
+  {
+    icon: Store,
+    title: "Escale sua operação",
+    description: "Crie e participe de quantas organizações precisar.",
+  },
 ];
+
+const IDENTIFICATION_NEXT_STEPS = [
+  {
+    icon: Store,
+    title: "Crie sua primeira organização",
+    description: "Comece do zero e configure seu espaço.",
+  },
+  {
+    icon: UsersRound,
+    title: "Convide sua equipe",
+    description: "Chame pessoas para ajudar na operação.",
+  },
+  {
+    icon: Lightbulb,
+    title: "Explore todos os recursos",
+    description: "Ative somente os módulos necessários.",
+  },
+];
+
+function OnboardingStepper({ step }: { step: number }) {
+  return (
+    <div className="flex items-center justify-center border-b border-[#f0eef4] px-6 py-6">
+      {Array.from({ length: STEP_COUNT }, (_, i) => i).map((index) => {
+        const active = index === step;
+        const done = index < step;
+        return (
+          <div key={index} className="flex items-center">
+            <div
+              className={`flex h-7 w-7 items-center justify-center rounded-full border text-xs font-semibold transition-colors ${
+                active || done ? "border-violet-600 bg-violet-600 text-white" : "border-[#d9d7e1] bg-white text-[#999ba8]"
+              }`}
+            >
+              {done ? <Check size={13} /> : index + 1}
+            </div>
+            {index < STEP_COUNT - 1 && (
+              <div className={`mx-2 h-px w-10 sm:w-14 ${index < step ? "bg-violet-300" : "bg-[#e3e1e8]"}`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 const BUSINESS_NAME_DRAFT_KEY = "nokta_onboarding_business_name_draft";
 
@@ -392,70 +462,139 @@ export default function PlatformOnboardingPage() {
     );
   }
 
+  if (step === 0) {
+    const firstName = user?.nome ?? "";
+
+    return (
+      <div className="mx-auto grid max-w-[1320px] gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <section className="overflow-hidden rounded-[24px] border border-[#e9e7f0] bg-white shadow-[0_16px_50px_rgba(30,20,60,0.05)]">
+          <OnboardingStepper step={step} />
+
+          <div className="grid gap-8 p-7 md:p-9 lg:grid-cols-[280px_minmax(0,1fr)] lg:p-10">
+            <div>
+              <span className="inline-flex rounded-full bg-[#f2edff] px-3 py-1.5 text-xs font-semibold text-[#6f35df]">
+                Vamos começar{firstName ? `, ${firstName}` : ""}
+              </span>
+
+              <h1 className="mt-5 text-3xl font-bold leading-[1.08] tracking-[-0.035em] text-[#151426] lg:text-[38px]">
+                Crie sua primeira
+                <span className="block text-[#7138e8]">organização</span>
+              </h1>
+
+              <p className="mt-4 max-w-[280px] text-sm leading-6 text-[#6e7181]">
+                A organização é o espaço onde você gerencia eventos, equipe, operação e resultados.
+              </p>
+
+              <div className="mt-8 space-y-5">
+                {IDENTIFICATION_BENEFITS.map((benefit) => {
+                  const Icon = benefit.icon;
+                  return (
+                    <div key={benefit.title} className="flex items-start gap-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f2edff] text-[#7138e8]">
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <strong className="block text-sm font-semibold text-[#242436]">{benefit.title}</strong>
+                        <p className="mt-1 text-xs leading-5 text-[#7a7d8e]">{benefit.description}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                handleCreateWorkspace();
+              }}
+              className="self-center rounded-[20px] border border-[#ebe9f1] bg-white p-6 shadow-[0_12px_32px_rgba(27,20,52,0.04)] lg:p-7"
+            >
+              <h2 className="text-xl font-bold tracking-[-0.02em] text-[#1a192b]">Como deseja chamar sua organização?</h2>
+
+              <p className="mt-2 max-w-[470px] text-sm leading-6 text-[#727586]">
+                Pode ser o nome da sua produtora, estabelecimento, empresa ou o seu próprio nome.
+              </p>
+
+              <label htmlFor="businessName" className="mt-7 block text-sm font-semibold text-[#29283a]">
+                Nome da organização
+              </label>
+
+              <Input
+                id="businessName"
+                value={businessName}
+                onChange={(event) => setBusinessName(event.target.value)}
+                placeholder="Ex.: Produtora Horizonte, Bar Central ou Vitor Reis"
+                autoComplete="organization"
+                autoFocus
+                className="mt-2 h-12 rounded-xl border-[#dcd9e6] px-4 text-sm focus-visible:border-[#7b3ff2] focus-visible:ring-[#7b3ff2]/10"
+              />
+
+              <p className="mt-2 text-xs leading-5 text-[#888a99]">
+                Você poderá alterar esse nome posteriormente nas configurações.
+              </p>
+
+              <Button
+                type="submit"
+                disabled={!canAdvance() || loading}
+                className="mt-7 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#5e21d9] via-[#702bea] to-[#801cff] text-sm font-semibold text-white shadow-[0_10px_24px_rgba(102,38,224,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(102,38,224,0.3)] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0"
+              >
+                {loading ? "Continuando..." : "Continuar"}
+                {!loading && <ChevronRight className="h-4 w-4" />}
+              </Button>
+
+              <div className="mt-4 flex gap-3 rounded-xl bg-gradient-to-r from-[#f6f1ff] to-[#fbf9ff] p-4 text-[#6b35dc]">
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                <p className="text-xs leading-5">
+                  Sua conta pessoal poderá participar de uma ou mais organizações. Depois, você poderá convidar sua equipe.
+                </p>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <aside className="rounded-[24px] border border-[#e9e7f0] bg-white px-7 py-9 shadow-[0_16px_50px_rgba(30,20,60,0.05)]">
+          <h2 className="text-center text-sm font-bold text-[#29283a]">Ainda não tem uma organização</h2>
+
+          <div className="relative mx-auto mt-8 flex h-36 w-44 items-center justify-center">
+            <div className="absolute h-28 w-28 rounded-full bg-[#f3edff] blur-xl" />
+            <div className="absolute h-20 w-32 rounded-[28px] bg-[#ede5ff]" />
+            <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#8f65e4] to-[#9270da] text-white shadow-[0_12px_25px_rgba(109,68,184,0.2)]">
+              <Rocket className="h-7 w-7" />
+              <div className="absolute -right-4 -top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[#7b28e9] text-lg font-light text-white shadow-lg">
+                +
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 space-y-6">
+            {IDENTIFICATION_NEXT_STEPS.map((next) => {
+              const Icon = next.icon;
+              return (
+                <div key={next.title} className="flex items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f3edff] text-[#7138e8]">
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <strong className="block text-sm font-semibold text-[#242436]">{next.title}</strong>
+                    <p className="mt-1 text-xs leading-5 text-[#7a7d8e]">{next.description}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </aside>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col items-center bg-gray-50 px-4 py-8">
       <div className="w-full max-w-2xl">
-        <div className="mb-8 text-center">
-          <Image src="/logo-painel.svg" alt="Nokta" width={120} height={40} className="mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900">Configure seu acesso à Nokta</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Conte um pouco sobre a operação que você deseja gerenciar.
-          </p>
-        </div>
+        <div className="rounded-3xl bg-white shadow-sm">
+          <OnboardingStepper step={step} />
 
-        <div className="mb-8 flex items-center justify-center gap-3">
-          {STEPS.map((currentStep, index) => (
-            <div key={currentStep.label} className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <div
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition-colors ${
-                    index < step
-                      ? "bg-violet-600 text-white"
-                      : index === step
-                        ? "border-2 border-violet-600 bg-white text-violet-600"
-                        : "border-2 border-gray-200 bg-white text-gray-400"
-                  }`}
-                >
-                  {index < step ? <Check size={16} /> : index + 1}
-                </div>
-                <span className={`whitespace-nowrap text-sm ${index === step ? "font-medium text-gray-900" : "text-gray-400"}`}>
-                  {currentStep.label}
-                </span>
-              </div>
-              {index < STEPS.length - 1 && <div className="h-px w-8 shrink-0 bg-gray-200 sm:w-12" />}
-            </div>
-          ))}
-        </div>
-
-        <div className="rounded-3xl bg-white p-8 shadow-sm">
-          {step === 0 && (
-            <div className="space-y-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">
-                <Check className="text-violet-600" size={22} />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Como seu negócio será identificado?</h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Informe o nome da empresa, produtora, bar, estabelecimento ou operação que você representa.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="businessName" className="block text-sm font-medium text-gray-700">
-                  Nome do negócio ou operação
-                </label>
-                <Input
-                  id="businessName"
-                  value={businessName}
-                  onChange={(event) => setBusinessName(event.target.value)}
-                  placeholder="Ex.: Produtora Horizonte, Bar Central"
-                  className="h-11"
-                  autoFocus
-                  autoComplete="off"
-                />
-              </div>
-            </div>
-          )}
-
+          <div className="p-8">
           {step === 1 && (
             <div className="space-y-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">
@@ -604,17 +743,6 @@ export default function PlatformOnboardingPage() {
               </Button>
             )}
 
-            {step === 0 && (
-              <Button
-                onClick={handleCreateWorkspace}
-                disabled={!canAdvance() || loading}
-                className="h-11 flex-1 bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
-              >
-                {loading ? "Continuando..." : "Continuar"}
-                {!loading && <ChevronRight size={16} className="ml-1" />}
-              </Button>
-            )}
-
             {step === 1 && (
               <Button
                 onClick={goToTerms}
@@ -646,6 +774,7 @@ export default function PlatformOnboardingPage() {
                 {finishing ? "Configurando..." : "Configurar meu workspace"}
               </Button>
             )}
+          </div>
           </div>
         </div>
       </div>
