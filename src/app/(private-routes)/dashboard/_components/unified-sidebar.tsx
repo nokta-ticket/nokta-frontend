@@ -10,7 +10,7 @@ import { UnifiedNavIcon } from "./unified-nav-icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMyPromoterProfile } from "../promotor/_hooks/use-my-promoter";
 
-function NavGroupList({ groups, pathname, disabled }: { groups: UnifiedNavGroup[]; pathname: string; disabled: boolean }) {
+function NavGroupList({ groups, pathname }: { groups: UnifiedNavGroup[]; pathname: string }) {
   return (
     <>
       {groups.map((group) => (
@@ -18,21 +18,15 @@ function NavGroupList({ groups, pathname, disabled }: { groups: UnifiedNavGroup[
           <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-white/40">{group.groupLabel}</p>
           <div className="flex flex-col gap-1">
             {group.items.map((item) => {
-              const isActive = !disabled && (pathname === item.route || pathname.startsWith(item.route.split("?")[0] + "/"));
-              const className = `flex items-center gap-3 rounded-md py-2 font-normal ${
-                item.secondary ? "ml-4 px-3 text-xs" : "px-3"
-              } ${
-                disabled
-                  ? "cursor-default text-white/35"
-                  : `text-white ${isActive ? "bg-violet-600" : "hover:bg-white/10"}`
-              }`;
-              return disabled ? (
-                <span key={item.key} className={className}>
-                  <UnifiedNavIcon iconKey={item.iconKey} />
-                  {item.label}
-                </span>
-              ) : (
-                <Link key={item.key} href={item.route} className={className}>
+              const isActive = pathname === item.route || pathname.startsWith(item.route.split("?")[0] + "/");
+              return (
+                <Link
+                  key={item.key}
+                  href={item.route}
+                  className={`flex items-center gap-3 rounded-md py-2 font-normal text-white ${
+                    item.secondary ? "ml-4 px-3 text-xs" : "px-3"
+                  } ${isActive ? "bg-violet-600" : "hover:bg-white/10"}`}
+                >
                   <UnifiedNavIcon iconKey={item.iconKey} />
                   {item.label}
                 </Link>
@@ -54,9 +48,11 @@ function NavGroupList({ groups, pathname, disabled }: { groups: UnifiedNavGroup[
  * Sem organização ainda (ex.: onboarding, antes de criar o primeiro
  * workspace), não há nada pra `GET .../me/navigation` retornar — mostra um
  * preview estático com TODAS as funcionalidades da plataforma (como se
- * cada capacidade estivesse ativa, ver FULL_CATALOG_PREVIEW), desabilitado
- * pra clique: dá contexto do que a Nokta oferece sem levar a uma rota
- * vazia/403 antes de a organização existir de verdade.
+ * cada capacidade estivesse ativa, ver FULL_CATALOG_PREVIEW). Clicável como
+ * qualquer outro item: cada página já degrada graciosamente pra um
+ * EmptyState ("Nenhuma organização selecionada") sem organização — mesmo
+ * padrão usado em /eventos, /equipe, /inicio etc. — então navegar por essas
+ * rotas antes de criar a organização é seguro, não quebra nem dá 403.
  */
 export function UnifiedSidebar() {
   const { currentOrg } = useOrganizations();
@@ -84,7 +80,7 @@ export function UnifiedSidebar() {
           ))}
         </div>
       ) : (
-        <NavGroupList groups={groups} pathname={pathname} disabled={previewMode} />
+        <NavGroupList groups={groups} pathname={pathname} />
       )}
 
       {myPromoterProfile ? (
@@ -102,15 +98,18 @@ export function UnifiedSidebar() {
         </div>
       ) : null}
 
-      {previewMode || navigation?.canExplore ? (
-        <div className={previewMode ? undefined : "mt-auto"}>
-          <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-white/40">Descoberta</p>
-          {previewMode ? (
-            <span className="flex cursor-default items-center gap-3 rounded-md px-3 py-2 font-normal text-white/35">
-              <Compass size={16} />
-              Explore a Nokta
-            </span>
-          ) : (
+      <div className="mt-auto space-y-5">
+        <div>
+          <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-white/40">Suporte</p>
+          <span className="flex cursor-default items-center gap-3 rounded-md px-3 py-2 font-normal text-white/35">
+            <CircleHelp size={16} />
+            Ajuda
+          </span>
+        </div>
+
+        {previewMode || navigation?.canExplore ? (
+          <div>
+            <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-white/40">Descoberta</p>
             <Link
               href="/dashboard/explorar"
               className={`flex items-center gap-3 rounded-md px-3 py-2 font-normal text-white ${
@@ -120,19 +119,9 @@ export function UnifiedSidebar() {
               <Compass size={16} />
               Explore a Nokta
             </Link>
-          )}
-        </div>
-      ) : null}
-
-      {previewMode ? (
-        <div className="mt-auto">
-          <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-white/40">Suporte</p>
-          <span className="flex cursor-default items-center gap-3 rounded-md px-3 py-2 font-normal text-white/35">
-            <CircleHelp size={16} />
-            Ajuda
-          </span>
-        </div>
-      ) : null}
+          </div>
+        ) : null}
+      </div>
     </nav>
   );
 }

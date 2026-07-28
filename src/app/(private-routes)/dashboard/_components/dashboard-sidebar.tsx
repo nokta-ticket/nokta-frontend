@@ -13,12 +13,17 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { UnifiedSidebar } from "./unified-sidebar";
+import { UserMenu } from "./user-menu";
 
 // Sidebar: logo → grupos de navegação por capacidade (Fase 4 — navegação
 // unificada definitiva; ver docs/platform/unified-navigation.md "Estruturas
 // transitórias removidas"). O fallback do switcher Tickets|Venue existiu
 // nas Fases 3-4 só como rede de segurança durante a migração; removido
 // depois de validado autenticado em produção. Rollback é por git revert.
+//
+// Card de perfil no rodapé (abaixo de Ajuda/Explore, dentro de
+// UnifiedSidebar): mesmo UserMenu da topbar, variant="sidebar" — evita
+// duas fontes de verdade pro mesmo dropdown de conta/logout.
 function SidebarInner() {
   return (
     <>
@@ -27,6 +32,10 @@ function SidebarInner() {
       </div>
 
       <UnifiedSidebar />
+
+      <div className="mt-3 border-t border-white/10 pt-3">
+        <UserMenu variant="sidebar" />
+      </div>
     </>
   );
 }
@@ -63,7 +72,7 @@ export function DashboardSidebar() {
       </header>
 
       {/* Desktop: sidebar fixa */}
-      <aside className="hidden lg:flex w-60 mt-5 p-4 flex-col text-sm">
+      <aside className="hidden h-full lg:flex w-60 mt-5 p-4 flex-col text-sm">
         <SidebarInner />
       </aside>
     </>
