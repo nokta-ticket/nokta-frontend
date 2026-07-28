@@ -1,7 +1,10 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { useOrganizations } from "@/context/OrganizationContext";
+import type { BusinessProfile } from "@/services/platform";
 import { PageContainer } from "../../_components/page/page-container";
 import { PageHeader } from "../../_components/page/page-header";
 import { EmptyState } from "../../_components/states/empty-state";
@@ -15,6 +18,39 @@ import { StepRevisao } from "./step-revisao";
 
 const STEPS = ["negocio", "operacao", "capacidades", "revisao"] as const;
 type StepKey = (typeof STEPS)[number];
+
+// Campos de operação da etapa 2 (StepOperacao) — mesma lista de FIELDS de lá.
+// Repetida aqui (não importada) de propósito: acoplar as duas exigiria
+// exportar a lista de UI só pra isso; qualquer um desses !== false já basta
+// pra saber que a etapa foi ao menos aberta e salva uma vez.
+const OPERATION_FIELDS: (keyof BusinessProfile)[] = [
+  "sellsAdvanceTickets",
+  "usesGuestLists",
+  "acceptsReservations",
+  "usesTables",
+  "usesTabs",
+  "usesCounterService",
+  "sellsFoodOrBeverages",
+  "usesPreparationStations",
+  "controlsInventory",
+  "worksWithPromoters",
+];
+
+/**
+ * Retoma o onboarding na etapa onde o usuário parou, a partir do que já foi
+ * persistido — não existe (nem precisa existir) um campo dedicado tipo
+ * `onboardingStep`: as etapas 1 e 2 só avançam depois de salvar no backend
+ * (ver StepNegocio/StepOperacao `handleNext`), então o próprio conteúdo do
+ * profile já denuncia até onde o usuário chegou. A etapa "capacidades" não
+ * persiste nada de seu no profile (ativa capacidades via endpoint próprio),
+ * então uma vez que a etapa 2 esteja salva ela é sempre o próximo passo —
+ * quem já passou dela usa os botões Voltar/Continuar do próprio stepper.
+ */
+function deriveResumeStep(profile: BusinessProfile): StepKey {
+  if (!profile.exists || profile.segments.length === 0) return "negocio";
+  if (!OPERATION_FIELDS.some((key) => profile[key] === true)) return "operacao";
+  return "capacidades";
+}
 
 const STEP_LABEL: Record<StepKey, string> = {
   negocio: "Negócio",
@@ -53,9 +89,25 @@ export function OnboardingContent() {
   const { currentOrg, loadingOrgs } = useOrganizations();
   const orgId = currentOrg?.id ?? null;
   const [step, setStep] = useUrlTab<StepKey>(STEPS, "negocio");
+  const hasExplicitTab = useSearchParams().has("tab");
 
   const { data: navigation, isLoading: loadingNav } = usePlatformNavigation(orgId);
   const { data: profile, isLoading: loadingProfile } = useBusinessProfile(orgId);
+
+  // Retomar de onde parou: só pula pra etapa derivada quando o usuário
+  // chegou aqui sem `?tab=` explícito (ex.: redirect automático da Início) —
+  // um link direto pra uma etapa específica (ou navegação manual pelo
+  // Stepper) nunca deve ser sobrescrito. Roda uma única vez por carregamento
+  // do profile: sem o `ref`, `setStep` mudaria a URL e o efeito rodaria de
+  // novo achando que ainda não tinha `tab`, entrando em loop.
+  const didResume = useRef(false);
+  useEffect(() => {
+    if (didResume.current || hasExplicitTab || !profile) return;
+    didResume.current = true;
+    const resumeStep = deriveResumeStep(profile);
+    if (resumeStep !== step) setStep(resumeStep);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, hasExplicitTab]);
 
   if (loadingOrgs) {
     return (
