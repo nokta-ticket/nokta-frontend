@@ -662,11 +662,11 @@ export default function PlatformOnboardingPage() {
     const selectedCount = selection?.selectedGroupKeys.size ?? 0;
 
     return (
-      <div className="flex items-stretch gap-[22px]">
+      <div className="flex h-full items-stretch gap-[22px]">
         <section className="flex flex-1 flex-col rounded-[20px] border border-[#ecebf1] bg-white px-5 pb-6 pt-6 md:px-10 md:pb-8 md:pt-8">
           <OnboardingStepper step={step} />
 
-          <div className="flex flex-col items-start gap-9 lg:flex-row">
+          <div className="flex flex-1 flex-col items-start gap-9 lg:flex-row">
             <div className="w-full space-y-6 lg:w-[280px] lg:shrink-0">
               <div>
                 <span className="inline-block rounded-full bg-[#f3efff] px-3 py-1.5 text-[11.5px] font-semibold text-[#6d28d9]">
@@ -708,14 +708,14 @@ export default function PlatformOnboardingPage() {
               </div>
             </div>
 
-            <div className="w-full min-w-0 flex-1">
+            <div className="flex w-full min-w-0 flex-1 flex-col">
               <h2 className="text-[17px] font-bold tracking-[-0.01em] text-[#1a1626]">O que você deseja gerenciar na Nokta?</h2>
               <p className="mt-1.5 text-[12.5px] text-[#6b7280]">Você pode selecionar mais de uma opção.</p>
 
               {catalog.isLoading || !selection ? (
                 <BlockSkeleton className="mt-5 h-72" />
               ) : catalog.data ? (
-                <div className="mt-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 xl:auto-rows-fr">
                   {catalog.data.map((group) => {
                     const theme = BUSINESS_NEED_THEME[group.key];
                     const Icon = theme.icon;
@@ -798,33 +798,35 @@ export default function PlatformOnboardingPage() {
                 </div>
               ) : null}
 
-              <div className="mt-5 flex items-start gap-3 rounded-[13px] border border-[#E9E1FB] bg-[#f3efff] p-3.5">
-                <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg bg-white text-[#6d28d9] shadow-[0_2px_5px_rgba(80,40,160,0.12)]">
-                  <Info size={15} />
+              <div className="mt-auto">
+                <div className="mt-8 flex items-start gap-3 rounded-[13px] border border-[#E9E1FB] bg-[#f3efff] p-3.5">
+                  <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg bg-white text-[#6d28d9] shadow-[0_2px_5px_rgba(80,40,160,0.12)]">
+                    <Info size={15} />
+                  </div>
+                  <div>
+                    <div className="text-[13px] font-bold text-[#3A2E63]">Seu painel ficará mais organizado</div>
+                    <p className="mt-0.5 text-xs leading-[1.55] text-[#6A5E90]">
+                      Os recursos não selecionados ficam ocultos para reduzir a poluição visual. Você poderá ativá-los depois em Configurações, sem refazer o cadastro nem perder informações.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-[13px] font-bold text-[#3A2E63]">Seu painel ficará mais organizado</div>
-                  <p className="mt-0.5 text-xs leading-[1.55] text-[#6A5E90]">
-                    Os recursos não selecionados ficam ocultos para reduzir a poluição visual. Você poderá ativá-los depois em Configurações, sem refazer o cadastro nem perder informações.
-                  </p>
-                </div>
-              </div>
 
-              <div className="mt-5">
-                <Button
-                  onClick={goToTerms}
-                  disabled={!canAdvance()}
-                  className="flex h-11 w-full items-center justify-center gap-2 bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] text-white hover:brightness-105 disabled:cursor-not-allowed"
-                >
-                  Continuar com as opções selecionadas
-                  <ChevronRight size={16} />
-                </Button>
+                <div className="mt-5">
+                  <Button
+                    onClick={goToTerms}
+                    disabled={!canAdvance()}
+                    className="flex h-11 w-full items-center justify-center gap-2 bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] text-white hover:brightness-105 disabled:cursor-not-allowed"
+                  >
+                    Continuar com as opções selecionadas
+                    <ChevronRight size={16} />
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        <aside className="hidden w-[288px] shrink-0 flex-col rounded-[20px] border border-[#ECE6F8] bg-[#F6F3FC] px-6 py-8 xl:flex">
+        <aside className="hidden w-[288px] shrink-0 flex-col justify-center rounded-[20px] border border-[#ECE6F8] bg-[#F6F3FC] px-6 py-8 xl:flex">
           <h3 className="text-[16px] font-bold leading-[1.3] tracking-[-0.01em] text-[#1a1626]">
             Um painel feito para a sua operação
           </h3>
