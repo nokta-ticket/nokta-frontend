@@ -39,7 +39,7 @@ import {
   type BusinessNeedSelectionState,
 } from "../../_components/business-needs/business-need-groups-picker";
 import { BusinessNeedActivationSummary } from "../../_components/business-needs/business-need-activation-summary";
-import { useActivateBusinessNeeds, useBusinessNeedsCatalog, useCapabilities, usePreviewBusinessNeedsActivation } from "../../_hooks/use-platform";
+import { useActivateBusinessNeeds, useBusinessNeedsCatalog, usePreviewBusinessNeedsActivation } from "../../_hooks/use-platform";
 import { BlockSkeleton } from "../../_components/states/loading-state";
 import { OnboardingExtras } from "./_components/onboarding-extras";
 import type { BusinessNeedKey } from "@/services/platform";
@@ -275,29 +275,6 @@ export default function PlatformOnboardingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progressChecked, loadingOrgs, userId]);
 
-  // Fallback pro caso do localStorage não ter o progresso (outro navegador,
-  // storage limpo, sessão reiniciada): sem `saved.createdOrgId`, a única
-  // organização existente vira candidata a "onboarding pode estar
-  // incompleto" — decide de verdade checando as capacidades dela abaixo.
-  const fallbackOrgId = progressChecked && !createdOrgId && accessAlreadyActive && organizations.length === 1 ? organizations[0].id : null;
-  const fallbackCapabilities = useCapabilities(fallbackOrgId);
-
-  // Sem progresso salvo, o app não tem como saber se essa organização já
-  // terminou o onboarding ou parou no meio (ex.: fechou antes de confirmar
-  // a etapa "Operação", como aconteceu na prática — ver relato do usuário).
-  // Pergunta ao backend: nenhuma capacidade além de CORE ativa == ninguém
-  // nunca confirmou a seleção de áreas, então retoma dali em vez de cair em
-  // "Acesso já configurado" (que antes escondia esse caso).
-  useEffect(() => {
-    if (!fallbackOrgId || fallbackCapabilities.isLoading || !fallbackCapabilities.data) return;
-    const hasAnyNonCoreCapability = fallbackCapabilities.data.some((c) => c.group !== "CORE" && c.status === "ACTIVE");
-    if (!hasAnyNonCoreCapability) {
-      setCreatedOrgId(fallbackOrgId);
-      setStep(1);
-      setSkippedIdentification(true);
-    }
-  }, [fallbackOrgId, fallbackCapabilities.isLoading, fallbackCapabilities.data]);
-
   // Preenche o campo de nome com o valor já salvo na organização — sem
   // isso, voltar da etapa "Operação" pra "Identificação" (ou dar F5 já
   // com createdOrgId restaurado) mostrava o campo vazio em vez do nome
@@ -333,12 +310,7 @@ export default function PlatformOnboardingPage() {
   // caíam na tela "Acesso já configurado" (que só linka pra
   // /dashboard/inicio) sem NUNCA ter a chance de criar um workspace.
   const needsWorkspaceOnly = accessAlreadyActive && !loadingOrgs && organizations.length === 0 && !createdOrgId;
-  // Enquanto fallbackOrgId aponta pra uma checagem de capacidades em
-  // andamento, ainda não dá pra saber se é "já configurado" de verdade ou
-  // onboarding incompleto — sem esperar, a tela "Acesso já configurado"
-  // pisca antes do fallback acima assumir createdOrgId e mudar de step.
-  const checkingFallback = Boolean(fallbackOrgId) && (fallbackCapabilities.isLoading || !fallbackCapabilities.data);
-  const alreadyConfigured = accessAlreadyActive && progressChecked && !needsWorkspaceOnly && !createdOrgId && !checkingFallback;
+  const alreadyConfigured = accessAlreadyActive && progressChecked && !needsWorkspaceOnly && !createdOrgId;
   const phoneNeedsRecheck = !!user && user.telefoneVerificado !== true;
   const isSendingPhoneCode = phoneRecheckPhase === "sending";
   const isVerifyingPhoneCode = phoneRecheckPhase === "verifying";
@@ -504,7 +476,7 @@ export default function PlatformOnboardingPage() {
     }
   };
 
-  if (loadingOrgs || !progressChecked || checkingFallback) {
+  if (loadingOrgs || !progressChecked) {
     return <div className="flex h-full items-center justify-center bg-gray-50" />;
   }
 
