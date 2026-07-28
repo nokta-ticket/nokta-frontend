@@ -219,10 +219,6 @@ export default function PlatformOnboardingPage() {
 
   const catalog = useBusinessNeedsCatalog(createdOrgId);
   const [selection, setSelection] = useState<BusinessNeedSelectionState | null>(null);
-  // Accordion dos cards de módulo na etapa "Operação": no máx. 1 aberto por
-  // vez, e todos começam fechados (null) — os 6 cards abertos juntos empilham
-  // a tela inteira e forçam scroll longo.
-  const [expandedGroupKey, setExpandedGroupKey] = useState<string | null>(null);
   const preview = usePreviewBusinessNeedsActivation(createdOrgId ?? -1);
   const activateNeeds = useActivateBusinessNeeds(createdOrgId ?? -1);
 
@@ -417,7 +413,6 @@ export default function PlatformOnboardingPage() {
       nextGroups.delete(groupKey);
     } else {
       nextGroups.add(groupKey);
-      setExpandedGroupKey(groupKey);
     }
     setSelection({ ...selection, selectedGroupKeys: nextGroups, deselectedCapabilityKeysByGroup: nextDeselected });
   };
@@ -720,7 +715,6 @@ export default function PlatformOnboardingPage() {
                     const theme = BUSINESS_NEED_THEME[group.key];
                     const Icon = theme.icon;
                     const isSelected = selection.selectedGroupKeys.has(group.key);
-                    const isOpen = expandedGroupKey === group.key;
                     const deselected = selection.deselectedCapabilityKeysByGroup.get(group.key) ?? new Set<string>();
 
                     return (
@@ -744,54 +738,45 @@ export default function PlatformOnboardingPage() {
                           {isSelected && <Check size={12} strokeWidth={3} className="text-white" />}
                         </button>
 
-                        <button
-                          type="button"
-                          onClick={() => setExpandedGroupKey((prev) => (prev === group.key ? null : group.key))}
-                          aria-expanded={isOpen}
-                          className="w-full text-left"
-                        >
-                          <div className={`flex h-11 w-11 items-center justify-center rounded-[13px] ${theme.iconBg} ${theme.iconColor}`}>
-                            <Icon size={22} strokeWidth={1.9} />
-                          </div>
-                          <div className="mt-3.5 text-[14px] font-bold text-[#1a1626]">{group.label}</div>
-                          <div className="mt-1.5 min-h-[34px] text-[11.5px] leading-[1.5] text-[#6b7280]">{group.description}</div>
-                        </button>
+                        <div className={`flex h-11 w-11 items-center justify-center rounded-[13px] ${theme.iconBg} ${theme.iconColor}`}>
+                          <Icon size={22} strokeWidth={1.9} />
+                        </div>
+                        <div className="mt-3.5 text-[14px] font-bold text-[#1a1626]">{group.label}</div>
+                        <div className="mt-1.5 text-[11.5px] leading-[1.5] text-[#6b7280]">{group.description}</div>
 
-                        {isOpen && (
-                          <div className="mt-3.5 flex flex-col gap-2.5 border-t border-[#f1eff5] pt-3.5">
-                            {group.capabilities.map((capability) => {
-                              const checked = isSelected && (capability.required || !deselected.has(capability.key));
-                              const interactive = isSelected && !capability.required;
-                              const toggleCapability = () => {
-                                if (!interactive || !selection) return;
-                                const nextByGroup = new Map(selection.deselectedCapabilityKeysByGroup);
-                                const current = new Set(nextByGroup.get(group.key) ?? []);
-                                if (current.has(capability.key)) current.delete(capability.key);
-                                else current.add(capability.key);
-                                nextByGroup.set(group.key, current);
-                                setSelection({ ...selection, deselectedCapabilityKeysByGroup: nextByGroup });
-                              };
-                              return (
-                                <button
-                                  key={capability.key}
-                                  type="button"
-                                  onClick={toggleCapability}
-                                  disabled={!interactive}
-                                  className={`flex items-start gap-2.5 text-left text-xs ${interactive ? "cursor-pointer" : "cursor-default"}`}
+                        <div className="mt-3.5 flex flex-col gap-2.5 border-t border-[#f1eff5] pt-3.5">
+                          {group.capabilities.map((capability) => {
+                            const checked = isSelected && (capability.required || !deselected.has(capability.key));
+                            const interactive = isSelected && !capability.required;
+                            const toggleCapability = () => {
+                              if (!interactive || !selection) return;
+                              const nextByGroup = new Map(selection.deselectedCapabilityKeysByGroup);
+                              const current = new Set(nextByGroup.get(group.key) ?? []);
+                              if (current.has(capability.key)) current.delete(capability.key);
+                              else current.add(capability.key);
+                              nextByGroup.set(group.key, current);
+                              setSelection({ ...selection, deselectedCapabilityKeysByGroup: nextByGroup });
+                            };
+                            return (
+                              <button
+                                key={capability.key}
+                                type="button"
+                                onClick={toggleCapability}
+                                disabled={!interactive}
+                                className={`flex items-start gap-2.5 text-left text-xs ${interactive ? "cursor-pointer" : "cursor-default"}`}
+                              >
+                                <span
+                                  className={`mt-0.5 flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-[5px] ${
+                                    checked ? `${theme.iconColor} bg-current` : "border-[1.6px] border-[#D7D5E0] bg-white"
+                                  }`}
                                 >
-                                  <span
-                                    className={`mt-0.5 flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-[5px] ${
-                                      checked ? `${theme.iconColor} bg-current` : "border-[1.6px] border-[#D7D5E0] bg-white"
-                                    }`}
-                                  >
-                                    {checked && <Check size={11} strokeWidth={3} className="text-white" />}
-                                  </span>
-                                  <span className="text-[#1a1626]">{capability.label}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
+                                  {checked && <Check size={11} strokeWidth={3} className="text-white" />}
+                                </span>
+                                <span className="text-[#1a1626]">{capability.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     );
                   })}
