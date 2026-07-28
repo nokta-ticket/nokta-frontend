@@ -557,10 +557,10 @@ export default function PlatformOnboardingPage() {
           className="hidden shrink-0 flex-col items-center rounded-[20px] border border-[#ecebf1] bg-white px-10 py-12 text-center xl:flex"
           style={{ width: "calc((100% - 44px) * (1 / 3.65))" }}
         >
-          <h3 className="text-[21px] font-bold text-[#1a1626]">Ainda não tem uma organização</h3>
+          <h3 className="text-[19px] font-bold text-[#1a1626]">Ainda não tem uma organização</h3>
 
-          <div className="my-9 flex w-full items-center justify-center">
-            <svg viewBox="0 0 200 170" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-auto w-[260px]">
+          <div className="my-6 flex w-full items-center justify-center">
+            <svg viewBox="0 0 200 170" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-auto w-[200px]">
               <ellipse cx="100" cy="150" rx="70" ry="9" fill="#EDE7FE" />
               <path d="M35 52h130l10 20H25l10-20Z" fill="#C4B5FD" />
               <path d="M35 52h26l-4 20H31l4-20Z" fill="#A78BFA" />
@@ -580,13 +580,13 @@ export default function PlatformOnboardingPage() {
           {IDENTIFICATION_NEXT_STEPS.map((next) => {
             const Icon = next.icon;
             return (
-              <div key={next.title} className="mb-8 flex w-full items-start gap-4 text-left last:mb-0">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#f1ecfe] text-[#6d28d9]">
-                  <Icon size={22} strokeWidth={1.9} />
+              <div key={next.title} className="mb-5 flex w-full items-start gap-3.5 text-left last:mb-0">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f1ecfe] text-[#6d28d9]">
+                  <Icon size={19} strokeWidth={1.9} />
                 </div>
                 <div>
-                  <div className="text-[16px] font-semibold text-[#1a1626]">{next.title}</div>
-                  <div className="mt-1 text-[14px] leading-[1.55] text-[#6b7280]">{next.description}</div>
+                  <div className="text-[14.5px] font-semibold text-[#1a1626]">{next.title}</div>
+                  <div className="mt-0.5 text-[13px] leading-[1.5] text-[#6b7280]">{next.description}</div>
                 </div>
               </div>
             );
