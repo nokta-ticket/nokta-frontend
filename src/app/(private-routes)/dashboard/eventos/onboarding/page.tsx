@@ -76,7 +76,7 @@ const IDENTIFICATION_NEXT_STEPS = [
 
 function OnboardingStepper({ step }: { step: number }) {
   return (
-    <div className="mx-auto mb-8 flex w-full max-w-[220px] items-center justify-center">
+    <div className="mx-auto mb-8 flex w-full max-w-[340px] items-center justify-center">
       {Array.from({ length: STEP_COUNT }, (_, i) => i).map((index) => {
         const active = index === step;
         return (
@@ -465,10 +465,8 @@ export default function PlatformOnboardingPage() {
   if (step === 0) {
     return (
       <>
-      <div className="flex items-stretch justify-center gap-[22px]">
-        <section className="flex w-full max-w-[760px] flex-col rounded-[20px] border border-[#ecebf1] bg-white px-5 pb-7 pt-[34px] md:px-10 md:pb-10">
-          <OnboardingStepper step={step} />
-
+      <div className="flex items-stretch gap-[22px]">
+        <section className="flex flex-1 flex-col rounded-[20px] border border-[#ecebf1] bg-white px-5 pb-7 pt-[34px] md:px-10 md:pb-10">
           <div className="flex flex-col items-start gap-[30px] lg:flex-row lg:gap-[44px]">
             <div className="w-full lg:flex-[1_1_46%]">
               <span className="inline-block rounded-full bg-[#f3efff] px-3 py-1.5 text-[11.5px] font-semibold text-[#6d28d9]">
@@ -501,47 +499,51 @@ export default function PlatformOnboardingPage() {
               </div>
             </div>
 
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                handleCreateWorkspace();
-              }}
-              className="w-full rounded-2xl border border-[#e7e5ee] bg-white p-6 shadow-[0_6px_24px_rgba(30,20,60,0.05)] lg:flex-[1_1_54%]"
-            >
-              <h2 className="text-[18px] font-bold tracking-[-0.01em] text-[#1a1626]">Como deseja chamar sua organização?</h2>
+            <div className="w-full lg:flex-[1_1_54%]">
+              <OnboardingStepper step={step} />
 
-              <p className="mt-2 text-[12.5px] leading-[1.5] text-[#6b7280]">
-                Pode ser o nome da sua produtora, estabelecimento, empresa ou o seu próprio nome.
-              </p>
-
-              <Input
-                id="businessName"
-                value={businessName}
-                onChange={(event) => setBusinessName(event.target.value)}
-                placeholder="Ex.: Produtora Horizonte, Bar Central ou Vitor Reis"
-                autoComplete="organization"
-                autoFocus
-                className="mt-[18px] h-auto rounded-[11px] border-[#e7e5ee] px-[15px] py-[13px] text-[13.5px] placeholder:text-[#a9a7b3] focus-visible:border-violet-500 focus-visible:ring-[3px] focus-visible:ring-violet-500/15"
-              />
-
-              <Button
-                type="submit"
-                disabled={!canAdvance() || loading}
-                className="mt-4 flex h-auto w-full items-center justify-center gap-2 rounded-[11px] bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] py-3.5 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(109,40,217,0.28)] transition hover:brightness-105 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45"
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  handleCreateWorkspace();
+                }}
+                className="rounded-2xl border border-[#e7e5ee] bg-white p-6 shadow-[0_6px_24px_rgba(30,20,60,0.05)]"
               >
-                {loading ? "Continuando..." : "Continuar"}
-                {!loading && <ChevronRight className="h-4 w-4" />}
-              </Button>
+                <h2 className="text-[18px] font-bold tracking-[-0.01em] text-[#1a1626]">Como deseja chamar sua organização?</h2>
 
-              <div className="mt-4 flex items-start gap-2.5 rounded-[11px] bg-[#f3efff] p-3.5">
-                <Lock size={15} strokeWidth={1.9} className="mt-0.5 shrink-0 text-[#6d28d9]" />
-                <p className="text-xs leading-[1.5] text-[#6d5b93]">
-                  <b className="font-semibold text-[#5b4a86]">Somente você pode criar organizações.</b>
-                  <br />
-                  Depois, poderá convidar sua equipe para colaborar.
+                <p className="mt-2 text-[12.5px] leading-[1.5] text-[#6b7280]">
+                  Pode ser o nome da sua produtora, estabelecimento, empresa ou o seu próprio nome.
                 </p>
-              </div>
-            </form>
+
+                <Input
+                  id="businessName"
+                  value={businessName}
+                  onChange={(event) => setBusinessName(event.target.value)}
+                  placeholder="Ex.: Produtora Horizonte, Bar Central ou Vitor Reis"
+                  autoComplete="organization"
+                  autoFocus
+                  className="mt-[18px] h-auto rounded-[11px] border-[#e7e5ee] px-[15px] py-[13px] text-[13.5px] placeholder:text-[#a9a7b3] focus-visible:border-violet-500 focus-visible:ring-[3px] focus-visible:ring-violet-500/15"
+                />
+
+                <Button
+                  type="submit"
+                  disabled={!canAdvance() || loading}
+                  className="mt-4 flex h-auto w-full items-center justify-center gap-2 rounded-[11px] bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] py-3.5 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(109,40,217,0.28)] transition hover:brightness-105 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  {loading ? "Continuando..." : "Continuar"}
+                  {!loading && <ChevronRight className="h-4 w-4" />}
+                </Button>
+
+                <div className="mt-4 flex items-start gap-2.5 rounded-[11px] bg-[#f3efff] p-3.5">
+                  <Lock size={15} strokeWidth={1.9} className="mt-0.5 shrink-0 text-[#6d28d9]" />
+                  <p className="text-xs leading-[1.5] text-[#6d5b93]">
+                    <b className="font-semibold text-[#5b4a86]">Somente você pode criar organizações.</b>
+                    <br />
+                    Depois, poderá convidar sua equipe para colaborar.
+                  </p>
+                </div>
+              </form>
+            </div>
           </div>
         </section>
 
