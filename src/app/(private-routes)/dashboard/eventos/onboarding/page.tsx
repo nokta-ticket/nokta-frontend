@@ -466,7 +466,7 @@ export default function PlatformOnboardingPage() {
     return (
       <>
       <div className="flex items-stretch gap-[22px]">
-        <section className="flex flex-1 flex-col rounded-[20px] border border-[#ecebf1] bg-white px-5 pb-7 pt-[34px] md:px-10 md:pb-10">
+        <section className="flex flex-1 flex-col rounded-[20px] border border-[#ecebf1] bg-white px-5 pb-6 pt-6 md:px-10 md:pb-8 md:pt-8">
           <div className="flex flex-col items-start gap-[30px] lg:flex-row lg:gap-[44px]">
             <div className="w-full lg:flex-[1_1_54%]">
               <span className="inline-block rounded-full bg-[#f3efff] px-3 py-1.5 text-[11.5px] font-semibold text-[#6d28d9]">
@@ -554,13 +554,13 @@ export default function PlatformOnboardingPage() {
           qualquer largura de tela, os dois blocos ficam sempre alinhados.
         */}
         <aside
-          className="hidden shrink-0 flex-col items-center rounded-[20px] border border-[#ecebf1] bg-white px-10 py-12 text-center xl:flex"
+          className="hidden shrink-0 flex-col items-center rounded-[20px] border border-[#ecebf1] bg-white px-10 py-8 text-center xl:flex"
           style={{ width: "calc((100% - 44px) * (1 / 3.65))" }}
         >
-          <h3 className="text-[19px] font-bold text-[#1a1626]">Ainda não tem uma organização</h3>
+          <h3 className="text-[21px] font-bold text-[#1a1626]">Ainda não tem uma organização</h3>
 
-          <div className="my-6 flex w-full items-center justify-center">
-            <svg viewBox="0 0 200 170" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-auto w-[200px]">
+          <div className="my-8 flex w-full items-center justify-center">
+            <svg viewBox="0 0 200 170" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-auto w-[240px]">
               <ellipse cx="100" cy="150" rx="70" ry="9" fill="#EDE7FE" />
               <path d="M35 52h130l10 20H25l10-20Z" fill="#C4B5FD" />
               <path d="M35 52h26l-4 20H31l4-20Z" fill="#A78BFA" />
@@ -580,13 +580,13 @@ export default function PlatformOnboardingPage() {
           {IDENTIFICATION_NEXT_STEPS.map((next) => {
             const Icon = next.icon;
             return (
-              <div key={next.title} className="mb-5 flex w-full items-start gap-3.5 text-left last:mb-0">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f1ecfe] text-[#6d28d9]">
-                  <Icon size={19} strokeWidth={1.9} />
+              <div key={next.title} className="mb-7 flex w-full items-start gap-4 text-left last:mb-0">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#f1ecfe] text-[#6d28d9]">
+                  <Icon size={20} strokeWidth={1.9} />
                 </div>
                 <div>
-                  <div className="text-[14.5px] font-semibold text-[#1a1626]">{next.title}</div>
-                  <div className="mt-0.5 text-[13px] leading-[1.5] text-[#6b7280]">{next.description}</div>
+                  <div className="text-[15px] font-semibold text-[#1a1626]">{next.title}</div>
+                  <div className="mt-1 text-[13px] leading-[1.5] text-[#6b7280]">{next.description}</div>
                 </div>
               </div>
             );

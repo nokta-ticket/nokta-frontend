@@ -188,7 +188,7 @@ function DashboardMock() {
 
 function HelpIllustration() {
   return (
-    <svg viewBox="0 0 300 190" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-auto w-full max-w-[210px]">
+    <svg viewBox="0 0 300 190" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-auto w-full max-w-[260px]">
       <ellipse cx="150" cy="150" rx="120" ry="26" fill="#ECE6F8" />
       <ellipse cx="120" cy="120" rx="70" ry="46" fill="#F0EAFA" />
       <circle cx="52" cy="96" r="5" fill="#D6C8F6" />
@@ -229,41 +229,41 @@ function HelpIllustration() {
  */
 export function OnboardingExtras() {
   return (
-    <div className="mt-4 grid w-full items-stretch gap-[22px] xl:grid-cols-[1.1fr_1.55fr_1fr]">
-      <section className="rounded-[20px] border border-[#ecebf1] bg-white p-5">
-        <h2 className="mb-3.5 text-base font-bold tracking-[-0.01em] text-[#1a1626]">A Nokta cuida do que importa para você</h2>
+    <div className="mt-5 grid w-full items-stretch gap-[22px] xl:grid-cols-[1.1fr_1.55fr_1fr]">
+      <section className="rounded-[20px] border border-[#ecebf1] bg-white p-6">
+        <h2 className="mb-4 text-base font-bold tracking-[-0.01em] text-[#1a1626]">A Nokta cuida do que importa para você</h2>
         <div className="grid grid-cols-2 gap-3">
           {FEATURE_TILES.map((tile) => {
             const Icon = tile.icon;
             return (
               <div
                 key={tile.title}
-                className={`group rounded-2xl border border-[#EEEDF3] bg-gradient-to-b from-white to-[#FCFBFE] p-3.5 text-center transition ${tile.hoverShadow} hover:-translate-y-1`}
+                className={`group rounded-2xl border border-[#EEEDF3] bg-gradient-to-b from-white to-[#FCFBFE] p-4 pb-4.5 text-center transition ${tile.hoverShadow} hover:-translate-y-1`}
               >
                 <div
-                  className={`mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${tile.accent} ${tile.shadow}`}
+                  className={`mx-auto mb-3.5 flex h-[46px] w-[46px] items-center justify-center rounded-[14px] bg-gradient-to-br ${tile.accent} ${tile.shadow}`}
                 >
-                  <Icon size={19} strokeWidth={2} className="text-white" />
+                  <Icon size={22} strokeWidth={2} className="text-white" />
                 </div>
                 <div className="text-[13px] font-bold leading-[1.3] text-[#1a1626]">{tile.title}</div>
-                <div className="mt-1 text-[11.5px] leading-[1.5] text-[#7C7A8A]">{tile.description}</div>
+                <div className="mt-1.5 text-[11.5px] leading-[1.5] text-[#7C7A8A]">{tile.description}</div>
               </div>
             );
           })}
         </div>
       </section>
 
-      <section className="flex flex-col items-center gap-6 rounded-[20px] border border-[#ECE6F8] bg-[#F5F2FC] p-5 md:flex-row">
+      <section className="flex flex-col items-center gap-6 rounded-[20px] border border-[#ECE6F8] bg-[#F5F2FC] p-6 md:flex-row">
         <div className="w-full md:min-w-0 md:flex-[0_0_38%]">
           <h2 className="text-xl font-bold leading-[1.25] tracking-[-0.01em] text-[#1a1626]">
             Tudo o que você precisa em um só lugar
           </h2>
-          <p className="mt-3 text-[12.5px] leading-[1.6] text-[#7C7A8A]">
+          <p className="mt-3.5 text-[12.5px] leading-[1.6] text-[#7C7A8A]">
             Conecte pessoas, processos e dados para focar no que realmente importa: fazer o seu evento acontecer.
           </p>
           <Link
             href="/dashboard/explorar"
-            className="mt-4 inline-flex items-center gap-2 rounded-[11px] border border-[#E5DDF6] bg-white px-4 py-2.5 text-[12.5px] font-semibold text-[#6D28D9] shadow-[0_2px_6px_rgba(80,40,160,0.06)] transition hover:bg-[#FCFBFE] hover:shadow-[0_6px_14px_rgba(80,40,160,0.12)] active:translate-y-px"
+            className="mt-5 inline-flex items-center gap-2 rounded-[11px] border border-[#E5DDF6] bg-white px-4 py-2.5 text-[12.5px] font-semibold text-[#6D28D9] shadow-[0_2px_6px_rgba(80,40,160,0.06)] transition hover:bg-[#FCFBFE] hover:shadow-[0_6px_14px_rgba(80,40,160,0.12)] active:translate-y-px"
           >
             Ver visão completa da plataforma
             <ArrowUpRight size={14} />
@@ -275,9 +275,9 @@ export function OnboardingExtras() {
         </div>
       </section>
 
-      <section className="flex flex-col rounded-[20px] border border-[#ECE6F8] bg-[#F5F2FC] p-5">
+      <section className="flex flex-col rounded-[20px] border border-[#ECE6F8] bg-[#F5F2FC] p-6 pb-5">
         <h2 className="text-[17px] font-bold tracking-[-0.01em] text-[#1a1626]">Precisa de ajuda?</h2>
-        <p className="mb-4 mt-2.5 text-[12.5px] leading-[1.6] text-[#7C7A8A]">
+        <p className="mb-5 mt-3 text-[12.5px] leading-[1.6] text-[#7C7A8A]">
           Nossa central de ajuda tem guias rápidos, vídeos e artigos para te ajudar em cada etapa.
         </p>
         <span className="inline-flex w-fit cursor-default items-center gap-2 rounded-[11px] border border-[#E5DDF6] bg-white px-4 py-2.5 text-[12.5px] font-semibold text-[#6D28D9]/60">
@@ -285,7 +285,7 @@ export function OnboardingExtras() {
           Acessar Central de Ajuda
         </span>
 
-        <div className="mt-auto flex justify-center pt-3">
+        <div className="mt-auto flex justify-center pt-3.5">
           <HelpIllustration />
         </div>
       </section>
