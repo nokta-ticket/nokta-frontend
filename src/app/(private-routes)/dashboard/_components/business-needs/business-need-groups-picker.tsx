@@ -202,18 +202,13 @@ export function BusinessNeedGroupsPicker({
   // Expandir/recolher é puramente visual (ver o que tem dentro do grupo) —
   // deliberadamente separado de `selection`: clicar no card pra abrir não
   // pode desmarcar o grupo sem querer (só o checkbox faz isso).
-  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set(selection.selectedGroupKeys));
+  // Accordion (no máx. 1 aberto por vez): com vários grupos pré-marcados
+  // por padrão, começar todos expandidos empilhava a etapa inteira e
+  // forçava scroll longo. null = nenhum card aberto.
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
   const toggleExpanded = (groupKey: string) => {
-    setExpandedKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(groupKey)) {
-        next.delete(groupKey);
-      } else {
-        next.add(groupKey);
-      }
-      return next;
-    });
+    setExpandedKey((prev) => (prev === groupKey ? null : groupKey));
   };
 
   const toggleGroup = (groupKey: string) => {
@@ -228,7 +223,7 @@ export function BusinessNeedGroupsPicker({
       nextGroups.delete(groupKey);
     } else {
       nextGroups.add(groupKey);
-      setExpandedKeys((prev) => new Set(prev).add(groupKey));
+      setExpandedKey(groupKey);
     }
     onChange({ ...selection, selectedGroupKeys: nextGroups, deselectedCapabilityKeysByGroup: nextDeselected });
   };
@@ -253,7 +248,7 @@ export function BusinessNeedGroupsPicker({
           key={group.key}
           group={group}
           selected={selection.selectedGroupKeys.has(group.key)}
-          expanded={expandedKeys.has(group.key)}
+          expanded={expandedKey === group.key}
           onToggleExpanded={() => toggleExpanded(group.key)}
           deselectedKeys={selection.deselectedCapabilityKeysByGroup.get(group.key) ?? new Set()}
           activeCapabilityKeys={activeCapabilityKeys ?? null}
