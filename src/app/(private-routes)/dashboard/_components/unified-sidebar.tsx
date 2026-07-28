@@ -56,16 +56,20 @@ function NavGroupList({ groups, pathname }: { groups: UnifiedNavGroup[]; pathnam
  *
  * O onboarding cria e seleciona a organização (currentOrg) já na 1ª etapa
  * (Identificação), bem antes de qualquer capacidade ser ativada (isso só
- * acontece na etapa "Operação" ou depois) — por isso o critério aqui é
- * "nenhuma capacidade ativa", não "sem organização": usar só a presença de
- * `currentOrg` trocaria o menu pro real (ainda vazio) assim que a org fosse
- * criada, mesmo com o usuário ainda escolhendo os módulos dela.
+ * acontece na etapa "Operação" ou depois). Dois cuidados por causa disso:
+ * (1) dentro da própria rota de onboarding a query real nem é disparada
+ * (`isOnboarding ? null : ...`) — sem isso o menu passaria pelo skeleton de
+ * loading e por um estado intermediário no meio do wizard, só pra concluir
+ * "nenhuma capacidade" de um jeito mais lento e picado do que já saber de
+ * cara que é onboarding; (2) fora da rota de onboarding, o critério de
+ * preview é "nenhuma capacidade ativa" (`navigation.items.length === 0`),
+ * não "sem organização" — currentOrg já existe bem antes da 1ª capacidade.
  */
 export function UnifiedSidebar() {
   const { currentOrg } = useOrganizations();
   const pathname = usePathname();
   const isOnboarding = pathname.startsWith("/dashboard/onboarding");
-  const { data: navigation, isLoading } = usePlatformNavigation(currentOrg?.id ?? null);
+  const { data: navigation, isLoading } = usePlatformNavigation(isOnboarding ? null : currentOrg?.id ?? null);
   // Independente da organização selecionada — ser promoter não depende de
   // nenhuma capacidade de organização (ver docs/tickets/promoters.md
   // "promoter nunca é automaticamente OrganizationMember"). Troca de papel
@@ -75,9 +79,9 @@ export function UnifiedSidebar() {
   // Só a organização (dono/produtor/equipe) espera `navigation` — um
   // promoter sem nenhuma organização própria (ver comentário acima) nunca
   // deve ficar preso num skeleton infinito por causa disso.
-  const orgNavLoading = currentOrg !== null && (isLoading || !navigation);
+  const orgNavLoading = !isOnboarding && currentOrg !== null && (isLoading || !navigation);
   const hasAnyCapability = (navigation?.items.length ?? 0) > 0;
-  const previewMode = !orgNavLoading && !hasAnyCapability;
+  const previewMode = isOnboarding || (!orgNavLoading && !hasAnyCapability);
   const groups = previewMode ? buildFullCatalogPreview() : navigation ? buildUnifiedNavigation(navigation.items) : [];
 
   return (
