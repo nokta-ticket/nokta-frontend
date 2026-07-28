@@ -35,6 +35,7 @@ type PhoneRecheckPhase = "idle" | "sending" | "code" | "verifying";
 interface OnboardingProgress {
   createdOrgId: number;
   step: number;
+  skippedIdentification?: boolean;
 }
 
 function progressKey(userId: number | null): string | null {
@@ -77,7 +78,7 @@ function clearProgress(userId: number | null) {
 
 export default function PlatformOnboardingPage() {
   const { signIn, user, userId, role, nivelProdutor } = useAuth();
-  const { organizations, loadingOrgs } = useOrganizations();
+  const { organizations, loadingOrgs, refreshOrganizations } = useOrganizations();
 
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -90,6 +91,12 @@ export default function PlatformOnboardingPage() {
   // já que a ativação de capacidades é sempre escopada por organização
   // (resolve dependências contra o que já está ACTIVE nela).
   const [createdOrgId, setCreatedOrgId] = useState<number | null>(null);
+  // true só quando a etapa 0 nunca foi exibida nesta sessão (veio do fluxo
+  // needsWorkspaceOnly, que pula direto pra "Operação") — nesses casos não
+  // há nome pra editar ao voltar. No fluxo normal (handleCreateWorkspace)
+  // fica false, mesmo com accessAlreadyActive=true, pra não travar o
+  // usuário que preencheu o nome e quer corrigi-lo.
+  const [skippedIdentification, setSkippedIdentification] = useState(false);
   const [finishing, setFinishing] = useState(false);
   // Distingue "ainda não sei se há progresso salvo" (evita flash da etapa 0
   // antes de checar localStorage) de "sei que não há" — só relevante no
@@ -128,22 +135,37 @@ export default function PlatformOnboardingPage() {
     if (saved && organizations.some((o) => o.id === saved.createdOrgId)) {
       setCreatedOrgId(saved.createdOrgId);
       setStep(saved.step);
+      setSkippedIdentification(!!saved.skippedIdentification);
     }
     setProgressChecked(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [progressChecked, loadingOrgs, userId]);
 
+  // Preenche o campo de nome com o valor já salvo na organização — sem
+  // isso, voltar da etapa "Operação" pra "Identificação" (ou dar F5 já
+  // com createdOrgId restaurado) mostrava o campo vazio em vez do nome
+  // que o usuário quer corrigir.
   useEffect(() => {
-    if (createdOrgId && progressChecked) saveProgress(userId, { createdOrgId, step });
+    if (!createdOrgId || businessName) return;
+    const org = organizations.find((o) => o.id === createdOrgId);
+    if (org) setBusinessName(org.nome);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [createdOrgId, step, progressChecked]);
+  }, [createdOrgId, organizations]);
+
+  useEffect(() => {
+    if (createdOrgId && progressChecked) saveProgress(userId, { createdOrgId, step, skippedIdentification });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [createdOrgId, step, progressChecked, skippedIdentification]);
 
   // Caminho "só falta criar workspace" (needsWorkspaceOnly, abaixo): o
   // workspace acabou de ser criado agora mesmo — segue direto pra etapa
   // "Operação", sem repetir Identificação (já não faz sentido nesse
   // caminho, o acesso já estava ativo antes desta tela).
   useEffect(() => {
-    if (createdOrgId && accessAlreadyActive && step < 1) setStep(1);
+    if (createdOrgId && accessAlreadyActive && step < 1) {
+      setStep(1);
+      setSkippedIdentification(true);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [createdOrgId, accessAlreadyActive]);
 
@@ -220,11 +242,22 @@ export default function PlatformOnboardingPage() {
   // Etapa 0→1: ativa o acesso (se ainda não ativo) e cria o workspace com o
   // nome já informado. Não ativa nenhuma capacidade aqui — isso é decidido
   // na etapa "Operação" logo em seguida, com o workspace já existindo.
+  // Se createdOrgId já existe, o usuário voltou da etapa "Operação" pra
+  // corrigir o nome — nesse caso atualiza a org existente em vez de criar
+  // uma segunda (ver PATCH /organizations/:id).
   const handleCreateWorkspace = async () => {
     if (businessName.trim().length < 2) return;
     setLoading(true);
 
     try {
+      if (createdOrgId) {
+        await api.patch(`/organizations/${createdOrgId}`, { nome: businessName.trim() });
+        persistBusinessNameDraft(businessName.trim());
+        await refreshOrganizations();
+        setStep(1);
+        return;
+      }
+
       if (!accessAlreadyActive) {
         const response = await api.post("/auth/ativar-produtor", {
           nomeArtistico: businessName.trim(),
@@ -236,6 +269,7 @@ export default function PlatformOnboardingPage() {
       const orgResponse = await api.post("/organizations", { nome: businessName.trim() });
       persistBusinessNameDraft(businessName.trim());
       setCreatedOrgId(orgResponse.data.id);
+      await refreshOrganizations();
       setStep(1);
     } catch (error) {
       toast.error(getErrorMessage(error, "Não foi possível continuar. Tente novamente."));
@@ -252,6 +286,7 @@ export default function PlatformOnboardingPage() {
       const orgResponse = await api.post("/organizations", { nome: businessName.trim() });
       persistBusinessNameDraft(businessName.trim());
       setCreatedOrgId(orgResponse.data.id);
+      await refreshOrganizations();
     } catch (error) {
       toast.error(getErrorMessage(error, "Não foi possível criar seu workspace agora. Tente novamente."));
     } finally {
@@ -551,7 +586,7 @@ export default function PlatformOnboardingPage() {
 
           <div className="mt-8 flex gap-3">
             {step === 1 && (
-              <Button variant="outline" onClick={() => setStep(0)} className="h-11 flex-1" disabled={accessAlreadyActive}>
+              <Button variant="outline" onClick={() => setStep(0)} className="h-11 flex-1" disabled={skippedIdentification}>
                 <ChevronLeft size={16} className="mr-1" />
                 Voltar
               </Button>

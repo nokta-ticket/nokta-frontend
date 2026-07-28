@@ -31,6 +31,8 @@ interface OrganizationContextType {
   loadingOrgs: boolean;
   loadingModules: boolean;
   selectOrg: (id: number) => void;
+  /** Rebusca /me/organizations — usar após criar/renomear uma org pra refletir no header/menu sem precisar de F5. */
+  refreshOrganizations: () => Promise<void>;
 }
 
 const OrganizationContext = createContext<OrganizationContextType | undefined>(
@@ -44,24 +46,22 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const [loadingOrgs, setLoadingOrgs] = useState(true);
   const [loadingModules, setLoadingModules] = useState(false);
 
+  const fetchOrganizations = async () => {
+    try {
+      const res = await api.get<Organization[]>("/me/organizations");
+      setOrganizations(res.data ?? []);
+      setCurrentOrg((prev) => res.data?.find((o) => o.id === prev?.id) ?? res.data?.[0] ?? null);
+    } catch {
+      setOrganizations([]);
+    } finally {
+      setLoadingOrgs(false);
+    }
+  };
+
   // Carrega as organizations do usuário logado.
   useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const res = await api.get<Organization[]>("/me/organizations");
-        if (!active) return;
-        setOrganizations(res.data ?? []);
-        setCurrentOrg(res.data?.[0] ?? null);
-      } catch {
-        if (active) setOrganizations([]);
-      } finally {
-        if (active) setLoadingOrgs(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
+    fetchOrganizations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Carrega os módulos da org atual — refaz sempre que troca de org.
@@ -108,6 +108,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         loadingOrgs,
         loadingModules,
         selectOrg,
+        refreshOrganizations: fetchOrganizations,
       }}
     >
       {children}
