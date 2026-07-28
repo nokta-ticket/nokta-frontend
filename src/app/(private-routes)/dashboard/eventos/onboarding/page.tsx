@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   Calculator,
   Calendar,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   FileText,
@@ -108,6 +109,30 @@ const BUSINESS_NEED_THEME: Record<BusinessNeedKey, { icon: typeof Calendar; icon
   STOCK_PURCHASING: { icon: Boxes, iconBg: "bg-[#ECEAFD]", iconColor: "text-[#5B4BD6]", border: "border-[#C7C0F4]" },
   MANAGEMENT: { icon: Calculator, iconBg: "bg-[#FCE8F0]", iconColor: "text-[#DB2777]", border: "border-[#F5C2D9]" },
 };
+
+/** Checkbox visual com estado indeterminado (parte dos recursos do grupo ativa) — `indeterminate` só existe como propriedade DOM, não como atributo HTML declarativo. */
+function GroupCheckbox({ checked, indeterminate }: { checked: boolean; indeterminate: boolean }) {
+  const ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = indeterminate;
+  }, [indeterminate]);
+
+  return (
+    <span
+      className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border-[1.6px] transition-colors ${
+        checked || indeterminate ? "border-transparent bg-gradient-to-br from-[#7C3AED] to-[#6D28D9]" : "border-[#DAD8E2] bg-white"
+      }`}
+    >
+      <input ref={ref} type="checkbox" checked={checked} readOnly className="sr-only" />
+      {indeterminate ? (
+        <span className="h-[2px] w-2.5 rounded-full bg-white" />
+      ) : checked ? (
+        <Check size={12} strokeWidth={3} className="text-white" />
+      ) : null}
+    </span>
+  );
+}
 
 function OnboardingStepper({ step }: { step: number }) {
   return (
@@ -219,6 +244,10 @@ export default function PlatformOnboardingPage() {
 
   const catalog = useBusinessNeedsCatalog(createdOrgId);
   const [selection, setSelection] = useState<BusinessNeedSelectionState | null>(null);
+  // "Personalizar recursos" na etapa "Operação": lista de capacidades de um
+  // card recolhida por padrão, independente do grupo estar ativo ou não —
+  // só controla se a lista aparece, não afeta a seleção em si.
+  const [customizedGroupKeys, setCustomizedGroupKeys] = useState<Set<string>>(new Set());
   const preview = usePreviewBusinessNeedsActivation(createdOrgId ?? -1);
   const activateNeeds = useActivateBusinessNeeds(createdOrgId ?? -1);
 
@@ -704,8 +733,10 @@ export default function PlatformOnboardingPage() {
             </div>
 
             <div className="flex w-full min-w-0 flex-1 flex-col">
-              <h2 className="text-[17px] font-bold tracking-[-0.01em] text-[#1a1626]">O que você deseja gerenciar na Nokta?</h2>
-              <p className="mt-1.5 text-[12.5px] text-[#6b7280]">Você pode selecionar mais de uma opção.</p>
+              <h2 className="text-[17px] font-bold tracking-[-0.01em] text-[#1a1626]">Selecione as áreas que fazem parte da sua operação</h2>
+              <p className="mt-1.5 text-[12.5px] text-[#6b7280]">
+                Clique no card para ativar todos os recursos do grupo ou personalize as funcionalidades individualmente.
+              </p>
 
               {catalog.isLoading || !selection ? (
                 <BlockSkeleton className="mt-5 h-72" />
@@ -716,67 +747,117 @@ export default function PlatformOnboardingPage() {
                     const Icon = theme.icon;
                     const isSelected = selection.selectedGroupKeys.has(group.key);
                     const deselected = selection.deselectedCapabilityKeysByGroup.get(group.key) ?? new Set<string>();
+                    const activeCount = group.capabilities.filter((c) => c.required || !deselected.has(c.key)).length;
+                    const totalCount = group.capabilities.length;
+                    const isPartial = isSelected && activeCount < totalCount;
+                    const isCustomizing = customizedGroupKeys.has(group.key);
+
+                    const toggleCustomize = () => {
+                      setCustomizedGroupKeys((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(group.key)) next.delete(group.key);
+                        else next.add(group.key);
+                        return next;
+                      });
+                    };
 
                     return (
                       <div
                         key={group.key}
-                        className={`relative rounded-[15px] border p-[18px_16px_16px] transition-colors ${
-                          isSelected ? theme.border : "border-[#ecebf1]"
-                        } bg-white`}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => toggleBusinessNeedGroup(group.key)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            toggleBusinessNeedGroup(group.key);
+                          }
+                        }}
+                        aria-pressed={isSelected}
+                        className={`relative cursor-pointer rounded-[15px] border p-[18px_16px_16px] transition-colors ${
+                          isSelected ? `${theme.border} bg-[#FBFAFE]` : "border-[#ecebf1] bg-white"
+                        }`}
                       >
-                        <button
-                          type="button"
-                          onClick={() => toggleBusinessNeedGroup(group.key)}
-                          aria-pressed={isSelected}
-                          aria-label={`Selecionar ${group.label}`}
-                          className={`absolute right-3.5 top-3.5 flex h-[22px] w-[22px] items-center justify-center rounded-full transition-colors ${
-                            isSelected
-                              ? "bg-gradient-to-br from-[#7C3AED] to-[#6D28D9] shadow-[0_3px_7px_rgba(109,40,217,0.4)]"
-                              : "border-[1.6px] border-[#DAD8E2] bg-white"
-                          }`}
-                        >
-                          {isSelected && <Check size={12} strokeWidth={3} className="text-white" />}
-                        </button>
+                        <div className="flex items-center justify-between">
+                          <div className={`flex h-11 w-11 items-center justify-center rounded-[13px] ${theme.iconBg} ${theme.iconColor}`}>
+                            <Icon size={22} strokeWidth={1.9} />
+                          </div>
 
-                        <div className={`flex h-11 w-11 items-center justify-center rounded-[13px] ${theme.iconBg} ${theme.iconColor}`}>
-                          <Icon size={22} strokeWidth={1.9} />
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              toggleBusinessNeedGroup(group.key);
+                            }}
+                            className="flex items-center gap-2 text-[11.5px] font-semibold text-[#6b7280]"
+                          >
+                            Ativar este grupo
+                            <GroupCheckbox checked={isSelected && !isPartial} indeterminate={isPartial} />
+                          </button>
                         </div>
+
                         <div className="mt-3.5 text-[14px] font-bold text-[#1a1626]">{group.label}</div>
                         <div className="mt-1.5 text-[11.5px] leading-[1.5] text-[#6b7280]">{group.description}</div>
 
-                        <div className="mt-3.5 flex flex-col gap-2.5 border-t border-[#f1eff5] pt-3.5">
-                          {group.capabilities.map((capability) => {
-                            const checked = isSelected && (capability.required || !deselected.has(capability.key));
-                            const interactive = isSelected && !capability.required;
-                            const toggleCapability = () => {
-                              if (!interactive || !selection) return;
-                              const nextByGroup = new Map(selection.deselectedCapabilityKeysByGroup);
-                              const current = new Set(nextByGroup.get(group.key) ?? []);
-                              if (current.has(capability.key)) current.delete(capability.key);
-                              else current.add(capability.key);
-                              nextByGroup.set(group.key, current);
-                              setSelection({ ...selection, deselectedCapabilityKeysByGroup: nextByGroup });
-                            };
-                            return (
-                              <button
-                                key={capability.key}
-                                type="button"
-                                onClick={toggleCapability}
-                                disabled={!interactive}
-                                className={`flex items-start gap-2.5 text-left text-xs ${interactive ? "cursor-pointer" : "cursor-default"}`}
-                              >
-                                <span
-                                  className={`mt-0.5 flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-[5px] ${
-                                    checked ? `${theme.iconColor} bg-current` : "border-[1.6px] border-[#D7D5E0] bg-white"
-                                  }`}
+                        <span
+                          className={`mt-3.5 inline-flex w-fit items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                            isSelected ? `${theme.iconBg} ${theme.iconColor}` : "bg-black/[0.04] text-[#6b7280]"
+                          }`}
+                        >
+                          {isPartial ? `${activeCount} de ${totalCount} recursos` : `${totalCount} recursos incluídos`}
+                        </span>
+
+                        {!isCustomizing ? (
+                          <p className="mt-2.5 text-[11px] leading-[1.5] text-[#9a98a6]">
+                            {group.capabilities.map((c) => c.label).join(", ")}.
+                          </p>
+                        ) : (
+                          <div className="mt-3 flex flex-col gap-2.5 border-t border-[#f1eff5] pt-3" onClick={(event) => event.stopPropagation()}>
+                            {group.capabilities.map((capability) => {
+                              const checked = isSelected && (capability.required || !deselected.has(capability.key));
+                              const interactive = isSelected && !capability.required;
+                              const toggleCapability = () => {
+                                if (!interactive || !selection) return;
+                                const nextByGroup = new Map(selection.deselectedCapabilityKeysByGroup);
+                                const current = new Set(nextByGroup.get(group.key) ?? []);
+                                if (current.has(capability.key)) current.delete(capability.key);
+                                else current.add(capability.key);
+                                nextByGroup.set(group.key, current);
+                                setSelection({ ...selection, deselectedCapabilityKeysByGroup: nextByGroup });
+                              };
+                              return (
+                                <button
+                                  key={capability.key}
+                                  type="button"
+                                  onClick={toggleCapability}
+                                  disabled={!interactive}
+                                  className={`flex items-start gap-2.5 text-left text-xs ${interactive ? "cursor-pointer" : "cursor-default"}`}
                                 >
-                                  {checked && <Check size={11} strokeWidth={3} className="text-white" />}
-                                </span>
-                                <span className="text-[#1a1626]">{capability.label}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
+                                  <span
+                                    className={`mt-0.5 flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-[5px] ${
+                                      checked ? `${theme.iconColor} bg-current` : "border-[1.6px] border-[#D7D5E0] bg-white"
+                                    }`}
+                                  >
+                                    {checked && <Check size={11} strokeWidth={3} className="text-white" />}
+                                  </span>
+                                  <span className="text-[#1a1626]">{capability.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleCustomize();
+                          }}
+                          className="mt-3 flex items-center gap-1 text-[11.5px] font-semibold text-[#6d28d9] hover:underline"
+                        >
+                          Personalizar recursos
+                          <ChevronDown size={13} className={`transition-transform ${isCustomizing ? "rotate-180" : ""}`} />
+                        </button>
                       </div>
                     );
                   })}
@@ -802,7 +883,9 @@ export default function PlatformOnboardingPage() {
                     disabled={!canAdvance()}
                     className="flex h-11 w-full items-center justify-center gap-2 bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] text-white hover:brightness-105 disabled:cursor-not-allowed"
                   >
-                    Continuar com as opções selecionadas
+                    {selectedCount > 0
+                      ? `Continuar com ${selectedCount} ${selectedCount > 1 ? "áreas selecionadas" : "área selecionada"}`
+                      : "Continuar"}
                     <ChevronRight size={16} />
                   </Button>
                 </div>
