@@ -468,30 +468,30 @@ export default function PlatformOnboardingPage() {
       <div className="flex items-stretch gap-[22px]">
         <section className="flex flex-1 flex-col rounded-[20px] border border-[#ecebf1] bg-white px-5 pb-7 pt-[34px] md:px-10 md:pb-10">
           <div className="flex flex-col items-start gap-[30px] lg:flex-row lg:gap-[44px]">
-            <div className="w-full lg:flex-[1_1_46%]">
+            <div className="w-full lg:flex-[1_1_54%]">
               <span className="inline-block rounded-full bg-[#f3efff] px-3 py-1.5 text-[11.5px] font-semibold text-[#6d28d9]">
                 Vamos começar
               </span>
 
-              <h1 className="mt-4 text-[26px] font-extrabold leading-[1.15] tracking-[-0.02em] text-[#1a1626] md:text-[30px]">
+              <h1 className="mt-4 text-[26px] font-extrabold leading-[1.15] tracking-[-0.02em] text-[#1a1626] md:text-[34px]">
                 Crie sua primeira <span className="block text-[#6d28d9]">organização</span>
               </h1>
 
-              <p className="mt-3.5 max-w-[330px] text-[13.5px] leading-[1.55] text-[#6b7280]">
+              <p className="mt-3.5 max-w-[400px] text-[14.5px] leading-[1.6] text-[#6b7280]">
                 A organização é o espaço onde você gerencia eventos, equipe, operações e resultados.
               </p>
 
-              <div className="mt-6 space-y-5">
+              <div className="mt-7 space-y-6">
                 {IDENTIFICATION_BENEFITS.map((benefit) => {
                   const Icon = benefit.icon;
                   return (
-                    <div key={benefit.title} className="flex items-start gap-3.5">
-                      <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#f1ecfe] text-[#6d28d9]">
-                        <Icon size={17} strokeWidth={1.9} />
+                    <div key={benefit.title} className="flex items-start gap-4">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f1ecfe] text-[#6d28d9]">
+                        <Icon size={19} strokeWidth={1.9} />
                       </div>
                       <div>
-                        <div className="text-[13.5px] font-semibold text-[#1a1626]">{benefit.title}</div>
-                        <div className="mt-0.5 text-[12.5px] leading-[1.45] text-[#6b7280]">{benefit.description}</div>
+                        <div className="text-[14.5px] font-semibold text-[#1a1626]">{benefit.title}</div>
+                        <div className="mt-0.5 text-[13px] leading-[1.5] text-[#6b7280]">{benefit.description}</div>
                       </div>
                     </div>
                   );
@@ -499,7 +499,7 @@ export default function PlatformOnboardingPage() {
               </div>
             </div>
 
-            <div className="w-full lg:flex-[1_1_54%]">
+            <div className="w-full lg:flex-[1_1_46%]">
               <OnboardingStepper step={step} />
 
               <form
@@ -507,7 +507,7 @@ export default function PlatformOnboardingPage() {
                   event.preventDefault();
                   handleCreateWorkspace();
                 }}
-                className="rounded-2xl border border-[#e7e5ee] bg-white p-6 shadow-[0_6px_24px_rgba(30,20,60,0.05)]"
+                className="mx-auto max-w-[420px] rounded-2xl border border-[#e7e5ee] bg-white p-6 shadow-[0_6px_24px_rgba(30,20,60,0.05)]"
               >
                 <h2 className="text-[18px] font-bold tracking-[-0.01em] text-[#1a1626]">Como deseja chamar sua organização?</h2>
 

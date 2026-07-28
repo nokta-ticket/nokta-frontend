@@ -229,7 +229,7 @@ function HelpIllustration() {
  */
 export function OnboardingExtras() {
   return (
-    <div className="mx-auto mt-6 grid max-w-[1320px] items-stretch gap-[22px] xl:grid-cols-[1.1fr_1.55fr_1fr]">
+    <div className="mt-6 grid w-full items-stretch gap-[22px] xl:grid-cols-[1.1fr_1.55fr_1fr]">
       <section className="rounded-[20px] border border-[#ecebf1] bg-white p-6">
         <h2 className="mb-4 text-base font-bold tracking-[-0.01em] text-[#1a1626]">A Nokta cuida do que importa para você</h2>
         <div className="grid grid-cols-2 gap-3">
