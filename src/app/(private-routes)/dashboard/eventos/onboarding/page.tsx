@@ -11,22 +11,28 @@ import { useOrganizations } from "@/context/OrganizationContext";
 import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import {
+  Boxes,
+  Calculator,
+  Calendar,
   Check,
   ChevronLeft,
   ChevronRight,
   FileText,
   Grid2x2,
+  Info,
   Layers,
   Lightbulb,
   ListChecks,
   Lock,
+  Pencil,
   RefreshCw,
+  ShieldCheck,
   Sparkles,
   Target,
   UsersRound,
+  UtensilsCrossed,
 } from "lucide-react";
 import {
-  BusinessNeedGroupsPicker,
   createDefaultSelection,
   flattenSelection,
   type BusinessNeedSelectionState,
@@ -35,6 +41,7 @@ import { BusinessNeedActivationSummary } from "../../_components/business-needs/
 import { useActivateBusinessNeeds, useBusinessNeedsCatalog, usePreviewBusinessNeedsActivation } from "../../_hooks/use-platform";
 import { BlockSkeleton } from "../../_components/states/loading-state";
 import { OnboardingExtras } from "./_components/onboarding-extras";
+import type { BusinessNeedKey } from "@/services/platform";
 
 const STEP_COUNT = 4;
 
@@ -73,6 +80,34 @@ const IDENTIFICATION_NEXT_STEPS = [
     description: "Libere o potencial da Nokta.",
   },
 ];
+
+const OPERATION_NEXT_STEPS = [
+  {
+    icon: Sparkles,
+    title: "Mais clareza",
+    description: "Veja no menu apenas os recursos usados no seu dia a dia.",
+  },
+  {
+    icon: Layers,
+    title: "Totalmente flexível",
+    description: "Ative ou desative funcionalidades depois, nas configurações.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Sem impacto nos seus dados",
+    description: "Ocultar um recurso não apaga cadastros nem configurações existentes.",
+  },
+];
+
+/** Tema visual (ícone + cores) por necessidade de negócio — mesma ordem/keys de BUSINESS_NEED_CATALOG (backend). */
+const BUSINESS_NEED_THEME: Record<BusinessNeedKey, { icon: typeof Calendar; iconBg: string; iconColor: string; border: string }> = {
+  EVENTS_TICKETING: { icon: Calendar, iconBg: "bg-[#F1ECFE]", iconColor: "text-[#7C3AED]", border: "border-[#CBBAF7]" },
+  RELATIONSHIP: { icon: UsersRound, iconBg: "bg-[#E4F6EF]", iconColor: "text-[#059669]", border: "border-[#B6E6D2]" },
+  OPERATION: { icon: Layers, iconBg: "bg-[#FEF0E2]", iconColor: "text-[#F97316]", border: "border-[#F7DBBB]" },
+  MENU_PRODUCTS: { icon: UtensilsCrossed, iconBg: "bg-[#E7F0FE]", iconColor: "text-[#2563EB]", border: "border-[#BED7F9]" },
+  STOCK_PURCHASING: { icon: Boxes, iconBg: "bg-[#ECEAFD]", iconColor: "text-[#5B4BD6]", border: "border-[#C7C0F4]" },
+  MANAGEMENT: { icon: Calculator, iconBg: "bg-[#FCE8F0]", iconColor: "text-[#DB2777]", border: "border-[#F5C2D9]" },
+};
 
 function OnboardingStepper({ step }: { step: number }) {
   return (
@@ -184,6 +219,10 @@ export default function PlatformOnboardingPage() {
 
   const catalog = useBusinessNeedsCatalog(createdOrgId);
   const [selection, setSelection] = useState<BusinessNeedSelectionState | null>(null);
+  // Accordion dos cards de módulo na etapa "Operação": no máx. 1 aberto por
+  // vez, e todos começam fechados (null) — os 6 cards abertos juntos empilham
+  // a tela inteira e forçam scroll longo.
+  const [expandedGroupKey, setExpandedGroupKey] = useState<string | null>(null);
   const preview = usePreviewBusinessNeedsActivation(createdOrgId ?? -1);
   const activateNeeds = useActivateBusinessNeeds(createdOrgId ?? -1);
 
@@ -362,6 +401,25 @@ export default function PlatformOnboardingPage() {
     } finally {
       setCreatingWorkspaceOnly(false);
     }
+  };
+
+  // Marca/desmarca um card de módulo na etapa "Operação" — sempre reseta as
+  // exceções individuais de capacidade dele (mesma regra de
+  // BusinessNeedGroupsPicker.toggleGroup): selecionar liga tudo por padrão,
+  // desmarcar tira tudo, sem sobra de uma seleção parcial anterior.
+  const toggleBusinessNeedGroup = (groupKey: string) => {
+    if (!selection) return;
+    const nextGroups = new Set(selection.selectedGroupKeys);
+    const nextDeselected = new Map(selection.deselectedCapabilityKeysByGroup);
+    nextDeselected.delete(groupKey);
+
+    if (nextGroups.has(groupKey)) {
+      nextGroups.delete(groupKey);
+    } else {
+      nextGroups.add(groupKey);
+      setExpandedGroupKey(groupKey);
+    }
+    setSelection({ ...selection, selectedGroupKeys: nextGroups, deselectedCapabilityKeysByGroup: nextDeselected });
   };
 
   const goToTerms = () => setStep(2);
@@ -599,6 +657,226 @@ export default function PlatformOnboardingPage() {
     );
   }
 
+  if (step === 1) {
+    const orgName = organizations.find((o) => o.id === createdOrgId)?.nome ?? businessName;
+    const selectedCount = selection?.selectedGroupKeys.size ?? 0;
+
+    return (
+      <div className="flex items-stretch gap-[22px]">
+        <section className="flex flex-1 flex-col rounded-[20px] border border-[#ecebf1] bg-white px-5 pb-6 pt-6 md:px-10 md:pb-8 md:pt-8">
+          <OnboardingStepper step={step} />
+
+          <div className="grid grid-cols-1 items-start gap-9 lg:grid-cols-[280px_1fr]">
+            <div className="space-y-6">
+              <div>
+                <span className="inline-block rounded-full bg-[#f3efff] px-3 py-1.5 text-[11.5px] font-semibold text-[#6d28d9]">
+                  Vamos continuar
+                </span>
+                <h1 className="mt-4 text-[24px] font-extrabold leading-[1.15] tracking-[-0.02em] text-[#1a1626] md:text-[27px]">
+                  Como funciona a sua <span className="text-[#6d28d9]">operação?</span>
+                </h1>
+                <p className="mt-3.5 text-[13.5px] leading-[1.6] text-[#6b7280]">
+                  Selecione os recursos que pretende utilizar agora. A Nokta personalizará seu painel para exibir somente o que fizer sentido para a sua operação.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-[#ECE6F8] bg-[#F6F3FC] p-[18px]">
+                <div className="mb-3.5 flex items-center gap-2.5">
+                  <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#EDE7FE] text-[#6d28d9]">
+                    <Layers size={17} strokeWidth={1.9} />
+                  </div>
+                  <span className="text-[13px] font-semibold text-[#1a1626]">Sua organização</span>
+                </div>
+                <div className="text-[16px] font-bold text-[#1a1626]">{orgName}</div>
+                <p className="mt-1.5 text-xs leading-[1.5] text-[#6b7280]">
+                  Este é o nome que será mostrado no painel para você e para a sua equipe.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setStep(0)}
+                  className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-[#6d28d9] hover:underline"
+                >
+                  <Pencil size={13} />
+                  Editar nome de exibição
+                </button>
+                <div className="mt-4 flex items-start gap-2.5 rounded-[11px] bg-[#EFEAFA] p-3">
+                  <ShieldCheck size={14} strokeWidth={1.9} className="mt-0.5 shrink-0 text-[#6d28d9]" />
+                  <p className="text-[11px] leading-[1.5] text-[#5F5580]">
+                    O nome de exibição pode ser ajustado depois. Dados jurídicos, como razão social e CPF/CNPJ, são tratados à parte e podem exigir nova verificação após o KYC.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-[17px] font-bold tracking-[-0.01em] text-[#1a1626]">O que você deseja gerenciar na Nokta?</h2>
+              <p className="mt-1.5 text-[12.5px] text-[#6b7280]">Você pode selecionar mais de uma opção.</p>
+
+              {catalog.isLoading || !selection ? (
+                <BlockSkeleton className="mt-5 h-72" />
+              ) : catalog.data ? (
+                <div className="mt-5 grid grid-cols-1 gap-3.5 sm:grid-cols-2 xl:grid-cols-3">
+                  {catalog.data.map((group) => {
+                    const theme = BUSINESS_NEED_THEME[group.key];
+                    const Icon = theme.icon;
+                    const isSelected = selection.selectedGroupKeys.has(group.key);
+                    const isOpen = expandedGroupKey === group.key;
+                    const deselected = selection.deselectedCapabilityKeysByGroup.get(group.key) ?? new Set<string>();
+
+                    return (
+                      <div
+                        key={group.key}
+                        className={`relative rounded-[15px] border p-[18px_16px_16px] transition-colors ${
+                          isSelected ? theme.border : "border-[#ecebf1]"
+                        } bg-white`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => toggleBusinessNeedGroup(group.key)}
+                          aria-pressed={isSelected}
+                          aria-label={`Selecionar ${group.label}`}
+                          className={`absolute right-3.5 top-3.5 flex h-[22px] w-[22px] items-center justify-center rounded-full transition-colors ${
+                            isSelected
+                              ? "bg-gradient-to-br from-[#7C3AED] to-[#6D28D9] shadow-[0_3px_7px_rgba(109,40,217,0.4)]"
+                              : "border-[1.6px] border-[#DAD8E2] bg-white"
+                          }`}
+                        >
+                          {isSelected && <Check size={12} strokeWidth={3} className="text-white" />}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setExpandedGroupKey((prev) => (prev === group.key ? null : group.key))}
+                          aria-expanded={isOpen}
+                          className="w-full text-left"
+                        >
+                          <div className={`flex h-11 w-11 items-center justify-center rounded-[13px] ${theme.iconBg} ${theme.iconColor}`}>
+                            <Icon size={22} strokeWidth={1.9} />
+                          </div>
+                          <div className="mt-3.5 text-[14px] font-bold text-[#1a1626]">{group.label}</div>
+                          <div className="mt-1.5 min-h-[34px] text-[11.5px] leading-[1.5] text-[#6b7280]">{group.description}</div>
+                        </button>
+
+                        {isOpen && (
+                          <div className="mt-3.5 flex flex-col gap-2.5 border-t border-[#f1eff5] pt-3.5">
+                            {group.capabilities.map((capability) => {
+                              const checked = isSelected && (capability.required || !deselected.has(capability.key));
+                              const interactive = isSelected && !capability.required;
+                              const toggleCapability = () => {
+                                if (!interactive || !selection) return;
+                                const nextByGroup = new Map(selection.deselectedCapabilityKeysByGroup);
+                                const current = new Set(nextByGroup.get(group.key) ?? []);
+                                if (current.has(capability.key)) current.delete(capability.key);
+                                else current.add(capability.key);
+                                nextByGroup.set(group.key, current);
+                                setSelection({ ...selection, deselectedCapabilityKeysByGroup: nextByGroup });
+                              };
+                              return (
+                                <button
+                                  key={capability.key}
+                                  type="button"
+                                  onClick={toggleCapability}
+                                  disabled={!interactive}
+                                  className={`flex items-start gap-2.5 text-left text-xs ${interactive ? "cursor-pointer" : "cursor-default"}`}
+                                >
+                                  <span
+                                    className={`mt-0.5 flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-[5px] ${
+                                      checked ? `${theme.iconColor} bg-current` : "border-[1.6px] border-[#D7D5E0] bg-white"
+                                    }`}
+                                  >
+                                    {checked && <Check size={11} strokeWidth={3} className="text-white" />}
+                                  </span>
+                                  <span className="text-[#1a1626]">{capability.label}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              <div className="mt-5 flex items-start gap-3 rounded-[13px] border border-[#E9E1FB] bg-[#f3efff] p-3.5">
+                <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg bg-white text-[#6d28d9] shadow-[0_2px_5px_rgba(80,40,160,0.12)]">
+                  <Info size={15} />
+                </div>
+                <div>
+                  <div className="text-[13px] font-bold text-[#3A2E63]">Seu painel ficará mais organizado</div>
+                  <p className="mt-0.5 text-xs leading-[1.55] text-[#6A5E90]">
+                    Os recursos não selecionados ficam ocultos para reduzir a poluição visual. Você poderá ativá-los depois em Configurações, sem refazer o cadastro nem perder informações.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 flex gap-3">
+                <Button variant="outline" onClick={() => setStep(0)} className="h-11 flex-1" disabled={skippedIdentification}>
+                  <ChevronLeft size={16} className="mr-1" />
+                  Voltar
+                </Button>
+                <Button
+                  onClick={goToTerms}
+                  disabled={!canAdvance()}
+                  className="flex h-11 flex-[2] items-center justify-center gap-2 bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] text-white hover:brightness-105 disabled:cursor-not-allowed"
+                >
+                  Continuar com as opções selecionadas
+                  <ChevronRight size={16} />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <aside className="hidden w-[288px] shrink-0 flex-col rounded-[20px] border border-[#ECE6F8] bg-[#F6F3FC] px-6 py-8 xl:flex">
+          <h3 className="text-[16px] font-bold leading-[1.3] tracking-[-0.01em] text-[#1a1626]">
+            Um painel feito para a sua operação
+          </h3>
+          <p className="mt-3 text-[12.5px] leading-[1.6] text-[#6b7280]">
+            Ao finalizar, a navegação será organizada de acordo com os recursos selecionados
+            {selectedCount > 0 ? ` (${selectedCount} selecionado${selectedCount > 1 ? "s" : ""})` : ""}. Você começa com uma área mais simples e ativa novas funcionalidades conforme precisar.
+          </p>
+
+          <div className="my-6 flex w-full items-center justify-center">
+            <svg viewBox="0 0 240 180" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-auto w-full max-w-[210px]">
+              <ellipse cx="120" cy="150" rx="95" ry="18" fill="#ECE6F8" />
+              <circle cx="205" cy="52" r="4" fill="#C4B5FD" />
+              <path d="M30 60v10M25 65h10" stroke="#C4B5FD" strokeWidth="2" strokeLinecap="round" />
+              <rect x="66" y="34" width="120" height="86" rx="12" fill="#EDE7FE" />
+              <rect x="48" y="52" width="120" height="80" rx="12" fill="#fff" stroke="#DED3F6" strokeWidth="1.6" />
+              <rect x="48" y="52" width="120" height="20" rx="12" fill="#F4EFFD" />
+              <circle cx="60" cy="62" r="2.4" fill="#C4B5FD" />
+              <circle cx="69" cy="62" r="2.4" fill="#D9CDF3" />
+              <circle cx="78" cy="62" r="2.4" fill="#E5DCF6" />
+              <rect x="62" y="86" width="15" height="15" rx="4" fill="#7C3AED" />
+              <path d="m66 93.5 2.5 2.5 4-4.5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              <rect x="84" y="90" width="62" height="6" rx="3" fill="#E3D9F8" />
+              <rect x="62" y="108" width="15" height="15" rx="4" fill="#A78BFA" />
+              <path d="m66 115.5 2.5 2.5 4-4.5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              <rect x="84" y="112" width="48" height="6" rx="3" fill="#ECE4FA" />
+              <path d="M150 108l26 10-11 3-3 11-12-24Z" fill="#6D28D9" stroke="#fff" strokeWidth="2" strokeLinejoin="round" />
+            </svg>
+          </div>
+
+          {OPERATION_NEXT_STEPS.map((next) => {
+            const Icon = next.icon;
+            return (
+              <div key={next.title} className="mb-5 flex w-full items-start gap-3 text-left last:mb-0">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[#EDE7FE] text-[#6d28d9]">
+                  <Icon size={16} strokeWidth={1.9} />
+                </div>
+                <div>
+                  <div className="text-[13px] font-semibold text-[#1a1626]">{next.title}</div>
+                  <div className="mt-0.5 text-xs leading-[1.5] text-[#6b7280]">{next.description}</div>
+                </div>
+              </div>
+            );
+          })}
+        </aside>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col items-center bg-gray-50 px-4 py-8">
       <div className="w-full max-w-2xl">
@@ -606,26 +884,6 @@ export default function PlatformOnboardingPage() {
           <OnboardingStepper step={step} />
 
           <div className="p-8">
-          {step === 1 && (
-            <div className="space-y-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">
-                <Layers className="text-violet-600" size={22} />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Como sua operação funciona?</h2>
-                <p className="mt-1 text-sm text-gray-500">
-                  Marque o que descreve o seu negócio — a Nokta ativa automaticamente o que for necessário.
-                </p>
-              </div>
-
-              {catalog.isLoading || !selection ? (
-                <BlockSkeleton className="h-72" />
-              ) : catalog.data ? (
-                <BusinessNeedGroupsPicker groups={catalog.data} selection={selection} onChange={setSelection} />
-              ) : null}
-            </div>
-          )}
-
           {step === 2 && (
             <div className="space-y-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">
@@ -735,12 +993,6 @@ export default function PlatformOnboardingPage() {
           )}
 
           <div className="mt-8 flex gap-3">
-            {step === 1 && (
-              <Button variant="outline" onClick={() => setStep(0)} className="h-11 flex-1" disabled={skippedIdentification}>
-                <ChevronLeft size={16} className="mr-1" />
-                Voltar
-              </Button>
-            )}
             {step === 2 && (
               <Button variant="outline" onClick={() => setStep(1)} className="h-11 flex-1">
                 <ChevronLeft size={16} className="mr-1" />
@@ -751,17 +1003,6 @@ export default function PlatformOnboardingPage() {
               <Button variant="outline" onClick={() => setStep(2)} className="h-11 flex-1" disabled={finishing}>
                 <ChevronLeft size={16} className="mr-1" />
                 Voltar
-              </Button>
-            )}
-
-            {step === 1 && (
-              <Button
-                onClick={goToTerms}
-                disabled={!canAdvance()}
-                className="h-11 flex-1 bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
-              >
-                Continuar
-                <ChevronRight size={16} className="ml-1" />
               </Button>
             )}
 
