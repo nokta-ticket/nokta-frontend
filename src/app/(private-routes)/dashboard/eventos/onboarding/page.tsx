@@ -11,18 +11,18 @@ import { useOrganizations } from "@/context/OrganizationContext";
 import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import {
-  Building2,
   Check,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   FileText,
+  Grid2x2,
   Layers,
   Lightbulb,
   ListChecks,
+  Lock,
   RefreshCw,
-  Rocket,
-  Store,
+  Sparkles,
+  Target,
   UsersRound,
 } from "lucide-react";
 import {
@@ -39,7 +39,7 @@ const STEP_COUNT = 4;
 
 const IDENTIFICATION_BENEFITS = [
   {
-    icon: Building2,
+    icon: Grid2x2,
     title: "Centralize tudo em um só lugar",
     description: "Gerencie eventos, vendas, equipe e finanças.",
   },
@@ -49,48 +49,47 @@ const IDENTIFICATION_BENEFITS = [
     description: "Defina papéis e permissões para cada pessoa.",
   },
   {
-    icon: Store,
-    title: "Escale sua operação",
-    description: "Crie e participe de quantas organizações precisar.",
+    icon: Target,
+    title: "Escalável",
+    description: "Crie quantas organizações precisar.",
   },
 ];
 
 const IDENTIFICATION_NEXT_STEPS = [
   {
-    icon: Store,
+    icon: Sparkles,
     title: "Crie sua primeira organização",
     description: "Comece do zero e configure seu espaço.",
   },
   {
     icon: UsersRound,
     title: "Convide sua equipe",
-    description: "Chame pessoas para ajudar na operação.",
+    description: "Chame pessoas para te ajudar a operar.",
   },
   {
     icon: Lightbulb,
     title: "Explore todos os recursos",
-    description: "Ative somente os módulos necessários.",
+    description: "Libere o potencial da Nokta.",
   },
 ];
 
 function OnboardingStepper({ step }: { step: number }) {
   return (
-    <div className="flex items-center justify-center border-b border-[#f0eef4] px-6 py-6">
+    <div className="mx-auto mb-8 flex w-full max-w-[340px] items-center justify-center">
       {Array.from({ length: STEP_COUNT }, (_, i) => i).map((index) => {
         const active = index === step;
-        const done = index < step;
         return (
-          <div key={index} className="flex items-center">
+          <div key={index} className="flex flex-1 items-center last:flex-initial">
             <div
-              className={`flex h-7 w-7 items-center justify-center rounded-full border text-xs font-semibold transition-colors ${
-                active || done ? "border-violet-600 bg-violet-600 text-white" : "border-[#d9d7e1] bg-white text-[#999ba8]"
+              className={`flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors ${
+                active
+                  ? "border-transparent bg-gradient-to-br from-violet-600 to-[#6d28d9] text-white shadow-[0_3px_8px_rgba(109,40,217,0.3)]"
+                  : "border-[#e7e5ee] bg-white text-[#b4b2be]"
               }`}
             >
-              {done ? <Check size={13} /> : index + 1}
+              {index + 1}
             </div>
-            {index < STEP_COUNT - 1 && (
-              <div className={`mx-2 h-px w-10 sm:w-14 ${index < step ? "bg-violet-300" : "bg-[#e3e1e8]"}`} />
-            )}
+            {index < STEP_COUNT - 1 && <div className="mx-1 h-[1.5px] flex-1 bg-[#e7e5ee]" />}
           </div>
         );
       })}
@@ -463,39 +462,36 @@ export default function PlatformOnboardingPage() {
   }
 
   if (step === 0) {
-    const firstName = user?.nome ?? "";
-
     return (
-      <div className="mx-auto grid max-w-[1320px] gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <section className="overflow-hidden rounded-[24px] border border-[#e9e7f0] bg-white shadow-[0_16px_50px_rgba(30,20,60,0.05)]">
+      <div className="flex items-stretch gap-[22px]">
+        <section className="flex flex-1 flex-col rounded-[20px] border border-[#ecebf1] bg-white px-5 pb-7 pt-[34px] md:px-10 md:pb-10">
           <OnboardingStepper step={step} />
 
-          <div className="grid gap-8 p-7 md:p-9 lg:grid-cols-[280px_minmax(0,1fr)] lg:p-10">
-            <div>
-              <span className="inline-flex rounded-full bg-[#f2edff] px-3 py-1.5 text-xs font-semibold text-[#6f35df]">
-                Vamos começar{firstName ? `, ${firstName}` : ""}
+          <div className="flex flex-col items-start gap-[30px] lg:flex-row lg:gap-[44px]">
+            <div className="w-full lg:flex-[1_1_46%]">
+              <span className="inline-block rounded-full bg-[#f3efff] px-3 py-1.5 text-[11.5px] font-semibold text-[#6d28d9]">
+                Vamos começar
               </span>
 
-              <h1 className="mt-5 text-3xl font-bold leading-[1.08] tracking-[-0.035em] text-[#151426] lg:text-[38px]">
-                Crie sua primeira
-                <span className="block text-[#7138e8]">organização</span>
+              <h1 className="mt-4 text-[26px] font-extrabold leading-[1.15] tracking-[-0.02em] text-[#1a1626] md:text-[30px]">
+                Crie sua primeira <span className="block text-[#6d28d9]">organização</span>
               </h1>
 
-              <p className="mt-4 max-w-[280px] text-sm leading-6 text-[#6e7181]">
-                A organização é o espaço onde você gerencia eventos, equipe, operação e resultados.
+              <p className="mt-3.5 max-w-[330px] text-[13.5px] leading-[1.55] text-[#6b7280]">
+                A organização é o espaço onde você gerencia eventos, equipe, operações e resultados.
               </p>
 
-              <div className="mt-8 space-y-5">
+              <div className="mt-6 space-y-5">
                 {IDENTIFICATION_BENEFITS.map((benefit) => {
                   const Icon = benefit.icon;
                   return (
-                    <div key={benefit.title} className="flex items-start gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f2edff] text-[#7138e8]">
-                        <Icon className="h-4 w-4" />
+                    <div key={benefit.title} className="flex items-start gap-3.5">
+                      <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#f1ecfe] text-[#6d28d9]">
+                        <Icon size={17} strokeWidth={1.9} />
                       </div>
                       <div>
-                        <strong className="block text-sm font-semibold text-[#242436]">{benefit.title}</strong>
-                        <p className="mt-1 text-xs leading-5 text-[#7a7d8e]">{benefit.description}</p>
+                        <div className="text-[13.5px] font-semibold text-[#1a1626]">{benefit.title}</div>
+                        <div className="mt-0.5 text-[12.5px] leading-[1.45] text-[#6b7280]">{benefit.description}</div>
                       </div>
                     </div>
                   );
@@ -508,17 +504,13 @@ export default function PlatformOnboardingPage() {
                 event.preventDefault();
                 handleCreateWorkspace();
               }}
-              className="self-center rounded-[20px] border border-[#ebe9f1] bg-white p-6 shadow-[0_12px_32px_rgba(27,20,52,0.04)] lg:p-7"
+              className="w-full rounded-2xl border border-[#e7e5ee] bg-white p-6 shadow-[0_6px_24px_rgba(30,20,60,0.05)] lg:flex-[1_1_54%]"
             >
-              <h2 className="text-xl font-bold tracking-[-0.02em] text-[#1a192b]">Como deseja chamar sua organização?</h2>
+              <h2 className="text-[18px] font-bold tracking-[-0.01em] text-[#1a1626]">Como deseja chamar sua organização?</h2>
 
-              <p className="mt-2 max-w-[470px] text-sm leading-6 text-[#727586]">
+              <p className="mt-2 text-[12.5px] leading-[1.5] text-[#6b7280]">
                 Pode ser o nome da sua produtora, estabelecimento, empresa ou o seu próprio nome.
               </p>
-
-              <label htmlFor="businessName" className="mt-7 block text-sm font-semibold text-[#29283a]">
-                Nome da organização
-              </label>
 
               <Input
                 id="businessName"
@@ -527,62 +519,65 @@ export default function PlatformOnboardingPage() {
                 placeholder="Ex.: Produtora Horizonte, Bar Central ou Vitor Reis"
                 autoComplete="organization"
                 autoFocus
-                className="mt-2 h-12 rounded-xl border-[#dcd9e6] px-4 text-sm focus-visible:border-[#7b3ff2] focus-visible:ring-[#7b3ff2]/10"
+                className="mt-[18px] h-auto rounded-[11px] border-[#e7e5ee] px-[15px] py-[13px] text-[13.5px] placeholder:text-[#a9a7b3] focus-visible:border-violet-500 focus-visible:ring-[3px] focus-visible:ring-violet-500/15"
               />
-
-              <p className="mt-2 text-xs leading-5 text-[#888a99]">
-                Você poderá alterar esse nome posteriormente nas configurações.
-              </p>
 
               <Button
                 type="submit"
                 disabled={!canAdvance() || loading}
-                className="mt-7 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#5e21d9] via-[#702bea] to-[#801cff] text-sm font-semibold text-white shadow-[0_10px_24px_rgba(102,38,224,0.24)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(102,38,224,0.3)] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0"
+                className="mt-4 flex h-auto w-full items-center justify-center gap-2 rounded-[11px] bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] py-3.5 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(109,40,217,0.28)] transition hover:brightness-105 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45"
               >
                 {loading ? "Continuando..." : "Continuar"}
                 {!loading && <ChevronRight className="h-4 w-4" />}
               </Button>
 
-              <div className="mt-4 flex gap-3 rounded-xl bg-gradient-to-r from-[#f6f1ff] to-[#fbf9ff] p-4 text-[#6b35dc]">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-                <p className="text-xs leading-5">
-                  Sua conta pessoal poderá participar de uma ou mais organizações. Depois, você poderá convidar sua equipe.
+              <div className="mt-4 flex items-start gap-2.5 rounded-[11px] bg-[#f3efff] p-3.5">
+                <Lock size={15} strokeWidth={1.9} className="mt-0.5 shrink-0 text-[#6d28d9]" />
+                <p className="text-xs leading-[1.5] text-[#6d5b93]">
+                  <b className="font-semibold text-[#5b4a86]">Somente você pode criar organizações.</b>
+                  <br />
+                  Depois, poderá convidar sua equipe para colaborar.
                 </p>
               </div>
             </form>
           </div>
         </section>
 
-        <aside className="rounded-[24px] border border-[#e9e7f0] bg-white px-7 py-9 shadow-[0_16px_50px_rgba(30,20,60,0.05)]">
-          <h2 className="text-center text-sm font-bold text-[#29283a]">Ainda não tem uma organização</h2>
+        <aside className="hidden w-[300px] shrink-0 flex-col items-center rounded-[20px] border border-[#ecebf1] bg-white px-[26px] py-[30px] text-center xl:flex">
+          <h3 className="text-[15px] font-bold text-[#1a1626]">Ainda não tem uma organização</h3>
 
-          <div className="relative mx-auto mt-8 flex h-36 w-44 items-center justify-center">
-            <div className="absolute h-28 w-28 rounded-full bg-[#f3edff] blur-xl" />
-            <div className="absolute h-20 w-32 rounded-[28px] bg-[#ede5ff]" />
-            <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#8f65e4] to-[#9270da] text-white shadow-[0_12px_25px_rgba(109,68,184,0.2)]">
-              <Rocket className="h-7 w-7" />
-              <div className="absolute -right-4 -top-3 flex h-8 w-8 items-center justify-center rounded-full bg-[#7b28e9] text-lg font-light text-white shadow-lg">
-                +
-              </div>
-            </div>
+          <div className="my-[22px] flex w-full items-center justify-center">
+            <svg viewBox="0 0 200 170" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-auto w-[150px]">
+              <ellipse cx="100" cy="150" rx="70" ry="9" fill="#EDE7FE" />
+              <path d="M35 52h130l10 20H25l10-20Z" fill="#C4B5FD" />
+              <path d="M35 52h26l-4 20H31l4-20Z" fill="#A78BFA" />
+              <path d="M87 52h26l0 20H87l0-20Z" fill="#A78BFA" />
+              <path d="M139 52h26l4 20h-26l-4-20Z" fill="#A78BFA" />
+              <rect x="35" y="72" width="130" height="70" rx="6" fill="#EDE7FE" />
+              <rect x="35" y="72" width="130" height="70" rx="6" stroke="#C4B5FD" strokeWidth="2" />
+              <rect x="60" y="96" width="30" height="46" rx="4" fill="#C4B5FD" />
+              <circle cx="84" cy="120" r="2.2" fill="#7C3AED" />
+              <rect x="105" y="96" width="42" height="30" rx="4" fill="#fff" stroke="#C4B5FD" strokeWidth="2" />
+              <path d="M126 96v30M105 111h42" stroke="#C4B5FD" strokeWidth="2" />
+              <circle cx="150" cy="112" r="20" fill="#7C3AED" />
+              <path d="M150 104v16M142 112h16" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
+            </svg>
           </div>
 
-          <div className="mt-8 space-y-6">
-            {IDENTIFICATION_NEXT_STEPS.map((next) => {
-              const Icon = next.icon;
-              return (
-                <div key={next.title} className="flex items-start gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f3edff] text-[#7138e8]">
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <strong className="block text-sm font-semibold text-[#242436]">{next.title}</strong>
-                    <p className="mt-1 text-xs leading-5 text-[#7a7d8e]">{next.description}</p>
-                  </div>
+          {IDENTIFICATION_NEXT_STEPS.map((next) => {
+            const Icon = next.icon;
+            return (
+              <div key={next.title} className="mb-5 flex w-full items-start gap-3 text-left last:mb-0">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[#f1ecfe] text-[#6d28d9]">
+                  <Icon size={16} strokeWidth={1.9} />
                 </div>
-              );
-            })}
-          </div>
+                <div>
+                  <div className="text-[13px] font-semibold text-[#1a1626]">{next.title}</div>
+                  <div className="mt-0.5 text-xs leading-[1.45] text-[#6b7280]">{next.description}</div>
+                </div>
+              </div>
+            );
+          })}
         </aside>
       </div>
     );
