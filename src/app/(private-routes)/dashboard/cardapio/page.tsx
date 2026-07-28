@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrganizations } from "@/context/OrganizationContext";
+import { useRequireWorkspace } from "../_components/require-workspace-provider";
 import { PageContainer } from "../_components/page/page-container";
 import { PageHeader } from "../_components/page/page-header";
 import { EmptyState } from "../_components/states/empty-state";
@@ -26,15 +27,15 @@ import { CardapiosTab } from "./_components/cardapios-tab";
 type TabKey = "produtos" | "categorias" | "adicionais" | "estacoes" | "cardapios";
 
 export default function VenueCardapioPage() {
-  const { currentOrg, activeModuleKeys, loadingOrgs, loadingModules } = useOrganizations();
+  const { currentOrg, loadingOrgs, loadingModules } = useOrganizations();
+  const { guard } = useRequireWorkspace();
   const [tab, setTab] = useState<TabKey>("produtos");
   const [createProductOpen, setCreateProductOpen] = useState(false);
   const [selectedMenuId, setSelectedMenuId] = useState<number | null>(null);
 
   const orgId = currentOrg?.id ?? null;
-  const venueActive = activeModuleKeys.includes("venue");
 
-  const { data: menus } = useVenueMenus(venueActive ? orgId : null);
+  const { data: menus } = useVenueMenus(orgId);
 
   // Ao trocar de organização, o cache de cada query já é isolado por orgId
   // (ver query-keys.ts) — mas o cardápio selecionado na tela precisa ser
@@ -61,16 +62,23 @@ export default function VenueCardapioPage() {
     );
   }
 
-  if (!orgId || !venueActive) {
+  if (!orgId) {
     return (
       <PageContainer>
         <PageHeader
           title="Cardápio"
           description="Gerencie produtos, categorias, preços, adicionais e disponibilidade."
+          actions={
+            <Button onClick={() => guard(() => {})}>
+              <Plus size={16} /> Novo produto
+            </Button>
+          }
         />
         <EmptyState
-          title="Venue não está ativo"
-          description="O módulo Venue precisa estar ativo nesta organização para gerenciar o cardápio."
+          title="Nenhum produto ainda"
+          description="Crie seu workspace para começar a montar o cardápio."
+          actionLabel="Novo produto"
+          onAction={() => guard(() => {})}
         />
       </PageContainer>
     );

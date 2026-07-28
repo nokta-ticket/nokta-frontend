@@ -1,6 +1,8 @@
 "use client";
 
 import { useOrganizations } from "@/context/OrganizationContext";
+import { useRequireWorkspace } from "../_components/require-workspace-provider";
+import { Button } from "@/components/ui/button";
 import { PageContainer } from "../_components/page/page-container";
 import { PageHeader } from "../_components/page/page-header";
 import { EmptyState } from "../_components/states/empty-state";
@@ -18,13 +20,34 @@ import VenueFinanceiroPage from "./_venue/venue-financeiro-content";
  * só-Venue vê um único bloco.
  */
 export default function FinanceiroPage() {
-  const { activeModuleKeys, loadingModules } = useOrganizations();
+  const { currentOrg, activeModuleKeys, loadingOrgs, loadingModules } = useOrganizations();
+  const { guard } = useRequireWorkspace();
 
-  if (loadingModules) {
+  if (loadingOrgs || loadingModules) {
     return (
       <PageContainer>
         <PageHeader title="Financeiro" />
         <BlockSkeleton className="h-96" />
+      </PageContainer>
+    );
+  }
+
+  if (!currentOrg) {
+    return (
+      <PageContainer>
+        <PageHeader
+          title="Financeiro"
+          description="Acompanhe vendas, caixas, despesas e o resultado do negócio."
+          actions={
+            <Button onClick={() => guard(() => {})}>Criar workspace</Button>
+          }
+        />
+        <EmptyState
+          title="Nada por aqui ainda"
+          description="Crie seu workspace para acompanhar vendas, caixas, despesas e o resultado do negócio."
+          actionLabel="Criar workspace"
+          onAction={() => guard(() => {})}
+        />
       </PageContainer>
     );
   }

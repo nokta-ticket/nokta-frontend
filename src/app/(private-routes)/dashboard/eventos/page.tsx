@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/pagination";
 import { useRouter } from "next/navigation";
 import { useOrganizations } from "@/context/OrganizationContext";
+import { useRequireWorkspace } from "../_components/require-workspace-provider";
 import api from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import { formatarDataCurta } from "@/lib/formatarData";
@@ -69,6 +70,7 @@ interface GetEvents {
 export default function EventosPage() {
   const router = useRouter();
   const { currentOrg, loadingOrgs } = useOrganizations();
+  const { guard } = useRequireWorkspace();
   const [filtro, setFiltro] = useState<"todos" | "ativos" | "inativos">("todos");
   const [eventos, setEventos] = useState<EventoAPI[]>([]);
   const [paginate, setPaginate] = useState<Paginate>({ currentPage: 1, totalPages: 1 });
@@ -138,7 +140,21 @@ export default function EventosPage() {
   if (!currentOrg) {
     return (
       <PageContainer>
-        <EmptyState title="Nenhuma organização selecionada" description="Selecione uma organização para ver os eventos." />
+        <section className="w-full max-w-[1300px] mx-auto mt-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <h1 className="text-2xl font-semibold">Eventos</h1>
+            <Button onClick={() => guard(() => {})}>
+              <PlusCircleIcon className="w-4 h-4 mr-2" />
+              Novo Evento
+            </Button>
+          </div>
+          <EmptyState
+            title="Nenhum evento ainda"
+            description="Crie seu workspace para começar a cadastrar eventos."
+            actionLabel="Novo Evento"
+            onAction={() => guard(() => {})}
+          />
+        </section>
       </PageContainer>
     );
   }

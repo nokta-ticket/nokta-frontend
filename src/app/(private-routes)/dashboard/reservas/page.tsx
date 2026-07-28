@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrganizations } from "@/context/OrganizationContext";
+import { useRequireWorkspace } from "../_components/require-workspace-provider";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import type { VenueReservation } from "@/services/venue-reservations";
@@ -31,7 +32,8 @@ import { WaitlistFormDialog } from "./_components/waitlist-form-dialog";
 type TabKey = "agenda" | "lista" | "fila";
 
 export default function VenueReservasPage() {
-  const { currentOrg, activeModuleKeys, loadingOrgs, loadingModules } = useOrganizations();
+  const { currentOrg, loadingOrgs, loadingModules } = useOrganizations();
+  const { guard } = useRequireWorkspace();
   const [tab, setTab] = useState<TabKey>("agenda");
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
   const [date, setDate] = useState<string | null>(null);
@@ -44,9 +46,8 @@ export default function VenueReservasPage() {
   const [cancelReservation, setCancelReservation] = useState<VenueReservation | null>(null);
 
   const orgId = currentOrg?.id ?? null;
-  const venueActive = activeModuleKeys.includes("venue");
 
-  const { data: locations } = useVenueLocations(venueActive ? orgId : null);
+  const { data: locations } = useVenueLocations(orgId);
 
   useEffect(() => {
     setSelectedLocationId(null);
@@ -77,13 +78,23 @@ export default function VenueReservasPage() {
     );
   }
 
-  if (!orgId || !venueActive) {
+  if (!orgId) {
     return (
       <PageContainer>
-        <PageHeader title="Reservas" description="Organize reservas, confirmações, chegadas e fila de espera." />
+        <PageHeader
+          title="Reservas"
+          description="Organize reservas, confirmações, chegadas e fila de espera."
+          actions={
+            <Button onClick={() => guard(() => {})}>
+              <Plus size={16} /> Nova reserva
+            </Button>
+          }
+        />
         <EmptyState
-          title="Venue não está ativo"
-          description="O módulo Venue precisa estar ativo nesta organização para gerenciar reservas."
+          title="Nenhuma reserva ainda"
+          description="Crie seu workspace para começar a organizar reservas e fila de espera."
+          actionLabel="Nova reserva"
+          onAction={() => guard(() => {})}
         />
       </PageContainer>
     );

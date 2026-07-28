@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrganizations } from "@/context/OrganizationContext";
+import { useRequireWorkspace } from "../_components/require-workspace-provider";
 import { formatCents } from "@/services/venue-stock";
 import { PageContainer } from "../_components/page/page-container";
 import { PageHeader } from "../_components/page/page-header";
@@ -28,16 +29,16 @@ import { useVenueStockSuppliers } from "./_hooks/use-venue-stock-catalog";
 type TabKey = "geral" | "itens" | "compras" | "movimentacoes" | "inventario" | "fornecedores";
 
 export default function VenueEstoquePage() {
-  const { currentOrg, activeModuleKeys, loadingOrgs, loadingModules } = useOrganizations();
+  const { currentOrg, loadingOrgs, loadingModules } = useOrganizations();
+  const { guard } = useRequireWorkspace();
   const [tab, setTab] = useState<TabKey>("geral");
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
   const [itemFormOpen, setItemFormOpen] = useState(false);
   const [purchaseFormOpen, setPurchaseFormOpen] = useState(false);
 
   const orgId = currentOrg?.id ?? null;
-  const venueActive = activeModuleKeys.includes("venue");
 
-  const { data: locations } = useVenueLocations(venueActive ? orgId : null);
+  const { data: locations } = useVenueLocations(orgId);
   const { data: categories } = useVenueStockCategories(orgId);
   const { data: suppliers } = useVenueStockSuppliers(orgId);
 
@@ -62,11 +63,24 @@ export default function VenueEstoquePage() {
     );
   }
 
-  if (!orgId || !venueActive) {
+  if (!orgId) {
     return (
       <PageContainer>
-        <PageHeader title="Estoque" description="Controle insumos, entradas, perdas, inventários e necessidades de reposição." />
-        <EmptyState title="Venue não está ativo" description="O módulo Venue precisa estar ativo nesta organização para gerenciar estoque." />
+        <PageHeader
+          title="Estoque"
+          description="Controle insumos, entradas, perdas, inventários e necessidades de reposição."
+          actions={
+            <Button onClick={() => guard(() => {})}>
+              <Plus size={16} /> Novo item
+            </Button>
+          }
+        />
+        <EmptyState
+          title="Nenhum item ainda"
+          description="Crie seu workspace para começar a controlar o estoque."
+          actionLabel="Novo item"
+          onAction={() => guard(() => {})}
+        />
       </PageContainer>
     );
   }

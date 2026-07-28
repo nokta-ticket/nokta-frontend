@@ -14,6 +14,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrganizations } from "@/context/OrganizationContext";
 import { useVenueAccess } from "@/context/VenueAccessContext";
+import { useRequireWorkspace } from "../_components/require-workspace-provider";
 import { PageContainer } from "../_components/page/page-container";
 import { PageHeader } from "../_components/page/page-header";
 import { EmptyState } from "../_components/states/empty-state";
@@ -70,8 +71,9 @@ const ALL_TABS: { key: TabKey; label: string }[] = [
 ];
 
 function VenueOperacaoPageContent() {
-  const { currentOrg, activeModuleKeys, loadingOrgs, loadingModules } = useOrganizations();
+  const { currentOrg, loadingOrgs, loadingModules } = useOrganizations();
   const { can } = useVenueAccess();
+  const { guard } = useRequireWorkspace();
   const visibleTabs = ALL_TABS.filter((t) => TAB_PERMISSIONS[t.key].some((p) => can(p)));
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<TabKey>(() => {
@@ -85,9 +87,8 @@ function VenueOperacaoPageContent() {
   const [orderBuilderTabId, setOrderBuilderTabId] = useState<number | null>(null);
 
   const orgId = currentOrg?.id ?? null;
-  const venueActive = activeModuleKeys.includes("venue");
 
-  const { data: locations } = useVenueLocations(venueActive ? orgId : null);
+  const { data: locations } = useVenueLocations(orgId);
 
   useEffect(() => {
     setSelectedLocationId(null);
@@ -121,13 +122,23 @@ function VenueOperacaoPageContent() {
     );
   }
 
-  if (!orgId || !venueActive) {
+  if (!orgId) {
     return (
       <PageContainer>
-        <PageHeader title="Operação" description="Gerencie mesas, comandas, pedidos e o caixa do estabelecimento." />
+        <PageHeader
+          title="Operação"
+          description="Gerencie mesas, comandas, pedidos e o caixa do estabelecimento."
+          actions={
+            <Button onClick={() => guard(() => {})}>
+              <Plus size={16} /> Nova comanda
+            </Button>
+          }
+        />
         <EmptyState
-          title="Venue não está ativo"
-          description="O módulo Venue precisa estar ativo nesta organização para operar mesas, comandas e caixa."
+          title="Nenhuma comanda ainda"
+          description="Crie seu workspace para começar a operar mesas, comandas e caixa."
+          actionLabel="Nova comanda"
+          onAction={() => guard(() => {})}
         />
       </PageContainer>
     );

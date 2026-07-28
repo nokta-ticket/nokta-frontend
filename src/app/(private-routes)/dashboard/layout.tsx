@@ -7,6 +7,7 @@ import { TicketsAccessProvider } from "@/context/TicketsAccessContext";
 import { DashboardQueryProvider } from "./_components/query-provider";
 import { DashboardSidebar } from "./_components/dashboard-sidebar";
 import { Topbar } from "./_components/topbar";
+import { RequireWorkspaceProvider } from "./_components/require-workspace-provider";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
@@ -15,6 +16,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <VenueAccessProvider>
       <TicketsAccessProvider>
         <PeriodProvider>
+        <RequireWorkspaceProvider>
           <div className="fixed inset-0 flex flex-col lg:flex-row bg-[#151619] text-white overflow-hidden">
             <DashboardSidebar />
 
@@ -23,6 +25,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <div className="flex-1 overflow-y-auto p-4 lg:p-8">{children}</div>
             </div>
           </div>
+        </RequireWorkspaceProvider>
         </PeriodProvider>
       </TicketsAccessProvider>
       </VenueAccessProvider>
