@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { Bell, Gift } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useOrganizations } from "@/context/OrganizationContext";
@@ -14,12 +15,19 @@ import { UserMenu } from "./user-menu";
  * sentido pra quem ainda não tem nenhuma. Direita: notificações, indique e
  * ganhe (só visual por enquanto — nenhuma das duas features existe no
  * backend ainda) e usuário.
+ *
+ * Onboarding cria e seleciona a organização (currentOrg) já na 1ª etapa,
+ * antes do fluxo terminar — sem a checagem de rota abaixo, a saudação vira
+ * OrgSwitcher no meio do wizard, no exato passo em que o usuário está
+ * escolhendo os módulos da própria organização recém-criada.
  */
 export function Topbar() {
   const { user, isAuthResolved } = useAuth();
   const { currentOrg, loadingOrgs } = useOrganizations();
+  const pathname = usePathname();
+  const isOnboarding = pathname.startsWith("/dashboard/eventos/onboarding");
 
-  const showGreeting = isAuthResolved && !loadingOrgs && !currentOrg;
+  const showGreeting = isOnboarding || (isAuthResolved && !loadingOrgs && !currentOrg);
 
   return (
     <div className="flex items-center justify-between gap-4 border-b border-black/5 px-4 py-3 lg:px-8">

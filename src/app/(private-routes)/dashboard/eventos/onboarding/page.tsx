@@ -666,8 +666,8 @@ export default function PlatformOnboardingPage() {
         <section className="flex flex-1 flex-col rounded-[20px] border border-[#ecebf1] bg-white px-5 pb-6 pt-6 md:px-10 md:pb-8 md:pt-8">
           <OnboardingStepper step={step} />
 
-          <div className="grid grid-cols-1 items-start gap-9 lg:grid-cols-[280px_1fr]">
-            <div className="space-y-6">
+          <div className="flex flex-col items-start gap-9 lg:flex-row">
+            <div className="w-full space-y-6 lg:w-[280px] lg:shrink-0">
               <div>
                 <span className="inline-block rounded-full bg-[#f3efff] px-3 py-1.5 text-[11.5px] font-semibold text-[#6d28d9]">
                   Vamos continuar
@@ -708,7 +708,7 @@ export default function PlatformOnboardingPage() {
               </div>
             </div>
 
-            <div>
+            <div className="w-full min-w-0 flex-1">
               <h2 className="text-[17px] font-bold tracking-[-0.01em] text-[#1a1626]">O que você deseja gerenciar na Nokta?</h2>
               <p className="mt-1.5 text-[12.5px] text-[#6b7280]">Você pode selecionar mais de uma opção.</p>
 
@@ -810,15 +810,11 @@ export default function PlatformOnboardingPage() {
                 </div>
               </div>
 
-              <div className="mt-5 flex gap-3">
-                <Button variant="outline" onClick={() => setStep(0)} className="h-11 flex-1" disabled={skippedIdentification}>
-                  <ChevronLeft size={16} className="mr-1" />
-                  Voltar
-                </Button>
+              <div className="mt-5">
                 <Button
                   onClick={goToTerms}
                   disabled={!canAdvance()}
-                  className="flex h-11 flex-[2] items-center justify-center gap-2 bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] text-white hover:brightness-105 disabled:cursor-not-allowed"
+                  className="flex h-11 w-full items-center justify-center gap-2 bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] text-white hover:brightness-105 disabled:cursor-not-allowed"
                 >
                   Continuar com as opções selecionadas
                   <ChevronRight size={16} />

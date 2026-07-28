@@ -53,11 +53,18 @@ function NavGroupList({ groups, pathname }: { groups: UnifiedNavGroup[]; pathnam
  * EmptyState ("Nenhuma organização selecionada") sem organização — mesmo
  * padrão usado em /eventos, /equipe, /inicio etc. — então navegar por essas
  * rotas antes de criar a organização é seguro, não quebra nem dá 403.
+ *
+ * O onboarding cria e seleciona a organização (currentOrg) já na 1ª etapa
+ * (Identificação), antes do wizard terminar — sem a checagem de rota
+ * abaixo, o menu trocaria do preview completo pra navegação real (ainda
+ * vazia, sem nenhuma capacidade ativa) no meio do fluxo, exatamente quando
+ * o usuário está escolhendo os módulos dessa mesma organização.
  */
 export function UnifiedSidebar() {
   const { currentOrg } = useOrganizations();
   const pathname = usePathname();
-  const { data: navigation, isLoading } = usePlatformNavigation(currentOrg?.id ?? null);
+  const isOnboarding = pathname.startsWith("/dashboard/eventos/onboarding");
+  const { data: navigation, isLoading } = usePlatformNavigation(isOnboarding ? null : currentOrg?.id ?? null);
   // Independente da organização selecionada — ser promoter não depende de
   // nenhuma capacidade de organização (ver docs/tickets/promoters.md
   // "promoter nunca é automaticamente OrganizationMember"). Troca de papel
@@ -67,8 +74,8 @@ export function UnifiedSidebar() {
   // Só a organização (dono/produtor/equipe) espera `navigation` — um
   // promoter sem nenhuma organização própria (ver comentário acima) nunca
   // deve ficar preso num skeleton infinito por causa disso.
-  const orgNavLoading = currentOrg !== null && (isLoading || !navigation);
-  const previewMode = currentOrg === null;
+  const orgNavLoading = !isOnboarding && currentOrg !== null && (isLoading || !navigation);
+  const previewMode = isOnboarding || currentOrg === null;
   const groups = previewMode ? buildFullCatalogPreview() : navigation ? buildUnifiedNavigation(navigation.items) : [];
 
   return (
@@ -83,7 +90,7 @@ export function UnifiedSidebar() {
         <NavGroupList groups={groups} pathname={pathname} />
       )}
 
-      {myPromoterProfile ? (
+      {!isOnboarding && myPromoterProfile ? (
         <div>
           <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-white/40">Promoter</p>
           <Link
