@@ -194,3 +194,47 @@ export function buildUnifiedNavigation(items: NavigationItem[]): UnifiedNavGroup
     };
   });
 }
+
+/**
+ * Espelha CAPABILITY_CATALOG (nokta-api/src/core/platform/common/
+ * capability-catalog.ts) — todas as capacidades reais, exceto as marcadas
+ * `future: true` no backend (revenda de ingressos, clientes: ainda não
+ * implementáveis, nunca ativáveis de verdade). Usado só como preview
+ * estático "como se tudo estivesse ativo" para quem ainda não tem
+ * organização (ex.: onboarding) — GET .../me/navigation não tem o que
+ * retornar nesse momento. Mudou o catálogo real? Atualize aqui também.
+ */
+const FULL_CATALOG_PREVIEW: NavigationItem[] = [
+  { key: "PLATFORM_HOME", label: "Início", route: "/dashboard/inicio", group: "CORE" },
+  { key: "EVENTS", label: "Eventos", route: "/dashboard/eventos", group: "EVENTS" },
+  { key: "TICKETING", label: "Eventos e ingressos", route: "/dashboard/ingressos", group: "EVENTS" },
+  { key: "TICKET_TYPES", label: "Tipos de ingresso", route: "/dashboard/ingressos/tipos", group: "EVENTS" },
+  { key: "LOTS", label: "Lotes", route: "/dashboard/ingressos/lotes", group: "EVENTS" },
+  { key: "CHECK_IN", label: "Check-in", route: "/dashboard/check-in", group: "EVENTS" },
+  { key: "GUEST_LISTS", label: "Convidados", route: "/dashboard/convidados", group: "EVENTS" },
+  { key: "PROMOTERS", label: "Promotores", route: "/dashboard/promotores", group: "EVENTS" },
+  { key: "RESERVATIONS", label: "Reservas", route: "/dashboard/reservas", group: "RELATIONSHIP" },
+  { key: "WAITLIST", label: "Fila de espera", route: "/dashboard/reservas?tab=fila", group: "RELATIONSHIP" },
+  { key: "TABLES", label: "Mesas", route: "/dashboard/operacao?tab=mesas", group: "OPERATION" },
+  { key: "TABS", label: "Comandas", route: "/dashboard/operacao?tab=comandas", group: "OPERATION" },
+  { key: "ORDERS", label: "Pedidos", route: "/dashboard/operacao?tab=pedidos", group: "OPERATION" },
+  { key: "PREPARATION", label: "Preparo", route: "/dashboard/operacao?tab=preparo", group: "OPERATION" },
+  { key: "CASH_REGISTER", label: "Caixa", route: "/dashboard/operacao?tab=caixa", group: "OPERATION" },
+  { key: "VENUE_PAYMENTS", label: "Pagamentos", route: "/dashboard/operacao?tab=pagamentos", group: "OPERATION" },
+  { key: "MENUS", label: "Cardápios", route: "/dashboard/cardapio", group: "PRODUCTS" },
+  { key: "PRODUCTS", label: "Produtos", route: "/dashboard/cardapio?tab=produtos", group: "PRODUCTS" },
+  { key: "MODIFIERS", label: "Adicionais", route: "/dashboard/cardapio?tab=adicionais", group: "PRODUCTS" },
+  { key: "INVENTORY", label: "Estoque", route: "/dashboard/estoque", group: "PRODUCTS" },
+  { key: "PURCHASES", label: "Compras", route: "/dashboard/estoque?tab=compras", group: "PRODUCTS" },
+  { key: "SUPPLIERS", label: "Fornecedores", route: "/dashboard/estoque?tab=fornecedores", group: "PRODUCTS" },
+  { key: "TEAM", label: "Equipe", route: "/dashboard/equipe", group: "CORE" },
+  { key: "FINANCE", label: "Financeiro", route: "/dashboard/financeiro", group: "MANAGEMENT" },
+  { key: "INSIGHTS", label: "Insights", route: "/dashboard/insights", group: "MANAGEMENT" },
+  { key: "EXPORTS", label: "Exportações", route: "/dashboard/configuracoes/exportacoes", group: "MANAGEMENT" },
+  { key: "SETTINGS", label: "Configurações", route: "/dashboard/configuracoes", group: "CORE" },
+];
+
+/** Navegação completa "como se tudo estivesse ativo" — ver FULL_CATALOG_PREVIEW. */
+export function buildFullCatalogPreview(): UnifiedNavGroup[] {
+  return buildUnifiedNavigation(FULL_CATALOG_PREVIEW);
+}
