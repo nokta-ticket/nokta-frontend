@@ -50,7 +50,7 @@ function MergeAccountForm({
         // Sempre onboarding — ver mesmo comentário em login-form.tsx: a
         // própria página decide (useOrganizations()) entre "já
         // configurado" e "falta só o workspace".
-        router.replace("/dashboard/eventos/onboarding");
+        router.replace("/dashboard/onboarding");
       } else {
         // Navegação forçada — ver login-form.tsx (mesmo motivo: "/" decide
         // a rota conforme autenticação, o cache de rota do Next pode servir
@@ -151,7 +151,7 @@ export function AuthCallbackContent() {
 
         if (ctx === "produtor") {
           // Sempre onboarding — ver comentário acima e em login-form.tsx.
-          router.replace("/dashboard/eventos/onboarding");
+          router.replace("/dashboard/onboarding");
         } else {
           // Navegação forçada — ver login-form.tsx.
           window.location.href = "/";

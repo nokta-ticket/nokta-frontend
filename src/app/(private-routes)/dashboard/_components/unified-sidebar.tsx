@@ -63,7 +63,7 @@ function NavGroupList({ groups, pathname }: { groups: UnifiedNavGroup[]; pathnam
 export function UnifiedSidebar() {
   const { currentOrg } = useOrganizations();
   const pathname = usePathname();
-  const isOnboarding = pathname.startsWith("/dashboard/eventos/onboarding");
+  const isOnboarding = pathname.startsWith("/dashboard/onboarding");
   const { data: navigation, isLoading } = usePlatformNavigation(isOnboarding ? null : currentOrg?.id ?? null);
   // Independente da organização selecionada — ser promoter não depende de
   // nenhuma capacidade de organização (ver docs/tickets/promoters.md

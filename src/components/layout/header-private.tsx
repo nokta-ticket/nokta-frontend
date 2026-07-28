@@ -101,7 +101,7 @@ export default function HeaderPrivate() {
   const footerItems = [
     ...(isProdutor
       ? [{ href: '/dashboard/eventos', label: 'Área do produtor',  icon: <Briefcase size={20} /> }]
-      : [{ href: '/dashboard/eventos/onboarding', label: 'Seja produtor',   icon: <Briefcase size={20} /> }]),
+      : [{ href: '/dashboard/onboarding', label: 'Seja produtor',   icon: <Briefcase size={20} /> }]),
     { href: 'mailto:contato@noktatickets.com.br', label: 'Fale com suporte', icon: <MessageSquare size={20} /> },
     { href: '/termos',  label: 'Termos e políticas', icon: <Shield size={20} /> },
   ];

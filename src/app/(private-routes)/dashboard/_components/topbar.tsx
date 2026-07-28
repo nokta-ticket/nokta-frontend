@@ -25,7 +25,7 @@ export function Topbar() {
   const { user, isAuthResolved } = useAuth();
   const { currentOrg, loadingOrgs } = useOrganizations();
   const pathname = usePathname();
-  const isOnboarding = pathname.startsWith("/dashboard/eventos/onboarding");
+  const isOnboarding = pathname.startsWith("/dashboard/onboarding");
 
   const showGreeting = isOnboarding || (isAuthResolved && !loadingOrgs && !currentOrg);
 

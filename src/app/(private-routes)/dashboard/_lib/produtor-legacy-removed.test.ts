@@ -35,7 +35,7 @@ const LEGACY_REDIRECT_PAGES: { file: string; expectedPrefix: string }[] = [
   { file: "validar/page.tsx", expectedPrefix: "/dashboard/check-in" },
   { file: "dados-financeiros/page.tsx", expectedPrefix: "/dashboard/eventos/dados-financeiros" },
   { file: "verificar-conta/page.tsx", expectedPrefix: "/dashboard/eventos/verificar-conta" },
-  { file: "onboarding/page.tsx", expectedPrefix: "/dashboard/eventos/onboarding" },
+  { file: "onboarding/page.tsx", expectedPrefix: "/dashboard/onboarding" },
 ];
 
 describe("estruturas transitórias do painel do produtor foram removidas (Fase 5)", () => {

@@ -119,10 +119,10 @@ export function LoginForm() {
         // Sempre onboarding, mesmo com role já PRODUTOR — a própria
         // página decide (useOrganizations()) se mostra "já configurado"
         // ou "falta só o workspace" (ver needsWorkspaceOnly em
-        // dashboard/eventos/onboarding/page.tsx). Decidir aqui pelo role
+        // dashboard/onboarding/page.tsx). Decidir aqui pelo role
         // sozinho reabria a mesma falha: usuário com acesso ativo mas sem
         // organização caindo direto em /dashboard/eventos vazio.
-        router.push('/dashboard/eventos/onboarding')
+        router.push('/dashboard/onboarding')
       } else {
         // Navegação forçada (não router.push): "/" decide a rota conforme
         // autenticação no middleware (app.nokta.live) — o cache de rota do

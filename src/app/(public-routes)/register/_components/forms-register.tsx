@@ -450,7 +450,7 @@ export function RegisterForm() {
           router.push(redirectTo);
         } else if (ctx === "produtor") {
           // Sempre onboarding — ver mesmo comentário em login-form.tsx.
-          router.push("/dashboard/eventos/onboarding");
+          router.push("/dashboard/onboarding");
         } else {
           // Navegação forçada — ver login-form.tsx.
           window.location.href = "/";

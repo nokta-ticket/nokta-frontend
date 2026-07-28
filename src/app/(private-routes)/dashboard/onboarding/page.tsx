@@ -37,10 +37,10 @@ import {
   createDefaultSelection,
   flattenSelection,
   type BusinessNeedSelectionState,
-} from "../../_components/business-needs/business-need-groups-picker";
-import { BusinessNeedActivationSummary } from "../../_components/business-needs/business-need-activation-summary";
-import { useActivateBusinessNeeds, useBusinessNeedsCatalog, usePreviewBusinessNeedsActivation } from "../../_hooks/use-platform";
-import { BlockSkeleton } from "../../_components/states/loading-state";
+} from "../_components/business-needs/business-need-groups-picker";
+import { BusinessNeedActivationSummary } from "../_components/business-needs/business-need-activation-summary";
+import { useActivateBusinessNeeds, useBusinessNeedsCatalog, usePreviewBusinessNeedsActivation } from "../_hooks/use-platform";
+import { BlockSkeleton } from "../_components/states/loading-state";
 import { OnboardingExtras } from "./_components/onboarding-extras";
 import type { BusinessNeedKey } from "@/services/platform";
 

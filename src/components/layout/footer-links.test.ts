@@ -28,7 +28,7 @@ const KNOWN_REAL_ROUTES = new Set([
   "/login",
   "/register",
   "/dashboard/eventos",
-  "/dashboard/eventos/onboarding",
+  "/dashboard/onboarding",
   "/admin",
 ]);
 

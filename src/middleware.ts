@@ -59,7 +59,7 @@ const publicRoutes = [
 // organização, mesmo padrão de qualquer outra rota /dashboard/*). Esta
 // lista serve só pra manter a UX de "volta pro onboarding após o login" pra
 // quem chega deslogado, tanto pela rota antiga quanto pela nova.
-const onboardingRoutes = ["/produtor/onboarding", "/dashboard/eventos/onboarding"];
+const onboardingRoutes = ["/produtor/onboarding", "/dashboard/onboarding"];
 
 const protectedAdminRoutes = [
   "/admin/dashboard",
@@ -353,7 +353,7 @@ export function middleware(request: NextRequest) {
 
     const ctx = request.nextUrl.searchParams.get("ctx");
     if (ctx === "produtor") {
-      redirectUrl.pathname = hasProdutorRole(userPayload) ? "/dashboard/eventos" : "/dashboard/eventos/onboarding";
+      redirectUrl.pathname = hasProdutorRole(userPayload) ? "/dashboard/eventos" : "/dashboard/onboarding";
     } else if (isSurfaceEnforced(hostname) && resolveSurfaceFromHost(hostname) === "PLATFORM") {
       redirectUrl.pathname = getSurfaceConfig("PLATFORM").defaultPath;
     } else {
