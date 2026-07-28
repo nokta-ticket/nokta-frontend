@@ -76,7 +76,7 @@ const IDENTIFICATION_NEXT_STEPS = [
 
 function OnboardingStepper({ step }: { step: number }) {
   return (
-    <div className="mx-auto mb-8 flex w-full max-w-[340px] items-center justify-center">
+    <div className="mx-auto mb-8 flex w-full max-w-[220px] items-center justify-center">
       {Array.from({ length: STEP_COUNT }, (_, i) => i).map((index) => {
         const active = index === step;
         return (
@@ -465,8 +465,8 @@ export default function PlatformOnboardingPage() {
   if (step === 0) {
     return (
       <>
-      <div className="flex items-stretch gap-[22px]">
-        <section className="flex flex-1 flex-col rounded-[20px] border border-[#ecebf1] bg-white px-5 pb-7 pt-[34px] md:px-10 md:pb-10">
+      <div className="flex items-stretch justify-center gap-[22px]">
+        <section className="flex w-full max-w-[760px] flex-col rounded-[20px] border border-[#ecebf1] bg-white px-5 pb-7 pt-[34px] md:px-10 md:pb-10">
           <OnboardingStepper step={step} />
 
           <div className="flex flex-col items-start gap-[30px] lg:flex-row lg:gap-[44px]">
@@ -545,7 +545,7 @@ export default function PlatformOnboardingPage() {
           </div>
         </section>
 
-        <aside className="hidden w-[380px] shrink-0 flex-col items-center rounded-[20px] border border-[#ecebf1] bg-white px-9 py-11 text-center xl:flex">
+        <aside className="hidden w-[420px] shrink-0 flex-col items-center rounded-[20px] border border-[#ecebf1] bg-white px-10 py-12 text-center xl:flex">
           <h3 className="text-[19px] font-bold text-[#1a1626]">Ainda não tem uma organização</h3>
 
           <div className="my-8 flex w-full items-center justify-center">
