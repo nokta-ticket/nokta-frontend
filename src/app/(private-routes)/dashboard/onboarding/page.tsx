@@ -288,11 +288,17 @@ function serializeSelection(selection: BusinessNeedSelectionState): SerializedSe
   };
 }
 
-function deserializeSelection(serialized: SerializedSelection): BusinessNeedSelectionState {
+// Tolerante a progresso salvo por uma versão anterior do código (sem o
+// campo `selection`, ou com formato antigo/parcial) — nunca lança, só
+// retorna vazio, que o chamador trata como "nada restaurável".
+function deserializeSelection(serialized: SerializedSelection | undefined | null): BusinessNeedSelectionState {
   return {
-    selectedGroupKeys: new Set(serialized.selectedGroupKeys),
+    selectedGroupKeys: new Set(Array.isArray(serialized?.selectedGroupKeys) ? serialized.selectedGroupKeys : []),
     deselectedCapabilityKeysByGroup: new Map(
-      Object.entries(serialized.deselectedCapabilityKeysByGroup).map(([k, v]) => [k, new Set(v)]),
+      Object.entries(serialized?.deselectedCapabilityKeysByGroup ?? {}).map(([k, v]) => [
+        k,
+        new Set(Array.isArray(v) ? v : []),
+      ]),
     ),
   };
 }
@@ -412,6 +418,16 @@ export default function PlatformOnboardingPage() {
     const validGroupKeys = new Set<string>(catalog.data.map((g) => g.key));
     const deserialized = deserializeSelection(restored);
     const selectedGroupKeys = new Set([...deserialized.selectedGroupKeys].filter((k) => validGroupKeys.has(k)));
+
+    // Nada sobrou (dado vazio/corrompido de uma versão anterior, ou todo
+    // grupo salvo saiu do catálogo) — trata como "nada pra restaurar" em
+    // vez de aplicar uma seleção vazia, que nunca aconteceria por escolha
+    // real do usuário (a UI sempre parte de createDefaultSelection).
+    if (selectedGroupKeys.size === 0) {
+      setSelection(createDefaultSelection(catalog.data));
+      return;
+    }
+
     const deselectedCapabilityKeysByGroup = new Map(
       [...deserialized.deselectedCapabilityKeysByGroup.entries()].filter(([k]) => selectedGroupKeys.has(k)),
     );
@@ -466,12 +482,17 @@ export default function PlatformOnboardingPage() {
   }, [createdOrgId, organizations]);
 
   useEffect(() => {
-    if (createdOrgId && progressChecked) {
+    // Espera `selection` existir antes de salvar: no primeiro render após
+    // restaurar/criar createdOrgId, selection ainda é null (o catálogo é
+    // assíncrono) — salvar nesse instante gravaria `selection: undefined`
+    // por cima de uma seleção restaurada válida, apagando-a até o efeito de
+    // inicialização da seleção rodar de novo.
+    if (createdOrgId && progressChecked && selection) {
       saveProgress(userId, {
         createdOrgId,
         step,
         skippedIdentification,
-        selection: selection ? serializeSelection(selection) : undefined,
+        selection: serializeSelection(selection),
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
