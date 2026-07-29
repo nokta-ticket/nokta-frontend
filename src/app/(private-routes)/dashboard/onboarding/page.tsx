@@ -4,7 +4,6 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { useOrganizations } from "@/context/OrganizationContext";
@@ -18,8 +17,10 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
   FileText,
   Grid2x2,
+  HelpCircle,
   Info,
   Layers,
   Lightbulb,
@@ -310,7 +311,12 @@ export default function PlatformOnboardingPage() {
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [businessName, setBusinessName] = useState("");
-  const [aceitouTermos, setAceitouTermos] = useState(false);
+  // Etapa "Termos" (3): 3 confirmações independentes, todas obrigatórias.
+  // A terceira (recursos específicos) só existe/conta quando o grupo
+  // EVENTS_TICKETING foi selecionado na etapa "Operação" — ver `aceitouTermos` abaixo.
+  const [authorizedToAdminister, setAuthorizedToAdminister] = useState(false);
+  const [acknowledgedLegalData, setAcknowledgedLegalData] = useState(false);
+  const [acceptedSpecificTerms, setAcceptedSpecificTerms] = useState(false);
   const [creatingWorkspaceOnly, setCreatingWorkspaceOnly] = useState(false);
 
   // Workspace criado ao sair da etapa de Identificação — as etapas
@@ -430,6 +436,11 @@ export default function PlatformOnboardingPage() {
   const isSendingPhoneCode = phoneRecheckPhase === "sending";
   const isVerifyingPhoneCode = phoneRecheckPhase === "verifying";
   const showPhoneCodeInput = phoneRecheckPhase === "code" || phoneRecheckPhase === "verifying";
+
+  // "Bilheteria" (venda/gestão de ingressos) exige confirmação extra dos
+  // termos específicos — mesmo grupo usado no card do resumo/tema visual.
+  const requiresTicketingTerms = selection?.selectedGroupKeys.has("EVENTS_TICKETING") ?? false;
+  const aceitouTermos = authorizedToAdminister && acknowledgedLegalData && (!requiresTicketingTerms || acceptedSpecificTerms);
 
   const canAdvance = () => {
     if (step === 0) return businessName.trim().length >= 2;
@@ -1042,6 +1053,356 @@ export default function PlatformOnboardingPage() {
     );
   }
 
+  if (step === 2) {
+    const orgName = organizations.find((o) => o.id === createdOrgId)?.nome ?? businessName;
+    const fullName = user ? `${user.nome ?? ""} ${user.sobrenome ?? ""}`.trim() : "";
+    const selectedGroups = catalog.data?.filter((g) => selection?.selectedGroupKeys.has(g.key)) ?? [];
+
+    return (
+      <div>
+        <OnboardingStepper step={step} />
+
+        <div className="grid grid-cols-1 items-start gap-7 xl:grid-cols-[290px_minmax(0,1fr)_300px]">
+        {/* ── Coluna esquerda: resumo ───────────────────────────────── */}
+        <div className="flex flex-col">
+          <span className="inline-block w-fit rounded-full bg-[#f3efff] px-3 py-1.5 text-[11.5px] font-semibold text-[#6d28d9]">
+            Vamos continuar
+          </span>
+          <h1 className="mt-4 text-[26px] font-extrabold leading-[1.18] tracking-[-0.02em] text-[#1a1626]">
+            Antes de concluir, confirme sua <span className="text-[#6d28d9]">responsabilidade</span>
+          </h1>
+          <p className="mt-3.5 text-[13.5px] leading-[1.6] text-[#6b7280]">
+            Você será o responsável inicial por esta organização e poderá convidar outras pessoas para ajudar na gestão.
+          </p>
+
+          <div className="mt-6 rounded-2xl border border-[#ece6f8] bg-[#fcfbfe] p-5">
+            <div className="mb-4 text-xs font-semibold text-[#6d28d9] opacity-85">Resumo da organização</div>
+            <div className="mb-4 flex items-center gap-2.5 border-b border-[#efecf6] pb-4">
+              <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[11px] bg-[#ede7fe] text-[#6d28d9]">
+                <Grid2x2 size={19} strokeWidth={1.8} />
+              </div>
+              <div className="text-[15px] font-bold text-[#1a1626]">{orgName}</div>
+            </div>
+            <div className="mb-3.5">
+              <div className="mb-1 text-[11px] text-[#9a98a6]">Responsável inicial</div>
+              <div className="text-[13.5px] font-semibold text-[#1a1626]">{fullName || "—"}</div>
+            </div>
+            <div className="mb-3.5">
+              <div className="mb-1 text-[11px] text-[#9a98a6]">Acesso</div>
+              <span className="inline-block rounded-full bg-[#f3efff] px-2.5 py-1 text-xs font-semibold text-[#6d28d9]">Owner</span>
+            </div>
+            <div className="mb-4">
+              <div className="mb-2.5 text-[11px] text-[#9a98a6]">Áreas selecionadas</div>
+              {selectedGroups.map((group) => {
+                const theme = BUSINESS_NEED_THEME[group.key];
+                const Icon = theme.icon;
+                return (
+                  <div key={group.key} className="mb-2 flex items-center gap-2 text-[13px] text-[#2d2a3a] last:mb-0">
+                    <Icon size={16} strokeWidth={1.8} className="shrink-0 text-[#6d28d9]" />
+                    {group.label}
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={() => setStep(0)}
+              className="mb-3 flex w-full items-center justify-center gap-1.5 rounded-[11px] border border-[#e7e5ee] bg-white p-2.5 text-[13px] font-semibold text-[#1a1626] transition hover:bg-[#faf9fd]"
+            >
+              <Pencil size={14} className="text-[#6d28d9]" />
+              Editar nome
+            </button>
+            <button
+              type="button"
+              onClick={() => setStep(1)}
+              className="block w-full text-center text-[12.5px] font-semibold text-[#6d28d9]"
+            >
+              Alterar áreas selecionadas
+            </button>
+          </div>
+        </div>
+
+        {/* ── Coluna central: confirmações ─────────────────────────── */}
+        <div>
+          <h2 className="text-[19px] font-bold tracking-[-0.01em] text-[#1a1626]">Confirmações necessárias</h2>
+
+          {phoneNeedsRecheck ? (
+            <div className="mt-5 space-y-4 rounded-2xl border border-[#ecebf1] bg-white p-6">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">
+                <FileText className="text-violet-600" size={22} />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Confirme seu telefone</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Identificamos uma pendência na verificação do seu telefone. Confirme novamente para continuar.
+                </p>
+              </div>
+
+              {!showPhoneCodeInput ? (
+                <Button
+                  onClick={handleSendPhoneRecheckCode}
+                  disabled={isSendingPhoneCode}
+                  className="h-11 w-full bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
+                >
+                  {isSendingPhoneCode ? "Enviando..." : "Enviar código no WhatsApp"}
+                </Button>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <label htmlFor="phoneRecheckCode" className="block text-sm font-medium text-gray-700">
+                      Código recebido
+                    </label>
+                    <Input
+                      id="phoneRecheckCode"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={8}
+                      value={phoneRecheckCode}
+                      onChange={(event) => setPhoneRecheckCode(event.target.value.replace(/\D/g, ""))}
+                      placeholder="000000"
+                      className="h-11 text-center font-mono text-xl tracking-widest"
+                      autoFocus
+                    />
+                  </div>
+                  <Button
+                    onClick={handleConfirmPhoneRecheck}
+                    disabled={isVerifyingPhoneCode || phoneRecheckCode.length < 4}
+                    className="h-11 w-full bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
+                  >
+                    {isVerifyingPhoneCode ? "Verificando..." : "Confirmar código"}
+                  </Button>
+                  <div className="flex justify-end text-xs text-gray-500">
+                    <button
+                      type="button"
+                      onClick={handleSendPhoneRecheckCode}
+                      disabled={resendTimer > 0 || isSendingPhoneCode}
+                      className="flex items-center gap-1 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <RefreshCw size={12} />
+                      {resendTimer > 0 ? `Reenviar em ${resendTimer}s` : "Reenviar código"}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <>
+              <p className="mt-1.5 text-[13px] text-[#6b7280]">
+                Para criar sua organização, precisamos que você confirme os itens abaixo.
+              </p>
+
+              <div className="mt-5 space-y-4">
+                {/* Card 1: autorização */}
+                <label className="flex cursor-pointer items-start gap-4 rounded-2xl border border-[#ecebf1] bg-white p-[22px_24px]">
+                  <span
+                    className={`mt-0.5 flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg ${
+                      authorizedToAdminister ? "bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] shadow-[0_3px_7px_rgba(109,40,217,0.35)]" : "border-[1.6px] border-[#dad8e2] bg-white"
+                    }`}
+                  >
+                    {authorizedToAdminister && <Check size={15} strokeWidth={3} className="text-white" />}
+                  </span>
+                  <span className="flex flex-1 items-start gap-4">
+                    <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[14px] bg-[#ede7fe] text-[#6d28d9]">
+                      <ShieldCheck size={24} strokeWidth={1.8} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="mb-1.5 block text-[15px] font-bold text-[#1a1626]">Autorização para administrar</span>
+                      <span className="block text-[13px] leading-[1.55] text-[#6b7280]">
+                        Confirmo que tenho autorização para criar e administrar esta organização. Sou responsável pelas
+                        informações cadastradas e pelos acessos concedidos à equipe. Li e aceito os{" "}
+                        <Link href="/termos" target="_blank" className="font-medium text-[#6d28d9] underline" onClick={(e) => e.stopPropagation()}>
+                          Termos de Uso
+                        </Link>{" "}
+                        e a{" "}
+                        <Link href="/privacidade" target="_blank" className="font-medium text-[#6d28d9] underline" onClick={(e) => e.stopPropagation()}>
+                          Política de Privacidade
+                        </Link>{" "}
+                        da Nokta.
+                      </span>
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={authorizedToAdminister}
+                    onChange={(event) => setAuthorizedToAdminister(event.target.checked)}
+                    className="sr-only"
+                  />
+                </label>
+
+                {/* Card 2: dados jurídicos/financeiros (também exige confirmação) */}
+                <label className="flex cursor-pointer items-start gap-4 rounded-2xl border border-[#ecebf1] bg-white p-[22px_24px]">
+                  <span
+                    className={`mt-0.5 flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg ${
+                      acknowledgedLegalData ? "bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] shadow-[0_3px_7px_rgba(109,40,217,0.35)]" : "border-[1.6px] border-[#dad8e2] bg-white"
+                    }`}
+                  >
+                    {acknowledgedLegalData && <Check size={15} strokeWidth={3} className="text-white" />}
+                  </span>
+                  <span className="flex flex-1 items-start gap-4">
+                    <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[14px] bg-[#ede7fe] text-[#6d28d9]">
+                      <FileText size={24} strokeWidth={1.8} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="mb-1.5 block text-[15px] font-bold text-[#1a1626]">Dados jurídicos e financeiros</span>
+                      <span className="block text-[13px] leading-[1.55] text-[#6b7280]">
+                        Para publicar eventos pagos, receber valores ou solicitar saques, será necessário informar e
+                        verificar os dados do responsável PF ou da empresa PJ.
+                      </span>
+                      <span className="mt-3.5 flex items-start gap-2 rounded-[11px] bg-[#f6f3fc] p-[11px_14px]">
+                        <Info size={15} className="mt-0.5 shrink-0 text-[#6d28d9]" />
+                        <span className="text-xs leading-[1.5] text-[#5f5580]">
+                          Esses dados poderão ser configurados depois, quando forem necessários.
+                        </span>
+                      </span>
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={acknowledgedLegalData}
+                    onChange={(event) => setAcknowledgedLegalData(event.target.checked)}
+                    className="sr-only"
+                  />
+                </label>
+
+                {/* Card 3: termos específicos — só quando o grupo de bilheteria foi selecionado */}
+                {requiresTicketingTerms && (
+                  <label className="flex cursor-pointer items-start gap-4 rounded-2xl border border-[#ecebf1] bg-white p-[22px_24px]">
+                    <span
+                      className={`mt-0.5 flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg ${
+                        acceptedSpecificTerms ? "bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] shadow-[0_3px_7px_rgba(109,40,217,0.35)]" : "border-[1.6px] border-[#dad8e2] bg-white"
+                      }`}
+                    >
+                      {acceptedSpecificTerms && <Check size={15} strokeWidth={3} className="text-white" />}
+                    </span>
+                    <span className="flex flex-1 items-start gap-4">
+                      <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[14px] bg-[#ede7fe] text-[#6d28d9]">
+                        <ListChecks size={24} strokeWidth={1.8} />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="mb-1.5 block text-[15px] font-bold text-[#1a1626]">
+                          Termos específicos dos recursos selecionados
+                        </span>
+                        <span className="block text-[13px] leading-[1.55] text-[#6b7280]">
+                          Como você selecionou recursos de eventos e bilheteria, é necessário confirmar a leitura dos
+                          termos abaixo.
+                        </span>
+                        <span className="mt-3.5 block rounded-xl bg-[#f6f3fc] p-4">
+                          <span className="mb-1.5 block text-[13.5px] font-bold text-[#1a1626]">Operação de eventos e bilheteria</span>
+                          <span className="mb-3.5 block text-[12.5px] leading-[1.55] text-[#6b7280]">
+                            Confirmo que li e aceito os Termos de Bilheteria e a Política de Cancelamentos, Reembolsos e
+                            Chargebacks da Nokta.
+                          </span>
+                          <Link
+                            href="/termos-bilheteria"
+                            target="_blank"
+                            onClick={(e) => e.stopPropagation()}
+                            className="mb-2.5 flex items-center justify-between gap-2.5 text-[12.5px] font-semibold text-[#6d28d9]"
+                          >
+                            <span className="flex items-center gap-2">
+                              <FileText size={15} strokeWidth={1.8} />
+                              Ver Termos de Bilheteria
+                            </span>
+                            <ExternalLink size={14} />
+                          </Link>
+                          <Link
+                            href="/politica-de-cancelamento"
+                            target="_blank"
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center justify-between gap-2.5 text-[12.5px] font-semibold text-[#6d28d9]"
+                          >
+                            <span className="flex items-center gap-2">
+                              <FileText size={15} strokeWidth={1.8} />
+                              Ver Política de Cancelamentos, Reembolsos e Chargebacks
+                            </span>
+                            <ExternalLink size={14} />
+                          </Link>
+                        </span>
+                      </span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={acceptedSpecificTerms}
+                      onChange={(event) => setAcceptedSpecificTerms(event.target.checked)}
+                      className="sr-only"
+                    />
+                  </label>
+                )}
+              </div>
+
+              <div className="mt-5 flex items-center gap-2 text-[12.5px] text-[#6b7280]">
+                <Lock size={15} className="text-[#9a98a6]" />
+                Você poderá revisar e editar tudo antes da criação final da organização.
+              </div>
+
+              <div className="mt-5 flex items-center justify-between gap-3.5">
+                <Button variant="outline" onClick={() => setStep(1)} className="h-11">
+                  <ChevronLeft size={16} className="mr-1" />
+                  Voltar para operação
+                </Button>
+                <Button
+                  onClick={goToSummary}
+                  disabled={!canAdvance() || preview.isPending}
+                  className="h-11 bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] text-white hover:brightness-105 disabled:cursor-not-allowed"
+                >
+                  {preview.isPending ? "Preparando..." : "Continuar para revisão"}
+                  {!preview.isPending && <ChevronRight size={16} className="ml-1" />}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ── Coluna direita: o que acontece depois ────────────────── */}
+        <aside className="hidden rounded-[20px] border border-[#ece6f8] bg-[#f6f3fc] p-[24px_22px] xl:block">
+          <h3 className="mb-5 text-base font-bold tracking-[-0.01em] text-[#1a1626]">O que acontece depois?</h3>
+
+          {[
+            { title: "Você revisará todas as escolhas", desc: "Na próxima etapa, você poderá conferir cada detalhe antes de criar sua organização." },
+            { title: "A organização será criada", desc: "Seu espaço será criado com os recursos selecionados." },
+            { title: "Painel organizado para você", desc: "O dashboard mostrará apenas as áreas e recursos que você ativou agora." },
+            { title: "Dados jurídicos depois", desc: "Quando precisar publicar eventos pagos, receber valores ou solicitar saques, avisaremos para você concluir a verificação." },
+          ].map((item, index) => (
+            <div key={item.title} className="mb-[18px] flex items-start gap-3 last:mb-0">
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] text-xs font-bold text-white shadow-[0_2px_6px_rgba(109,40,217,0.35)]">
+                {index + 1}
+              </div>
+              <div>
+                <div className="text-[13px] font-bold text-[#1a1626]">{item.title}</div>
+                <div className="mt-0.5 text-xs leading-[1.5] text-[#6b7280]">{item.desc}</div>
+              </div>
+            </div>
+          ))}
+
+          <div className="my-5 flex items-start gap-2.5 rounded-[13px] border border-[#ece6f8] bg-white p-3.5">
+            <ShieldCheck size={18} strokeWidth={1.8} className="mt-0.5 shrink-0 text-[#6d28d9]" />
+            <div>
+              <div className="mb-0.5 text-xs font-bold text-[#1a1626]">Seus dados estão seguros</div>
+              <div className="text-[11.5px] leading-[1.5] text-[#6b7280]">
+                Seguimos as melhores práticas de segurança e proteção de dados. Leia nossa{" "}
+                <Link href="/privacidade" target="_blank" className="font-semibold text-[#6d28d9] underline">
+                  Política de Privacidade.
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-2.5">
+            <HelpCircle size={18} strokeWidth={1.8} className="mt-0.5 shrink-0 text-[#6d28d9]" />
+            <div>
+              <div className="mb-0.5 text-[13px] font-bold text-[#1a1626]">Dúvidas?</div>
+              <div className="mb-2 text-xs leading-[1.5] text-[#6b7280]">Acesse nossa Central de Ajuda sempre que precisar.</div>
+              <a href="mailto:contato@noktatickets.com.br" className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-[#6d28d9]">
+                Ir para a Central de Ajuda
+                <ExternalLink size={13} />
+              </a>
+            </div>
+          </div>
+        </aside>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col items-center bg-gray-50 px-4 py-8">
       <div className="w-full max-w-2xl">
@@ -1049,103 +1410,6 @@ export default function PlatformOnboardingPage() {
           <OnboardingStepper step={step} />
 
           <div className="p-8">
-          {step === 2 && (
-            <div className="space-y-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">
-                <FileText className="text-violet-600" size={22} />
-              </div>
-
-              {phoneNeedsRecheck ? (
-                <>
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900">Confirme seu telefone</h2>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Identificamos uma pendência na verificação do seu telefone. Confirme novamente para continuar.
-                    </p>
-                  </div>
-
-                  {!showPhoneCodeInput ? (
-                    <Button
-                      onClick={handleSendPhoneRecheckCode}
-                      disabled={isSendingPhoneCode}
-                      className="h-11 w-full bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
-                    >
-                      {isSendingPhoneCode ? "Enviando..." : "Enviar código no WhatsApp"}
-                    </Button>
-                  ) : (
-                    <>
-                      <div className="space-y-2">
-                        <label htmlFor="phoneRecheckCode" className="block text-sm font-medium text-gray-700">
-                          Código recebido
-                        </label>
-                        <Input
-                          id="phoneRecheckCode"
-                          type="text"
-                          inputMode="numeric"
-                          maxLength={8}
-                          value={phoneRecheckCode}
-                          onChange={(event) => setPhoneRecheckCode(event.target.value.replace(/\D/g, ""))}
-                          placeholder="000000"
-                          className="h-11 text-center font-mono text-xl tracking-widest"
-                          autoFocus
-                        />
-                      </div>
-                      <Button
-                        onClick={handleConfirmPhoneRecheck}
-                        disabled={isVerifyingPhoneCode || phoneRecheckCode.length < 4}
-                        className="h-11 w-full bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
-                      >
-                        {isVerifyingPhoneCode ? "Verificando..." : "Confirmar código"}
-                      </Button>
-                      <div className="flex justify-end text-xs text-gray-500">
-                        <button
-                          type="button"
-                          onClick={handleSendPhoneRecheckCode}
-                          disabled={resendTimer > 0 || isSendingPhoneCode}
-                          className="flex items-center gap-1 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <RefreshCw size={12} />
-                          {resendTimer > 0 ? `Reenviar em ${resendTimer}s` : "Reenviar código"}
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </>
-              ) : (
-                <>
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900">Termos de uso</h2>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Para continuar, confirme que leu e aceita os Termos de Uso da Nokta e a Política de Privacidade.
-                    </p>
-                  </div>
-                  <label
-                    htmlFor="termos"
-                    className="flex cursor-pointer items-start gap-3 rounded-xl border border-gray-200 p-4 hover:border-gray-300"
-                  >
-                    <Checkbox
-                      id="termos"
-                      checked={aceitouTermos}
-                      onCheckedChange={(value) => setAceitouTermos(Boolean(value))}
-                      className="mt-0.5 shrink-0"
-                    />
-                    <span className="text-sm leading-relaxed text-gray-700">
-                      Li e aceito os{" "}
-                      <Link href="/termos" target="_blank" className="font-medium text-violet-700 underline">
-                        Termos de Uso
-                      </Link>{" "}
-                      e a{" "}
-                      <Link href="/privacidade" target="_blank" className="font-medium text-violet-700 underline">
-                        Política de Privacidade
-                      </Link>{" "}
-                      da Nokta.
-                    </span>
-                  </label>
-                </>
-              )}
-            </div>
-          )}
-
           {step === 3 && (
             <div className="space-y-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">
@@ -1158,27 +1422,10 @@ export default function PlatformOnboardingPage() {
           )}
 
           <div className="mt-8 flex gap-3">
-            {step === 2 && (
-              <Button variant="outline" onClick={() => setStep(1)} className="h-11 flex-1">
-                <ChevronLeft size={16} className="mr-1" />
-                Voltar
-              </Button>
-            )}
             {step === 3 && (
               <Button variant="outline" onClick={() => setStep(2)} className="h-11 flex-1" disabled={finishing}>
                 <ChevronLeft size={16} className="mr-1" />
                 Voltar
-              </Button>
-            )}
-
-            {step === 2 && (
-              <Button
-                onClick={goToSummary}
-                disabled={!canAdvance() || preview.isPending}
-                className="h-11 flex-1 bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
-              >
-                {preview.isPending ? "Preparando..." : "Continuar"}
-                {!preview.isPending && <ChevronRight size={16} className="ml-1" />}
               </Button>
             )}
 
