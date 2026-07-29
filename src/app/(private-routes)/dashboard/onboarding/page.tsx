@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,7 @@ import { BusinessNeedActivationSummary } from "../_components/business-needs/bus
 import { useActivateBusinessNeeds, useBusinessNeedsCatalog, usePreviewBusinessNeedsActivation } from "../_hooks/use-platform";
 import { BlockSkeleton } from "../_components/states/loading-state";
 import { OnboardingExtras } from "./_components/onboarding-extras";
-import type { BusinessNeedKey } from "@/services/platform";
+import type { BusinessNeedGroup, BusinessNeedKey } from "@/services/platform";
 
 const STEP_COUNT = 4;
 
@@ -131,6 +131,85 @@ function GroupCheckbox({ checked, indeterminate }: { checked: boolean; indetermi
         <Check size={12} strokeWidth={3} className="text-white" />
       ) : null}
     </span>
+  );
+}
+
+/**
+ * Painel de personalização de um grupo (etapa "Operação") — fica FORA do
+ * card, logo abaixo da linha de 3 (xl:grid-cols-3) onde o grupo está,
+ * de propósito: o card do grupo nunca muda de altura, então os cards
+ * vizinhos da mesma linha do CSS Grid nunca esticam nem sobram espaços
+ * vazios (regressão corrigida aqui — antes a lista de capacidades
+ * expandia dentro do próprio card).
+ */
+function GroupCustomizationPanel({
+  group,
+  selection,
+  setSelection,
+  onClose,
+}: {
+  group: BusinessNeedGroup;
+  selection: BusinessNeedSelectionState;
+  setSelection: (next: BusinessNeedSelectionState) => void;
+  onClose: () => void;
+}) {
+  const theme = BUSINESS_NEED_THEME[group.key];
+  const isSelected = selection.selectedGroupKeys.has(group.key);
+  const deselected = selection.deselectedCapabilityKeysByGroup.get(group.key) ?? new Set<string>();
+
+  return (
+    <div className="col-span-full rounded-[15px] border border-[#ECE6F8] bg-[#FBFAFE] p-[18px_20px_20px]">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <div className="text-[14px] font-bold text-[#1a1626]">{group.label}</div>
+          <p className="mt-1 text-[11.5px] leading-[1.5] text-[#6b7280]">
+            Escolha individualmente os recursos deste grupo que você quer usar.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex shrink-0 items-center gap-1.5 rounded-[10px] bg-white px-3.5 py-2 text-[11.5px] font-semibold text-[#6d28d9] shadow-[0_1px_3px_rgba(80,40,160,0.12)] hover:brightness-105"
+        >
+          Concluir personalização
+          <Check size={13} strokeWidth={2.5} />
+        </button>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-2.5 border-t border-[#f1eff5] pt-4 sm:grid-cols-2 xl:grid-cols-3">
+        {group.capabilities.map((capability) => {
+          const checked = isSelected && (capability.required || !deselected.has(capability.key));
+          const interactive = isSelected && !capability.required;
+          const toggleCapability = () => {
+            if (!interactive) return;
+            const nextByGroup = new Map(selection.deselectedCapabilityKeysByGroup);
+            const current = new Set(nextByGroup.get(group.key) ?? []);
+            if (current.has(capability.key)) current.delete(capability.key);
+            else current.add(capability.key);
+            nextByGroup.set(group.key, current);
+            setSelection({ ...selection, deselectedCapabilityKeysByGroup: nextByGroup });
+          };
+          return (
+            <button
+              key={capability.key}
+              type="button"
+              onClick={toggleCapability}
+              disabled={!interactive}
+              className={`flex items-start gap-2.5 text-left text-xs ${interactive ? "cursor-pointer" : "cursor-default"}`}
+            >
+              <span
+                className={`mt-0.5 flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-[5px] ${
+                  checked ? `${theme.iconColor} bg-current` : "border-[1.6px] border-[#D7D5E0] bg-white"
+                }`}
+              >
+                {checked && <Check size={11} strokeWidth={3} className="text-white" />}
+              </span>
+              <span className="text-[#1a1626]">{capability.label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -244,10 +323,13 @@ export default function PlatformOnboardingPage() {
 
   const catalog = useBusinessNeedsCatalog(createdOrgId);
   const [selection, setSelection] = useState<BusinessNeedSelectionState | null>(null);
-  // "Personalizar recursos" na etapa "Operação": lista de capacidades de um
-  // card recolhida por padrão, independente do grupo estar ativo ou não —
-  // só controla se a lista aparece, não afeta a seleção em si.
-  const [customizedGroupKeys, setCustomizedGroupKeys] = useState<Set<string>>(new Set());
+  // "Personalizar recursos" na etapa "Operação": qual grupo tem o painel de
+  // capacidades individuais aberto (no máximo um por vez — abrir outro
+  // fecha o anterior). Só controla se o painel aparece, não afeta a
+  // seleção em si. O painel fica fora do grid de cards (col-span-full,
+  // logo abaixo da linha do grupo) de propósito: os cards nunca mudam de
+  // altura, evitando o desalinhamento que expandir o card causava.
+  const [customizingGroupKey, setCustomizingGroupKey] = useState<string | null>(null);
   const preview = usePreviewBusinessNeedsActivation(createdOrgId ?? -1);
   const activateNeeds = useActivateBusinessNeeds(createdOrgId ?? -1);
 
@@ -742,7 +824,7 @@ export default function PlatformOnboardingPage() {
                 <BlockSkeleton className="mt-5 h-72" />
               ) : catalog.data ? (
                 <div className="mt-5 grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                  {catalog.data.map((group) => {
+                  {catalog.data.map((group, index) => {
                     const theme = BUSINESS_NEED_THEME[group.key];
                     const Icon = theme.icon;
                     const isSelected = selection.selectedGroupKeys.has(group.key);
@@ -750,115 +832,99 @@ export default function PlatformOnboardingPage() {
                     const activeCount = group.capabilities.filter((c) => c.required || !deselected.has(c.key)).length;
                     const totalCount = group.capabilities.length;
                     const isPartial = isSelected && activeCount < totalCount;
-                    const isCustomizing = customizedGroupKeys.has(group.key);
+                    const isCustomizing = customizingGroupKey === group.key;
 
                     const toggleCustomize = () => {
-                      setCustomizedGroupKeys((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(group.key)) next.delete(group.key);
-                        else next.add(group.key);
-                        return next;
-                      });
+                      setCustomizingGroupKey((prev) => (prev === group.key ? null : group.key));
                     };
 
+                    // Painel de personalização fica FORA do card (nunca faz o card
+                    // crescer) e é inserido logo após a linha de 3 (xl:grid-cols-3,
+                    // o layout de referência) onde o grupo aberto está — col-span-full
+                    // sempre quebra pra próxima linha do grid, então também funciona
+                    // nos breakpoints menores (sm:2col, mobile:1col), só não fica
+                    // "colado" exatamente na linha visual deles.
+                    const isEndOfRow = (index + 1) % 3 === 0;
+                    const isLastCard = index === catalog.data.length - 1;
+                    const customizingInThisRow =
+                      customizingGroupKey !== null &&
+                      catalog.data
+                        .slice(index - (index % 3), index + 1)
+                        .some((g) => g.key === customizingGroupKey) &&
+                      (isEndOfRow || isLastCard);
+
                     return (
-                      <div
-                        key={group.key}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => toggleBusinessNeedGroup(group.key)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            toggleBusinessNeedGroup(group.key);
-                          }
-                        }}
-                        aria-pressed={isSelected}
-                        className={`relative cursor-pointer rounded-[15px] border p-[18px_16px_16px] transition-colors ${
-                          isSelected ? `${theme.border} bg-[#FBFAFE]` : "border-[#ecebf1] bg-white"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className={`flex h-11 w-11 items-center justify-center rounded-[13px] ${theme.iconBg} ${theme.iconColor}`}>
-                            <Icon size={22} strokeWidth={1.9} />
+                      <Fragment key={group.key}>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => toggleBusinessNeedGroup(group.key)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              toggleBusinessNeedGroup(group.key);
+                            }
+                          }}
+                          aria-pressed={isSelected}
+                          className={`relative cursor-pointer rounded-[15px] border p-[18px_16px_16px] transition-colors ${
+                            isSelected ? `${theme.border} bg-[#FBFAFE]` : "border-[#ecebf1] bg-white"
+                          } ${isCustomizing ? "ring-2 ring-[#7C3AED]/25" : ""}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className={`flex h-11 w-11 items-center justify-center rounded-[13px] ${theme.iconBg} ${theme.iconColor}`}>
+                              <Icon size={22} strokeWidth={1.9} />
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                toggleBusinessNeedGroup(group.key);
+                              }}
+                              className="flex items-center gap-2 text-[11.5px] font-semibold text-[#6b7280]"
+                            >
+                              Ativar este grupo
+                              <GroupCheckbox checked={isSelected && !isPartial} indeterminate={isPartial} />
+                            </button>
                           </div>
+
+                          <div className="mt-3.5 text-[14px] font-bold text-[#1a1626]">{group.label}</div>
+                          <div className="mt-1.5 text-[11.5px] leading-[1.5] text-[#6b7280]">{group.description}</div>
+
+                          <span
+                            className={`mt-3.5 inline-flex w-fit items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                              isSelected ? `${theme.iconBg} ${theme.iconColor}` : "bg-black/[0.04] text-[#6b7280]"
+                            }`}
+                          >
+                            {isPartial ? `${activeCount} de ${totalCount} recursos` : `${totalCount} recursos incluídos`}
+                          </span>
+
+                          <p className="mt-2.5 text-[11px] leading-[1.5] text-[#9a98a6]">
+                            {group.capabilities.map((c) => c.label).join(", ")}.
+                          </p>
 
                           <button
                             type="button"
                             onClick={(event) => {
                               event.stopPropagation();
-                              toggleBusinessNeedGroup(group.key);
+                              toggleCustomize();
                             }}
-                            className="flex items-center gap-2 text-[11.5px] font-semibold text-[#6b7280]"
+                            className="mt-3 flex items-center gap-1 text-[11.5px] font-semibold text-[#6d28d9] hover:underline"
                           >
-                            Ativar este grupo
-                            <GroupCheckbox checked={isSelected && !isPartial} indeterminate={isPartial} />
+                            Personalizar recursos
+                            <ChevronDown size={13} className={`transition-transform ${isCustomizing ? "rotate-180" : ""}`} />
                           </button>
                         </div>
 
-                        <div className="mt-3.5 text-[14px] font-bold text-[#1a1626]">{group.label}</div>
-                        <div className="mt-1.5 text-[11.5px] leading-[1.5] text-[#6b7280]">{group.description}</div>
-
-                        <span
-                          className={`mt-3.5 inline-flex w-fit items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                            isSelected ? `${theme.iconBg} ${theme.iconColor}` : "bg-black/[0.04] text-[#6b7280]"
-                          }`}
-                        >
-                          {isPartial ? `${activeCount} de ${totalCount} recursos` : `${totalCount} recursos incluídos`}
-                        </span>
-
-                        {!isCustomizing ? (
-                          <p className="mt-2.5 text-[11px] leading-[1.5] text-[#9a98a6]">
-                            {group.capabilities.map((c) => c.label).join(", ")}.
-                          </p>
-                        ) : (
-                          <div className="mt-3 flex flex-col gap-2.5 border-t border-[#f1eff5] pt-3" onClick={(event) => event.stopPropagation()}>
-                            {group.capabilities.map((capability) => {
-                              const checked = isSelected && (capability.required || !deselected.has(capability.key));
-                              const interactive = isSelected && !capability.required;
-                              const toggleCapability = () => {
-                                if (!interactive || !selection) return;
-                                const nextByGroup = new Map(selection.deselectedCapabilityKeysByGroup);
-                                const current = new Set(nextByGroup.get(group.key) ?? []);
-                                if (current.has(capability.key)) current.delete(capability.key);
-                                else current.add(capability.key);
-                                nextByGroup.set(group.key, current);
-                                setSelection({ ...selection, deselectedCapabilityKeysByGroup: nextByGroup });
-                              };
-                              return (
-                                <button
-                                  key={capability.key}
-                                  type="button"
-                                  onClick={toggleCapability}
-                                  disabled={!interactive}
-                                  className={`flex items-start gap-2.5 text-left text-xs ${interactive ? "cursor-pointer" : "cursor-default"}`}
-                                >
-                                  <span
-                                    className={`mt-0.5 flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-[5px] ${
-                                      checked ? `${theme.iconColor} bg-current` : "border-[1.6px] border-[#D7D5E0] bg-white"
-                                    }`}
-                                  >
-                                    {checked && <Check size={11} strokeWidth={3} className="text-white" />}
-                                  </span>
-                                  <span className="text-[#1a1626]">{capability.label}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            toggleCustomize();
-                          }}
-                          className="mt-3 flex items-center gap-1 text-[11.5px] font-semibold text-[#6d28d9] hover:underline"
-                        >
-                          Personalizar recursos
-                          <ChevronDown size={13} className={`transition-transform ${isCustomizing ? "rotate-180" : ""}`} />
-                        </button>
-                      </div>
+                        {customizingInThisRow ? (
+                          <GroupCustomizationPanel
+                            group={catalog.data.find((g) => g.key === customizingGroupKey)!}
+                            selection={selection}
+                            setSelection={setSelection}
+                            onClose={() => setCustomizingGroupKey(null)}
+                          />
+                        ) : null}
+                      </Fragment>
                     );
                   })}
                 </div>
