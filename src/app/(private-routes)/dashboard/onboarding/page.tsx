@@ -741,7 +741,7 @@ export default function PlatformOnboardingPage() {
               {catalog.isLoading || !selection ? (
                 <BlockSkeleton className="mt-5 h-72" />
               ) : catalog.data ? (
-                <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 xl:auto-rows-fr">
+                <div className="mt-5 grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
                   {catalog.data.map((group) => {
                     const theme = BUSINESS_NEED_THEME[group.key];
                     const Icon = theme.icon;
