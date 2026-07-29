@@ -437,10 +437,13 @@ export default function PlatformOnboardingPage() {
   const isVerifyingPhoneCode = phoneRecheckPhase === "verifying";
   const showPhoneCodeInput = phoneRecheckPhase === "code" || phoneRecheckPhase === "verifying";
 
-  // "Bilheteria" (venda/gestão de ingressos) exige confirmação extra dos
-  // termos específicos — mesmo grupo usado no card do resumo/tema visual.
+  // Termos de bilheteria (3º card) são sempre obrigatórios, mesmo sem o grupo
+  // EVENTS_TICKETING selecionado agora — cobre ativar bilheteria depois pelo
+  // Explore a Nokta, onde não existe (ainda) um modal de aceite de termos.
+  // `requiresTicketingTerms` só ajusta o texto de apoio do card, não se ele
+  // aparece nem se é obrigatório.
   const requiresTicketingTerms = selection?.selectedGroupKeys.has("EVENTS_TICKETING") ?? false;
-  const aceitouTermos = authorizedToAdminister && acknowledgedLegalData && (!requiresTicketingTerms || acceptedSpecificTerms);
+  const aceitouTermos = authorizedToAdminister && acknowledgedLegalData && acceptedSpecificTerms;
 
   const canAdvance = () => {
     if (step === 0) return businessName.trim().length >= 2;
@@ -1264,69 +1267,71 @@ export default function PlatformOnboardingPage() {
                   />
                 </label>
 
-                {/* Card 3: termos específicos — só quando o grupo de bilheteria foi selecionado */}
-                {requiresTicketingTerms && (
-                  <label className="flex cursor-pointer items-start gap-4 rounded-2xl border border-[#ecebf1] bg-white p-[22px_24px]">
-                    <span
-                      className={`mt-0.5 flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg ${
-                        acceptedSpecificTerms ? "bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] shadow-[0_3px_7px_rgba(109,40,217,0.35)]" : "border-[1.6px] border-[#dad8e2] bg-white"
-                      }`}
-                    >
-                      {acceptedSpecificTerms && <Check size={15} strokeWidth={3} className="text-white" />}
+                {/* Card 3: termos de bilheteria — sempre visível e obrigatório, mesmo sem
+                    ter selecionado o grupo de Eventos/Bilheteria agora. Cobre o caso de
+                    ativar bilheteria depois pelo Explore a Nokta, onde não existe (ainda)
+                    um modal de aceite de termos — assinar aqui evita esse buraco. */}
+                <label className="flex cursor-pointer items-start gap-4 rounded-2xl border border-[#ecebf1] bg-white p-[22px_24px]">
+                  <span
+                    className={`mt-0.5 flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg ${
+                      acceptedSpecificTerms ? "bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] shadow-[0_3px_7px_rgba(109,40,217,0.35)]" : "border-[1.6px] border-[#dad8e2] bg-white"
+                    }`}
+                  >
+                    {acceptedSpecificTerms && <Check size={15} strokeWidth={3} className="text-white" />}
+                  </span>
+                  <span className="flex flex-1 items-start gap-4">
+                    <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[14px] bg-[#ede7fe] text-[#6d28d9]">
+                      <ListChecks size={24} strokeWidth={1.8} />
                     </span>
-                    <span className="flex flex-1 items-start gap-4">
-                      <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[14px] bg-[#ede7fe] text-[#6d28d9]">
-                        <ListChecks size={24} strokeWidth={1.8} />
+                    <span className="min-w-0 flex-1">
+                      <span className="mb-1.5 block text-[15px] font-bold text-[#1a1626]">
+                        Termos específicos de eventos e bilheteria
                       </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="mb-1.5 block text-[15px] font-bold text-[#1a1626]">
-                          Termos específicos dos recursos selecionados
+                      <span className="block text-[13px] leading-[1.55] text-[#6b7280]">
+                        {requiresTicketingTerms
+                          ? "Como você selecionou recursos de eventos e bilheteria, é necessário confirmar a leitura dos termos abaixo."
+                          : "Mesmo que você não use bilheteria agora, esses termos valem para quando ativar esse recurso depois — confirme a leitura para evitar essa etapa novamente no futuro."}
+                      </span>
+                      <span className="mt-3.5 block rounded-xl bg-[#f6f3fc] p-4">
+                        <span className="mb-1.5 block text-[13.5px] font-bold text-[#1a1626]">Operação de eventos e bilheteria</span>
+                        <span className="mb-3.5 block text-[12.5px] leading-[1.55] text-[#6b7280]">
+                          Confirmo que li e aceito os Termos de Bilheteria e a Política de Cancelamentos, Reembolsos e
+                          Chargebacks da Nokta.
                         </span>
-                        <span className="block text-[13px] leading-[1.55] text-[#6b7280]">
-                          Como você selecionou recursos de eventos e bilheteria, é necessário confirmar a leitura dos
-                          termos abaixo.
-                        </span>
-                        <span className="mt-3.5 block rounded-xl bg-[#f6f3fc] p-4">
-                          <span className="mb-1.5 block text-[13.5px] font-bold text-[#1a1626]">Operação de eventos e bilheteria</span>
-                          <span className="mb-3.5 block text-[12.5px] leading-[1.55] text-[#6b7280]">
-                            Confirmo que li e aceito os Termos de Bilheteria e a Política de Cancelamentos, Reembolsos e
-                            Chargebacks da Nokta.
+                        <Link
+                          href="/termos-bilheteria"
+                          target="_blank"
+                          onClick={(e) => e.stopPropagation()}
+                          className="mb-2.5 flex items-center justify-between gap-2.5 text-[12.5px] font-semibold text-[#6d28d9]"
+                        >
+                          <span className="flex items-center gap-2">
+                            <FileText size={15} strokeWidth={1.8} />
+                            Ver Termos de Bilheteria
                           </span>
-                          <Link
-                            href="/termos-bilheteria"
-                            target="_blank"
-                            onClick={(e) => e.stopPropagation()}
-                            className="mb-2.5 flex items-center justify-between gap-2.5 text-[12.5px] font-semibold text-[#6d28d9]"
-                          >
-                            <span className="flex items-center gap-2">
-                              <FileText size={15} strokeWidth={1.8} />
-                              Ver Termos de Bilheteria
-                            </span>
-                            <ExternalLink size={14} />
-                          </Link>
-                          <Link
-                            href="/politica-de-cancelamento"
-                            target="_blank"
-                            onClick={(e) => e.stopPropagation()}
-                            className="flex items-center justify-between gap-2.5 text-[12.5px] font-semibold text-[#6d28d9]"
-                          >
-                            <span className="flex items-center gap-2">
-                              <FileText size={15} strokeWidth={1.8} />
-                              Ver Política de Cancelamentos, Reembolsos e Chargebacks
-                            </span>
-                            <ExternalLink size={14} />
-                          </Link>
-                        </span>
+                          <ExternalLink size={14} />
+                        </Link>
+                        <Link
+                          href="/politica-de-cancelamento"
+                          target="_blank"
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center justify-between gap-2.5 text-[12.5px] font-semibold text-[#6d28d9]"
+                        >
+                          <span className="flex items-center gap-2">
+                            <FileText size={15} strokeWidth={1.8} />
+                            Ver Política de Cancelamentos, Reembolsos e Chargebacks
+                          </span>
+                          <ExternalLink size={14} />
+                        </Link>
                       </span>
                     </span>
-                    <input
-                      type="checkbox"
-                      checked={acceptedSpecificTerms}
-                      onChange={(event) => setAcceptedSpecificTerms(event.target.checked)}
-                      className="sr-only"
-                    />
-                  </label>
-                )}
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={acceptedSpecificTerms}
+                    onChange={(event) => setAcceptedSpecificTerms(event.target.checked)}
+                    className="sr-only"
+                  />
+                </label>
               </div>
 
               <div className="mt-5 flex items-center gap-2 text-[12.5px] text-[#6b7280]">
