@@ -435,6 +435,24 @@ export default function PlatformOnboardingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog.data]);
 
+  // Reconstrói o preview da etapa "Resumo" (step 3) depois de um F5 nela.
+  // preview vem de usePreviewBusinessNeedsActivation, um useMutation — seu
+  // resultado só existe na memória do componente (React Query nunca
+  // persiste mutation entre remontagens), diferente de `selection`, que
+  // agora é restaurado do localStorage. goToSummary só chama
+  // preview.mutateAsync uma vez, ao avançar de "Termos" pra "Resumo"; sem
+  // isto, restaurar step=3 direto (F5) deixava preview.data vazio para
+  // sempre, mesmo com selection corretamente restaurado.
+  useEffect(() => {
+    if (step !== 3 || !createdOrgId || !catalog.data || !selection) return;
+    if (preview.data || preview.isPending || preview.isError) return;
+    const payload = flattenSelection(catalog.data, selection);
+    preview.mutate(payload, {
+      onError: (error) => toast.error(getErrorMessage(error, "Não foi possível montar o resumo. Tente novamente.")),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, createdOrgId, catalog.data, selection]);
+
   const accessAlreadyActive = role === "PRODUTOR" && (nivelProdutor ?? 0) >= 1;
 
   // Recupera progresso salvo (F5 no meio do onboarding) — sem isso, um
