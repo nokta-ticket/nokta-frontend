@@ -345,6 +345,14 @@ export default function PlatformOnboardingPage() {
   // tela caía em "Acesso já configurado" (o workspace já existe de
   // verdade), dando a impressão de que tudo tinha sido concluído quando na
   // real o usuário só recarregou a página.
+  //
+  // localStorage é só um atalho de UX (lembra também o passo exato dentro
+  // da etapa "Operação"/"Termos"/"Resumo") — não é a fonte de verdade. Ele
+  // não existe em outro navegador, aba anônima ou depois de limpar dados,
+  // e nesses casos o passo abaixo (organizations vindo do backend) sempre
+  // resolve pelo menos "existe organização sem nenhuma capacidade ativada
+  // pelo onboarding" -> volta pra etapa "Operação", nunca deixa cair em
+  // "Acesso já configurado" por engano.
   useEffect(() => {
     if (progressChecked || loadingOrgs) return;
     const saved = loadProgress(userId);
@@ -352,6 +360,13 @@ export default function PlatformOnboardingPage() {
       setCreatedOrgId(saved.createdOrgId);
       setStep(saved.step);
       setSkippedIdentification(!!saved.skippedIdentification);
+    } else {
+      const pending = organizations.find((o) => !o.onboardingCompleted);
+      if (pending) {
+        setCreatedOrgId(pending.id);
+        setStep(1);
+        setSkippedIdentification(true);
+      }
     }
     setProgressChecked(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -15,6 +15,8 @@ export interface Organization {
   tipo: string;
   status: string;
   role: string;
+  /** Etapa "Operação" do onboarding já concluída (ao menos uma capacidade ativada por ela) — vem do backend, não depende de localStorage. */
+  onboardingCompleted: boolean;
 }
 
 export interface OrgModule {
