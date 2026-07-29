@@ -4,6 +4,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { useOrganizations } from "@/context/OrganizationContext";
@@ -14,6 +15,7 @@ import {
   Calculator,
   Calendar,
   Check,
+  CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -31,6 +33,7 @@ import {
   ShieldCheck,
   Sparkles,
   Target,
+  User,
   UsersRound,
   UtensilsCrossed,
 } from "lucide-react";
@@ -39,7 +42,6 @@ import {
   flattenSelection,
   type BusinessNeedSelectionState,
 } from "../_components/business-needs/business-need-groups-picker";
-import { BusinessNeedActivationSummary } from "../_components/business-needs/business-need-activation-summary";
 import { useActivateBusinessNeeds, useBusinessNeedsCatalog, usePreviewBusinessNeedsActivation } from "../_hooks/use-platform";
 import { BlockSkeleton } from "../_components/states/loading-state";
 import { OnboardingExtras } from "./_components/onboarding-extras";
@@ -331,6 +333,10 @@ export default function PlatformOnboardingPage() {
   // usuário que preencheu o nome e quer corrigi-lo.
   const [skippedIdentification, setSkippedIdentification] = useState(false);
   const [finishing, setFinishing] = useState(false);
+  // Etapa "Resumo" (4): "Revisar termos" abre um modal somente-leitura com o
+  // que foi confirmado na etapa "Termos" — mudar de verdade exige voltar lá
+  // (setStep(2)), o modal não edita os checkboxes.
+  const [reviewingTerms, setReviewingTerms] = useState(false);
   // Distingue "ainda não sei se há progresso salvo" (evita flash da etapa 0
   // antes de checar localStorage) de "sei que não há" — só relevante no
   // primeiro render.
@@ -588,7 +594,8 @@ export default function PlatformOnboardingPage() {
     }
   };
 
-  const handleFinish = async () => {
+  /** @param destination Rota pós-criação — Início (padrão) ou direto na aba de dados jurídicos/financeiros (botão "Criar e verificar dados jurídicos agora"). */
+  const handleFinish = async (destination: string = "/dashboard/inicio") => {
     if (!createdOrgId || !catalog.data || !selection) return;
     setFinishing(true);
     try {
@@ -598,7 +605,7 @@ export default function PlatformOnboardingPage() {
       // Sem setFinishing(false) aqui de propósito: window.location.href não
       // navega no mesmo tick — resetar o estado agora reabilitaria o botão
       // por uma fração de segundo antes do browser trocar de página.
-      window.location.href = "/dashboard/inicio";
+      window.location.href = destination;
     } catch (error) {
       toast.error(getErrorMessage(error, "Não foi possível concluir. Tente novamente."));
       setFinishing(false);
@@ -1408,45 +1415,384 @@ export default function PlatformOnboardingPage() {
     );
   }
 
+  // step === 3 (Resumo)
+  const orgName = organizations.find((o) => o.id === createdOrgId)?.nome ?? businessName;
+  const fullName = user ? `${user.nome ?? ""} ${user.sobrenome ?? ""}`.trim() : "";
+  const initials = fullName ? fullName.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join("") : "?";
+  const previewGroups = preview.data?.groups ?? [];
+  const labelOf = (key: string) => catalog.data?.flatMap((g) => g.capabilities).find((c) => c.key === key)?.label ?? key;
+  const totalCapabilities = preview.data?.allCapabilityKeys.length ?? 0;
+  const activeAreasCount = previewGroups.length;
+
   return (
-    <div className="flex h-full flex-col items-center bg-gray-50 px-4 py-8">
-      <div className="w-full max-w-2xl">
-        <div className="rounded-3xl bg-white shadow-sm">
-          <OnboardingStepper step={step} />
+    <div>
+      <OnboardingStepper step={step} />
 
-          <div className="p-8">
-          {step === 3 && (
-            <div className="space-y-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">
-                <ListChecks className="text-violet-600" size={22} />
-              </div>
-              {catalog.data ? (
-                <BusinessNeedActivationSummary groups={catalog.data} preview={preview.data} isLoading={preview.isPending} />
-              ) : null}
+      <div className="grid grid-cols-1 items-start gap-7 xl:grid-cols-[296px_minmax(0,1fr)_300px]">
+        {/* ── Coluna esquerda ───────────────────────────────────────── */}
+        <aside className="flex flex-col">
+          <span className="inline-block w-fit rounded-full bg-[#f3efff] px-3 py-1.5 text-[11.5px] font-semibold text-[#6d28d9]">
+            Vamos finalizar
+          </span>
+          <h1 className="mt-4 text-[27px] font-extrabold leading-[1.15] tracking-[-0.02em] text-[#1a1626]">
+            Tudo certo para <span className="text-[#6d28d9]">começar?</span>
+          </h1>
+          <p className="mt-3.5 text-[13.5px] leading-[1.6] text-[#6b7280]">
+            Revise as informações abaixo. Você poderá ajustar configurações e ativar novos recursos depois.
+          </p>
+
+          <div className="mt-2 rounded-[15px] border border-[#ece6f8] bg-[#f6f3fc] p-4">
+            <div className="mb-2 flex items-center gap-2">
+              <ShieldCheck size={17} className="text-[#6d28d9]" />
+              <div className="text-[13px] font-bold text-[#1a1626]">Seus dados estão seguros</div>
             </div>
-          )}
+            <p className="mb-2 text-xs leading-[1.55] text-[#6b7280]">
+              Usamos as melhores práticas de segurança e proteção de dados.
+            </p>
+            <Link href="/privacidade" target="_blank" className="inline-flex items-center gap-1 text-xs font-semibold text-[#6d28d9]">
+              Política de Privacidade
+              <ExternalLink size={12} />
+            </Link>
+          </div>
+        </aside>
 
-          <div className="mt-8 flex gap-3">
-            {step === 3 && (
-              <Button variant="outline" onClick={() => setStep(2)} className="h-11 flex-1" disabled={finishing}>
-                <ChevronLeft size={16} className="mr-1" />
-                Voltar
-              </Button>
-            )}
+        {/* ── Coluna central ────────────────────────────────────────── */}
+        <main>
+          <div className="mb-5">
+            <h2 className="text-[18px] font-bold tracking-[-0.01em] text-[#1a1626]">Revise os detalhes da sua organização</h2>
+            <p className="mt-1.5 text-[12.5px] text-[#6b7280]">Confira tudo antes de criar sua organização na Nokta.</p>
+          </div>
 
-            {step === 3 && (
+          {/* Organização */}
+          <div className="mb-4 rounded-2xl border border-[#ecebf1] bg-white p-[22px_24px]">
+            <div className="flex items-start gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[13px] bg-[#ede7fe] text-[#6d28d9]">
+                <Grid2x2 size={22} strokeWidth={1.9} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-[15.5px] font-bold text-[#1a1626]">Organização</h3>
+                  <button
+                    type="button"
+                    onClick={() => setStep(0)}
+                    className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[10px] border border-[#e5ddf6] bg-white px-3.5 py-2 text-[12.5px] font-semibold text-[#6d28d9] transition hover:bg-[#fcfbfe]"
+                  >
+                    <Pencil size={14} />
+                    Editar nome
+                  </button>
+                </div>
+                <div className="mt-4">
+                  <div className="mb-1 text-[11.5px] uppercase tracking-[0.03em] text-[#9a98a6]">Nome da organização</div>
+                  <div className="text-sm font-semibold text-[#1a1626]">{orgName}</div>
+                </div>
+                <div className="mt-3.5">
+                  <div className="mb-1 text-[11.5px] uppercase tracking-[0.03em] text-[#9a98a6]">Responsável inicial</div>
+                  <div className="flex items-center gap-2">
+                    <User size={16} className="text-[#6b7280]" />
+                    <span className="text-sm font-semibold text-[#1a1626]">{fullName || "—"}</span>
+                    <span className="inline-block rounded-full bg-[#ede7fe] px-2.5 py-1 text-[10.5px] font-semibold text-[#6d28d9]">Owner</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Áreas da operação */}
+          <div className="mb-4 rounded-2xl border border-[#ecebf1] bg-white p-[22px_24px]">
+            <div className="flex items-start gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[13px] bg-[#ede7fe] text-[#6d28d9]">
+                <Boxes size={22} strokeWidth={1.9} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-[15.5px] font-bold text-[#1a1626]">Áreas da operação</h3>
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[10px] border border-[#e5ddf6] bg-white px-3.5 py-2 text-[12.5px] font-semibold text-[#6d28d9] transition hover:bg-[#fcfbfe]"
+                  >
+                    <Pencil size={14} />
+                    Editar recursos
+                  </button>
+                </div>
+                {preview.isPending || !catalog.data ? (
+                  <BlockSkeleton className="mt-4 h-24" />
+                ) : (
+                  <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                    {previewGroups.map((group) => {
+                      const theme = BUSINESS_NEED_THEME[group.key as BusinessNeedKey];
+                      const Icon = theme?.icon ?? Boxes;
+                      return (
+                        <div key={group.key}>
+                          <div className="mb-3 flex items-center gap-2">
+                            <Icon size={16} strokeWidth={1.9} className="text-[#6d28d9]" />
+                            <div className="text-[13px] font-bold text-[#1a1626]">{group.label}</div>
+                          </div>
+                          {group.capabilityKeys.map((key) => (
+                            <div key={key} className="mb-2 flex items-center gap-2 text-[12.5px] text-[#2d2a3a] last:mb-0">
+                              <CheckCircle2 size={15} strokeWidth={2.2} className="shrink-0 text-[#059669]" />
+                              {labelOf(key)}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Responsabilidades e termos */}
+          <div className="mb-4 rounded-2xl border border-[#ecebf1] bg-white p-[22px_24px]">
+            <div className="flex items-start gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[13px] bg-[#ede7fe] text-[#6d28d9]">
+                <ShieldCheck size={22} strokeWidth={1.9} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-[15.5px] font-bold text-[#1a1626]">Responsabilidades e termos</h3>
+                  <button
+                    type="button"
+                    onClick={() => setReviewingTerms(true)}
+                    className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[10px] border border-[#e5ddf6] bg-white px-3.5 py-2 text-[12.5px] font-semibold text-[#6d28d9] transition hover:bg-[#fcfbfe]"
+                  >
+                    <ListChecks size={14} />
+                    Revisar termos
+                  </button>
+                </div>
+                <div className="mt-4 space-y-3">
+                  <div className="flex items-start gap-2.5">
+                    <CheckCircle2 size={16} strokeWidth={2.2} className="mt-0.5 shrink-0 text-[#059669]" />
+                    <div className="text-[12.5px] leading-[1.5] text-[#2d2a3a]">
+                      Confirmo que tenho autorização para criar e administrar esta organização.
+                      <span className="mt-0.5 block text-[11.5px] text-[#6b7280]">
+                        Sou responsável pelas informações cadastradas e pelos acessos concedidos à equipe.
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <CheckCircle2 size={16} strokeWidth={2.2} className="mt-0.5 shrink-0 text-[#059669]" />
+                    <div className="text-[12.5px] leading-[1.5] text-[#2d2a3a]">
+                      Entendo que os dados jurídicos e financeiros serão necessários para publicar eventos pagos, receber
+                      valores ou solicitar saques.
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2.5">
+                    <CheckCircle2 size={16} strokeWidth={2.2} className="mt-0.5 shrink-0 text-[#059669]" />
+                    <div className="text-[12.5px] leading-[1.5] text-[#2d2a3a]">
+                      Li e aceito os termos aplicáveis aos recursos selecionados.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Dados jurídicos e financeiros */}
+          <div className="mb-5 rounded-2xl border border-[#ecebf1] bg-white p-[22px_24px]">
+            <div className="flex items-start gap-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[13px] bg-[#ede7fe] text-[#6d28d9]">
+                <FileText size={22} strokeWidth={1.9} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-[15.5px] font-bold text-[#1a1626]">Dados jurídicos e financeiros</h3>
+                <span className="mt-2.5 mb-2 inline-block rounded-full bg-[#fef3e2] px-2.5 py-1 text-[11px] font-semibold text-[#b45309]">
+                  Opcional agora
+                </span>
+                <p className="text-[12.5px] leading-[1.55] text-[#6b7280]">
+                  Para criar sua organização, você não precisa desses dados agora. Eles só são exigidos quando você for
+                  publicar eventos pagos, receber valores ou solicitar saques — momento em que faremos a verificação (KYC)
+                  do responsável, como pessoa física, ou da empresa, como pessoa jurídica.
+                </p>
+                <div className="mt-3 flex items-start gap-2 rounded-[11px] border border-[#ece6f8] bg-[#f6f3fc] p-[11px_13px]">
+                  <Info size={15} className="mt-0.5 shrink-0 text-[#6d28d9]" />
+                  <p className="text-xs leading-[1.55] text-[#5f5580]">
+                    Quer adiantar? Você pode iniciar a verificação jurídica agora, ao criar a organização, ou deixar para
+                    quando precisar movimentar valores.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Ações */}
+          <div className="flex flex-col-reverse items-stretch justify-between gap-4 sm:flex-row sm:items-start">
+            <Button variant="outline" onClick={() => setStep(2)} disabled={finishing} className="h-11">
+              <ChevronLeft size={16} className="mr-1" />
+              Voltar
+            </Button>
+            <div className="flex min-w-0 flex-col gap-2.5 sm:min-w-[300px]">
               <Button
-                onClick={handleFinish}
+                onClick={() => handleFinish()}
                 disabled={finishing}
-                className="h-11 flex-1 bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
+                className="h-[52px] w-full bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] text-white hover:brightness-105 disabled:cursor-not-allowed"
               >
-                {finishing ? "Configurando..." : "Configurar meu workspace"}
+                {finishing ? "Configurando..." : "Criar organização"}
               </Button>
-            )}
+              <Button
+                variant="outline"
+                onClick={() => handleFinish("/dashboard/configuracoes?tab=juridico-financeiro")}
+                disabled={finishing}
+                className="h-11 w-full border-[1.5px] border-[#d9cdf3] text-[#6d28d9] hover:bg-[#fcfbfe] disabled:cursor-not-allowed"
+              >
+                {finishing ? "Configurando..." : "Criar e verificar dados jurídicos agora"}
+              </Button>
+            </div>
           </div>
+          <div className="mt-3 flex items-center justify-end gap-1.5 text-[11.5px] text-[#6b7280]">
+            <Lock size={13} />
+            Ao criar, você concorda com os{" "}
+            <Link href="/termos" target="_blank" className="inline-flex items-center gap-1 font-semibold text-[#6d28d9]">
+              termos aplicáveis
+              <ExternalLink size={11} />
+            </Link>
           </div>
-        </div>
+        </main>
+
+        {/* ── Coluna direita ────────────────────────────────────────── */}
+        <aside className="hidden rounded-[20px] border border-[#ece6f8] bg-[#f6f3fc] p-[24px_22px] xl:block">
+          <h3 className="text-base font-bold tracking-[-0.01em] text-[#1a1626]">O que será criado agora</h3>
+          <p className="mt-3 text-[12.5px] leading-[1.6] text-[#6b7280]">
+            Um espaço chamado {orgName}, administrado inicialmente por você, com o painel organizado conforme as áreas
+            selecionadas.
+          </p>
+
+          <div className="mt-4 flex flex-col items-center">
+            <div className="flex w-full items-center gap-3 rounded-[13px] border border-[#ece6f8] bg-white p-3.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#e5e3ec] text-xs font-bold text-[#6b6878]">
+                {initials}
+              </div>
+              <div>
+                <div className="text-[13px] font-semibold text-[#1a1626]">{fullName || "—"}</div>
+                <span className="mt-0.5 inline-block rounded-full bg-[#ede7fe] px-2 py-0.5 text-[10px] font-semibold text-[#6d28d9]">
+                  Owner
+                </span>
+              </div>
+            </div>
+            <ChevronDown size={16} className="my-1 text-[#c4bcd4]" />
+            <div className="flex w-full items-center gap-3 rounded-[13px] border border-[#ece6f8] bg-white p-3.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[#ede7fe] text-[#6d28d9]">
+                <Grid2x2 size={19} />
+              </div>
+              <div>
+                <div className="text-[13px] font-semibold text-[#1a1626]">{orgName}</div>
+                <div className="text-[11.5px] text-[#6b7280]">Sua organização</div>
+              </div>
+            </div>
+            <ChevronDown size={16} className="my-1 text-[#c4bcd4]" />
+            <div className="flex w-full flex-col items-start gap-2.5 rounded-[13px] border border-[#ece6f8] bg-white p-3.5">
+              <div className="flex gap-2">
+                {previewGroups.slice(0, 3).map((group) => {
+                  const theme = BUSINESS_NEED_THEME[group.key as BusinessNeedKey];
+                  const Icon = theme?.icon ?? Boxes;
+                  return (
+                    <div key={group.key} className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-[#f3efff] text-[#6d28d9]">
+                      <Icon size={15} />
+                    </div>
+                  );
+                })}
+                {previewGroups.length > 3 && (
+                  <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-[#ede7fe] text-[#6d28d9]">
+                    <ChevronRight size={15} />
+                  </div>
+                )}
+              </div>
+              <div>
+                <div className="text-[13px] font-bold text-[#1a1626]">
+                  {activeAreasCount} {activeAreasCount === 1 ? "área ativa" : "áreas ativas"}
+                </div>
+                <div className="text-[11.5px] text-[#6b7280]">
+                  {totalCapabilities} {totalCapabilities === 1 ? "recurso visível" : "recursos visíveis"}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-3.5 mt-6 text-sm font-bold text-[#1a1626]">Próximos passos após a criação</div>
+          {[
+            "Seu painel será configurado com as áreas e recursos que você escolheu.",
+            "Você poderá convidar sua equipe e definir permissões.",
+            "Complete os dados jurídicos quando precisar publicar eventos pagos ou solicitar saques.",
+          ].map((text) => (
+            <div key={text} className="mb-3.5 flex items-start gap-2.5 last:mb-0">
+              <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#e7dffa] text-[#6d28d9]">
+                <Check size={12} strokeWidth={3} />
+              </div>
+              <p className="text-xs leading-[1.5] text-[#2d2a3a]">{text}</p>
+            </div>
+          ))}
+
+          <div className="mt-2 border-t border-[#ece6f8] pt-[18px]">
+            <div className="mb-1.5 flex items-center gap-2">
+              <HelpCircle size={18} className="text-[#6d28d9]" />
+              <div className="text-[13.5px] font-bold text-[#1a1626]">Dúvidas?</div>
+            </div>
+            <p className="mb-2 text-xs leading-[1.55] text-[#6b7280]">Nossa Central de Ajuda está sempre por perto.</p>
+            <a href="mailto:contato@noktatickets.com.br" className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-[#6d28d9]">
+              Ir para a Central de Ajuda
+              <ExternalLink size={13} />
+            </a>
+          </div>
+        </aside>
       </div>
+
+      {/* Modal "Revisar termos" — somente leitura, o que já foi confirmado na etapa Termos */}
+      <Dialog open={reviewingTerms} onOpenChange={setReviewingTerms}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Termos confirmados</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-start gap-2.5">
+              <CheckCircle2 size={16} strokeWidth={2.2} className="mt-0.5 shrink-0 text-[#059669]" />
+              <div className="text-[13px] leading-[1.5] text-[#2d2a3a]">
+                Autorização para administrar esta organização — Li e aceito os{" "}
+                <Link href="/termos" target="_blank" className="font-medium text-[#6d28d9] underline">
+                  Termos de Uso
+                </Link>{" "}
+                e a{" "}
+                <Link href="/privacidade" target="_blank" className="font-medium text-[#6d28d9] underline">
+                  Política de Privacidade
+                </Link>{" "}
+                da Nokta.
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <CheckCircle2 size={16} strokeWidth={2.2} className="mt-0.5 shrink-0 text-[#059669]" />
+              <div className="text-[13px] leading-[1.5] text-[#2d2a3a]">
+                Ciência de que dados jurídicos e financeiros serão necessários para publicar eventos pagos, receber
+                valores ou solicitar saques.
+              </div>
+            </div>
+            <div className="flex items-start gap-2.5">
+              <CheckCircle2 size={16} strokeWidth={2.2} className="mt-0.5 shrink-0 text-[#059669]" />
+              <div className="text-[13px] leading-[1.5] text-[#2d2a3a]">
+                Termos específicos de eventos e bilheteria — Li e aceito os{" "}
+                <Link href="/termos-bilheteria" target="_blank" className="font-medium text-[#6d28d9] underline">
+                  Termos de Bilheteria
+                </Link>{" "}
+                e a{" "}
+                <Link href="/politica-de-cancelamento" target="_blank" className="font-medium text-[#6d28d9] underline">
+                  Política de Cancelamentos, Reembolsos e Chargebacks
+                </Link>{" "}
+                da Nokta.
+              </div>
+            </div>
+          </div>
+          <div className="mt-2 flex justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setReviewingTerms(false);
+                setStep(2);
+              }}
+            >
+              Alterar respostas
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
