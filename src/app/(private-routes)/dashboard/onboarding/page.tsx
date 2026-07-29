@@ -178,10 +178,28 @@ function GroupCustomizationPanel({
 
       <div className="mt-4 grid grid-cols-1 gap-2.5 border-t border-[#f1eff5] pt-4 sm:grid-cols-2 xl:grid-cols-3">
         {group.capabilities.map((capability) => {
-          const checked = isSelected && (capability.required || !deselected.has(capability.key));
-          const interactive = isSelected && !capability.required;
+          const checked = isSelected ? capability.required || !deselected.has(capability.key) : false;
+          const interactive = !capability.required;
           const toggleCapability = () => {
             if (!interactive) return;
+
+            if (!isSelected) {
+              // Grupo ainda não ativado: marcar o primeiro item pela
+              // personalização ativa o grupo ("Ativar este grupo" reflete
+              // isso), mas só esse item fica ligado — os demais (exceto os
+              // `required`, sempre ligados) entram como desmarcados, ao
+              // contrário de "Ativar este grupo" direto, que liga tudo.
+              const nextGroups = new Set(selection.selectedGroupKeys);
+              nextGroups.add(group.key);
+              const nextByGroup = new Map(selection.deselectedCapabilityKeysByGroup);
+              nextByGroup.set(
+                group.key,
+                new Set(group.capabilities.filter((c) => !c.required && c.key !== capability.key).map((c) => c.key)),
+              );
+              setSelection({ ...selection, selectedGroupKeys: nextGroups, deselectedCapabilityKeysByGroup: nextByGroup });
+              return;
+            }
+
             const nextByGroup = new Map(selection.deselectedCapabilityKeysByGroup);
             const current = new Set(nextByGroup.get(group.key) ?? []);
             if (current.has(capability.key)) current.delete(capability.key);
@@ -924,7 +942,7 @@ export default function PlatformOnboardingPage() {
                               event.stopPropagation();
                               toggleCustomize();
                             }}
-                            className="mt-3 flex items-center gap-1 text-[11.5px] font-semibold text-[#6d28d9] hover:underline"
+                            className="-m-2.5 mt-1 flex items-center gap-1 p-2.5 text-[11.5px] font-semibold text-[#6d28d9] hover:underline"
                           >
                             Personalizar recursos
                             <ChevronDown size={13} className={`transition-transform ${isCustomizing ? "rotate-180" : ""}`} />
