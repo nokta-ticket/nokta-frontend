@@ -262,10 +262,39 @@ const BUSINESS_NAME_DRAFT_KEY = "nokta_onboarding_business_name_draft";
 
 type PhoneRecheckPhase = "idle" | "sending" | "code" | "verifying";
 
+/** Serialização de BusinessNeedSelectionState — Set/Map não sobrevivem a JSON.stringify direto. */
+interface SerializedSelection {
+  selectedGroupKeys: string[];
+  deselectedCapabilityKeysByGroup: Record<string, string[]>;
+}
+
 interface OnboardingProgress {
   createdOrgId: number;
   step: number;
   skippedIdentification?: boolean;
+  // Seleção de áreas/capacidades da etapa "Operação" — sem isso, um F5 (ou
+  // fechar e voltar) entre "Operação" e "Resumo" perdia tudo que o usuário
+  // tinha marcado e a tela recaía no createDefaultSelection() do catálogo
+  // (só os grupos com defaultSelected=true, ex. "Gestão e Resultados").
+  selection?: SerializedSelection;
+}
+
+function serializeSelection(selection: BusinessNeedSelectionState): SerializedSelection {
+  return {
+    selectedGroupKeys: [...selection.selectedGroupKeys],
+    deselectedCapabilityKeysByGroup: Object.fromEntries(
+      [...selection.deselectedCapabilityKeysByGroup.entries()].map(([k, v]) => [k, [...v]]),
+    ),
+  };
+}
+
+function deserializeSelection(serialized: SerializedSelection): BusinessNeedSelectionState {
+  return {
+    selectedGroupKeys: new Set(serialized.selectedGroupKeys),
+    deselectedCapabilityKeysByGroup: new Map(
+      Object.entries(serialized.deselectedCapabilityKeysByGroup).map(([k, v]) => [k, new Set(v)]),
+    ),
+  };
 }
 
 function progressKey(userId: number | null): string | null {
@@ -353,6 +382,11 @@ export default function PlatformOnboardingPage() {
 
   const catalog = useBusinessNeedsCatalog(createdOrgId);
   const [selection, setSelection] = useState<BusinessNeedSelectionState | null>(null);
+  // Seleção restaurada do localStorage, à espera do catálogo carregar (o
+  // catálogo chega assíncrono depois de createdOrgId ser restaurado) — só
+  // usada uma vez, pelo efeito abaixo; null significa "nada salvo ainda" ou
+  // "já aplicada".
+  const restoredSelectionRef = useRef<SerializedSelection | null>(null);
   // "Personalizar recursos" na etapa "Operação": qual grupo tem o painel de
   // capacidades individuais aberto (no máximo um por vez — abrir outro
   // fecha o anterior). Só controla se o painel aparece, não afeta a
@@ -364,7 +398,24 @@ export default function PlatformOnboardingPage() {
   const activateNeeds = useActivateBusinessNeeds(createdOrgId ?? -1);
 
   useEffect(() => {
-    if (catalog.data && !selection) setSelection(createDefaultSelection(catalog.data));
+    if (!catalog.data || selection) return;
+
+    const restored = restoredSelectionRef.current;
+    restoredSelectionRef.current = null;
+    if (!restored) {
+      setSelection(createDefaultSelection(catalog.data));
+      return;
+    }
+
+    // Valida contra o catálogo atual — um grupo/capacidade removido desde
+    // que o progresso foi salvo não pode sobreviver à restauração.
+    const validGroupKeys = new Set<string>(catalog.data.map((g) => g.key));
+    const deserialized = deserializeSelection(restored);
+    const selectedGroupKeys = new Set([...deserialized.selectedGroupKeys].filter((k) => validGroupKeys.has(k)));
+    const deselectedCapabilityKeysByGroup = new Map(
+      [...deserialized.deselectedCapabilityKeysByGroup.entries()].filter(([k]) => selectedGroupKeys.has(k)),
+    );
+    setSelection({ selectedGroupKeys, deselectedCapabilityKeysByGroup });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog.data]);
 
@@ -390,6 +441,7 @@ export default function PlatformOnboardingPage() {
       setCreatedOrgId(saved.createdOrgId);
       setStep(saved.step);
       setSkippedIdentification(!!saved.skippedIdentification);
+      if (saved.selection) restoredSelectionRef.current = saved.selection;
     } else {
       const pending = organizations.find((o) => !o.onboardingCompleted);
       if (pending) {
@@ -414,9 +466,16 @@ export default function PlatformOnboardingPage() {
   }, [createdOrgId, organizations]);
 
   useEffect(() => {
-    if (createdOrgId && progressChecked) saveProgress(userId, { createdOrgId, step, skippedIdentification });
+    if (createdOrgId && progressChecked) {
+      saveProgress(userId, {
+        createdOrgId,
+        step,
+        skippedIdentification,
+        selection: selection ? serializeSelection(selection) : undefined,
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [createdOrgId, step, progressChecked, skippedIdentification]);
+  }, [createdOrgId, step, progressChecked, skippedIdentification, selection]);
 
   // Caminho "só falta criar workspace" (needsWorkspaceOnly, abaixo): o
   // workspace acabou de ser criado agora mesmo — segue direto pra etapa
