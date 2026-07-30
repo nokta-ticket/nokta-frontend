@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, Check, X as XIcon } from "lucide-react";
+import { AlertCircle, Check, X as XIcon, Lock, Unlock, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
@@ -19,10 +21,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { PageState } from "@/components/ui/page-state";
 import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
+import { useStepUp } from "@/components/session/step-up-modal";
+import { STEP_UP_TOKEN_HEADER } from "@/services/step-up";
 
 interface PendingProfile {
   organizationId: number;
@@ -226,6 +231,181 @@ export default function JuridicoFinanceiroPage() {
               onClick={() => void reject()}
             >
               Confirmar rejeição
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <RecipientBlockSection />
+    </div>
+  );
+}
+
+interface RecipientOverview {
+  organizationId: number;
+  organizationName: string;
+  hasRecipient: boolean;
+  recipientStatus: string | null;
+  recipientBlocked: boolean;
+  recipientBlockedAt: string | null;
+  recipientBlockedReason: string | null;
+}
+
+/**
+ * Bloqueio/desbloqueio de recipient — proteção máxima (SUPER_ADMIN + step-up
+ * TOTP obrigatório, sem fallback OTP; ver backend RecipientService.
+ * setRecipientBlock). Nunca age às cegas: sempre busca e mostra o estado
+ * real (organização, recipient, status atual) antes de qualquer ação, e
+ * exige motivo em ambas as direções — desbloquear restaura capacidade
+ * financeira, não é menos sensível que bloquear.
+ */
+function RecipientBlockSection() {
+  const { openStepUp } = useStepUp();
+  const [organizationIdInput, setOrganizationIdInput] = useState("");
+  const [overview, setOverview] = useState<RecipientOverview | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [actionOpen, setActionOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function search() {
+    const organizationId = Number(organizationIdInput);
+    if (!organizationId || organizationId <= 0) {
+      toast.error("Informe um ID de organização válido.");
+      return;
+    }
+    setLoading(true);
+    setOverview(null);
+    try {
+      const { data } = await api.get<RecipientOverview>(`/admin/organizations/${organizationId}/recipient-overview`);
+      setOverview(data);
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Não foi possível carregar a organização."));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function confirmToggle() {
+    if (!overview) return;
+    if (reason.trim().length < 10) {
+      toast.error("Informe um motivo com pelo menos 10 caracteres.");
+      return;
+    }
+    const nextBlocked = !overview.recipientBlocked;
+    setSubmitting(true);
+    try {
+      const stepUpToken = await openStepUp({
+        action: "RECIPIENT_BLOCK_TOGGLE",
+        organizationId: overview.organizationId,
+        actionParams: { organizationId: overview.organizationId },
+        title: nextBlocked ? "Bloquear recebedor" : "Desbloquear recebedor",
+        description: nextBlocked
+          ? "A organização deixará de conseguir vender e sacar imediatamente."
+          : "A organização volta a conseguir vender e sacar imediatamente — confirme que a suspeita/pendência foi resolvida.",
+        preview: [
+          { label: "Organização", value: overview.organizationName },
+          { label: "Recipient", value: overview.hasRecipient ? "Cadastrado" : "Não cadastrado" },
+          { label: "Ação", value: nextBlocked ? "Bloquear" : "Desbloquear" },
+        ],
+      });
+
+      await api.patch(
+        `/admin/organizations/${overview.organizationId}/recipient-block`,
+        { blocked: nextBlocked, reason: reason.trim() },
+        { headers: { [STEP_UP_TOKEN_HEADER]: stepUpToken } },
+      );
+      toast.success(nextBlocked ? "Recebedor bloqueado." : "Recebedor desbloqueado.");
+      setActionOpen(false);
+      setReason("");
+      await search();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (message !== "Verificação de segurança cancelada.") {
+        toast.error(getErrorMessage(err, "Não foi possível concluir a ação."));
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4 rounded-xl border bg-white p-6 shadow-sm">
+      <div>
+        <h2 className="text-lg font-semibold">Bloqueio de recebedor</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Bloqueia ou desbloqueia o recebedor Pagar.me de uma organização — nenhuma venda ou saque acontece enquanto
+          bloqueado. Exige verificação por Authenticator, mesmo com sessão válida.
+        </p>
+      </div>
+
+      <div className="flex items-end gap-2">
+        <div className="flex-1 max-w-xs space-y-1.5">
+          <Label>ID da organização</Label>
+          <Input
+            value={organizationIdInput}
+            onChange={(e) => setOrganizationIdInput(e.target.value.replace(/\D/g, ""))}
+            onKeyDown={(e) => e.key === "Enter" && void search()}
+            placeholder="Ex.: 1038"
+            inputMode="numeric"
+          />
+        </div>
+        <Button variant="outline" onClick={() => void search()} disabled={loading}>
+          <Search size={16} className="mr-2" />
+          Buscar
+        </Button>
+      </div>
+
+      {overview ? (
+        <div className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-medium">{overview.organizationName}</p>
+            <p className="text-xs text-muted-foreground">
+              Recipient: {overview.hasRecipient ? (overview.recipientStatus ?? "cadastrado") : "não cadastrado"}
+            </p>
+            {overview.recipientBlocked ? (
+              <p className="mt-1 text-xs text-red-600">
+                Bloqueado{overview.recipientBlockedReason ? ` — ${overview.recipientBlockedReason}` : ""}
+              </p>
+            ) : null}
+          </div>
+          <Button
+            variant={overview.recipientBlocked ? "outline" : "destructive"}
+            onClick={() => setActionOpen(true)}
+          >
+            {overview.recipientBlocked ? <Unlock size={16} className="mr-2" /> : <Lock size={16} className="mr-2" />}
+            {overview.recipientBlocked ? "Desbloquear" : "Bloquear"}
+          </Button>
+        </div>
+      ) : null}
+
+      <Dialog open={actionOpen} onOpenChange={(open) => !open && setActionOpen(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {overview?.recipientBlocked ? "Desbloquear" : "Bloquear"} recebedor — {overview?.organizationName}
+            </DialogTitle>
+            <DialogDescription>
+              {overview?.recipientBlocked
+                ? "A organização volta a conseguir vender e sacar imediatamente."
+                : "A organização deixa de conseguir vender e sacar imediatamente."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5">
+            <Label>Motivo (obrigatório)</Label>
+            <Textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Ex.: suspeita de fraude confirmada, chargeback rate acima do limite…"
+              rows={4}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setActionOpen(false)} disabled={submitting}>
+              Cancelar
+            </Button>
+            <Button variant={overview?.recipientBlocked ? "default" : "destructive"} onClick={() => void confirmToggle()} disabled={submitting}>
+              {submitting ? "Confirmando…" : "Continuar"}
             </Button>
           </DialogFooter>
         </DialogContent>

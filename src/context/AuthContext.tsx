@@ -4,6 +4,10 @@ import { createContext, useContext, useEffect, useRef, useState } from "react";
 import Cookies from "js-cookie";
 import api from "@/lib/axios";
 import { toast } from "@/lib/toast";
+import { ReauthModal } from "@/components/session/reauth-modal";
+
+// Aviso de expiração de sessão aparece 5min antes do fim absoluto.
+const SESSION_WARNING_LEAD_MS = 5 * 60 * 1000;
 
 /**
  * Fase 5: só metadado não-sensível (papel, nível, id) — o token de sessão
@@ -55,6 +59,8 @@ interface AuthContextType {
   nivelProdutor: number | null;
   user: UserData | null;
   userId: number | null;
+  /** Timestamp absoluto (ISO) de quando a sessão atual expira — vem sempre do backend, nunca calculado no client. */
+  sessionExpiresAt: string | null;
 
   // Fase 5: sem token — o cookie de sessão HttpOnly já foi gravado pelo
   // backend antes de signIn ser chamado (resposta de login/2FA/OAuth).
@@ -74,13 +80,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<UserPayload["role"] | null>(null);
   const [nivelProdutor, setNivelProdutor] = useState<number | null>(null);
   const [user, setUser] = useState<UserData | null>(null);
+  const [sessionExpiresAt, setSessionExpiresAt] = useState<string | null>(null);
+  // Timers de disparo único (nunca polling) — recalculados só quando
+  // sessionExpiresAt muda (login, reauth, F5 via /auth/me).
+  const warningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const expiryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showReauthWarning, setShowReauthWarning] = useState(false);
   const [userId, setUserId] = useState<number | null>(null);
+
+  // Nunca polling: dois setTimeout de disparo único, recalculados só
+  // quando sessionExpiresAt muda (login, reauth, /auth/me no F5). O aviso
+  // dispara SESSION_WARNING_LEAD_MS antes do fim absoluto vindo do
+  // backend; a expiração em si só bloqueia novas ações via o próprio 401
+  // do interceptor axios — nunca força logout imediato sozinha.
+  const armSessionTimers = (expiresAtIso: string | null) => {
+    if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
+    if (expiryTimeoutRef.current) clearTimeout(expiryTimeoutRef.current);
+    setSessionExpiresAt(expiresAtIso);
+    if (!expiresAtIso) return;
+
+    const expiresAtMs = new Date(expiresAtIso).getTime();
+    const warningInMs = expiresAtMs - SESSION_WARNING_LEAD_MS - Date.now();
+    const expiryInMs = expiresAtMs - Date.now();
+
+    if (warningInMs > 0) {
+      warningTimeoutRef.current = setTimeout(() => setShowReauthWarning(true), warningInMs);
+    } else if (expiryInMs > 0) {
+      // Já estamos dentro da janela de aviso (ex.: F5 a 2min de expirar).
+      setShowReauthWarning(true);
+    }
+    if (expiryInMs > 0) {
+      expiryTimeoutRef.current = setTimeout(() => setShowReauthWarning(false), expiryInMs);
+    }
+  };
 
   const loadUser = async () => {
     try {
       const res = await api.get(`/auth/me`);
       const data = await res.data;
       setUserId(data.id);
+      armSessionTimers(data.sessionExpiresAt ?? null);
 
       const staffRoles = ["SUPER_ADMIN", "ADMIN", "SUPPORT"];
       if (staffRoles.includes(data.role)) {
@@ -154,6 +193,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
+    if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
+    if (expiryTimeoutRef.current) clearTimeout(expiryTimeoutRef.current);
+    setShowReauthWarning(false);
+    setSessionExpiresAt(null);
     // Cookie HttpOnly não é removível por JS — pede pro backend limpar.
     // Fire-and-forget: mesmo se a chamada falhar, o estado local (e o
     // cookie "user") já são limpos abaixo, então a UI sempre reflete
@@ -165,6 +208,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setNivelProdutor(null);
     setUser(null);
     setUserId(null);
+  };
+
+  const handleReauthSuccess = (newSessionExpiresAt: string | null) => {
+    setShowReauthWarning(false);
+    armSessionTimers(newSessionExpiresAt);
   };
 
   const updateNivelProdutor = (nivel: number) => {
@@ -216,6 +264,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
+      if (expiryTimeoutRef.current) clearTimeout(expiryTimeoutRef.current);
     };
   }, []);
 
@@ -228,6 +278,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         nivelProdutor,
         user,
         userId,
+        sessionExpiresAt,
         signIn,
         signOut,
         initiateRolePolling,
@@ -235,6 +286,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
+      {isAuthenticated && user?.email ? (
+        <ReauthModal open={showReauthWarning} email={user.email} onSuccess={handleReauthSuccess} />
+      ) : null}
     </AuthContext.Provider>
   );
 }

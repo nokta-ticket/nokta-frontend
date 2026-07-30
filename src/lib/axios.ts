@@ -49,10 +49,28 @@ export function getErrorMessage(error: unknown, fallback = "Ocorreu um erro."): 
 // recarrega a página (são origens diferentes), então o host nunca muda
 // durante o tempo de vida deste módulo.
 
+// Corpo de erro que o StepUpGuard devolve (backend, core/common/guards/step-up.guard.ts).
+export interface StepUpRequiredErrorBody {
+  code: "STEP_UP_REQUIRED";
+  action: string;
+  reason?: string;
+}
+
+export function isStepUpRequiredError(error: unknown): error is { response: { data: StepUpRequiredErrorBody } } {
+  return axios.isAxiosError(error) && error.response?.status === 403 && error.response?.data?.code === "STEP_UP_REQUIRED";
+}
+
 // Response interceptor - handles 401 errors (token expired/ausente)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // 403 + STEP_UP_REQUIRED NUNCA é tratado como sessão inválida — a sessão
+    // continua ativa, só falta a reautenticação reforçada da ação. Deixa o
+    // erro propagar pro caller abrir o modal de step-up (useStepUp hook).
+    if (isStepUpRequiredError(error)) {
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401) {
       const userCookie = Cookies.get("user");
       // O cookie de sessão é HttpOnly — só o backend consegue limpá-lo

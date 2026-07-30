@@ -5,6 +5,7 @@ import FooterConditional from "@/components/layout/footer-conditional";
 import { Toaster } from "@/components/ui/toaster";
 import HeaderSwitcher from "@/lib/header-switcher";
 import { AuthProvider } from "@/context/AuthContext";
+import { StepUpProvider } from "@/components/session/step-up-modal";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next"
 
@@ -53,16 +54,18 @@ export default function RootLayout({
     <html lang="pt-BR" className={`${poppins.variable} ${spaceGrotesk.variable}`}>
       <body className="bg-white antialiased font-sans" suppressHydrationWarning>
         <AuthProvider>
-          {painelSlot ?? (
-            <div className="flex min-h-dvh flex-col">
-              <HeaderSwitcher />
-              <main className="flex flex-1 flex-col">{children}</main>
-              <FooterConditional />
-            </div>
-          )}
-          <Toaster />
-          <SpeedInsights />
-          <Analytics/>
+          <StepUpProvider>
+            {painelSlot ?? (
+              <div className="flex min-h-dvh flex-col">
+                <HeaderSwitcher />
+                <main className="flex flex-1 flex-col">{children}</main>
+                <FooterConditional />
+              </div>
+            )}
+            <Toaster />
+            <SpeedInsights />
+            <Analytics/>
+          </StepUpProvider>
         </AuthProvider>
       </body>
     </html>

@@ -16,6 +16,8 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useOrganizations } from "@/context/OrganizationContext";
+import { useStepUp } from "@/components/session/step-up-modal";
+import { STEP_UP_TOKEN_HEADER } from "@/services/step-up";
 import { PageContainer } from "../../_components/page/page-container";
 import { PageHeader } from "../../_components/page/page-header";
 
@@ -90,6 +92,7 @@ function formatDate(value: string) {
  */
 export default function TicketsFinanceiroPage() {
   const { currentOrg } = useOrganizations();
+  const { openStepUp } = useStepUp();
   const [summary, setSummary] = useState<FinancialEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -117,23 +120,55 @@ export default function TicketsFinanceiroPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentOrg?.id]);
 
+  /**
+   * Fluxo em 2 passos (sessão 12h + step-up): solicitar-saque cria a
+   * solicitação em PENDING_AUTH (saldo reservado, sem debitar o ledger
+   * ainda) e devolve um preview real (valor, taxa de transferência, valor
+   * líquido estimado). O preview é mostrado no modal de step-up ANTES de
+   * pedir senha/código — nunca confirma sozinho. Só depois do TOTP/OTP
+   * confirmado é que confirmar-saque debita o ledger de verdade.
+   */
   async function handleRequestWithdrawal(eventId: number) {
-    const confirmed = window.confirm(
-      "Deseja solicitar o saque do saldo disponivel deste evento?",
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
+    if (!currentOrg) return;
     setRequestingEventId(eventId);
 
     try {
-      const response = await api.post(`/produtor/eventos/${eventId}/solicitar-saque`);
-      toast.success(response.data?.message ?? "Saque solicitado com sucesso.");
+      const requestRes = await api.post(`/produtor/eventos/${eventId}/solicitar-saque`);
+      const saque = requestRes.data?.saque;
+      const preview = requestRes.data?.preview;
+      if (!saque?.id) throw new Error("Resposta inesperada ao solicitar o saque.");
+
+      const formatCents = (cents: number) => formatCurrency(cents / 100);
+
+      const stepUpToken = await openStepUp({
+        action: "WITHDRAWAL_CONFIRM",
+        organizationId: currentOrg.id,
+        actionParams: { withdrawalId: saque.id, organizationId: currentOrg.id },
+        title: "Confirmar solicitação de saque",
+        description: "Revise os dados abaixo antes de autorizar — esta ação move dinheiro real da sua organização.",
+        preview: [
+          { label: "Valor solicitado", value: formatCurrency(saque.amount) },
+          { label: "Taxa de transferência", value: preview ? formatCents(preview.transferFeeCents) : "—" },
+          { label: "Valor líquido estimado", value: preview ? formatCents(preview.estimatedNetAmountCents) : "—" },
+          { label: "Conta de destino", value: preview?.bankAccountLast4 ? `•••• ${preview.bankAccountLast4}` : "Chave Pix cadastrada" },
+        ],
+      });
+
+      const confirmRes = await api.post(
+        `/produtor/eventos/${eventId}/confirmar-saque`,
+        { withdrawalId: saque.id, organizationId: currentOrg.id },
+        { headers: { [STEP_UP_TOKEN_HEADER]: stepUpToken } },
+      );
+      toast.success(confirmRes.data?.saque ? "Saque confirmado com sucesso." : "Saque confirmado.");
       await fetchSummary();
     } catch (error) {
-      toast.error(getErrorMessage(error, "Nao foi possivel solicitar o saque."));
+      // Cancelamento do modal de step-up (usuário desistiu) não é erro —
+      // useStepUp rejeita a Promise com uma mensagem própria nesse caso.
+      const message = error instanceof Error ? error.message : "";
+      if (message !== "Verificação de segurança cancelada.") {
+        toast.error(getErrorMessage(error, "Nao foi possivel solicitar o saque."));
+      }
+      await fetchSummary();
     } finally {
       setRequestingEventId(null);
     }
