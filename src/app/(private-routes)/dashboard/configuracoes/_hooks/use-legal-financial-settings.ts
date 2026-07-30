@@ -3,14 +3,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   legalFinancialApi,
-  type SetBankAccountPayload,
+  type BankAccountPayload,
+  type PatchAddressPayload,
+  type PatchEntityDetailsPayload,
+  type PatchLegalRepresentativePayload,
+  type PatchResponsibleTypePayload,
   type SetFinancialDestinationPayload,
-  type StartLegalProfilePayload,
-  type SubmitCompanyRecipientPayload,
 } from "@/services/venue-legal-financial";
 
 const legalFinancialKeys = {
   profile: (orgId: number) => ["legal-financial", orgId, "profile"] as const,
+  draft: (orgId: number) => ["legal-financial", orgId, "draft"] as const,
   recipient: (orgId: number) => ["legal-financial", orgId, "recipient"] as const,
 };
 
@@ -22,14 +25,58 @@ export function useLegalFinancialProfile(orgId: number | null) {
   });
 }
 
-export function useStartLegalProfile(orgId: number) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: StartLegalProfilePayload) => legalFinancialApi.startProfile(orgId, payload),
-    onSuccess: () => qc.invalidateQueries({ queryKey: legalFinancialKeys.profile(orgId) }),
+// ── Wizard (rascunho persistido por etapa) ────────────────────────────────
+export function useLegalFinancialDraft(orgId: number | null) {
+  return useQuery({
+    queryKey: legalFinancialKeys.draft(orgId ?? -1),
+    queryFn: () => legalFinancialApi.getDraft(orgId as number),
+    enabled: orgId !== null,
   });
 }
 
+function useDraftMutation<TPayload>(orgId: number, fn: (orgId: number, payload: TPayload) => Promise<unknown>) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: TPayload) => fn(orgId, payload),
+    onSuccess: (data) => {
+      qc.setQueryData(legalFinancialKeys.draft(orgId), data);
+    },
+  });
+}
+
+export function usePatchResponsibleType(orgId: number) {
+  return useDraftMutation<PatchResponsibleTypePayload>(orgId, legalFinancialApi.patchResponsibleType);
+}
+
+export function usePatchEntityDetails(orgId: number) {
+  return useDraftMutation<PatchEntityDetailsPayload>(orgId, legalFinancialApi.patchEntityDetails);
+}
+
+export function usePatchLegalRepresentative(orgId: number) {
+  return useDraftMutation<PatchLegalRepresentativePayload>(orgId, legalFinancialApi.patchLegalRepresentative);
+}
+
+export function usePatchAddress(orgId: number) {
+  return useDraftMutation<PatchAddressPayload>(orgId, legalFinancialApi.patchAddress);
+}
+
+export function usePatchBankAccount(orgId: number) {
+  return useDraftMutation<BankAccountPayload>(orgId, legalFinancialApi.patchBankAccount);
+}
+
+export function useSubmitLegalFinancialProfile(orgId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => legalFinancialApi.submit(orgId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: legalFinancialKeys.draft(orgId) });
+      qc.invalidateQueries({ queryKey: legalFinancialKeys.profile(orgId) });
+      qc.invalidateQueries({ queryKey: legalFinancialKeys.recipient(orgId) });
+    },
+  });
+}
+
+// ── Destino financeiro (Pix) ───────────────────────────────────────────────
 export function useSetFinancialDestination(orgId: number) {
   const qc = useQueryClient();
   return useMutation({
@@ -38,14 +85,7 @@ export function useSetFinancialDestination(orgId: number) {
   });
 }
 
-export function useSetBankAccount(orgId: number) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (payload: SetBankAccountPayload) => legalFinancialApi.setBankAccount(orgId, payload),
-    onSuccess: () => qc.invalidateQueries({ queryKey: legalFinancialKeys.profile(orgId) }),
-  });
-}
-
+// ── Recipient (leitura + retry manual) ─────────────────────────────────────
 export function useLegalFinancialRecipient(orgId: number | null) {
   return useQuery({
     queryKey: legalFinancialKeys.recipient(orgId ?? -1),
@@ -65,14 +105,9 @@ export function useCreateRecipient(orgId: number) {
   });
 }
 
-/** Submit único do fluxo PJ (tela de 5 seções em 1 página) — persiste tudo e cria o recipient na Pagar.me no mesmo request. */
-export function useSubmitCompanyRecipient(orgId: number) {
-  const qc = useQueryClient();
+// ── Prova de vida / KYC ─────────────────────────────────────────────────────
+export function useGenerateKycLink(orgId: number) {
   return useMutation({
-    mutationFn: (payload: SubmitCompanyRecipientPayload) => legalFinancialApi.submitCompanyRecipient(orgId, payload),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: legalFinancialKeys.profile(orgId) });
-      qc.invalidateQueries({ queryKey: legalFinancialKeys.recipient(orgId) });
-    },
+    mutationFn: () => legalFinancialApi.generateKycLink(orgId),
   });
 }

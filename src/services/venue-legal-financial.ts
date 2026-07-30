@@ -18,7 +18,12 @@ export type RecipientAttemptState =
   | "RECIPIENT_ERROR"
   | "RECIPIENT_CREATED";
 
-export interface CompanyAddress {
+// Progresso do wizard (draftStep/formStatus) — nunca confundido com
+// verificationStatus/recipientStatus/kycStatus, que refletem a Pagar.me.
+export type DraftStep = "RESPONSIBLE_TYPE" | "ENTITY_DETAILS" | "LEGAL_REPRESENTATIVE" | "ADDRESS" | "BANK_ACCOUNT" | "REVIEW";
+export type FormStatus = "DRAFT" | "READY_TO_SUBMIT" | "SUBMITTING" | "SUBMITTED";
+
+export interface LegalFinancialAddress {
   street: string;
   complementary: string | null;
   streetNumber: string | null;
@@ -29,9 +34,38 @@ export interface CompanyAddress {
   referencePoint: string | null;
 }
 
-export interface CompanyPhone {
+export interface LegalFinancialPhone {
   ddd: string;
   number: string;
+}
+
+export interface LegalFinancialDraft {
+  organizationId: number;
+  legalType: LegalType | null;
+  draftStep: DraftStep;
+  formStatus: FormStatus;
+  draftUpdatedAt: string | null;
+  legalName: string | null;
+  tradeName: string | null;
+  documentMasked: string | null;
+  company: {
+    siteUrl: string | null;
+    annualRevenue: string | null;
+    corporationType: string | null;
+    foundingDate: string | null;
+    address: LegalFinancialAddress | null;
+    phone: LegalFinancialPhone | null;
+  };
+  representative: {
+    documentMasked: string | null;
+    motherName: string | null;
+    birthdate: string | null;
+    monthlyIncome: string | null;
+    professionalOccupation: string | null;
+  };
+  bankAccountMasked: string | null;
+  hasRecipient: boolean;
+  recipientBlocked: boolean;
 }
 
 export interface LegalFinancialProfile {
@@ -57,16 +91,13 @@ export interface LegalFinancialProfile {
   verifiedAt: string | null;
   rejectedAt: string | null;
   suspendedAt: string | null;
-  // Dados PJ (contrato v5 da Pagar.me) — não sensíveis, retornados em
-  // claro para permitir edição incremental. Só preenchidos para legalType
-  // COMPANY; document/CPF do representante nunca aparece cru, só mascarado.
   company: {
     siteUrl: string | null;
     annualRevenue: string | null;
     corporationType: string | null;
     foundingDate: string | null;
-    address: CompanyAddress | null;
-    phone: CompanyPhone | null;
+    address: LegalFinancialAddress | null;
+    phone: LegalFinancialPhone | null;
   };
   representative: {
     documentMasked: string | null;
@@ -80,18 +111,11 @@ export interface LegalFinancialProfile {
   recipientBlockedReason: string | null;
 }
 
-export interface StartLegalProfilePayload {
-  legalType: LegalType;
-  legalName: string;
-  tradeName?: string;
-  document: string;
-}
-
 export interface SetFinancialDestinationPayload {
   pixKey: string;
 }
 
-export interface SetBankAccountPayload {
+export interface BankAccountPayload {
   holderName: string;
   bank: string;
   branchNumber: string;
@@ -108,51 +132,48 @@ export interface RecipientStatus {
   kycStatus: string | null;
 }
 
-export interface SubmitCompanyAddressPayload {
-  street: string;
-  complementary: string;
-  streetNumber: string;
-  neighborhood: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  referencePoint: string;
+export interface KycLinkResult {
+  url: string;
+  expiresAt: string;
 }
 
-export interface SubmitCompanyPhonePayload {
-  ddd: string;
-  number: string;
+// ── Payloads do wizard (PATCH por etapa) ──────────────────────────────────
+export interface PatchResponsibleTypePayload {
+  legalType: LegalType;
 }
 
-export interface SubmitCompanyRepresentativePayload {
+export interface PatchEntityDetailsPayload {
+  legalName: string;
+  tradeName?: string;
+  document: string;
+  siteUrl?: string;
+  annualRevenue?: string;
+  corporationType?: string;
+  foundingDate?: string;
+  phone?: LegalFinancialPhone;
+}
+
+export interface PatchLegalRepresentativePayload {
   document: string;
   motherName: string;
   birthdate: string;
   monthlyIncome: string;
   professionalOccupation: string;
-  address: SubmitCompanyAddressPayload;
-  phone: SubmitCompanyPhonePayload;
 }
 
-/** Submit único do fluxo PJ (tela de 5 seções em 1 página) — cria/atualiza o perfil E dispara a criação do recipient na Pagar.me no mesmo request. */
-export interface SubmitCompanyRecipientPayload {
-  legalName: string;
-  tradeName?: string;
-  document: string;
-  siteUrl?: string;
-  annualRevenue: string;
-  corporationType?: string;
-  foundingDate?: string;
-  address: SubmitCompanyAddressPayload;
-  phone: SubmitCompanyPhonePayload;
-  representative: SubmitCompanyRepresentativePayload;
-  bankAccount: SetBankAccountPayload;
+export interface PatchAddressPayload {
+  person?: LegalFinancialAddress;
+  personPhone?: LegalFinancialPhone;
+  representative?: LegalFinancialAddress;
+  representativePhone?: LegalFinancialPhone;
 }
 
-export interface SubmitCompanyRecipientResult {
+export interface SubmitResult {
   organizationId: number;
   verificationStatus: VerificationStatus;
   recipient: { attempted: boolean; created: boolean; error?: string };
+  draftStep: DraftStep;
+  formStatus: FormStatus;
 }
 
 const base = (organizationId: number) => `/organizations/${organizationId}/legal-financial-profile`;
@@ -160,21 +181,37 @@ const base = (organizationId: number) => `/organizations/${organizationId}/legal
 export const legalFinancialApi = {
   getProfile: (organizationId: number) => api.get<LegalFinancialProfile>(base(organizationId)).then((r) => r.data),
 
-  startProfile: (organizationId: number, payload: StartLegalProfilePayload) =>
-    api.post<LegalFinancialProfile>(`${base(organizationId)}/start`, payload).then((r) => r.data),
+  // ── Wizard ──────────────────────────────────────────────────────────────
+  getDraft: (organizationId: number) => api.get<LegalFinancialDraft>(`${base(organizationId)}/draft`).then((r) => r.data),
 
+  patchResponsibleType: (organizationId: number, payload: PatchResponsibleTypePayload) =>
+    api.patch<LegalFinancialDraft>(`${base(organizationId)}/draft/responsible-type`, payload).then((r) => r.data),
+
+  patchEntityDetails: (organizationId: number, payload: PatchEntityDetailsPayload) =>
+    api.patch<LegalFinancialDraft>(`${base(organizationId)}/draft/entity-details`, payload).then((r) => r.data),
+
+  patchLegalRepresentative: (organizationId: number, payload: PatchLegalRepresentativePayload) =>
+    api.patch<LegalFinancialDraft>(`${base(organizationId)}/draft/legal-representative`, payload).then((r) => r.data),
+
+  patchAddress: (organizationId: number, payload: PatchAddressPayload) =>
+    api.patch<LegalFinancialDraft>(`${base(organizationId)}/draft/address`, payload).then((r) => r.data),
+
+  patchBankAccount: (organizationId: number, payload: BankAccountPayload) =>
+    api.patch<LegalFinancialDraft>(`${base(organizationId)}/draft/bank-account`, payload).then((r) => r.data),
+
+  submit: (organizationId: number) => api.post<SubmitResult>(`${base(organizationId)}/submit`).then((r) => r.data),
+
+  // ── Destino financeiro (Pix) ──────────────────────────────────────────
   setFinancialDestination: (organizationId: number, payload: SetFinancialDestinationPayload) =>
     api.post<LegalFinancialProfile>(`${base(organizationId)}/financial-destination`, payload).then((r) => r.data),
 
-  setBankAccount: (organizationId: number, payload: SetBankAccountPayload) =>
-    api.post<LegalFinancialProfile>(`${base(organizationId)}/bank-account`, payload).then((r) => r.data),
-
+  // ── Recipient (leitura + retry manual) ─────────────────────────────────
   getRecipient: (organizationId: number) => api.get<RecipientStatus>(`${base(organizationId)}/recipient`).then((r) => r.data),
 
   createRecipient: (organizationId: number) => api.post<RecipientStatus>(`${base(organizationId)}/recipient`).then((r) => r.data),
 
-  submitCompanyRecipient: (organizationId: number, payload: SubmitCompanyRecipientPayload) =>
-    api.post<SubmitCompanyRecipientResult>(`${base(organizationId)}/company-recipient`, payload).then((r) => r.data),
+  // ── Prova de vida / KYC ─────────────────────────────────────────────────
+  generateKycLink: (organizationId: number) => api.post<KycLinkResult>(`${base(organizationId)}/kyc-link`).then((r) => r.data),
 };
 
 export const VERIFICATION_STATUS_LABEL: Record<VerificationStatus, string> = {
@@ -187,3 +224,5 @@ export const VERIFICATION_STATUS_LABEL: Record<VerificationStatus, string> = {
   LEGACY_REVIEW_REQUIRED: "Regularização pendente",
   FINANCIAL_REVIEW_REQUIRED: "Correção em revisão",
 };
+
+export const DRAFT_STEP_ORDER: DraftStep[] = ["RESPONSIBLE_TYPE", "ENTITY_DETAILS", "LEGAL_REPRESENTATIVE", "ADDRESS", "BANK_ACCOUNT", "REVIEW"];

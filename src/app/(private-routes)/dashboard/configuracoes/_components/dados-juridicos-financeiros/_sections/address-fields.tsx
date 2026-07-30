@@ -5,21 +5,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCep } from "@/lib/br-data";
 import { useCepLookup } from "../_hooks/use-cep-lookup";
-import type { CompanyAddressForm } from "../types";
+import type { AddressForm } from "../types";
 
-/** Bloco de endereço estruturado (main_address / managing_partners[].address do payload v5) — reusado para empresa e representante, cada um com seu próprio CEP. */
+/** Bloco de endereço estruturado (main_address / managing_partners[].address do payload v5) — reusado para empresa/pessoa e representante, cada um com seu próprio CEP. */
 export function AddressFields({
   value,
   onChange,
   idPrefix,
 }: {
-  value: CompanyAddressForm;
-  onChange: (next: CompanyAddressForm) => void;
+  value: AddressForm;
+  onChange: (next: AddressForm) => void;
   idPrefix: string;
 }) {
   const { lookup, loading } = useCepLookup();
 
-  const set = <K extends keyof CompanyAddressForm>(key: K, val: CompanyAddressForm[K]) => onChange({ ...value, [key]: val });
+  const set = <K extends keyof AddressForm>(key: K, val: AddressForm[K]) => onChange({ ...value, [key]: val });
 
   const handleCepBlur = async () => {
     const result = await lookup(value.zipCode);

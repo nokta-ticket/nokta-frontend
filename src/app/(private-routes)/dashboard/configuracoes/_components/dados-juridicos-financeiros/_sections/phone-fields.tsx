@@ -2,10 +2,10 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { CompanyPhoneForm } from "../types";
+import type { PhoneForm } from "../types";
 
 /** DDD + número separados (phone_numbers[] do payload v5) — não é o telefone internacional do PhoneInput genérico, este fluxo é sempre Brasil. */
-export function PhoneFields({ value, onChange, idPrefix }: { value: CompanyPhoneForm; onChange: (next: CompanyPhoneForm) => void; idPrefix: string }) {
+export function PhoneFields({ value, onChange, idPrefix }: { value: PhoneForm; onChange: (next: PhoneForm) => void; idPrefix: string }) {
   return (
     <div className="grid grid-cols-[80px_1fr] gap-3">
       <div className="space-y-1.5">
