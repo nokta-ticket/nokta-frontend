@@ -469,17 +469,17 @@ export default function PlatformOnboardingPage() {
 
   // Recupera progresso salvo (F5 no meio do onboarding) — sem isso, um
   // reload no meio de "Operação"/"Termos"/"Resumo" perdia createdOrgId e a
-  // tela caía em "Acesso já configurado" (o workspace já existe de
-  // verdade), dando a impressão de que tudo tinha sido concluído quando na
-  // real o usuário só recarregou a página.
+  // tela caía em alreadyConfigured (redirect automático pra
+  // /dashboard/inicio, ver abaixo), dando a impressão de que tudo tinha sido
+  // concluído quando na real o usuário só recarregou a página.
   //
   // localStorage é só um atalho de UX (lembra também o passo exato dentro
   // da etapa "Operação"/"Termos"/"Resumo") — não é a fonte de verdade. Ele
   // não existe em outro navegador, aba anônima ou depois de limpar dados,
   // e nesses casos o passo abaixo (organizations vindo do backend) sempre
   // resolve pelo menos "existe organização sem nenhuma capacidade ativada
-  // pelo onboarding" -> volta pra etapa "Operação", nunca deixa cair em
-  // "Acesso já configurado" por engano.
+  // pelo onboarding" -> volta pra etapa "Operação", nunca deixa redirecionar
+  // de volta por engano.
   useEffect(() => {
     if (progressChecked || loadingOrgs) return;
     const saved = loadProgress(userId);
@@ -544,10 +544,20 @@ export default function PlatformOnboardingPage() {
   // handleCreateWorkspace. Contas que ativaram o acesso antes dessa etapa
   // existir (ou cuja criação de workspace falhou naquele momento) ficam com
   // accessAlreadyActive=true e organizations=[]: sem esta checagem elas
-  // caíam na tela "Acesso já configurado" (que só linka pra
-  // /dashboard/inicio) sem NUNCA ter a chance de criar um workspace.
+  // caíam em alreadyConfigured (abaixo) sem NUNCA ter a chance de criar um
+  // workspace.
   const needsWorkspaceOnly = accessAlreadyActive && !loadingOrgs && organizations.length === 0 && !createdOrgId;
+  // Nada a fazer aqui — segue direto pra /dashboard/inicio (useEffect
+  // abaixo). Existiu uma tela "Acesso já configurado" com um botão "Ir para
+  // o painel"; removida porque não tinha nenhuma ação real, só adicionava um
+  // clique a mais entre chegar em /dashboard/onboarding por engano (ver
+  // InicioDispatcher em dashboard/inicio/page.tsx) e o painel de verdade.
   const alreadyConfigured = accessAlreadyActive && progressChecked && !needsWorkspaceOnly && !createdOrgId;
+
+  useEffect(() => {
+    if (alreadyConfigured) window.location.href = "/dashboard/inicio";
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alreadyConfigured]);
   const phoneNeedsRecheck = !!user && user.telefoneVerificado !== true;
   const isSendingPhoneCode = phoneRecheckPhase === "sending";
   const isVerifyingPhoneCode = phoneRecheckPhase === "verifying";
@@ -722,7 +732,7 @@ export default function PlatformOnboardingPage() {
     }
   };
 
-  if (loadingOrgs || !progressChecked) {
+  if (loadingOrgs || !progressChecked || alreadyConfigured) {
     return <div className="flex h-full items-center justify-center bg-gray-50" />;
   }
 
@@ -766,25 +776,6 @@ export default function PlatformOnboardingPage() {
               </Button>
             </div>
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (alreadyConfigured) {
-    return (
-      <div className="flex h-full items-center justify-center bg-gray-50 px-4 py-12">
-        <div className="w-full max-w-lg rounded-3xl bg-white p-8 text-center shadow-sm">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
-            <Check className="text-green-600" size={26} />
-          </div>
-          <h1 className="mt-5 text-2xl font-bold text-gray-900">Acesso já configurado</h1>
-          <p className="mt-2 text-sm text-gray-500">Sua conta já está pronta para acessar a plataforma.</p>
-          <Link href="/dashboard/inicio" className="mt-6 inline-flex w-full">
-            <Button className="h-11 w-full bg-violet-600 text-white hover:bg-violet-700">
-              Ir para o painel
-            </Button>
-          </Link>
         </div>
       </div>
     );

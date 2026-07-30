@@ -56,7 +56,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   // (dashboard/inicio/page.tsx) lia isso como "org sem nenhum módulo ativo",
   // redirecionando pra /dashboard/onboarding SEMPRE (não só às vezes — é
   // ordem de commit/efeito do React, não race de rede) mesmo pra quem já
-  // tinha concluído o onboarding, que então caía em "Acesso já configurado".
+  // tinha concluído o onboarding.
   const [modulesResolvedForOrgId, setModulesResolvedForOrgId] = useState<number | null>(null);
   const loadingModules = currentOrg !== null && modulesResolvedForOrgId !== currentOrg.id;
 
