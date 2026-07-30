@@ -97,6 +97,17 @@ export function validateCnpj(value?: string | null): boolean {
   return secondDigit === Number(digits[13]);
 }
 
+export function formatCep(value?: string | null): string {
+  const digits = normalizeDigits(value).slice(0, 8);
+
+  if (digits.length <= 5) return digits;
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+}
+
+export function validateCep(value?: string | null): boolean {
+  return normalizeDigits(value).length === 8;
+}
+
 export function validatePixKey(value?: string | null): boolean {
   const pixKey = (value ?? "").trim();
   if (!pixKey) return false;

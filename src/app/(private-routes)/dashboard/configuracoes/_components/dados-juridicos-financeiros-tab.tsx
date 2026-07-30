@@ -6,17 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
-import { formatCpf, formatCnpj, normalizeDigits, validateCpf, validateCnpj, validatePixKey } from "@/lib/br-data";
-import { VERIFICATION_STATUS_LABEL, type LegalType, type VerificationStatus } from "@/services/venue-legal-financial";
+import { formatCpf, normalizeDigits, validateCpf, validatePixKey } from "@/lib/br-data";
+import { VERIFICATION_STATUS_LABEL, type VerificationStatus } from "@/services/venue-legal-financial";
+import { useAuth } from "@/context/AuthContext";
 import { BlockSkeleton } from "../../_components/states/loading-state";
 import {
   useCreateRecipient,
@@ -25,6 +19,7 @@ import {
   useSetFinancialDestination,
   useStartLegalProfile,
 } from "../_hooks/use-legal-financial-settings";
+import { CompanyRecipientForm } from "./dados-juridicos-financeiros/company-recipient-form";
 
 const STATUS_BADGE_VARIANT: Record<VerificationStatus, "default" | "secondary" | "destructive" | "outline"> = {
   NOT_STARTED: "outline",
@@ -39,14 +34,38 @@ const STATUS_BADGE_VARIANT: Record<VerificationStatus, "default" | "secondary" |
 
 export function DadosJuridicosFinanceirosTab({ orgId, canManage }: { orgId: number; canManage: boolean }) {
   const { data: profile, isLoading } = useLegalFinancialProfile(orgId);
+
+  if (isLoading) return <BlockSkeleton className="h-72" />;
+
+  const hasProfile = !!profile?.legalType;
+
+  // Perfil PJ (já iniciado ou recém-escolhido): fluxo de 5 seções alinhado
+  // ao contrato v5 da Pagar.me (register_information + managing_partners).
+  // Perfil PF continua no formulário simples — não muda com esta entrega.
+  if (hasProfile && profile.legalType === "COMPANY") {
+    return <CompanyRecipientForm orgId={orgId} canManage={canManage} profile={profile} />;
+  }
+
+  return <IndividualOrPickerForm orgId={orgId} canManage={canManage} profile={profile} />;
+}
+
+function IndividualOrPickerForm({
+  orgId,
+  canManage,
+  profile,
+}: {
+  orgId: number;
+  canManage: boolean;
+  profile: ReturnType<typeof useLegalFinancialProfile>["data"];
+}) {
+  const { user } = useAuth();
   const startProfile = useStartLegalProfile(orgId);
   const setDestination = useSetFinancialDestination(orgId);
   const setBankAccount = useSetBankAccount(orgId);
   const createRecipient = useCreateRecipient(orgId);
 
-  const [legalType, setLegalType] = useState<LegalType>("INDIVIDUAL");
+  const [wantsCompany, setWantsCompany] = useState(false);
   const [legalName, setLegalName] = useState("");
-  const [tradeName, setTradeName] = useState("");
   const [document, setDocument] = useState("");
   const [pixKey, setPixKey] = useState("");
 
@@ -59,32 +78,32 @@ export function DadosJuridicosFinanceirosTab({ orgId, canManage }: { orgId: numb
   const [accountType, setAccountType] = useState<"checking" | "savings">("checking");
 
   useEffect(() => {
-    if (profile?.legalType) {
-      setLegalType(profile.legalType);
+    if (profile?.legalType === "INDIVIDUAL") {
       setLegalName(profile.legalName ?? "");
-      setTradeName(profile.tradeName ?? "");
     }
-  }, [profile]);
-
-  if (isLoading) return <BlockSkeleton className="h-72" />;
+    if (user?.nome && !legalName) {
+      setLegalName(`${user.nome} ${user.sobrenome ?? ""}`.trim());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, user]);
 
   const hasProfile = !!profile?.legalType;
   const documentDigits = normalizeDigits(document);
-  const documentValid = legalType === "INDIVIDUAL" ? validateCpf(documentDigits) : validateCnpj(documentDigits);
+  const documentValid = validateCpf(documentDigits);
   const canEditDocument = !hasProfile || profile?.verificationStatus === "LEGACY_REVIEW_REQUIRED" || profile?.verificationStatus === "REJECTED";
   const pixValid = validatePixKey(pixKey);
 
   const handleStartProfile = () => {
     if (!legalName.trim()) {
-      toast.error("Informe o nome legal da organização.");
+      toast.error("Informe seu nome completo.");
       return;
     }
     if (!documentValid) {
-      toast.error(legalType === "INDIVIDUAL" ? "CPF inválido." : "CNPJ inválido.");
+      toast.error("CPF inválido.");
       return;
     }
     startProfile.mutate(
-      { legalType, legalName: legalName.trim(), tradeName: tradeName.trim() || undefined, document: documentDigits },
+      { legalType: "INDIVIDUAL", legalName: legalName.trim(), document: documentDigits },
       {
         onSuccess: () => toast.success("Dados jurídicos enviados para verificação."),
         onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar os dados jurídicos.")),
@@ -150,6 +169,30 @@ export function DadosJuridicosFinanceirosTab({ orgId, canManage }: { orgId: numb
     });
   };
 
+  // Sem perfil algum ainda: pergunta o tipo antes de decidir qual fluxo mostrar.
+  if (!hasProfile && canManage && !wantsCompany) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Dados jurídicos</CardTitle>
+          <CardDescription>Como a organização vai operar financeiramente?</CardDescription>
+        </CardHeader>
+        <CardContent className="flex gap-2">
+          <Button type="button" variant="outline" onClick={() => setWantsCompany(false)} className="border-[#6d28d9] text-[#6d28d9]">
+            Pessoa física
+          </Button>
+          <Button type="button" variant="outline" onClick={() => setWantsCompany(true)}>
+            Pessoa jurídica
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (wantsCompany) {
+    return <CompanyRecipientForm orgId={orgId} canManage={canManage} profile={profile} />;
+  }
+
   return (
     <div className="space-y-4">
       {profile?.verificationStatus === "LEGACY_REVIEW_REQUIRED" ? (
@@ -168,12 +211,10 @@ export function DadosJuridicosFinanceirosTab({ orgId, canManage }: { orgId: numb
           <div className="flex items-center justify-between gap-4">
             <div>
               <CardTitle>Dados jurídicos</CardTitle>
-              <CardDescription>Tipo de organização, nome legal e documento.</CardDescription>
+              <CardDescription>Nome legal e CPF.</CardDescription>
             </div>
             {profile?.verificationStatus ? (
-              <Badge variant={STATUS_BADGE_VARIANT[profile.verificationStatus]}>
-                {VERIFICATION_STATUS_LABEL[profile.verificationStatus]}
-              </Badge>
+              <Badge variant={STATUS_BADGE_VARIANT[profile.verificationStatus]}>{VERIFICATION_STATUS_LABEL[profile.verificationStatus]}</Badge>
             ) : null}
           </div>
         </CardHeader>
@@ -182,7 +223,7 @@ export function DadosJuridicosFinanceirosTab({ orgId, canManage }: { orgId: numb
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label className="text-xs text-black/50">Tipo</Label>
-                <p className="text-sm font-medium">{profile.legalType === "INDIVIDUAL" ? "Pessoa física" : "Pessoa jurídica"}</p>
+                <p className="text-sm font-medium">Pessoa física</p>
               </div>
               <div>
                 <Label className="text-xs text-black/50">Documento</Label>
@@ -192,56 +233,25 @@ export function DadosJuridicosFinanceirosTab({ orgId, canManage }: { orgId: numb
                 <Label className="text-xs text-black/50">Nome legal</Label>
                 <p className="text-sm font-medium">{profile.legalName}</p>
               </div>
-              {profile.tradeName ? (
-                <div className="sm:col-span-2">
-                  <Label className="text-xs text-black/50">Nome de exibição</Label>
-                  <p className="text-sm font-medium">{profile.tradeName}</p>
-                </div>
-              ) : null}
             </div>
           ) : canManage ? (
             <>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={legalType === "INDIVIDUAL" ? "default" : "outline"}
-                  onClick={() => setLegalType("INDIVIDUAL")}
-                >
-                  Pessoa física
-                </Button>
-                <Button
-                  type="button"
-                  variant={legalType === "COMPANY" ? "default" : "outline"}
-                  onClick={() => setLegalType("COMPANY")}
-                >
-                  Pessoa jurídica
-                </Button>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label>Nome legal</Label>
-                  <Input value={legalName} onChange={(e) => setLegalName(e.target.value)} placeholder="Nome civil ou razão social" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Nome de exibição (opcional)</Label>
-                  <Input value={tradeName} onChange={(e) => setTradeName(e.target.value)} placeholder="Nome fantasia" />
-                </div>
+              <div className="space-y-1.5">
+                <Label>Nome legal</Label>
+                <Input value={legalName} onChange={(e) => setLegalName(e.target.value)} placeholder="Nome civil completo" />
               </div>
 
               <div className="max-w-xs space-y-1.5">
-                <Label>{legalType === "INDIVIDUAL" ? "CPF" : "CNPJ"}</Label>
+                <Label>CPF</Label>
                 <Input
-                  value={document}
-                  onChange={(e) => setDocument(legalType === "INDIVIDUAL" ? formatCpf(e.target.value) : formatCnpj(e.target.value))}
-                  placeholder={legalType === "INDIVIDUAL" ? "000.000.000-00" : "00.000.000/0000-00"}
+                  value={formatCpf(document)}
+                  onChange={(e) => setDocument(e.target.value)}
+                  placeholder="000.000.000-00"
                   inputMode="numeric"
-                  maxLength={legalType === "INDIVIDUAL" ? 14 : 18}
+                  maxLength={14}
                 />
                 {document ? (
-                  <p className={documentValid ? "text-xs text-green-600" : "text-xs text-red-500"}>
-                    {documentValid ? "Documento válido." : "Documento inválido."}
-                  </p>
+                  <p className={documentValid ? "text-xs text-green-600" : "text-xs text-red-500"}>{documentValid ? "CPF válido." : "CPF inválido."}</p>
                 ) : null}
               </div>
 
@@ -288,10 +298,7 @@ export function DadosJuridicosFinanceirosTab({ orgId, canManage }: { orgId: numb
         <Card>
           <CardHeader>
             <CardTitle>Conta bancária</CardTitle>
-            <CardDescription>
-              Conta para onde os repasses da organização serão transferidos. Precisa estar no mesmo CPF/CNPJ da
-              organização.
-            </CardDescription>
+            <CardDescription>Conta para onde os repasses da organização serão transferidos. Precisa estar no mesmo CPF da organização.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {profile?.bankAccountMasked ? (
@@ -331,15 +338,14 @@ export function DadosJuridicosFinanceirosTab({ orgId, canManage }: { orgId: numb
               </div>
               <div className="space-y-1.5">
                 <Label>Tipo de conta</Label>
-                <Select value={accountType} onValueChange={(v) => setAccountType(v as "checking" | "savings")}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="checking">Corrente</SelectItem>
-                    <SelectItem value="savings">Poupança</SelectItem>
-                  </SelectContent>
-                </Select>
+                <select
+                  className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                  value={accountType}
+                  onChange={(e) => setAccountType(e.target.value as "checking" | "savings")}
+                >
+                  <option value="checking">Corrente</option>
+                  <option value="savings">Poupança</option>
+                </select>
               </div>
             </div>
 
@@ -380,8 +386,7 @@ export function DadosJuridicosFinanceirosTab({ orgId, canManage }: { orgId: numb
                 <p className="text-xs text-black/50 mb-2">Já existe uma tentativa de criação em andamento. Aguarde antes de tentar de novo.</p>
               ) : (
                 <p className="text-xs text-black/50 mb-2">
-                  O recebedor normalmente é criado automaticamente após a aprovação. Se isso não aconteceu, tente
-                  manualmente:
+                  O recebedor normalmente é criado automaticamente após a aprovação. Se isso não aconteceu, tente manualmente:
                 </p>
               )}
               <Button
@@ -389,11 +394,7 @@ export function DadosJuridicosFinanceirosTab({ orgId, canManage }: { orgId: numb
                 onClick={handleCreateRecipient}
                 disabled={createRecipient.isPending || profile?.recipientAttemptState === "RECIPIENT_IN_PROGRESS"}
               >
-                {createRecipient.isPending
-                  ? "Criando…"
-                  : profile?.recipientAttemptState === "RECIPIENT_ERROR"
-                    ? "Tentar novamente"
-                    : "Criar recebedor agora"}
+                {createRecipient.isPending ? "Criando…" : profile?.recipientAttemptState === "RECIPIENT_ERROR" ? "Tentar novamente" : "Criar recebedor agora"}
               </Button>
             </div>
           ) : null}

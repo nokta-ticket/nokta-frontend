@@ -6,6 +6,7 @@ import {
   type SetBankAccountPayload,
   type SetFinancialDestinationPayload,
   type StartLegalProfilePayload,
+  type SubmitCompanyRecipientPayload,
 } from "@/services/venue-legal-financial";
 
 const legalFinancialKeys = {
@@ -60,6 +61,18 @@ export function useCreateRecipient(orgId: number) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: legalFinancialKeys.recipient(orgId) });
       qc.invalidateQueries({ queryKey: legalFinancialKeys.profile(orgId) });
+    },
+  });
+}
+
+/** Submit único do fluxo PJ (tela de 5 seções em 1 página) — persiste tudo e cria o recipient na Pagar.me no mesmo request. */
+export function useSubmitCompanyRecipient(orgId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: SubmitCompanyRecipientPayload) => legalFinancialApi.submitCompanyRecipient(orgId, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: legalFinancialKeys.profile(orgId) });
+      qc.invalidateQueries({ queryKey: legalFinancialKeys.recipient(orgId) });
     },
   });
 }

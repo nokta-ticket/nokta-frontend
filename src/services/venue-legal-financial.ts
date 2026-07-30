@@ -18,6 +18,22 @@ export type RecipientAttemptState =
   | "RECIPIENT_ERROR"
   | "RECIPIENT_CREATED";
 
+export interface CompanyAddress {
+  street: string;
+  complementary: string | null;
+  streetNumber: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
+  zipCode: string | null;
+  referencePoint: string | null;
+}
+
+export interface CompanyPhone {
+  ddd: string;
+  number: string;
+}
+
 export interface LegalFinancialProfile {
   organizationId: number;
   legalType: LegalType | null;
@@ -41,6 +57,27 @@ export interface LegalFinancialProfile {
   verifiedAt: string | null;
   rejectedAt: string | null;
   suspendedAt: string | null;
+  // Dados PJ (contrato v5 da Pagar.me) — não sensíveis, retornados em
+  // claro para permitir edição incremental. Só preenchidos para legalType
+  // COMPANY; document/CPF do representante nunca aparece cru, só mascarado.
+  company: {
+    siteUrl: string | null;
+    annualRevenue: string | null;
+    corporationType: string | null;
+    foundingDate: string | null;
+    address: CompanyAddress | null;
+    phone: CompanyPhone | null;
+  };
+  representative: {
+    documentMasked: string | null;
+    motherName: string | null;
+    birthdate: string | null;
+    monthlyIncome: string | null;
+    professionalOccupation: string | null;
+  };
+  recipientBlocked: boolean;
+  recipientBlockedAt: string | null;
+  recipientBlockedReason: string | null;
 }
 
 export interface StartLegalProfilePayload {
@@ -71,6 +108,53 @@ export interface RecipientStatus {
   kycStatus: string | null;
 }
 
+export interface SubmitCompanyAddressPayload {
+  street: string;
+  complementary: string;
+  streetNumber: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  referencePoint: string;
+}
+
+export interface SubmitCompanyPhonePayload {
+  ddd: string;
+  number: string;
+}
+
+export interface SubmitCompanyRepresentativePayload {
+  document: string;
+  motherName: string;
+  birthdate: string;
+  monthlyIncome: string;
+  professionalOccupation: string;
+  address: SubmitCompanyAddressPayload;
+  phone: SubmitCompanyPhonePayload;
+}
+
+/** Submit único do fluxo PJ (tela de 5 seções em 1 página) — cria/atualiza o perfil E dispara a criação do recipient na Pagar.me no mesmo request. */
+export interface SubmitCompanyRecipientPayload {
+  legalName: string;
+  tradeName?: string;
+  document: string;
+  siteUrl?: string;
+  annualRevenue: string;
+  corporationType?: string;
+  foundingDate?: string;
+  address: SubmitCompanyAddressPayload;
+  phone: SubmitCompanyPhonePayload;
+  representative: SubmitCompanyRepresentativePayload;
+  bankAccount: SetBankAccountPayload;
+}
+
+export interface SubmitCompanyRecipientResult {
+  organizationId: number;
+  verificationStatus: VerificationStatus;
+  recipient: { attempted: boolean; created: boolean; error?: string };
+}
+
 const base = (organizationId: number) => `/organizations/${organizationId}/legal-financial-profile`;
 
 export const legalFinancialApi = {
@@ -88,6 +172,9 @@ export const legalFinancialApi = {
   getRecipient: (organizationId: number) => api.get<RecipientStatus>(`${base(organizationId)}/recipient`).then((r) => r.data),
 
   createRecipient: (organizationId: number) => api.post<RecipientStatus>(`${base(organizationId)}/recipient`).then((r) => r.data),
+
+  submitCompanyRecipient: (organizationId: number, payload: SubmitCompanyRecipientPayload) =>
+    api.post<SubmitCompanyRecipientResult>(`${base(organizationId)}/company-recipient`, payload).then((r) => r.data),
 };
 
 export const VERIFICATION_STATUS_LABEL: Record<VerificationStatus, string> = {
