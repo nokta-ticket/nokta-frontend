@@ -453,7 +453,19 @@ export default function PlatformOnboardingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, createdOrgId, catalog.data, selection]);
 
-  const accessAlreadyActive = role === "PRODUTOR" && (nivelProdutor ?? 0) >= 1;
+  // Sinal legado (pré-plataforma-unificada): nível de produtor não reflete
+  // mais "onboarding concluído" — uma conta pode nunca ter passado por
+  // /produtor (nivelProdutor nulo/0) e ainda assim ter uma organização 100%
+  // configurada pelo onboarding novo. `hasCompletedOnboardingOrg` é a fonte
+  // real (mesmo campo que o backend calcula a partir de
+  // organization_capabilities, ver organizations.service.ts): existe pelo
+  // menos uma organização e nenhuma delas está com onboardingCompleted=false.
+  // Sem este OR, contas sem o sinal legado (como a maioria das criadas após
+  // a unificação) nunca batiam accessAlreadyActive e a tela renderizava a
+  // etapa 0 do zero mesmo com o onboarding real já concluído.
+  const hasCompletedOnboardingOrg =
+    !loadingOrgs && organizations.length > 0 && organizations.every((o) => o.onboardingCompleted);
+  const accessAlreadyActive = (role === "PRODUTOR" && (nivelProdutor ?? 0) >= 1) || hasCompletedOnboardingOrg;
 
   // Recupera progresso salvo (F5 no meio do onboarding) — sem isso, um
   // reload no meio de "Operação"/"Termos"/"Resumo" perdia createdOrgId e a
