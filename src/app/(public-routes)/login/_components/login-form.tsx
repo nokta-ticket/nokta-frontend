@@ -116,13 +116,26 @@ export function LoginForm() {
       if (isSafeInternalRedirect(redirectTo)) {
         router.push(redirectTo)
       } else if (ctx === 'produtor') {
-        // Sempre onboarding, mesmo com role já PRODUTOR — a própria
-        // página decide (useOrganizations()) se mostra "já configurado"
-        // ou "falta só o workspace" (ver needsWorkspaceOnly em
-        // dashboard/onboarding/page.tsx). Decidir aqui pelo role
-        // sozinho reabria a mesma falha: usuário com acesso ativo mas sem
-        // organização caindo direto em /dashboard/eventos vazio.
-        router.push('/dashboard/onboarding')
+        // Antes caía sempre em /dashboard/onboarding, que por sua vez
+        // redirecionava pra /dashboard/inicio se detectasse
+        // alreadyConfigured — funcionava (nenhuma tela chegava a
+        // renderizar), mas a URL passava visivelmente por
+        // /dashboard/onboarding antes do destino final, e o histórico do
+        // navegador ganhava uma entrada a mais. Decide aqui, antes de
+        // navegar: se toda organização do usuário já tem onboarding
+        // concluído (mesmo campo que dashboard/onboarding/page.tsx usa,
+        // vindo de GET /me/organizations), vai direto pro painel. Só passa
+        // por onboarding quando realmente falta algo — sem organização
+        // nenhuma (needsWorkspaceOnly) ou onboarding incompleto — casos em
+        // que a própria página decide entre essas duas telas.
+        try {
+          const orgsRes = await fetch(`${API_URL}/me/organizations`, { credentials: 'include' })
+          const orgs: Array<{ onboardingCompleted: boolean }> = orgsRes.ok ? await orgsRes.json() : []
+          const onboardingDone = orgs.length > 0 && orgs.every((o) => o.onboardingCompleted)
+          router.push(onboardingDone ? '/dashboard/inicio' : '/dashboard/onboarding')
+        } catch {
+          router.push('/dashboard/onboarding')
+        }
       } else {
         // Navegação forçada (não router.push): "/" decide a rota conforme
         // autenticação no middleware (app.nokta.live) — o cache de rota do

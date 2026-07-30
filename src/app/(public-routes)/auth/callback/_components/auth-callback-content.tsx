@@ -15,6 +15,21 @@ const PROVIDER_LABELS: Record<string, string> = {
   apple: "Apple",
 };
 
+// Mesmo critério de dashboard/onboarding/page.tsx (hasCompletedOnboardingOrg):
+// só pula direto pro painel se existe ao menos uma organização e todas já
+// concluíram o onboarding. Qualquer falha na checagem cai no comportamento
+// anterior (onboarding decide) — nunca bloqueia o login por causa disso.
+async function resolveProdutorDestination(): Promise<string> {
+  try {
+    const res = await api.get<Array<{ onboardingCompleted: boolean }>>("/me/organizations");
+    const orgs = res.data ?? [];
+    const onboardingDone = orgs.length > 0 && orgs.every((o) => o.onboardingCompleted);
+    return onboardingDone ? "/dashboard/inicio" : "/dashboard/onboarding";
+  } catch {
+    return "/dashboard/onboarding";
+  }
+}
+
 function MergeAccountForm({
   code,
   provider,
@@ -47,10 +62,11 @@ function MergeAccountForm({
       toast.success(`Conta ${providerLabel} vinculada com sucesso!`);
 
       if (ctx === "produtor") {
-        // Sempre onboarding — ver mesmo comentário em login-form.tsx: a
-        // própria página decide (useOrganizations()) entre "já
-        // configurado" e "falta só o workspace".
-        router.replace("/dashboard/onboarding");
+        // Decide antes de navegar — ver mesmo comentário em login-form.tsx:
+        // ir sempre por /dashboard/onboarding fazia a URL passar
+        // visivelmente por lá antes do redirect final, mesmo quando a
+        // conta já tinha onboarding concluído.
+        router.replace(await resolveProdutorDestination());
       } else {
         // Navegação forçada — ver login-form.tsx (mesmo motivo: "/" decide
         // a rota conforme autenticação, o cache de rota do Next pode servir
@@ -150,8 +166,10 @@ export function AuthCallbackContent() {
         signIn({ userId: data.id, role: data.role, nivelProdutor: data.nivelProdutor ?? null });
 
         if (ctx === "produtor") {
-          // Sempre onboarding — ver comentário acima e em login-form.tsx.
-          router.replace("/dashboard/onboarding");
+          // Decide antes de navegar — ver resolveProdutorDestination acima
+          // e comentário em login-form.tsx.
+          const destination = await resolveProdutorDestination();
+          if (!cancelled) router.replace(destination);
         } else {
           // Navegação forçada — ver login-form.tsx.
           window.location.href = "/";
