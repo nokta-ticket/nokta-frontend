@@ -53,12 +53,16 @@ const EXCLUDED_KEYS = new Set(["LOCATIONS"]);
  * própria no dashboard multi-tenant — ver auditoria da Fase 3
  * (docs/platform/unified-navigation.md "Lacunas conhecidas"):
  *
- * - Tipos de ingresso, Lotes e Convidados ainda não têm tela dedicada
- *   própria — apontam para Eventos (Tipos/Lotes são uma aba dentro do
- *   editor de evento, SectionIngressos; Convidados nunca existiu como
- *   funcionalidade). Check-in ganhou rota própria na Fase 5
- *   (`/dashboard/check-in`, migrado de `/produtor/validar`) — sem override,
- *   usa a rota que o backend já manda.
+ * - Tipos de ingresso e Lotes ainda não têm tela dedicada própria — apontam
+ *   para Eventos (são uma aba dentro do editor de evento, SectionIngressos).
+ *   Check-in ganhou rota própria na Fase 5 (`/dashboard/check-in`, migrado
+ *   de `/produtor/validar`) — sem override, usa a rota que o backend manda.
+ * - Convidados (GUEST_LISTS) só aponta para Eventos PROVISORIAMENTE — a
+ *   tela própria (`/dashboard/convidados`, já a rota real no catálogo
+ *   backend) ainda não existe. Remover esta linha assim que
+ *   `dashboard/convidados/page.tsx` for criada — deixar o override até lá
+ *   evita link morto, mas nunca deve virar permanente (Convidados não é
+ *   parte de Eventos, ver group=RELATIONSHIP no catálogo backend).
  * - Fila de espera é uma aba dentro de Reservas (`?tab=fila`), não uma
  *   página própria.
  * - Preparo e Pagamentos não têm aba própria em Operação — vivem dentro de
@@ -70,7 +74,7 @@ const ROUTE_OVERRIDE_BY_KEY: Partial<Record<string, string>> = {
   TICKETING: "/dashboard/eventos",
   TICKET_TYPES: "/dashboard/eventos",
   LOTS: "/dashboard/eventos",
-  GUEST_LISTS: "/dashboard/eventos",
+  GUEST_LISTS: "/dashboard/eventos", // TODO: remover quando /dashboard/convidados existir
   WAITLIST: "/dashboard/reservas?tab=fila",
   TABLES: "/dashboard/operacao/mesas",
   TABS: "/dashboard/operacao/comandas",
@@ -211,10 +215,10 @@ const FULL_CATALOG_PREVIEW: NavigationItem[] = [
   { key: "TICKET_TYPES", label: "Tipos de ingresso", route: "/dashboard/ingressos/tipos", group: "EVENTS" },
   { key: "LOTS", label: "Lotes", route: "/dashboard/ingressos/lotes", group: "EVENTS" },
   { key: "CHECK_IN", label: "Check-in", route: "/dashboard/check-in", group: "EVENTS" },
-  { key: "GUEST_LISTS", label: "Convidados", route: "/dashboard/convidados", group: "EVENTS" },
   { key: "PROMOTERS", label: "Promotores", route: "/dashboard/promotores", group: "EVENTS" },
   { key: "RESERVATIONS", label: "Reservas", route: "/dashboard/reservas", group: "RELATIONSHIP" },
   { key: "WAITLIST", label: "Fila de espera", route: "/dashboard/reservas?tab=fila", group: "RELATIONSHIP" },
+  { key: "GUEST_LISTS", label: "Convidados", route: "/dashboard/convidados", group: "RELATIONSHIP" },
   { key: "TABLES", label: "Mesas", route: "/dashboard/operacao?tab=mesas", group: "OPERATION" },
   { key: "TABS", label: "Comandas", route: "/dashboard/operacao?tab=comandas", group: "OPERATION" },
   { key: "ORDERS", label: "Pedidos", route: "/dashboard/operacao?tab=pedidos", group: "OPERATION" },
