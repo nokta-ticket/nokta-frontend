@@ -131,6 +131,18 @@ export interface Paginated<T> {
   total: number;
 }
 
+// Convidado de reserva/mesa — nome na lista, sem exigir conta na Nokta nem
+// QR. Distinto do convidado de EVENTO (bilheteria, services/guests.ts).
+export interface VenueReservationGuest {
+  id: number;
+  reservationId: number;
+  name: string;
+  checkedInAt: string | null;
+  checkedInByUserId: number | null;
+  createdByUserId: number;
+  createdAt: string;
+}
+
 // ==================== PAYLOADS ====================
 
 export interface CreateVenueReservationPayload {
@@ -180,6 +192,10 @@ export interface NoShowReservationPayload {
 export interface SeatReservationPayload {
   tableIds?: number[];
   primaryTableId?: number;
+}
+
+export interface AddReservationGuestPayload {
+  name: string;
 }
 
 export interface ReservationQueryParams {
@@ -269,6 +285,18 @@ export const venueReservationsApi = {
     api.post<VenueReservation>(`${base(orgId)}/${reservationId}/complete`).then((r) => r.data),
   setTables: (orgId: number, reservationId: number, payload: SetReservationTablesPayload) =>
     api.put<VenueReservation>(`${base(orgId)}/${reservationId}/tables`, payload).then((r) => r.data),
+
+  // ---- Convidados (lista de nomes) ----
+  listGuests: (orgId: number, reservationId: number) =>
+    api.get<VenueReservationGuest[]>(`${base(orgId)}/${reservationId}/guests`).then((r) => r.data),
+  addGuest: (orgId: number, reservationId: number, payload: AddReservationGuestPayload) =>
+    api.post<VenueReservationGuest>(`${base(orgId)}/${reservationId}/guests`, payload).then((r) => r.data),
+  removeGuest: (orgId: number, reservationId: number, guestId: number) =>
+    api.delete<void>(`${base(orgId)}/${reservationId}/guests/${guestId}`).then((r) => r.data),
+  checkInGuest: (orgId: number, reservationId: number, guestId: number) =>
+    api
+      .post<VenueReservationGuest>(`${base(orgId)}/${reservationId}/guests/${guestId}/check-in`)
+      .then((r) => r.data),
 
   // ---- Disponibilidade ----
   availability: (orgId: number, params: AvailabilityQueryParams) =>

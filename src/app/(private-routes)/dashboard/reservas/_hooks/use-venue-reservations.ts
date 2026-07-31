@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   venueReservationsApi,
+  type AddReservationGuestPayload,
   type CancelReservationPayload,
   type CreateVenueReservationPayload,
   type NoShowReservationPayload,
@@ -144,4 +145,39 @@ export function useVenueReservationMutations(orgId: number, locationId: number) 
   });
 
   return { create, update, setTables, confirm, cancel, noShow, complete, seat };
+}
+
+// ── Convidados (lista de nomes de uma reserva) ──────────────────────────
+// Distinto do convidado de EVENTO (bilheteria, dashboard/convidados usa
+// services/guests.ts pra isso) — aqui é só nome, sem conta/QR.
+
+export function useVenueReservationGuests(orgId: number | null, reservationId: number | null) {
+  return useQuery({
+    queryKey: resKeys.reservationGuests(orgId ?? -1, reservationId ?? -1),
+    queryFn: () => venueReservationsApi.listGuests(orgId as number, reservationId as number),
+    enabled: orgId !== null && reservationId !== null,
+  });
+}
+
+export function useVenueReservationGuestMutations(orgId: number, reservationId: number) {
+  const qc = useQueryClient();
+  const invalidate = () =>
+    qc.invalidateQueries({ queryKey: resKeys.reservationGuests(orgId, reservationId) });
+
+  const add = useMutation({
+    mutationFn: (payload: AddReservationGuestPayload) => venueReservationsApi.addGuest(orgId, reservationId, payload),
+    onSuccess: invalidate,
+  });
+
+  const remove = useMutation({
+    mutationFn: (guestId: number) => venueReservationsApi.removeGuest(orgId, reservationId, guestId),
+    onSuccess: invalidate,
+  });
+
+  const checkIn = useMutation({
+    mutationFn: (guestId: number) => venueReservationsApi.checkInGuest(orgId, reservationId, guestId),
+    onSuccess: invalidate,
+  });
+
+  return { add, remove, checkIn };
 }

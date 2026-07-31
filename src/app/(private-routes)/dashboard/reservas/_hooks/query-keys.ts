@@ -9,4 +9,6 @@ export const resKeys = {
   waitlist: (orgId: number, locationId: number, filters: Record<string, unknown>) =>
     ["res", orgId, "waitlist", locationId, filters] as const,
   waitlistEntry: (orgId: number, entryId: number) => ["res", orgId, "waitlistEntry", entryId] as const,
+  reservationGuests: (orgId: number, reservationId: number) =>
+    ["res", orgId, "reservationGuests", reservationId] as const,
 };

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrganizations } from "@/context/OrganizationContext";
 import { useRequireWorkspace } from "../_components/require-workspace-provider";
 import api, { getErrorMessage } from "@/lib/axios";
@@ -16,8 +17,10 @@ import { EmptyState } from "../_components/states/empty-state";
 import { BlockSkeleton } from "../_components/states/loading-state";
 import { guestsApi, type Guest } from "@/services/guests";
 import { InviteGuestDialog } from "./_components/invite-guest-dialog";
+import { ReservationGuestsSection } from "./_components/reservation-guests-section";
 
 type EventoOption = { id: number; nome: string };
+type Mode = "evento" | "reserva";
 
 // UserTicketStatus: 1=NOT_VALIDATED 2=VALIDATED 3=IN_RESALE 4=TRANSFERRED
 const STATUS_BADGE: Record<number, { label: string; className: string }> = {
@@ -28,13 +31,19 @@ const STATUS_BADGE: Record<number, { label: string; className: string }> = {
 };
 
 /**
- * Convidados (GUEST_LISTS) — cortesia de evento. Convidado de reserva/mesa
- * (Venue) fica fora do escopo desta tela por enquanto (ver plano
- * playful-jingling-wall.md) — só cobre o fluxo de eventos com bilheteria.
+ * Convidados (GUEST_LISTS). Dois modos, sem relação entre si:
+ * - Evento: cortesia de bilheteria (UserTicket real, exige conta Nokta) —
+ *   ver services/guests.ts / tickets/guests no backend.
+ * - Reserva: lista de nomes de uma reserva/mesa do Venue, sem exigir conta
+ *   nem QR — ver services/venue-reservations.ts (listGuests/addGuest/...) /
+ *   venue/reservations no backend. Só aparece pra quem tem o módulo Venue
+ *   ativo.
  */
 export default function ConvidadosPage() {
-  const { currentOrg, loadingOrgs } = useOrganizations();
+  const { currentOrg, loadingOrgs, activeModuleKeys } = useOrganizations();
   const { guard } = useRequireWorkspace();
+  const hasVenue = activeModuleKeys.includes("venue");
+  const [mode, setMode] = useState<Mode>("evento");
 
   const [eventos, setEventos] = useState<EventoOption[]>([]);
   const [loadingEventos, setLoadingEventos] = useState(true);
@@ -100,10 +109,24 @@ export default function ConvidadosPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedEventId]);
 
-  if (loadingOrgs || loadingEventos) {
+  const description =
+    mode === "evento"
+      ? "Envie cortesias para os seus eventos — o convidado recebe o ingresso na própria conta, com QR code."
+      : "Monte a lista de quem vai comparecer numa reserva — sem exigir conta na Nokta.";
+
+  const modeSwitcher = hasVenue ? (
+    <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
+      <TabsList>
+        <TabsTrigger value="evento">Evento</TabsTrigger>
+        <TabsTrigger value="reserva">Reserva</TabsTrigger>
+      </TabsList>
+    </Tabs>
+  ) : null;
+
+  if (loadingOrgs || (mode === "evento" && loadingEventos)) {
     return (
       <PageContainer>
-        <PageHeader title="Convidados" description="Envie cortesias para os seus eventos." />
+        <PageHeader title="Convidados" description={description} actions={modeSwitcher} />
         <BlockSkeleton className="h-96" />
       </PageContainer>
     );
@@ -114,7 +137,7 @@ export default function ConvidadosPage() {
       <PageContainer>
         <PageHeader
           title="Convidados"
-          description="Envie cortesias para os seus eventos."
+          description={description}
           actions={
             <Button onClick={() => guard(() => {})}>
               <UserPlus size={16} /> Convidar
@@ -123,7 +146,7 @@ export default function ConvidadosPage() {
         />
         <EmptyState
           title="Nenhum convidado ainda"
-          description="Crie seu workspace para começar a convidar pessoas para os seus eventos."
+          description="Crie seu workspace para começar a convidar pessoas."
           actionLabel="Convidar"
           onAction={() => guard(() => {})}
         />
@@ -131,10 +154,19 @@ export default function ConvidadosPage() {
     );
   }
 
+  if (mode === "reserva") {
+    return (
+      <PageContainer>
+        <PageHeader title="Convidados" description={description} actions={modeSwitcher} />
+        <ReservationGuestsSection orgId={currentOrg.id} />
+      </PageContainer>
+    );
+  }
+
   if (eventos.length === 0) {
     return (
       <PageContainer>
-        <PageHeader title="Convidados" description="Envie cortesias para os seus eventos." />
+        <PageHeader title="Convidados" description={description} actions={modeSwitcher} />
         <EmptyState
           title="Nenhum evento disponível"
           description="Crie um evento (mesmo em rascunho) para poder convidar pessoas com cortesia."
@@ -147,9 +179,10 @@ export default function ConvidadosPage() {
     <PageContainer>
       <PageHeader
         title="Convidados"
-        description="Envie cortesias para os seus eventos — o convidado recebe o ingresso na própria conta, com QR code."
+        description={description}
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            {modeSwitcher}
             <Select
               value={selectedEventId ? String(selectedEventId) : undefined}
               onValueChange={(v) => setSelectedEventId(Number(v))}
