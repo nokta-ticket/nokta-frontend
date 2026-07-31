@@ -57,12 +57,10 @@ const EXCLUDED_KEYS = new Set(["LOCATIONS"]);
  *   para Eventos (são uma aba dentro do editor de evento, SectionIngressos).
  *   Check-in ganhou rota própria na Fase 5 (`/dashboard/check-in`, migrado
  *   de `/produtor/validar`) — sem override, usa a rota que o backend manda.
- * - Convidados (GUEST_LISTS) só aponta para Eventos PROVISORIAMENTE — a
- *   tela própria (`/dashboard/convidados`, já a rota real no catálogo
- *   backend) ainda não existe. Remover esta linha assim que
- *   `dashboard/convidados/page.tsx` for criada — deixar o override até lá
- *   evita link morto, mas nunca deve virar permanente (Convidados não é
- *   parte de Eventos, ver group=RELATIONSHIP no catálogo backend).
+ * - Convidados (GUEST_LISTS) também ganhou rota própria (`/dashboard/convidados`)
+ *   — sem override aqui, usa a rota que o backend já manda (mesmo padrão do
+ *   Check-in). Cobre só cortesia de evento por enquanto; convidado de
+ *   reserva/mesa (Venue) é escopo futuro, ver playful-jingling-wall.md.
  * - Fila de espera é uma aba dentro de Reservas (`?tab=fila`), não uma
  *   página própria.
  * - Preparo e Pagamentos não têm aba própria em Operação — vivem dentro de
@@ -74,7 +72,6 @@ const ROUTE_OVERRIDE_BY_KEY: Partial<Record<string, string>> = {
   TICKETING: "/dashboard/eventos",
   TICKET_TYPES: "/dashboard/eventos",
   LOTS: "/dashboard/eventos",
-  GUEST_LISTS: "/dashboard/eventos", // TODO: remover quando /dashboard/convidados existir
   WAITLIST: "/dashboard/reservas?tab=fila",
   TABLES: "/dashboard/operacao/mesas",
   TABS: "/dashboard/operacao/comandas",
