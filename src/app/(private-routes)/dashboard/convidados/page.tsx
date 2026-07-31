@@ -54,11 +54,18 @@ export default function ConvidadosPage() {
     setLoadingEventos(true);
     (async () => {
       try {
-        const res = await api.get<{ data: EventoOption[] }>("/produtor/eventos", {
-          params: { organizationId: currentOrg.id, status: 2 }, // 2 = PUBLISHED
+        // Sem filtro de status na query: rascunho (1) também é convidável —
+        // o produtor pode montar a lista de convidados antes de publicar o
+        // evento pro público. GuestsService (backend) não checa status
+        // nenhum, só bloqueia por tempo (<1h do evento) — só filtramos aqui
+        // cancelado/finalizado, que nunca fazem sentido pra convidar.
+        const res = await api.get<{ data: (EventoOption & { status: number })[] }>("/produtor/eventos", {
+          params: { organizationId: currentOrg.id, limit: 100 },
         });
         if (!active) return;
-        const list = res.data.data;
+        const CANCELLED = 3;
+        const FINISHED = 4;
+        const list = res.data.data.filter((ev) => ev.status !== CANCELLED && ev.status !== FINISHED);
         setEventos(list);
         setSelectedEventId((prev) => prev ?? list[0]?.id ?? null);
       } catch (err) {
@@ -129,8 +136,8 @@ export default function ConvidadosPage() {
       <PageContainer>
         <PageHeader title="Convidados" description="Envie cortesias para os seus eventos." />
         <EmptyState
-          title="Nenhum evento ativo"
-          description="Publique um evento para poder convidar pessoas com cortesia."
+          title="Nenhum evento disponível"
+          description="Crie um evento (mesmo em rascunho) para poder convidar pessoas com cortesia."
         />
       </PageContainer>
     );
