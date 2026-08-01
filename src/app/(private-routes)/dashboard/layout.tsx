@@ -17,10 +17,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <TicketsAccessProvider>
         <PeriodProvider>
         <RequireWorkspaceProvider>
-          <div className="fixed inset-0 flex flex-col lg:flex-row bg-[#151619] text-white overflow-hidden">
+          <div className="fixed inset-0 flex flex-col lg:flex-row bg-[#faf9fd] text-foreground overflow-hidden">
             <DashboardSidebar />
 
-            <div className="flex-1 lg:mt-4 rounded-t-2xl lg:rounded-tl-2xl bg-[#F9FAFA] text-black overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-hidden flex flex-col">
               <Topbar />
               <div className="flex-1 overflow-y-auto p-4 lg:p-8">{children}</div>
             </div>

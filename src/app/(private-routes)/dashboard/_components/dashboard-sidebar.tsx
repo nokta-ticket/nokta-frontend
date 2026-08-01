@@ -27,13 +27,14 @@ import { UserMenu } from "./user-menu";
 function SidebarInner() {
   return (
     <>
-      <div className="flex justify-center">
-        <Image src="/logo-painel.svg" alt="Nokta Tickets" width={80} height={80} />
+      <div className="flex items-center justify-center gap-2 pb-2">
+        <Image src="/logo-painel.svg" alt="Nokta Tickets" width={32} height={32} />
+        <span className="font-poppins text-xl font-extrabold tracking-tight text-foreground">NOKTA</span>
       </div>
 
       <UnifiedSidebar />
 
-      <div className="mt-3 border-t border-white/10 pt-3">
+      <div className="mt-3 border-t border-black/10 pt-3">
         <UserMenu variant="sidebar" />
       </div>
     </>
@@ -51,16 +52,16 @@ export function DashboardSidebar() {
   return (
     <>
       {/* Mobile: menu em Sheet */}
-      <header className="flex items-center gap-3 p-4 bg-[#151619] lg:hidden">
+      <header className="flex items-center gap-3 border-b border-black/10 bg-white p-4 lg:hidden">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" aria-label="Abrir menu">
-              <Menu className="w-5 h-5 text-white" />
+              <Menu className="w-5 h-5 text-foreground" />
             </Button>
           </SheetTrigger>
           <SheetContent
             side="left"
-            className="w-60 p-4 bg-black border-black flex flex-col text-sm"
+            className="w-72 p-5 bg-white flex flex-col text-sm"
           >
             <SheetHeader>
               <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
@@ -68,11 +69,12 @@ export function DashboardSidebar() {
             <SidebarInner />
           </SheetContent>
         </Sheet>
-        <Image src="/logo-painel.svg" alt="Nokta Tickets" width={32} height={32} />
+        <Image src="/logo-painel.svg" alt="Nokta Tickets" width={28} height={28} />
+        <span className="font-poppins text-lg font-extrabold tracking-tight text-foreground">NOKTA</span>
       </header>
 
       {/* Desktop: sidebar fixa */}
-      <aside className="hidden h-full lg:flex w-60 mt-5 p-4 flex-col text-sm">
+      <aside className="hidden h-full lg:flex w-[272px] flex-col gap-2 border-r border-black/10 bg-white p-5 text-sm">
         <SidebarInner />
       </aside>
     </>

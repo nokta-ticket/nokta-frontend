@@ -15,19 +15,19 @@ function NavGroupList({ groups, pathname }: { groups: UnifiedNavGroup[]; pathnam
     <>
       {groups.map((group) => (
         <div key={group.group}>
-          <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-white/40">{group.groupLabel}</p>
-          <div className="flex flex-col gap-1">
+          <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-black/35">{group.groupLabel}</p>
+          <div className="flex flex-col gap-0.5">
             {group.items.map((item) => {
               const isActive = pathname === item.route || pathname.startsWith(item.route.split("?")[0] + "/");
               return (
                 <Link
                   key={item.key}
                   href={item.route}
-                  className={`flex items-center gap-3 rounded-md py-2 font-normal text-white ${
+                  className={`flex items-center gap-3 rounded-xl py-2 text-[14.5px] font-medium transition-colors ${
                     item.secondary ? "ml-4 px-3 text-xs" : "px-3"
-                  } ${isActive ? "bg-violet-600" : "hover:bg-white/10"}`}
+                  } ${isActive ? "bg-violet-100 text-violet-600" : "text-black/65 hover:bg-black/[0.04] hover:text-foreground"}`}
                 >
-                  <UnifiedNavIcon iconKey={item.iconKey} />
+                  <UnifiedNavIcon iconKey={item.iconKey} className={isActive ? "text-violet-600" : "text-black/40"} />
                   {item.label}
                 </Link>
               );
@@ -89,7 +89,7 @@ export function UnifiedSidebar() {
       {orgNavLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-8 w-full rounded-md bg-white/10" />
+            <Skeleton key={i} className="h-8 w-full rounded-xl bg-black/5" />
           ))}
         </div>
       ) : (
@@ -98,38 +98,39 @@ export function UnifiedSidebar() {
 
       {!isOnboarding && myPromoterProfile ? (
         <div>
-          <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-white/40">Promoter</p>
+          <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-black/35">Promoter</p>
           <Link
             href="/dashboard/promotor"
-            className={`flex items-center gap-3 rounded-md px-3 py-2 font-normal text-white ${
-              pathname.startsWith("/dashboard/promotor") ? "bg-violet-600" : "hover:bg-white/10"
+            className={`flex items-center gap-3 rounded-xl px-3 py-2 text-[14.5px] font-medium transition-colors ${
+              pathname.startsWith("/dashboard/promotor") ? "bg-violet-100 text-violet-600" : "text-black/65 hover:bg-black/[0.04] hover:text-foreground"
             }`}
           >
-            <Megaphone size={16} />
+            <Megaphone size={16} className={pathname.startsWith("/dashboard/promotor") ? "text-violet-600" : "text-black/40"} />
             Meu painel de promoter
           </Link>
         </div>
       ) : null}
 
-      <div className="mt-auto space-y-5">
-        <div>
-          <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-white/40">Suporte</p>
-          <span className="flex cursor-default items-center gap-3 rounded-md px-3 py-2 font-normal text-white/35">
-            <CircleHelp size={16} />
-            Ajuda
-          </span>
+      <div className="mt-auto space-y-4">
+        <div className="rounded-2xl bg-violet-50 p-4">
+          <div className="mb-1.5 flex items-center gap-2 text-sm font-semibold text-violet-600">
+            <CircleHelp size={18} />
+            Precisa de ajuda?
+          </div>
+          <p className="mb-3 text-xs leading-tight text-black/55">Acesse nossa central de ajuda e tutoriais</p>
+          <button className="rounded-lg bg-white px-4 py-2 text-xs font-semibold text-foreground shadow-sm">Acessar</button>
         </div>
 
         {previewMode || navigation?.canExplore ? (
           <div>
-            <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-white/40">Descoberta</p>
+            <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-black/35">Descoberta</p>
             <Link
               href="/dashboard/explorar"
-              className={`flex items-center gap-3 rounded-md px-3 py-2 font-normal text-white ${
-                pathname.startsWith("/dashboard/explorar") ? "bg-violet-600" : "hover:bg-white/10"
+              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-[14.5px] font-medium transition-colors ${
+                pathname.startsWith("/dashboard/explorar") ? "bg-violet-100 text-violet-600" : "text-black/65 hover:bg-black/[0.04] hover:text-foreground"
               }`}
             >
-              <Compass size={16} />
+              <Compass size={16} className={pathname.startsWith("/dashboard/explorar") ? "text-violet-600" : "text-black/40"} />
               Explore a Nokta
             </Link>
           </div>

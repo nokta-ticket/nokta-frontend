@@ -29,15 +29,12 @@ import { useOrganizations } from "@/context/OrganizationContext";
 import { useVenueAccess } from "@/context/VenueAccessContext";
 import { formatCentsBRL } from "@/services/venue-finance";
 import { PageContainer } from "../../_components/page/page-container";
-import { PageHeader } from "../../_components/page/page-header";
 import { BlockSkeleton } from "../../_components/states/loading-state";
 import { EmptyState } from "../../_components/states/empty-state";
 import { FinanceTimelineChart } from "../../_components/finance-timeline-chart";
 import { GoalProgressCard } from "../../_components/goal-progress-card";
 import { useVenueLocations } from "../../operacao/_hooks/use-venue-locations";
 import { OnboardingLocation } from "../../operacao/_components/onboarding-location";
-import { VenueReadinessChecklist } from "../_components/venue-readiness-checklist";
-import { useVenueSetupLifecycle } from "../../configuracoes/_hooks/use-venue-settings";
 import { useVenueFinanceTimeline } from "../../financeiro/_venue/_hooks/use-venue-finance-overview";
 import { useVenueHome } from "./_hooks/use-venue-home";
 
@@ -72,7 +69,7 @@ const BUSINESS_OVERVIEW = [
  */
 export function VenueInicioPageContent() {
   const router = useRouter();
-  const { loading: loadingAccess, defaultRoute, can, venueRole } = useVenueAccess();
+  const { loading: loadingAccess, defaultRoute, can } = useVenueAccess();
   const { currentOrg, loadingOrgs } = useOrganizations();
   const orgId = currentOrg?.id ?? null;
 
@@ -105,9 +102,7 @@ export function VenueInicioPageContent() {
   }, [activeLocations.length, locationId]);
 
   const { data: home, isLoading: loadingHome, isError: homeError } = useVenueHome(!redirecting ? orgId : null, locationId);
-  const { dismiss } = useVenueSetupLifecycle(orgId ?? -1);
 
-  const canManageSettings = can("organization.settings.manage");
   const canViewFinance = can("venue.finance.view");
   const finance = useVenueFinanceTimeline(canViewFinance ? orgId : null, locationId, { quickPeriod: "LAST_7_DAYS" });
   const financeThisMonth = useVenueFinanceTimeline(canViewFinance ? orgId : null, locationId, { quickPeriod: "THIS_MONTH" });
@@ -116,7 +111,6 @@ export function VenueInicioPageContent() {
   if (loadingAccess || redirecting || loadingOrgs || loadingLocations) {
     return (
       <PageContainer>
-        <PageHeader title="Início" description="O que está acontecendo agora e o que precisa da sua atenção." />
         <BlockSkeleton className="h-96" />
       </PageContainer>
     );
@@ -125,7 +119,6 @@ export function VenueInicioPageContent() {
   if (!orgId) {
     return (
       <PageContainer>
-        <PageHeader title="Início" description="O que está acontecendo agora e o que precisa da sua atenção." />
         <EmptyState title="Nenhuma organização selecionada" description="Selecione uma organização para continuar." />
       </PageContainer>
     );
@@ -134,7 +127,6 @@ export function VenueInicioPageContent() {
   if (locations && locations.length === 0) {
     return (
       <PageContainer>
-        <PageHeader title="Início" description="O que está acontecendo agora e o que precisa da sua atenção." />
         <OnboardingLocation orgId={orgId} />
       </PageContainer>
     );
@@ -143,7 +135,6 @@ export function VenueInicioPageContent() {
   if (homeError) {
     return (
       <PageContainer>
-        <PageHeader title="Início" description="O que está acontecendo agora e o que precisa da sua atenção." />
         <EmptyState
           title="Não foi possível carregar a Início"
           description="Tente novamente em instantes. Se o problema continuar, avise o suporte."
@@ -155,7 +146,6 @@ export function VenueInicioPageContent() {
   if (loadingHome || !home) {
     return (
       <PageContainer>
-        <PageHeader title="Início" description="O que está acontecendo agora e o que precisa da sua atenção." />
         <BlockSkeleton className="h-96" />
       </PageContainer>
     );
@@ -166,7 +156,6 @@ export function VenueInicioPageContent() {
   if (!home.hasLocation) {
     return (
       <PageContainer>
-        <PageHeader title="Início" description="O que está acontecendo agora e o que precisa da sua atenção." />
         <EmptyState
           title="Nenhuma unidade ativa"
           description="Ative uma unidade em Configurações > Unidades para ver o painel da Início."
@@ -176,7 +165,6 @@ export function VenueInicioPageContent() {
   }
 
   const shortcuts = home.shortcuts.map((key) => SHORTCUT_CONFIG[key]).filter(Boolean);
-  const showFullChecklist = !home.onboarding.restricted && home.onboarding.profile?.status !== "DISMISSED";
   const showRestrictedNotice = home.onboarding.restricted && !home.onboarding.readyToOperate;
   const thisMonthCents = (financeThisMonth.data ?? []).reduce((sum, p) => sum + p.revenueCents, 0);
   const lastMonthCents = (financeLastMonth.data ?? []).reduce((sum, p) => sum + p.revenueCents, 0);
@@ -226,44 +214,27 @@ export function VenueInicioPageContent() {
 
   return (
     <PageContainer>
-      <PageHeader
-        title="Início"
-        description={
-          venueRole === "RECEPTION"
-            ? "Reservas, fila de espera e chegadas de hoje."
-            : venueRole === "CASHIER"
-              ? "Situação do caixa e comandas aguardando pagamento."
-              : "O que está acontecendo agora e o que precisa da sua atenção."
-        }
-        actions={
-          activeLocations.length > 1 ? (
-            <Select value={locationId ? String(locationId) : ""} onValueChange={(v) => setLocationId(Number(v))}>
-              <SelectTrigger className="w-56">
-                <SelectValue placeholder="Unidade" />
-              </SelectTrigger>
-              <SelectContent>
-                {activeLocations.map((loc) => (
-                  <SelectItem key={loc.id} value={String(loc.id)}>
-                    {loc.nome} {loc.isMain ? "· Principal" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : undefined
-        }
-      />
+      {activeLocations.length > 1 ? (
+        <div className="flex justify-end">
+          <Select value={locationId ? String(locationId) : ""} onValueChange={(v) => setLocationId(Number(v))}>
+            <SelectTrigger className="w-56">
+              <SelectValue placeholder="Unidade" />
+            </SelectTrigger>
+            <SelectContent>
+              {activeLocations.map((loc) => (
+                <SelectItem key={loc.id} value={String(loc.id)}>
+                  {loc.nome} {loc.isMain ? "· Principal" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
 
       {showRestrictedNotice ? (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           O responsável pela organização ainda está concluindo a configuração do Venue.
         </div>
-      ) : null}
-
-      {showFullChecklist && !home.onboarding.readyToOperate ? (
-        <VenueReadinessChecklist
-          status={home.onboarding}
-          onDismiss={canManageSettings ? () => dismiss.mutate() : undefined}
-        />
       ) : null}
 
       {/* Row 1 — Panorama Geral | Desempenho Financeiro | Progresso do Mês */}
@@ -418,14 +389,6 @@ export function VenueInicioPageContent() {
             ))}
           </div>
         </div>
-      ) : null}
-
-      {showFullChecklist && home.onboarding.readyToOperate && home.onboarding.progress < 100 ? (
-        <VenueReadinessChecklist
-          status={home.onboarding}
-          title="Melhore sua configuração"
-          onDismiss={canManageSettings ? () => dismiss.mutate() : undefined}
-        />
       ) : null}
 
       {/* Visão Geral do Negócio */}

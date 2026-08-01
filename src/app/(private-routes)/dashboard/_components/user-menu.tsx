@@ -29,7 +29,7 @@ export function UserMenu({ variant = "topbar" }: { variant?: "topbar" | "sidebar
 
   if (!isAuthResolved || !user) {
     return variant === "sidebar" ? (
-      <div className="h-14 w-full animate-pulse rounded-xl bg-white/10" />
+      <div className="h-14 w-full animate-pulse rounded-xl bg-black/5" />
     ) : (
       <div className="h-9 w-9 animate-pulse rounded-full bg-black/10" />
     );
@@ -52,7 +52,7 @@ export function UserMenu({ variant = "topbar" }: { variant?: "topbar" | "sidebar
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         {variant === "sidebar" ? (
-          <button className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left outline-none transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-violet-500">
+          <button className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left outline-none transition hover:bg-black/[0.04] focus-visible:ring-2 focus-visible:ring-violet-500">
             <Avatar className="h-9 w-9 shrink-0">
               <AvatarImage src="/user_default.png" alt="Avatar do usuário" />
               <AvatarFallback>
@@ -61,10 +61,10 @@ export function UserMenu({ variant = "topbar" }: { variant?: "topbar" | "sidebar
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-semibold text-white">{fullName || "Usuário"}</p>
-              <p className="truncate text-[11px] text-white/45">{user.email}</p>
+              <p className="truncate text-xs font-semibold text-foreground">{fullName || "Usuário"}</p>
+              <p className="truncate text-[11px] text-black/45">{user.email}</p>
             </div>
-            <ChevronDown size={16} className="shrink-0 text-white/55" />
+            <ChevronDown size={16} className="shrink-0 text-black/40" />
           </button>
         ) : (
           <button className="flex items-center gap-2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-violet-500">

@@ -14,7 +14,7 @@ const ICONS: Record<IconKey, LucideIcon> = {
   settings: Settings,
 };
 
-export function UnifiedNavIcon({ iconKey, size = 16 }: { iconKey: IconKey; size?: number }) {
+export function UnifiedNavIcon({ iconKey, size = 16, className }: { iconKey: IconKey; size?: number; className?: string }) {
   const Icon = ICONS[iconKey];
-  return <Icon size={size} />;
+  return <Icon size={size} className={className} />;
 }
