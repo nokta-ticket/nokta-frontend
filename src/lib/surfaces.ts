@@ -78,9 +78,10 @@ const SURFACES: Record<Surface, SurfaceDefinition> = {
   MARKETING: {
     hostnames: MARKETING_HOSTNAMES,
     baseUrl: process.env.NEXT_PUBLIC_MARKETING_URL || "https://www.nokta.live",
-    // A LP é estática e não depende de autenticação (Etapa 7) — não tem uso
-    // conhecido hoje, mas resolve pra API pública caso algum bloco futuro
-    // precise (ex.: contagem de eventos), nunca pra API da plataforma.
+    // A LP em si é estática, mas /cardapio/{orgSlug} (cardápio público de um
+    // Venue) roda sob esta MESMA superfície e chama a API pública de
+    // verdade — mesmo host de API já usado por TICKETS_PUBLIC, nenhum
+    // backend dedicado.
     apiBaseUrl: process.env.NEXT_PUBLIC_TICKETS_API_URL || "https://api.noktatickets.com.br/api",
     defaultPath: "/",
   },

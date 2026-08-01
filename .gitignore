@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# impeccable (ephemeral state/config, ver docs do pacote)
+.impeccable/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

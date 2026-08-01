@@ -14,6 +14,8 @@ export interface Organization {
   nome: string;
   tipo: string;
   status: string;
+  /** Slug único usado na URL pública do cardápio (cardapio.nokta.live/{slug}). */
+  slug: string | null;
   role: string;
   /** Etapa "Operação" do onboarding já concluída (ao menos uma capacidade ativada por ela) — vem do backend, não depende de localStorage. */
   onboardingCompleted: boolean;

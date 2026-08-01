@@ -291,6 +291,7 @@ export function middleware(request: NextRequest) {
       target.pathname = "/institucional";
       return NextResponse.rewrite(target);
     }
+
   }
 
   const publicRoute = publicRoutes.find((route) =>
