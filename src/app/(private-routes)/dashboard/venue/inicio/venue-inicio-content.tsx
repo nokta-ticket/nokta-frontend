@@ -16,6 +16,11 @@ import {
   PackageX,
   AlertTriangle,
   ArrowUpRight,
+  Boxes,
+  UtensilsCrossed,
+  Users,
+  Eye,
+  EyeOff,
   Plus,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -28,6 +33,7 @@ import { PageHeader } from "../../_components/page/page-header";
 import { BlockSkeleton } from "../../_components/states/loading-state";
 import { EmptyState } from "../../_components/states/empty-state";
 import { FinanceTimelineChart } from "../../_components/finance-timeline-chart";
+import { GoalProgressCard } from "../../_components/goal-progress-card";
 import { useVenueLocations } from "../../operacao/_hooks/use-venue-locations";
 import { OnboardingLocation } from "../../operacao/_components/onboarding-location";
 import { VenueReadinessChecklist } from "../_components/venue-readiness-checklist";
@@ -35,14 +41,21 @@ import { useVenueSetupLifecycle } from "../../configuracoes/_hooks/use-venue-set
 import { useVenueFinanceTimeline } from "../../financeiro/_venue/_hooks/use-venue-finance-overview";
 import { useVenueHome } from "./_hooks/use-venue-home";
 
-const SHORTCUT_CONFIG: Record<string, { label: string; href: string }> = {
-  new_reservation: { label: "Nova reserva", href: "/dashboard/reservas" },
-  open_tab: { label: "Abrir comanda", href: "/dashboard/operacao?tab=mesas" },
-  new_order: { label: "Novo pedido", href: "/dashboard/operacao?tab=pedidos" },
-  open_cash: { label: "Abrir caixa", href: "/dashboard/operacao?tab=caixa" },
-  register_purchase: { label: "Registrar compra", href: "/dashboard/estoque" },
-  invite_team: { label: "Convidar equipe", href: "/dashboard/equipe" },
+const SHORTCUT_CONFIG: Record<string, { label: string; description: string; href: string }> = {
+  new_reservation: { label: "Nova Reserva", description: "Criar uma nova reserva", href: "/dashboard/reservas" },
+  open_tab: { label: "Abrir Comanda", description: "Abrir comanda para mesa", href: "/dashboard/operacao?tab=mesas" },
+  new_order: { label: "Novo Pedido", description: "Registrar um novo pedido", href: "/dashboard/operacao?tab=pedidos" },
+  open_cash: { label: "Abrir Caixa", description: "Abrir o caixa da unidade", href: "/dashboard/operacao?tab=caixa" },
+  register_purchase: { label: "Registrar Compra", description: "Nova compra de estoque", href: "/dashboard/estoque" },
+  invite_team: { label: "Convidar Equipe", description: "Adicionar membro à equipe", href: "/dashboard/equipe" },
 };
+
+const BUSINESS_OVERVIEW = [
+  { key: "MENU", label: "Cardápio", metric: "Itens ativos", icon: UtensilsCrossed, href: "/dashboard/cardapio", cta: "Gerenciar cardápio" },
+  { key: "STOCK", label: "Estoque", metric: "Itens com estoque baixo", icon: Boxes, href: "/dashboard/estoque", cta: "Ver estoque" },
+  { key: "FINANCE", label: "Financeiro", metric: "Contas a receber", icon: DollarSign, href: "/dashboard/financeiro", cta: "Ver financeiro" },
+  { key: "TEAM", label: "Equipe", metric: "Membros da equipe", icon: Users, href: "/dashboard/equipe", cta: "Ver equipe" },
+];
 
 /**
  * Rota inicial padrão do Venue. WAITER, KITCHEN_BAR e STOCK continuam sendo
@@ -77,6 +90,7 @@ export function VenueInicioPageContent() {
   // falha com 404 (já aconteceu em produção: unidade principal arquivada).
   const activeLocations = locations?.filter((l) => l.active) ?? [];
   const [locationId, setLocationId] = useState<number | null>(null);
+  const [hideValues, setHideValues] = useState(false);
 
   // Troca de organização — sem isso o locationId da org anterior ficava
   // "preso" e nunca era recalculado, causando o mesmo 404 ao trocar de org.
@@ -96,6 +110,8 @@ export function VenueInicioPageContent() {
   const canManageSettings = can("organization.settings.manage");
   const canViewFinance = can("venue.finance.view");
   const finance = useVenueFinanceTimeline(canViewFinance ? orgId : null, locationId, { quickPeriod: "LAST_7_DAYS" });
+  const financeThisMonth = useVenueFinanceTimeline(canViewFinance ? orgId : null, locationId, { quickPeriod: "THIS_MONTH" });
+  const financeLastMonth = useVenueFinanceTimeline(canViewFinance ? orgId : null, locationId, { quickPeriod: "LAST_MONTH" });
 
   if (loadingAccess || redirecting || loadingOrgs || loadingLocations) {
     return (
@@ -162,6 +178,30 @@ export function VenueInicioPageContent() {
   const shortcuts = home.shortcuts.map((key) => SHORTCUT_CONFIG[key]).filter(Boolean);
   const showFullChecklist = !home.onboarding.restricted && home.onboarding.profile?.status !== "DISMISSED";
   const showRestrictedNotice = home.onboarding.restricted && !home.onboarding.readyToOperate;
+  const thisMonthCents = (financeThisMonth.data ?? []).reduce((sum, p) => sum + p.revenueCents, 0);
+  const lastMonthCents = (financeLastMonth.data ?? []).reduce((sum, p) => sum + p.revenueCents, 0);
+
+  const panoramaTiles = [
+    home.openTabsCount !== null
+      ? { key: "openTabs", icon: <ClipboardList size={20} strokeWidth={1.8} />, value: home.openTabsCount, label: "Comandas abertas" }
+      : null,
+    home.tables !== null
+      ? {
+          key: "tables",
+          icon: <LayoutGrid size={20} strokeWidth={1.8} />,
+          value: `${home.tables.occupied}/${home.tables.total}`,
+          label: "Mesas ativas",
+        }
+      : null,
+    home.todaysReservations !== null
+      ? {
+          key: "reservations",
+          icon: <CalendarClock size={20} strokeWidth={1.8} />,
+          value: home.todaysReservations.length,
+          label: "Reservas de hoje",
+        }
+      : null,
+  ].filter((t): t is NonNullable<typeof t> => t !== null);
 
   const alertTiles = [
     (home.outOfStockCount ?? 0) > 0
@@ -226,104 +266,119 @@ export function VenueInicioPageContent() {
         />
       ) : null}
 
-      {/* Panorama Geral */}
-      <section className="rounded-2xl bg-gradient-to-br from-[#1d1834] to-[#141020] p-6 text-white">
-        <p className="mb-5 text-sm font-medium text-white/60">Panorama Geral</p>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      {/* Row 1 — Panorama Geral | Desempenho Financeiro | Progresso do Mês */}
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_1.12fr_0.66fr]">
+        <section className="flex flex-col rounded-[22px] bg-gradient-to-br from-[#1d1834] via-[#191530] to-[#141020] p-6 text-white shadow-[0_10px_30px_rgba(28,24,48,0.25)]">
+          <div className="mb-5 flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Panorama Geral</h3>
+            <button
+              onClick={() => setHideValues((v) => !v)}
+              className="flex items-center gap-1.5 text-[13px] font-medium text-white/50 transition-colors hover:text-white/80"
+            >
+              {hideValues ? <Eye size={16} /> : <EyeOff size={16} />}
+              {hideValues ? "Mostrar valores" : "Ocultar valores"}
+            </button>
+          </div>
+
           {home.financeSummary ? (
-            <div className="rounded-xl bg-white/5 p-4">
-              <div className="mb-3 text-violet-300"><DollarSign size={20} /></div>
-              <p className="font-serif text-2xl font-bold">{formatCentsBRL(home.financeSummary.totalCents)}</p>
-              <p className="mt-1 text-xs text-white/50">Vendas de hoje</p>
-            </div>
-          ) : null}
-          {home.openTabsCount !== null ? (
-            <div className="rounded-xl bg-white/5 p-4">
-              <div className="mb-3 text-violet-300"><ClipboardList size={20} /></div>
-              <p className="font-serif text-2xl font-bold">{home.openTabsCount}</p>
-              <p className="mt-1 text-xs text-white/50">Comandas abertas</p>
-            </div>
-          ) : null}
-          {home.tables !== null ? (
-            <div className="rounded-xl bg-white/5 p-4">
-              <div className="mb-3 text-violet-300"><LayoutGrid size={20} /></div>
-              <p className="font-serif text-2xl font-bold">
-                {home.tables.occupied}/{home.tables.total}
+            <div className="mb-5">
+              <p className="mb-2 text-[13.5px] text-white/60">Faturamento do dia</p>
+              <p className={`font-poppins text-[28px] font-bold tracking-tight ${hideValues ? "blur-md" : ""}`}>
+                {formatCentsBRL(home.financeSummary.totalCents)}
               </p>
-              <p className="mt-1 text-xs text-white/50">Mesas ocupadas</p>
             </div>
           ) : null}
-          {home.todaysReservations !== null ? (
-            <div className="rounded-xl bg-white/5 p-4">
-              <div className="mb-3 text-violet-300"><CalendarClock size={20} /></div>
-              <p className="font-serif text-2xl font-bold">{home.todaysReservations.length}</p>
-              <p className="mt-1 text-xs text-white/50">Reservas de hoje</p>
-            </div>
-          ) : null}
-        </div>
-      </section>
 
-      {/* Desempenho Financeiro */}
-      {canViewFinance ? <FinanceTimelineChart data={finance.data} isLoading={finance.isLoading} /> : null}
-
-      {/* Ações Rápidas */}
-      {shortcuts.length > 0 ? (
-        <div>
-          <p className="mb-3 text-lg font-semibold tracking-tight">Ações Rápidas</p>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {shortcuts.map((s) => (
-              <Link
-                key={s.href}
-                href={s.href}
-                className="group relative flex min-h-[120px] flex-col rounded-2xl bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
-              >
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 text-violet-600">
-                  <Plus size={18} />
-                </div>
-                <p className="text-sm font-semibold text-gray-900">{s.label}</p>
-                <span className="absolute bottom-3.5 right-3.5 flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-violet-600 transition-transform group-hover:translate-x-0.5">
-                  <ArrowUpRight size={13} />
-                </span>
-              </Link>
+          <div className={`mt-auto grid gap-3 ${panoramaTiles.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
+            {panoramaTiles.map((tile) => (
+              <div key={tile.key} className="rounded-2xl bg-white/[0.06] p-4">
+                <div className="mb-3.5 text-violet-300">{tile.icon}</div>
+                <p className={`font-poppins text-xl font-bold ${hideValues ? "blur-md" : ""}`}>{tile.value}</p>
+                <p className="mt-0.5 text-xs text-white/50">{tile.label}</p>
+              </div>
             ))}
           </div>
-        </div>
-      ) : null}
+        </section>
 
-      {/* Indicadores do Dia */}
-      <div className="rounded-2xl border border-black/10 bg-white p-5">
-        <p className="mb-1 text-base font-semibold text-gray-900">Indicadores do Dia</p>
-        <div className="divide-y divide-black/5">
-          {home.cashSessions !== null ? (
-            <div className="flex items-center gap-3 py-3">
-              <Wallet size={16} className="text-violet-500" />
-              <span className="text-sm font-medium text-gray-900">Caixa</span>
-              <span className="ml-auto text-sm font-semibold">
-                {home.cashSessions.length > 0 ? <span className="text-emerald-600">Aberto</span> : <span className="text-black/40">Fechado</span>}
-              </span>
+        {canViewFinance ? (
+          <FinanceTimelineChart
+            data={finance.data}
+            isLoading={finance.isLoading}
+            className="rounded-[22px] shadow-[0_1px_2px_rgba(28,24,48,0.05),0_2px_6px_rgba(28,24,48,0.04)]"
+          />
+        ) : null}
+
+        {canViewFinance ? (
+          <GoalProgressCard
+            currentCents={thisMonthCents}
+            previousCents={lastMonthCents}
+            isLoading={financeThisMonth.isLoading || financeLastMonth.isLoading}
+          />
+        ) : null}
+      </div>
+
+      {/* Row 2 — Indicadores do Dia | Ações Rápidas */}
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_2.55fr]">
+        <div className="rounded-[22px] border border-black/10 bg-white p-5 shadow-[0_1px_2px_rgba(28,24,48,0.05),0_2px_6px_rgba(28,24,48,0.04)]">
+          <p className="mb-2 text-[17px] font-semibold text-gray-900">Indicadores do Dia</p>
+          <div className="divide-y divide-black/5">
+            {home.cashSessions !== null ? (
+              <div className="flex items-center gap-3 py-3">
+                <Wallet size={16} className="shrink-0 text-violet-500" />
+                <span className="text-[14.5px] font-medium text-gray-900">Caixa</span>
+                <span className="ml-auto text-sm font-semibold">
+                  {home.cashSessions.length > 0 ? <span className="text-emerald-600">Aberto</span> : <span className="text-black/40">Fechado</span>}
+                </span>
+              </div>
+            ) : null}
+            {home.waitlistCount !== null ? (
+              <div className="flex items-center gap-3 py-3">
+                <Users2 size={16} className="shrink-0 text-violet-500" />
+                <span className="text-[14.5px] font-medium text-gray-900">Clientes na fila</span>
+                <span className="ml-auto text-sm font-semibold">{home.waitlistCount}</span>
+              </div>
+            ) : null}
+            {home.ordersInPreparationCount !== null ? (
+              <div className="flex items-center gap-3 py-3">
+                <ChefHat size={16} className="shrink-0 text-violet-500" />
+                <span className="text-[14.5px] font-medium text-gray-900">Pedidos em preparo</span>
+                <span className="ml-auto text-sm font-semibold">{home.ordersInPreparationCount}</span>
+              </div>
+            ) : null}
+            {home.ordersReadyCount !== null ? (
+              <div className="flex items-center gap-3 py-3">
+                <CheckCircle2 size={16} className="shrink-0 text-violet-500" />
+                <span className="text-[14.5px] font-medium text-gray-900">Pedidos prontos</span>
+                <span className="ml-auto text-sm font-semibold">{home.ordersReadyCount}</span>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div>
+          <h2 className="mb-4 font-poppins text-[19px] font-semibold tracking-tight text-foreground">Ações Rápidas</h2>
+          {shortcuts.length > 0 ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+              {shortcuts.map((s) => (
+                <Link
+                  key={s.href}
+                  href={s.href}
+                  className="group relative flex min-h-[158px] flex-col rounded-2xl bg-white p-[18px] shadow-[0_1px_2px_rgba(28,24,48,0.05),0_2px_6px_rgba(28,24,48,0.04)] transition-shadow hover:shadow-md"
+                >
+                  <div className="mb-4 flex h-[42px] w-[42px] items-center justify-center rounded-xl bg-violet-100 text-violet-600">
+                    <Plus size={20} strokeWidth={1.8} />
+                  </div>
+                  <h4 className="text-[15px] font-semibold text-gray-900">{s.label}</h4>
+                  <p className="mt-1 text-[12.5px] leading-tight text-black/50">{s.description}</p>
+                  <span className="absolute bottom-3.5 right-3.5 flex h-[26px] w-[26px] items-center justify-center rounded-full bg-violet-100 text-violet-600 transition-transform group-hover:translate-x-0.5">
+                    <ArrowUpRight size={14} strokeWidth={2.2} />
+                  </span>
+                </Link>
+              ))}
             </div>
-          ) : null}
-          {home.waitlistCount !== null ? (
-            <div className="flex items-center gap-3 py-3">
-              <Users2 size={16} className="text-violet-500" />
-              <span className="text-sm font-medium text-gray-900">Clientes na fila</span>
-              <span className="ml-auto text-sm font-semibold">{home.waitlistCount}</span>
-            </div>
-          ) : null}
-          {home.ordersInPreparationCount !== null ? (
-            <div className="flex items-center gap-3 py-3">
-              <ChefHat size={16} className="text-violet-500" />
-              <span className="text-sm font-medium text-gray-900">Pedidos em preparo</span>
-              <span className="ml-auto text-sm font-semibold">{home.ordersInPreparationCount}</span>
-            </div>
-          ) : null}
-          {home.ordersReadyCount !== null ? (
-            <div className="flex items-center gap-3 py-3">
-              <CheckCircle2 size={16} className="text-violet-500" />
-              <span className="text-sm font-medium text-gray-900">Pedidos prontos</span>
-              <span className="ml-auto text-sm font-semibold">{home.ordersReadyCount}</span>
-            </div>
-          ) : null}
+          ) : (
+            <p className="text-sm text-black/50">Nenhuma ação rápida disponível para o seu papel agora.</p>
+          )}
         </div>
       </div>
 
@@ -345,7 +400,7 @@ export function VenueInicioPageContent() {
       ) : null}
 
       {home.todaysReservations && home.todaysReservations.length > 0 ? (
-        <div className="rounded-xl border bg-white p-4">
+        <div className="rounded-2xl border bg-white p-4 shadow-[0_1px_2px_rgba(28,24,48,0.05)]">
           <p className="mb-3 text-sm font-semibold text-black/70">Próximas reservas</p>
           <div className="space-y-2">
             {home.todaysReservations.slice(0, 8).map((r) => (
@@ -372,6 +427,68 @@ export function VenueInicioPageContent() {
           onDismiss={canManageSettings ? () => dismiss.mutate() : undefined}
         />
       ) : null}
+
+      {/* Visão Geral do Negócio */}
+      <div>
+        <h2 className="mb-4 font-poppins text-[19px] font-semibold tracking-tight text-foreground">Visão Geral do Negócio</h2>
+        <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-4">
+          <div className="flex flex-col rounded-[22px] bg-white p-5 shadow-[0_1px_2px_rgba(28,24,48,0.05),0_2px_6px_rgba(28,24,48,0.04)]">
+            <div className="mb-[18px] flex items-center gap-2.5">
+              <span className="flex h-[38px] w-[38px] items-center justify-center rounded-[11px] bg-violet-100 text-violet-600">
+                <LayoutGrid size={19} strokeWidth={1.8} />
+              </span>
+              <h4 className="text-[16px] font-semibold text-gray-900">Operação</h4>
+            </div>
+            <p className="mb-1.5 text-[13px] text-black/60">Mesas ocupadas</p>
+            {home.tables !== null ? (
+              <>
+                <p className="font-poppins text-[28px] font-bold leading-none tracking-tight text-foreground">
+                  {home.tables.occupied} <span className="text-lg font-semibold text-black/40">/{home.tables.total}</span>
+                </p>
+                <div className="relative mt-3.5 h-[7px] overflow-hidden rounded-full bg-violet-50">
+                  <div
+                    className="h-full rounded-full bg-violet-600"
+                    style={{ width: `${home.tables.total > 0 ? Math.round((home.tables.occupied / home.tables.total) * 100) : 0}%` }}
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="mb-4 mt-4" />
+            )}
+            <Link
+              href="/dashboard/operacao"
+              className="mt-4 flex h-[42px] items-center justify-center rounded-xl border border-black/10 bg-white text-[13.5px] font-semibold text-violet-600 transition-colors hover:bg-violet-50"
+            >
+              Ver mesas
+            </Link>
+          </div>
+
+          {BUSINESS_OVERVIEW.map(({ key, label, metric, icon: Icon, href, cta }) => (
+            <div key={key} className="flex flex-col rounded-[22px] bg-white p-5 shadow-[0_1px_2px_rgba(28,24,48,0.05),0_2px_6px_rgba(28,24,48,0.04)]">
+              <div className="mb-[18px] flex items-center gap-2.5">
+                <span className="flex h-[38px] w-[38px] items-center justify-center rounded-[11px] bg-violet-100 text-violet-600">
+                  <Icon size={19} strokeWidth={1.8} />
+                </span>
+                <h4 className="text-[16px] font-semibold text-gray-900">{label}</h4>
+              </div>
+              <p className="mb-1.5 text-[13px] text-black/60">{metric}</p>
+              {key === "STOCK" ? (
+                <p className="font-poppins text-[28px] font-bold leading-none tracking-tight text-foreground">
+                  {(home.lowStockCount ?? 0) + (home.outOfStockCount ?? 0)}
+                </p>
+              ) : (
+                <div className="mb-4 mt-4" />
+              )}
+              <Link
+                href={href}
+                className="mt-auto flex h-[42px] items-center justify-center rounded-xl border border-black/10 bg-white text-[13.5px] font-semibold text-violet-600 transition-colors hover:bg-violet-50"
+              >
+                {cta}
+              </Link>
+            </div>
+          ))}
+        </div>
+      </div>
     </PageContainer>
   );
 }

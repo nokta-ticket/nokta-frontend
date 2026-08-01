@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 /** Container padrão para gráficos (usa o `ui/chart`/recharts como filho). */
 export function ChartCard({
@@ -13,14 +14,16 @@ export function ChartCard({
   description,
   actions,
   children,
+  className,
 }: {
   title: string;
   description?: string;
   actions?: ReactNode;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <Card className="bg-white">
+    <Card className={cn("bg-white", className)}>
       <CardHeader className="flex flex-row items-start justify-between gap-2">
         <div className="space-y-1">
           <CardTitle>{title}</CardTitle>
