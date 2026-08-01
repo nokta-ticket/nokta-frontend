@@ -15,9 +15,9 @@ import {
   CheckCircle2,
   PackageX,
   AlertTriangle,
+  ArrowUpRight,
   Plus,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useOrganizations } from "@/context/OrganizationContext";
@@ -27,12 +27,13 @@ import { PageContainer } from "../../_components/page/page-container";
 import { PageHeader } from "../../_components/page/page-header";
 import { BlockSkeleton } from "../../_components/states/loading-state";
 import { EmptyState } from "../../_components/states/empty-state";
+import { FinanceTimelineChart } from "../../_components/finance-timeline-chart";
 import { useVenueLocations } from "../../operacao/_hooks/use-venue-locations";
 import { OnboardingLocation } from "../../operacao/_components/onboarding-location";
 import { VenueReadinessChecklist } from "../_components/venue-readiness-checklist";
 import { useVenueSetupLifecycle } from "../../configuracoes/_hooks/use-venue-settings";
+import { useVenueFinanceTimeline } from "../../financeiro/_venue/_hooks/use-venue-finance-overview";
 import { useVenueHome } from "./_hooks/use-venue-home";
-import { HomeMetricCard } from "./_components/home-metric-card";
 
 const SHORTCUT_CONFIG: Record<string, { label: string; href: string }> = {
   new_reservation: { label: "Nova reserva", href: "/dashboard/reservas" },
@@ -93,6 +94,8 @@ export function VenueInicioPageContent() {
   const { dismiss } = useVenueSetupLifecycle(orgId ?? -1);
 
   const canManageSettings = can("organization.settings.manage");
+  const canViewFinance = can("venue.finance.view");
+  const finance = useVenueFinanceTimeline(canViewFinance ? orgId : null, locationId, { quickPeriod: "LAST_7_DAYS" });
 
   if (loadingAccess || redirecting || loadingOrgs || loadingLocations) {
     return (
@@ -160,6 +163,27 @@ export function VenueInicioPageContent() {
   const showFullChecklist = !home.onboarding.restricted && home.onboarding.profile?.status !== "DISMISSED";
   const showRestrictedNotice = home.onboarding.restricted && !home.onboarding.readyToOperate;
 
+  const alertTiles = [
+    (home.outOfStockCount ?? 0) > 0
+      ? { key: "outOfStock", label: "Sem estoque", value: home.outOfStockCount, icon: <PackageX size={16} />, tone: "danger" as const }
+      : null,
+    (home.lowStockCount ?? 0) > 0
+      ? { key: "lowStock", label: "Estoque baixo", value: home.lowStockCount, icon: <AlertTriangle size={16} />, tone: "warning" as const }
+      : null,
+    (home.overduePayablesCount ?? 0) > 0
+      ? { key: "overduePayables", label: "Contas vencidas", value: home.overduePayablesCount, icon: <Clock3 size={16} />, tone: "danger" as const }
+      : null,
+    (home.cashDiscrepancyCount ?? 0) > 0
+      ? {
+          key: "cashDiscrepancy",
+          label: "Divergências de caixa hoje",
+          value: home.cashDiscrepancyCount,
+          icon: <AlertTriangle size={16} />,
+          tone: "warning" as const,
+        }
+      : null,
+  ].filter((t): t is NonNullable<typeof t> => t !== null);
+
   return (
     <PageContainer>
       <PageHeader
@@ -195,18 +219,6 @@ export function VenueInicioPageContent() {
         </div>
       ) : null}
 
-      {shortcuts.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          {shortcuts.map((s) => (
-            <Button key={s.href} variant="outline" size="sm" asChild>
-              <Link href={s.href}>
-                <Plus size={14} /> {s.label}
-              </Link>
-            </Button>
-          ))}
-        </div>
-      ) : null}
-
       {showFullChecklist && !home.onboarding.readyToOperate ? (
         <VenueReadinessChecklist
           status={home.onboarding}
@@ -214,77 +226,121 @@ export function VenueInicioPageContent() {
         />
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {home.financeSummary ? (
-          <HomeMetricCard
-            label="Vendas de hoje"
-            value={formatCentsBRL(home.financeSummary.totalCents)}
-            icon={<DollarSign size={16} />}
-          />
-        ) : null}
-        {home.openTabsCount !== null ? (
-          <HomeMetricCard label="Comandas abertas" value={home.openTabsCount} icon={<ClipboardList size={16} />} />
-        ) : null}
-        {home.todaysReservations !== null ? (
-          <HomeMetricCard
-            label="Reservas de hoje"
-            value={home.todaysReservations.length}
-            icon={<CalendarClock size={16} />}
-          />
-        ) : null}
-        {home.ordersInPreparationCount !== null ? (
-          <HomeMetricCard label="Pedidos em preparo" value={home.ordersInPreparationCount} icon={<ChefHat size={16} />} />
-        ) : null}
+      {/* Panorama Geral */}
+      <section className="rounded-2xl bg-gradient-to-br from-[#1d1834] to-[#141020] p-6 text-white">
+        <p className="mb-5 text-sm font-medium text-white/60">Panorama Geral</p>
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {home.financeSummary ? (
+            <div className="rounded-xl bg-white/5 p-4">
+              <div className="mb-3 text-violet-300"><DollarSign size={20} /></div>
+              <p className="font-serif text-2xl font-bold">{formatCentsBRL(home.financeSummary.totalCents)}</p>
+              <p className="mt-1 text-xs text-white/50">Vendas de hoje</p>
+            </div>
+          ) : null}
+          {home.openTabsCount !== null ? (
+            <div className="rounded-xl bg-white/5 p-4">
+              <div className="mb-3 text-violet-300"><ClipboardList size={20} /></div>
+              <p className="font-serif text-2xl font-bold">{home.openTabsCount}</p>
+              <p className="mt-1 text-xs text-white/50">Comandas abertas</p>
+            </div>
+          ) : null}
+          {home.tables !== null ? (
+            <div className="rounded-xl bg-white/5 p-4">
+              <div className="mb-3 text-violet-300"><LayoutGrid size={20} /></div>
+              <p className="font-serif text-2xl font-bold">
+                {home.tables.occupied}/{home.tables.total}
+              </p>
+              <p className="mt-1 text-xs text-white/50">Mesas ocupadas</p>
+            </div>
+          ) : null}
+          {home.todaysReservations !== null ? (
+            <div className="rounded-xl bg-white/5 p-4">
+              <div className="mb-3 text-violet-300"><CalendarClock size={20} /></div>
+              <p className="font-serif text-2xl font-bold">{home.todaysReservations.length}</p>
+              <p className="mt-1 text-xs text-white/50">Reservas de hoje</p>
+            </div>
+          ) : null}
+        </div>
+      </section>
+
+      {/* Desempenho Financeiro */}
+      {canViewFinance ? <FinanceTimelineChart data={finance.data} isLoading={finance.isLoading} /> : null}
+
+      {/* Ações Rápidas */}
+      {shortcuts.length > 0 ? (
+        <div>
+          <p className="mb-3 text-lg font-semibold tracking-tight">Ações Rápidas</p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {shortcuts.map((s) => (
+              <Link
+                key={s.href}
+                href={s.href}
+                className="group relative flex min-h-[120px] flex-col rounded-2xl bg-white p-4 shadow-sm transition-shadow hover:shadow-md"
+              >
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-violet-100 text-violet-600">
+                  <Plus size={18} />
+                </div>
+                <p className="text-sm font-semibold text-gray-900">{s.label}</p>
+                <span className="absolute bottom-3.5 right-3.5 flex h-6 w-6 items-center justify-center rounded-full bg-violet-100 text-violet-600 transition-transform group-hover:translate-x-0.5">
+                  <ArrowUpRight size={13} />
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {/* Indicadores do Dia */}
+      <div className="rounded-2xl border border-black/10 bg-white p-5">
+        <p className="mb-1 text-base font-semibold text-gray-900">Indicadores do Dia</p>
+        <div className="divide-y divide-black/5">
+          {home.cashSessions !== null ? (
+            <div className="flex items-center gap-3 py-3">
+              <Wallet size={16} className="text-violet-500" />
+              <span className="text-sm font-medium text-gray-900">Caixa</span>
+              <span className="ml-auto text-sm font-semibold">
+                {home.cashSessions.length > 0 ? <span className="text-emerald-600">Aberto</span> : <span className="text-black/40">Fechado</span>}
+              </span>
+            </div>
+          ) : null}
+          {home.waitlistCount !== null ? (
+            <div className="flex items-center gap-3 py-3">
+              <Users2 size={16} className="text-violet-500" />
+              <span className="text-sm font-medium text-gray-900">Clientes na fila</span>
+              <span className="ml-auto text-sm font-semibold">{home.waitlistCount}</span>
+            </div>
+          ) : null}
+          {home.ordersInPreparationCount !== null ? (
+            <div className="flex items-center gap-3 py-3">
+              <ChefHat size={16} className="text-violet-500" />
+              <span className="text-sm font-medium text-gray-900">Pedidos em preparo</span>
+              <span className="ml-auto text-sm font-semibold">{home.ordersInPreparationCount}</span>
+            </div>
+          ) : null}
+          {home.ordersReadyCount !== null ? (
+            <div className="flex items-center gap-3 py-3">
+              <CheckCircle2 size={16} className="text-violet-500" />
+              <span className="text-sm font-medium text-gray-900">Pedidos prontos</span>
+              <span className="ml-auto text-sm font-semibold">{home.ordersReadyCount}</span>
+            </div>
+          ) : null}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {home.cashSessions !== null ? (
-          <HomeMetricCard
-            label="Caixa"
-            value={
-              home.cashSessions.length > 0 ? (
-                <span className="text-emerald-600">Aberto</span>
-              ) : (
-                <span className="text-black/40">Fechado</span>
-              )
-            }
-            icon={<Wallet size={16} />}
-          />
-        ) : null}
-        {home.tables !== null ? (
-          <HomeMetricCard
-            label="Mesas ocupadas"
-            value={`${home.tables.occupied}/${home.tables.total}`}
-            icon={<LayoutGrid size={16} />}
-          />
-        ) : null}
-        {home.waitlistCount !== null ? (
-          <HomeMetricCard label="Clientes na fila" value={home.waitlistCount} icon={<Users2 size={16} />} />
-        ) : null}
-        {home.ordersReadyCount !== null ? (
-          <HomeMetricCard label="Pedidos prontos" value={home.ordersReadyCount} icon={<CheckCircle2 size={16} />} />
-        ) : null}
-      </div>
-
-      {(home.lowStockCount ?? 0) > 0 || (home.outOfStockCount ?? 0) > 0 || (home.overduePayablesCount ?? 0) > 0 || (home.cashDiscrepancyCount ?? 0) > 0 ? (
+      {alertTiles.length > 0 ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {(home.outOfStockCount ?? 0) > 0 ? (
-            <HomeMetricCard label="Sem estoque" value={home.outOfStockCount} icon={<PackageX size={16} />} tone="danger" />
-          ) : null}
-          {(home.lowStockCount ?? 0) > 0 ? (
-            <HomeMetricCard label="Estoque baixo" value={home.lowStockCount} icon={<AlertTriangle size={16} />} tone="warning" />
-          ) : null}
-          {(home.overduePayablesCount ?? 0) > 0 ? (
-            <HomeMetricCard label="Contas vencidas" value={home.overduePayablesCount} icon={<Clock3 size={16} />} tone="danger" />
-          ) : null}
-          {(home.cashDiscrepancyCount ?? 0) > 0 ? (
-            <HomeMetricCard
-              label="Divergências de caixa hoje"
-              value={home.cashDiscrepancyCount}
-              icon={<AlertTriangle size={16} />}
-              tone="warning"
-            />
-          ) : null}
+          {alertTiles.map((tile) => (
+            <div
+              key={tile.key}
+              className={`rounded-xl border p-4 ${tile.tone === "danger" ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50"}`}
+            >
+              <div className={`mb-2 flex items-center gap-2 text-sm font-medium ${tile.tone === "danger" ? "text-red-700" : "text-amber-700"}`}>
+                {tile.icon}
+                {tile.label}
+              </div>
+              <p className="text-2xl font-semibold text-gray-900">{tile.value}</p>
+            </div>
+          ))}
         </div>
       ) : null}
 

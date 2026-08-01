@@ -1,7 +1,7 @@
 "use client";
 
-import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
-import { ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { ChartCard } from "../../../_components/chart-card";
 import { BlockSkeleton } from "../../../_components/states/loading-state";
 import { EmptyState } from "../../../_components/states/empty-state";
@@ -11,37 +11,9 @@ import {
   type VenueFinanceExpenseByCategory,
   type VenueFinanceLocationComparison,
   type VenueFinancePaymentMethodBucket,
-  type VenueFinanceTimelinePoint,
 } from "@/services/venue-finance";
 
-const timelineConfig: ChartConfig = {
-  revenueCents: { label: "Faturamento", color: "var(--chart-1)" },
-  resultCents: { label: "Resultado", color: "var(--chart-2)" },
-};
-
-export function FinanceTimelineChart({ data, isLoading }: { data: VenueFinanceTimelinePoint[] | undefined; isLoading: boolean }) {
-  return (
-    <ChartCard title="Faturamento e resultado" description="Evolução ao longo do período selecionado">
-      {isLoading ? (
-        <BlockSkeleton className="h-64" />
-      ) : !data || data.length === 0 ? (
-        <EmptyState title="Sem dados no período" description="Vendas e resultado aparecerão aqui conforme o movimento do período." />
-      ) : (
-        <ChartContainer config={timelineConfig} className="max-h-72 w-full">
-          <LineChart data={data} margin={{ left: 12, right: 12 }}>
-            <CartesianGrid vertical={false} />
-            <XAxis dataKey="date" tickLine={false} axisLine={false} tickMargin={8} tickFormatter={(v: string) => v.slice(5)} />
-            <YAxis tickLine={false} axisLine={false} tickFormatter={(v: number) => formatCentsBRL(v)} width={90} />
-            <ChartTooltip content={<ChartTooltipContent formatter={(value) => formatCentsBRL(Number(value))} />} />
-            <ChartLegend content={<ChartLegendContent />} />
-            <Line dataKey="revenueCents" type="monotone" stroke="var(--color-revenueCents)" strokeWidth={2} dot={false} />
-            <Line dataKey="resultCents" type="monotone" stroke="var(--color-resultCents)" strokeWidth={2} dot={false} />
-          </LineChart>
-        </ChartContainer>
-      )}
-    </ChartCard>
-  );
-}
+export { FinanceTimelineChart } from "../../../_components/finance-timeline-chart";
 
 const paymentMethodsConfig: ChartConfig = {
   netCents: { label: "Líquido estimado", color: "var(--chart-1)" },
