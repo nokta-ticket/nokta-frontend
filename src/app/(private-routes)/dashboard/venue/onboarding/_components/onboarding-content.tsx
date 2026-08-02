@@ -100,8 +100,10 @@ export function OnboardingContent() {
   if (loadingStatus || loadingLocations || !status) {
     return (
       <PageContainer>
-        <PageHeader title="Configuração guiada do Venue" description="Ative e configure seu estabelecimento passo a passo." />
-        <BlockSkeleton className="h-96" />
+        <div className="mx-auto w-full max-w-4xl space-y-6">
+          <PageHeader title="Configuração guiada do Venue" description="Ative e configure seu estabelecimento passo a passo." />
+          <BlockSkeleton className="h-96" />
+        </div>
       </PageContainer>
     );
   }
@@ -118,40 +120,42 @@ export function OnboardingContent() {
 
   return (
     <PageContainer>
-      <PageHeader
-        title="Configuração guiada do Venue"
-        description="Ative e configure seu estabelecimento passo a passo. Você pode sair e voltar quando quiser."
-      />
+      <div className="mx-auto w-full max-w-4xl space-y-6">
+        <PageHeader
+          title="Configuração guiada do Venue"
+          description="Ative e configure seu estabelecimento passo a passo. Você pode sair e voltar quando quiser."
+        />
 
-      <Stepper step={step} doneSteps={doneSteps} />
+        <Stepper step={step} doneSteps={doneSteps} />
 
-      {step === "sobre" ? (
-        <Step1Sobre orgId={orgId} status={status} mainLocation={mainLocation} onNext={() => goTo("estrutura")} />
-      ) : null}
+        {step === "sobre" ? (
+          <Step1Sobre orgId={orgId} status={status} mainLocation={mainLocation} onNext={() => goTo("estrutura")} />
+        ) : null}
 
-      {step === "estrutura" ? (
-        mainLocation ? (
-          <Step2Estrutura
-            orgId={orgId}
-            locationId={mainLocation.id}
-            operationMode={status.profile?.operationMode ?? null}
-            onNext={() => goTo("cardapio")}
-            onBack={() => goTo("sobre")}
-          />
-        ) : (
-          <EmptyState title="Crie a unidade primeiro" description="Volte à etapa Sobre e crie a unidade principal." />
-        )
-      ) : null}
+        {step === "estrutura" ? (
+          mainLocation ? (
+            <Step2Estrutura
+              orgId={orgId}
+              locationId={mainLocation.id}
+              operationMode={status.profile?.operationMode ?? null}
+              onNext={() => goTo("cardapio")}
+              onBack={() => goTo("sobre")}
+            />
+          ) : (
+            <EmptyState title="Crie a unidade primeiro" description="Volte à etapa Sobre e crie a unidade principal." />
+          )
+        ) : null}
 
-      {step === "cardapio" ? <Step3Cardapio orgId={orgId} status={status} onNext={() => goTo("equipe")} onBack={() => goTo("estrutura")} /> : null}
+        {step === "cardapio" ? <Step3Cardapio orgId={orgId} status={status} onNext={() => goTo("equipe")} onBack={() => goTo("estrutura")} /> : null}
 
-      {step === "equipe" ? <Step4Equipe onNext={() => goTo("preferencias")} onBack={() => goTo("cardapio")} /> : null}
+        {step === "equipe" ? <Step4Equipe onNext={() => goTo("preferencias")} onBack={() => goTo("cardapio")} /> : null}
 
-      {step === "preferencias" ? (
-        <Step5Preferencias orgId={orgId} onNext={() => goTo("revisao")} onBack={() => goTo("equipe")} />
-      ) : null}
+        {step === "preferencias" ? (
+          <Step5Preferencias orgId={orgId} onNext={() => goTo("revisao")} onBack={() => goTo("equipe")} />
+        ) : null}
 
-      {step === "revisao" ? <Step6Revisao orgId={orgId} status={status} onBack={() => goTo("preferencias")} /> : null}
+        {step === "revisao" ? <Step6Revisao orgId={orgId} status={status} onBack={() => goTo("preferencias")} /> : null}
+      </div>
     </PageContainer>
   );
 }

@@ -49,7 +49,7 @@ export function EventoEditorLayout({ event, onRefresh }: Props) {
   }
 
   return (
-    <section className="w-full max-w-[1200px] mx-auto">
+    <section className="w-full">
       <EventoEditorHeader event={event} />
       <div className="flex gap-5 items-start">
         <EventoEditorSidebar activeKey={activeKey} onSelect={handleSelect} />

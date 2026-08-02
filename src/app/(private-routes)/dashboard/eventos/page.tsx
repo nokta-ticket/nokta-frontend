@@ -140,7 +140,7 @@ export default function EventosPage() {
   if (!currentOrg) {
     return (
       <PageContainer>
-        <section className="w-full max-w-[1300px] mx-auto mt-4">
+        <section className="w-full mt-4">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <h1 className="text-2xl font-semibold">Eventos</h1>
             <Button onClick={() => guard(() => {})}>
@@ -163,7 +163,7 @@ export default function EventosPage() {
     <PageContainer>
       <N2VerificationBanner />
 
-      <section className="w-full max-w-[1300px] mx-auto mt-4">
+      <section className="w-full mt-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <h1 className="text-2xl font-semibold">Eventos</h1>
 

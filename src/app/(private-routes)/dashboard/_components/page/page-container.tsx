@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-/** Wrapper de largura/spacing padrão de toda página do dashboard. */
+/** Wrapper de spacing padrão de toda página do dashboard — ocupa 100% da largura disponível. */
 export function PageContainer({ children }: { children: ReactNode }) {
-  return <div className="mx-auto w-full max-w-7xl space-y-6">{children}</div>;
+  return <div className="w-full space-y-6">{children}</div>;
 }
