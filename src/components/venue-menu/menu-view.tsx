@@ -43,6 +43,17 @@ function itemPriceLabel(item: PublicMenuItem): string | null {
  * getBoundingClientRect().top gruda em 0 quando colado e nunca reflete
  * quanto realmente rolou — por isso a appbar precisa observar o scroll do
  * container real, nunca de `window`.
+ *
+ * A appbar (barra escura que aparece ao rolar) é `sticky top-0` (como os
+ * chips de categoria logo abaixo), nunca `fixed` — `fixed` sempre se
+ * posiciona contra a viewport real do navegador, o que funciona por
+ * acidente na página pública (o `<main>` já cobre a viewport inteira) mas
+ * vaza pra fora do bezel quando este mesmo componente roda dentro do
+ * preview de celular no dashboard (container pequeno, não a tela
+ * inteira). `sticky` sempre gruda no topo do ancestral rolável mais
+ * próximo, então funciona idêntico nos dois casos sem cálculo de posição.
+ * O wrapper sticky fica com h-0 (nunca ocupa espaço no fluxo/empurra o
+ * hero) — o conteúdo visual mora num filho absolute por cima dele.
  */
 export function MenuView({
   data,
@@ -84,8 +95,29 @@ export function MenuView({
   const hasContactRow = Boolean(profile.address || profile.instagramUrl || profile.whatsappNumber);
 
   return (
-    <div className="min-h-screen bg-[#e9e9ec] font-sans">
-      <div className="mx-auto min-h-screen w-full max-w-[440px] bg-white shadow-[0_0_50px_rgba(0,0,0,0.1)] md:max-w-2xl lg:max-w-4xl">
+    <div className="relative min-h-full bg-[#e9e9ec] font-sans">
+      <div className="mx-auto min-h-full w-full max-w-[440px] bg-white shadow-[0_0_50px_rgba(0,0,0,0.1)] md:max-w-2xl lg:max-w-4xl">
+        {/* APPBAR — sticky (não fixed, ver comentário no topo do arquivo). h-0 pra nunca empurrar o hero abaixo; o conteúdo visual mora num filho absolute. */}
+        <div className="sticky top-0 z-40 h-0">
+          <div
+            className={`absolute inset-x-0 top-0 h-[52px] items-center gap-4 bg-[#0f0f11] px-4 text-white shadow-[0_4px_16px_rgba(0,0,0,0.25)] transition-transform duration-200 ${
+              showAppbar ? "flex translate-y-0" : "flex -translate-y-full"
+            }`}
+          >
+            <span className="truncate font-poppins text-sm font-medium md:text-base">{data.organizationName}</span>
+            <div className="ml-auto flex gap-1">
+              <ViewButton active={view === "list"} onClick={() => setView("list")} icon={<List size={18} />} label="Lista" />
+              <ViewButton active={view === "grid"} onClick={() => setView("grid")} icon={<LayoutGrid size={18} />} label="Grade" />
+              <ViewButton
+                active={view === "large"}
+                onClick={() => setView("large")}
+                icon={<Square size={18} />}
+                label="Cards"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* HERO */}
         <div className="relative flex h-[180px] items-center justify-center overflow-hidden bg-[#050505] md:h-[220px]">
           <div className="absolute -top-24 h-[280px] w-[280px] rounded-full border border-white/40 md:-top-32 md:h-[340px] md:w-[340px]" />
@@ -210,25 +242,6 @@ export function MenuView({
           <p className="font-poppins text-sm font-bold tracking-[0.18em] text-white">
             <span className="text-[#d9a326]">N</span>OKTA
           </p>
-        </div>
-      </div>
-
-      {/* APPBAR */}
-      <div
-        className={`fixed left-1/2 top-0 z-40 h-[52px] w-full max-w-[440px] -translate-x-1/2 items-center gap-4 bg-[#0f0f11] px-4 text-white shadow-[0_4px_16px_rgba(0,0,0,0.25)] transition-transform duration-200 md:max-w-2xl lg:max-w-4xl ${
-          showAppbar ? "flex translate-y-0" : "flex -translate-y-full"
-        }`}
-      >
-        <span className="truncate font-poppins text-sm font-medium md:text-base">{data.organizationName}</span>
-        <div className="ml-auto flex gap-1">
-          <ViewButton active={view === "list"} onClick={() => setView("list")} icon={<List size={18} />} label="Lista" />
-          <ViewButton active={view === "grid"} onClick={() => setView("grid")} icon={<LayoutGrid size={18} />} label="Grade" />
-          <ViewButton
-            active={view === "large"}
-            onClick={() => setView("large")}
-            icon={<Square size={18} />}
-            label="Cards"
-          />
         </div>
       </div>
     </div>
