@@ -25,6 +25,20 @@ export function useVenueMenu(orgId: number | null, menuId: number | null) {
 }
 
 /**
+ * Preview real do cardápio — mesmo componente/dados da página pública,
+ * mas sem exigir publicação. Invalidada por qualquer mutation que mude o
+ * que aparece nele (produtos, categorias, adicionais, publish) — ver
+ * use-venue-products.ts/use-venue-categories.ts.
+ */
+export function useVenueMenuPreview(orgId: number | null, menuId: number | null) {
+  return useQuery({
+    queryKey: venueKeys.menuPreview(orgId ?? -1, menuId ?? -1),
+    queryFn: () => venueMenuApi.getMenuPreview(orgId as number, menuId as number),
+    enabled: orgId !== null && menuId !== null,
+  });
+}
+
+/**
  * Chamado uma vez por acesso à tela de Cardápio (não só quando a
  * organização não tem nenhum cardápio) — idempotente no backend, garante
  * cardápio principal + categoria "Geral" + estações padrão, criando só o
@@ -56,6 +70,7 @@ export function useVenueMenuMutations(orgId: number) {
     onSuccess: (_data, vars) => {
       invalidateMenus();
       qc.invalidateQueries({ queryKey: venueKeys.menu(orgId, vars.menuId) });
+      qc.invalidateQueries({ queryKey: venueKeys.menuPreview(orgId, vars.menuId) });
     },
   });
 
@@ -66,7 +81,10 @@ export function useVenueMenuMutations(orgId: number) {
 
   const publish = useMutation({
     mutationFn: (menuId: number) => venueMenuApi.publishMenu(orgId, menuId),
-    onSuccess: invalidateMenus,
+    onSuccess: (_data, menuId) => {
+      invalidateMenus();
+      qc.invalidateQueries({ queryKey: venueKeys.menuPreview(orgId, menuId) });
+    },
   });
 
   const archive = useMutation({

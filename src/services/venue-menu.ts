@@ -1,4 +1,7 @@
 import api from "@/lib/axios";
+import type { PublicMenuResponse } from "./venue-menu-public";
+
+export type { PublicMenuResponse };
 
 // ==================== TIPOS ====================
 // Espelham exatamente as respostas do VenueMenuModule (nokta-api).
@@ -360,6 +363,9 @@ export const venueMenuApi = {
     api.get<VenueMenu[]>(`${base(organizationId)}/menus`).then((r) => r.data),
   getMenu: (organizationId: number, menuId: number) =>
     api.get<VenueMenuDetail>(`${base(organizationId)}/menus/${menuId}`).then((r) => r.data),
+  /** Preview autenticado — mesmo shape do cardápio público, sem exigir publicação. */
+  getMenuPreview: (organizationId: number, menuId: number) =>
+    api.get<PublicMenuResponse>(`${base(organizationId)}/menus/${menuId}/preview`).then((r) => r.data),
   createMenu: (organizationId: number, payload: CreateVenueMenuPayload) =>
     api.post<VenueMenu>(`${base(organizationId)}/menus`, payload).then((r) => r.data),
   updateMenu: (organizationId: number, menuId: number, payload: UpdateVenueMenuPayload) =>

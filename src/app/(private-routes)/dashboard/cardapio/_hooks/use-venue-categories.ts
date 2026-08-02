@@ -19,7 +19,10 @@ export function useVenueCategories(orgId: number | null, menuId: number | null) 
 
 export function useVenueCategoryMutations(orgId: number, menuId: number) {
   const qc = useQueryClient();
-  const invalidate = () => qc.invalidateQueries({ queryKey: venueKeys.categories(orgId, menuId) });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: venueKeys.categories(orgId, menuId) });
+    qc.invalidateQueries({ queryKey: venueKeys.menuPreview(orgId, menuId) });
+  };
 
   const create = useMutation({
     mutationFn: (payload: CreateVenueMenuCategoryPayload) =>

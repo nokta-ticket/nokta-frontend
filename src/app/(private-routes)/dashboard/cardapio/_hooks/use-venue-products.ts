@@ -41,12 +41,19 @@ export function useVenueProductMutations(orgId: number) {
     if (menuId === undefined) return;
     qc.invalidateQueries({ queryKey: ["venue", orgId, "menuItems", menuId] });
   };
+  // Um produto pode pertencer a mais de um cardápio (VenueMenuItem) — em
+  // vez de rastrear cada menuId afetado por mutation, invalida toda a
+  // família de previews da org. O preview real precisa refletir qualquer
+  // mudança de produto sem reload, ver MenuPreviewPhone.
+  const invalidateAllPreviews = () =>
+    qc.invalidateQueries({ queryKey: ["venue", orgId, "menuPreview"], exact: false });
 
   const create = useMutation({
     mutationFn: (payload: CreateVenueProductPayload) => venueMenuApi.createProduct(orgId, payload),
     onSuccess: (_data, vars) => {
       invalidateList();
       invalidateMenuItems(vars.menuId);
+      invalidateAllPreviews();
     },
   });
 
@@ -56,6 +63,7 @@ export function useVenueProductMutations(orgId: number) {
     onSuccess: (_data, vars) => {
       invalidateList();
       invalidateDetail(vars.productId);
+      invalidateAllPreviews();
     },
   });
 
@@ -64,6 +72,7 @@ export function useVenueProductMutations(orgId: number) {
     onSuccess: (_data, productId) => {
       invalidateList();
       invalidateDetail(productId);
+      invalidateAllPreviews();
     },
   });
 
@@ -73,6 +82,7 @@ export function useVenueProductMutations(orgId: number) {
     onSuccess: (_data, vars) => {
       invalidateList();
       invalidateDetail(vars.productId);
+      invalidateAllPreviews();
     },
   });
 

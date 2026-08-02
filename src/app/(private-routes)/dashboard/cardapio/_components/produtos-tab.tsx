@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, MoreVertical, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, MoreVertical, Search, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -12,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -142,41 +144,73 @@ export function ProdutosTab({
   const openEdit = (productId: number, section: ProdutoEditSection = "geral") =>
     setEditing({ productId, section });
 
+  const activeFilterCount = (status !== "ALL" ? 1 : 0) + (stationId !== "ALL" ? 1 : 0);
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-1 flex-wrap gap-2">
-          <div className="relative min-w-[200px] flex-1">
-            <Search className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-black/40" size={16} />
-            <Input
-              className="pl-9"
-              placeholder="Buscar por nome…"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            />
-          </div>
-          <Select
-            value={status}
-            onValueChange={(v) => { setStatus(v as VenueProductStatus | "ALL"); setPage(1); }}
-          >
-            <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">Todos os status</SelectItem>
-              {Object.entries(VENUE_PRODUCT_STATUS_LABEL).map(([value, label]) => (
-                <SelectItem key={value} value={value}>{label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={stationId} onValueChange={(v) => { setStationId(v); setPage(1); }}>
-            <SelectTrigger className="w-48"><SelectValue placeholder="Estação" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">Todas as estações</SelectItem>
-              {(stations ?? []).map((s) => (
-                <SelectItem key={s.id} value={String(s.id)}>{s.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative min-w-[200px] flex-1">
+          <Search className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-black/40" size={16} />
+          <Input
+            className="pl-9"
+            placeholder="Buscar por nome…"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          />
         </div>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="shrink-0 gap-1.5">
+              <SlidersHorizontal size={14} />
+              Filtros
+              {activeFilterCount > 0 ? (
+                <span className="ml-0.5 grid h-4 w-4 place-items-center rounded-full bg-violet-600 text-[10px] font-semibold text-white">
+                  {activeFilterCount}
+                </span>
+              ) : null}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-64 space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-black/60">Status</Label>
+              <Select
+                value={status}
+                onValueChange={(v) => { setStatus(v as VenueProductStatus | "ALL"); setPage(1); }}
+              >
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Todos os status</SelectItem>
+                  {Object.entries(VENUE_PRODUCT_STATUS_LABEL).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-black/60">Estação</Label>
+              <Select value={stationId} onValueChange={(v) => { setStationId(v); setPage(1); }}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="Estação" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">Todas as estações</SelectItem>
+                  {(stations ?? []).map((s) => (
+                    <SelectItem key={s.id} value={String(s.id)}>{s.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {activeFilterCount > 0 ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full"
+                onClick={() => { setStatus("ALL"); setStationId("ALL"); setPage(1); }}
+              >
+                Limpar filtros
+              </Button>
+            ) : null}
+          </PopoverContent>
+        </Popover>
       </div>
 
       {isError ? (

@@ -3,6 +3,7 @@ export const venueKeys = {
   publicProfile: (orgId: number) => ["venue", orgId, "publicProfile"] as const,
   menus: (orgId: number) => ["venue", orgId, "menus"] as const,
   menu: (orgId: number, menuId: number) => ["venue", orgId, "menu", menuId] as const,
+  menuPreview: (orgId: number, menuId: number) => ["venue", orgId, "menuPreview", menuId] as const,
   categories: (orgId: number, menuId: number) => ["venue", orgId, "categories", menuId] as const,
   stations: (orgId: number) => ["venue", orgId, "stations"] as const,
   products: (orgId: number, query: Record<string, unknown>) =>
