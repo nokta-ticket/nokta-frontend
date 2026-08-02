@@ -165,33 +165,37 @@ function StatusAndLinks({
   onSelectMenu,
 }: {
   orgId: number;
-  orgSlug: string;
+  /** Organization.slug — sempre gerado na criação da org, mas o tipo permite null (ver schema); nesse caso mostramos um placeholder em vez de sumir com a seção inteira. */
+  orgSlug: string | null;
   menu: VenueMenu;
   menus: VenueMenu[];
   onSelectMenu: (menuId: number) => void;
 }) {
   const updateSlug = useUpdateOrganizationSlug(orgId);
-  const [slugValue, setSlugValue] = useState(orgSlug);
+  const [slugValue, setSlugValue] = useState(orgSlug ?? "");
   const [editingSlug, setEditingSlug] = useState(false);
   const [copiedSlug, setCopiedSlug] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const copyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => setSlugValue(orgSlug), [orgSlug]);
+  useEffect(() => setSlugValue(orgSlug ?? ""), [orgSlug]);
 
-  const publicUrl = buildMarketingUrl(`/cardapio/${orgSlug}`);
-  const canOpenPublic = menu.isMain && menu.status === "PUBLISHED";
+  const publicUrl = orgSlug ? buildMarketingUrl(`/cardapio/${orgSlug}`) : null;
+  // Link público real só existe pro cardápio PRINCIPAL (o público só tem
+  // espaço pra 1 cardápio por organização) — status Publicado/Rascunho já
+  // não bloqueia mais nada aqui (todo cardápio principal nasce publicado).
+  const canOpenPublic = Boolean(publicUrl) && menu.isMain && menu.status !== "ARCHIVED";
 
   const saveSlug = () => {
     setEditingSlug(false);
     const trimmed = slugValue.trim();
     if (!trimmed || trimmed === orgSlug) {
-      setSlugValue(orgSlug);
+      setSlugValue(orgSlug ?? "");
       return;
     }
     updateSlug.mutate(trimmed, {
       onError: (err) => {
-        setSlugValue(orgSlug);
+        setSlugValue(orgSlug ?? "");
         toast.error(getErrorMessage(err, "Não foi possível alterar o link. Tente outro."));
       },
       onSuccess: () => toast.success("Link público atualizado!"),
@@ -263,10 +267,11 @@ function StatusAndLinks({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") e.currentTarget.blur();
                   if (e.key === "Escape") {
-                    setSlugValue(orgSlug);
+                    setSlugValue(orgSlug ?? "");
                     setEditingSlug(false);
                   }
                 }}
+                placeholder="nome-do-seu-negocio"
                 className="h-11 min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none"
               />
             ) : (
@@ -274,7 +279,7 @@ function StatusAndLinks({
                 onClick={() => setEditingSlug(true)}
                 className="h-11 min-w-0 flex-1 truncate px-3 text-left text-sm text-foreground"
               >
-                {orgSlug}
+                {orgSlug ?? <span className="text-black/30">definir link…</span>}
               </button>
             )}
             <button onClick={() => setEditingSlug(true)} className="grid h-11 w-11 shrink-0 place-items-center text-black/40" aria-label="Editar slug">
@@ -282,8 +287,9 @@ function StatusAndLinks({
             </button>
           </div>
           <button
-            onClick={() => copy(orgSlug, "slug")}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] border border-black/10 bg-white text-black/50 hover:bg-black/[0.02]"
+            onClick={() => orgSlug && copy(orgSlug, "slug")}
+            disabled={!orgSlug}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] border border-black/10 bg-white text-black/50 hover:bg-black/[0.02] disabled:opacity-40"
             aria-label="Copiar slug"
           >
             {copiedSlug ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
@@ -295,16 +301,17 @@ function StatusAndLinks({
         <span className="mb-2 block text-xs font-medium text-black/50">Link público</span>
         <div className="flex items-stretch gap-2.5">
           <div className="flex h-11 flex-1 items-center truncate rounded-[10px] border border-black/10 bg-[#f7f7fa] px-3.5 text-[13.5px] text-black/60">
-            {publicUrl}
+            {publicUrl ?? "Defina o link acima para gerar a URL pública"}
           </div>
           <button
-            onClick={() => copy(publicUrl, "link")}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] border border-black/10 bg-white text-black/50 hover:bg-black/[0.02]"
+            onClick={() => publicUrl && copy(publicUrl, "link")}
+            disabled={!publicUrl}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] border border-black/10 bg-white text-black/50 hover:bg-black/[0.02] disabled:opacity-40"
             aria-label="Copiar link"
           >
             {copiedLink ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
           </button>
-          {canOpenPublic ? (
+          {canOpenPublic && publicUrl ? (
             <a
               href={publicUrl}
               target="_blank"
@@ -398,9 +405,7 @@ export function MenuHeader({
       <div className="grid grid-cols-1 gap-[34px] lg:grid-cols-[150px_1fr_1fr]">
         <LogoUploader orgId={orgId} orgName={orgName} />
         <NameAndDescription menu={menu} orgId={orgId} />
-        {orgSlug ? (
-          <StatusAndLinks orgId={orgId} orgSlug={orgSlug} menu={menu} menus={menus} onSelectMenu={onSelectMenu} />
-        ) : null}
+        <StatusAndLinks orgId={orgId} orgSlug={orgSlug} menu={menu} menus={menus} onSelectMenu={onSelectMenu} />
       </div>
 
       <BannerUploader orgId={orgId} />

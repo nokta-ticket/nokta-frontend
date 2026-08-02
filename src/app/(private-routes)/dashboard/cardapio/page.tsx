@@ -96,8 +96,11 @@ export default function VenueCardapioPage() {
 
   // O link/QR público sempre aponta pro cardápio PRINCIPAL (isMain), não
   // necessariamente o selecionado aqui — publicar um cardápio secundário
-  // não gera link próprio (o público só tem espaço pra 1 cardápio).
-  const canShare = Boolean(currentOrg?.slug) && selectedMenu?.isMain && selectedMenu?.status === "PUBLISHED";
+  // não gera link próprio (o público só tem espaço pra 1 cardápio). Todo
+  // cardápio principal já nasce PUBLISHED (ver VenueMenuEnsureDefaultService),
+  // então status não bloqueia mais o link — só cardápio arquivado (raro,
+  // ação explícita do usuário) não tem link ativo.
+  const canShare = Boolean(currentOrg?.slug) && selectedMenu?.isMain && selectedMenu?.status !== "ARCHIVED";
   const canOpenPublic = canShare;
   const canPublish = selectedMenu?.status === "DRAFT" && (selectedMenuItems?.length ?? 0) > 0;
   const publicUrl = currentOrg?.slug ? buildMarketingUrl(`/cardapio/${currentOrg.slug}`) : null;
@@ -188,10 +191,8 @@ export default function VenueCardapioPage() {
               ) : (
                 <div className="max-w-[260px] p-4 text-xs text-muted-foreground">
                   {!selectedMenu?.isMain
-                    ? "O link e o QR code de divulgação são sempre do cardápio principal — selecione-o para publicar e compartilhar."
-                    : canPublish
-                      ? 'Clique em "Publicar cardápio" para gerar o link e o QR code de divulgação.'
-                      : "Adicione produtos e publique o cardápio para gerar o link e o QR code de divulgação."}
+                    ? "O link e o QR code de divulgação são sempre do cardápio principal — selecione-o para compartilhar."
+                    : "Este cardápio está arquivado e não tem link público ativo."}
                 </div>
               )}
             </PopoverContent>
