@@ -105,10 +105,14 @@ function ProductActionsMenu({
 
 export function ProdutosTab({
   orgId,
+  menuId,
+  defaultCategoryId,
   createOpen,
   onCreateOpenChange,
 }: {
   orgId: number;
+  menuId: number | null;
+  defaultCategoryId: number | null;
   createOpen: boolean;
   onCreateOpenChange: (v: boolean) => void;
 }) {
@@ -324,6 +328,8 @@ export function ProdutosTab({
 
       <ProdutoCreateDialog
         orgId={orgId}
+        menuId={menuId}
+        defaultCategoryId={defaultCategoryId}
         open={createOpen}
         onOpenChange={onCreateOpenChange}
         onCreated={(productId) => openEdit(productId, "geral")}

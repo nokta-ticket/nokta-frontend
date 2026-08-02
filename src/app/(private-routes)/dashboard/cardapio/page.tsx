@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Plus, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +10,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrganizations } from "@/context/OrganizationContext";
 import { useRequireWorkspace } from "../_components/require-workspace-provider";
@@ -17,8 +24,11 @@ import { PageContainer } from "../_components/page/page-container";
 import { PageHeader } from "../_components/page/page-header";
 import { EmptyState } from "../_components/states/empty-state";
 import { BlockSkeleton } from "../_components/states/loading-state";
-import { useVenueMenu, useVenueMenus } from "./_hooks/use-venue-menus";
+import { getErrorMessage } from "@/lib/axios";
+import { toast } from "@/lib/toast";
+import { useEnsureDefaultMenu, useVenueMenu, useVenueMenuMutations, useVenueMenus } from "./_hooks/use-venue-menus";
 import { useVenueMenuItems } from "./_hooks/use-venue-menu-items";
+import { useVenueCategories } from "./_hooks/use-venue-categories";
 import { ProdutosTab } from "./_components/produtos-tab";
 import { CategoriasTab } from "./_components/categorias-tab";
 import { AdicionaisTab } from "./_components/adicionais-tab";
@@ -27,6 +37,7 @@ import { CardapiosTab } from "./_components/cardapios-tab";
 import { MenuPreviewPhone } from "./_components/menu-preview-phone";
 import { MenuSharePanel } from "./_components/menu-share-panel";
 import { VenuePublicProfileForm } from "./_components/venue-public-profile-form";
+import { ProdutoBulkCreateDialog } from "./_components/produto-bulk-create-dialog";
 
 type TabKey = "produtos" | "categorias" | "adicionais" | "estacoes" | "cardapios";
 
@@ -35,11 +46,14 @@ export default function VenueCardapioPage() {
   const { guard } = useRequireWorkspace();
   const [tab, setTab] = useState<TabKey>("produtos");
   const [createProductOpen, setCreateProductOpen] = useState(false);
+  const [bulkCreateOpen, setBulkCreateOpen] = useState(false);
   const [selectedMenuId, setSelectedMenuId] = useState<number | null>(null);
 
   const orgId = currentOrg?.id ?? null;
 
   const { data: menus } = useVenueMenus(orgId);
+  const ensureDefault = useEnsureDefaultMenu(orgId ?? -1);
+  const { publish } = useVenueMenuMutations(orgId ?? -1);
 
   // Ao trocar de organização, o cache de cada query já é isolado por orgId
   // (ver query-keys.ts) — mas o cardápio selecionado na tela precisa ser
@@ -48,20 +62,57 @@ export default function VenueCardapioPage() {
     setSelectedMenuId(null);
   }, [orgId]);
 
+  // Roda em TODO acesso à tela (não só quando menus vem vazio) — uma
+  // organização já existente pode ter cardápio principal mas não ter a
+  // categoria "Geral"/estações padrão ainda (idempotente no backend, ver
+  // VenueMenuEnsureDefaultService).
+  useEffect(() => {
+    if (!orgId) return;
+    ensureDefault.mutate(undefined, {
+      onSuccess: (result) => {
+        setSelectedMenuId((current) => current ?? result.menu.id);
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId]);
+
   useEffect(() => {
     if (selectedMenuId !== null || !menus || menus.length === 0) return;
     const main = menus.find((m) => m.isMain) ?? menus[0];
     setSelectedMenuId(main.id);
   }, [menus, selectedMenuId]);
 
-  // Preview sempre reflete o cardápio PRINCIPAL (o mesmo que fica público),
-  // não necessariamente o cardápio selecionado nas abas de gerenciamento —
-  // os dois podem divergir quando a organização tem mais de um cardápio.
-  const mainMenu = menus?.find((m) => m.isMain) ?? null;
-  const { data: mainMenuDetail, isLoading: loadingMainMenu } = useVenueMenu(orgId, mainMenu?.id ?? null);
-  const { data: mainMenuItems, isLoading: loadingMainMenuItems } = useVenueMenuItems(orgId, mainMenu?.id ?? null);
+  // Preview e "Publicar" atuam sobre o cardápio SELECIONADO — nunca
+  // assumem que é sempre o principal (a organização pode ter mais de um
+  // cardápio e o usuário estar editando um que não é o principal).
+  const selectedMenu = menus?.find((m) => m.id === selectedMenuId) ?? null;
+  const { data: selectedMenuDetail, isLoading: loadingSelectedMenu } = useVenueMenu(orgId, selectedMenuId);
+  const { data: selectedMenuItems, isLoading: loadingSelectedMenuItems } = useVenueMenuItems(orgId, selectedMenuId);
+  const { data: categories } = useVenueCategories(orgId, selectedMenuId);
 
-  const canShare = Boolean(currentOrg?.slug) && mainMenu?.status === "PUBLISHED";
+  const defaultCategoryId = useMemo(() => {
+    if (ensureDefault.data?.menu.id === selectedMenuId) return ensureDefault.data.defaultCategoryId;
+    return categories?.find((c) => c.nome.trim().toLowerCase() === "geral")?.id ?? categories?.[0]?.id ?? null;
+  }, [ensureDefault.data, selectedMenuId, categories]);
+
+  // O link/QR público sempre aponta pro cardápio PRINCIPAL (isMain), não
+  // necessariamente o selecionado aqui — publicar um cardápio secundário
+  // não gera link próprio (o público só tem espaço pra 1 cardápio).
+  const canShare = Boolean(currentOrg?.slug) && selectedMenu?.isMain && selectedMenu?.status === "PUBLISHED";
+  const canPublish = selectedMenu?.status === "DRAFT" && (selectedMenuItems?.length ?? 0) > 0;
+
+  const handlePublish = () => {
+    if (!selectedMenuId) return;
+    publish.mutate(selectedMenuId, {
+      onSuccess: () =>
+        toast.success(
+          selectedMenu?.isMain
+            ? "Cardápio publicado! Já está disponível no link público."
+            : "Cardápio publicado.",
+        ),
+      onError: (err) => toast.error(getErrorMessage(err, "Não foi possível publicar o cardápio.")),
+    });
+  };
 
   if (loadingOrgs || loadingModules) {
     return (
@@ -119,17 +170,46 @@ export default function VenueCardapioPage() {
                 </SelectContent>
               </Select>
             ) : null}
+
+            {selectedMenu?.status === "PUBLISHED" ? (
+              <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">Publicado</Badge>
+            ) : null}
+
             <Button variant="outline" onClick={() => setTab("cardapios")}>
               <Settings2 size={16} /> Gerenciar cardápios
             </Button>
-            <Button
-              onClick={() => {
-                setTab("produtos");
-                setCreateProductOpen(true);
-              }}
-            >
-              <Plus size={16} /> Novo produto
-            </Button>
+
+            {canPublish ? (
+              <Button variant="outline" disabled={publish.isPending} onClick={handlePublish}>
+                {publish.isPending ? "Publicando…" : "Publicar cardápio"}
+              </Button>
+            ) : null}
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button>
+                  <Plus size={16} /> Adicionar produtos
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => {
+                    setTab("produtos");
+                    setCreateProductOpen(true);
+                  }}
+                >
+                  Adicionar um produto
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setTab("produtos");
+                    setBulkCreateOpen(true);
+                  }}
+                >
+                  Adicionar vários produtos
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         }
       />
@@ -147,7 +227,13 @@ export default function VenueCardapioPage() {
           </div>
 
           <TabsContent value="produtos">
-            <ProdutosTab orgId={orgId} createOpen={createProductOpen} onCreateOpenChange={setCreateProductOpen} />
+            <ProdutosTab
+              orgId={orgId}
+              menuId={selectedMenuId}
+              defaultCategoryId={defaultCategoryId}
+              createOpen={createProductOpen}
+              onCreateOpenChange={setCreateProductOpen}
+            />
           </TabsContent>
           <TabsContent value="categorias">
             <CategoriasTab
@@ -171,9 +257,9 @@ export default function VenueCardapioPage() {
         <div className="space-y-5">
           <MenuPreviewPhone
             organizationName={currentOrg?.nome ?? ""}
-            menu={mainMenuDetail}
-            items={mainMenuItems}
-            isLoading={loadingMainMenu || loadingMainMenuItems}
+            menu={selectedMenuDetail}
+            items={selectedMenuItems}
+            isLoading={loadingSelectedMenu || loadingSelectedMenuItems}
           />
           {canShare ? (
             <>
@@ -183,12 +269,25 @@ export default function VenueCardapioPage() {
           ) : (
             <div className="rounded-[22px] border border-dashed border-black/10 bg-black/[0.015] p-5 text-center">
               <p className="text-xs text-muted-foreground">
-                Publique o cardápio principal em &quot;Cardápios&quot; para gerar o link e o QR code de divulgação.
+                {!selectedMenu?.isMain
+                  ? "O link e o QR code de divulgação são sempre do cardápio principal — selecione-o para publicar e compartilhar."
+                  : canPublish
+                    ? 'Clique em "Publicar cardápio" para gerar o link e o QR code de divulgação.'
+                    : "Adicione produtos e publique o cardápio para gerar o link e o QR code de divulgação."}
               </p>
             </div>
           )}
         </div>
       </div>
+
+      <ProdutoBulkCreateDialog
+        orgId={orgId}
+        menuId={selectedMenuId}
+        defaultCategoryId={defaultCategoryId}
+        open={bulkCreateOpen}
+        onOpenChange={setBulkCreateOpen}
+        onCreated={() => {}}
+      />
     </PageContainer>
   );
 }

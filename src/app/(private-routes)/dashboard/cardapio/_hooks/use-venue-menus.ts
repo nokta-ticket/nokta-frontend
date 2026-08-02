@@ -24,6 +24,23 @@ export function useVenueMenu(orgId: number | null, menuId: number | null) {
   });
 }
 
+/**
+ * Chamado uma vez por acesso à tela de Cardápio (não só quando a
+ * organização não tem nenhum cardápio) — idempotente no backend, garante
+ * cardápio principal + categoria "Geral" + estações padrão, criando só o
+ * que faltar. Invalida menus/estações pra refletir o que foi criado.
+ */
+export function useEnsureDefaultMenu(orgId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => venueMenuApi.ensureDefaultMenu(orgId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: venueKeys.menus(orgId) });
+      qc.invalidateQueries({ queryKey: venueKeys.stations(orgId) });
+    },
+  });
+}
+
 export function useVenueMenuMutations(orgId: number) {
   const qc = useQueryClient();
   const invalidateMenus = () => qc.invalidateQueries({ queryKey: venueKeys.menus(orgId) });

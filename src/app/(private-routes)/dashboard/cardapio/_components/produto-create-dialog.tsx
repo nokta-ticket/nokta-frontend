@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogContent,
@@ -24,45 +26,85 @@ import { toast } from "@/lib/toast";
 import { VENUE_STOCK_CONTROL_LABEL, type VenueStockControl } from "@/services/venue-menu";
 import { useVenueProductMutations } from "../_hooks/use-venue-products";
 import { useVenueStations } from "../_hooks/use-venue-stations";
+import { useVenueCategories, useVenueCategoryMutations } from "../_hooks/use-venue-categories";
 import { ImageField } from "./image-field";
 import { MoneyField } from "./money-field";
+import { CategoryCombobox } from "./category-combobox";
 
 const NO_STATION = "NONE";
 
+/**
+ * Produto nasce sempre vinculado ao cardápio selecionado na tela — nunca
+ * fica órfão esperando um passo manual de "adicionar a um cardápio"
+ * depois (ver ProdutoCardapiosSection, que continua existindo só para
+ * vincular a OUTROS cardápios além deste). categoryId vai junto de
+ * menuId no mesmo POST /products (ver CreateVenueProductPayload).
+ */
 export function ProdutoCreateDialog({
   orgId,
+  menuId,
+  defaultCategoryId,
   open,
   onOpenChange,
   onCreated,
 }: {
   orgId: number;
+  menuId: number | null;
+  defaultCategoryId: number | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onCreated: (productId: number) => void;
 }) {
   const { data: stations } = useVenueStations(orgId);
+  const { data: categories } = useVenueCategories(orgId, menuId);
   const { create } = useVenueProductMutations(orgId);
+  const { create: createCategory } = useVenueCategoryMutations(orgId, menuId ?? -1);
 
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [prepTime, setPrepTime] = useState("");
+  const [categoryId, setCategoryId] = useState<number | null>(defaultCategoryId);
   const [stationId, setStationId] = useState(NO_STATION);
+  const [priceCents, setPriceCents] = useState(0);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const [variantName, setVariantName] = useState("");
   const [sku, setSku] = useState("");
-  const [priceCents, setPriceCents] = useState(0);
   const [stockControl, setStockControl] = useState<VenueStockControl>("NONE");
+
+  // defaultCategoryId chega assíncrono (ensure-default resolve depois do
+  // primeiro render) — sem isso, abrir o dialog rápido demais deixaria
+  // categoryId travado em null mesmo depois de "Geral" existir.
+  useEffect(() => {
+    if (categoryId === null && defaultCategoryId !== null) {
+      setCategoryId(defaultCategoryId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultCategoryId]);
 
   const reset = () => {
     setNome("");
     setDescricao("");
     setImageUrl(null);
-    setPrepTime("");
+    setCategoryId(defaultCategoryId);
     setStationId(NO_STATION);
+    setPriceCents(0);
+    setAdvancedOpen(false);
     setVariantName("");
     setSku("");
-    setPriceCents(0);
     setStockControl("NONE");
+  };
+
+  const handleCreateCategory = (nomeCategoria: string) => {
+    createCategory.mutate(
+      { nome: nomeCategoria },
+      {
+        onSuccess: (category) => {
+          setCategoryId(category.id);
+          toast.success(`Categoria "${category.nome}" criada.`);
+        },
+        onError: (err) => toast.error(getErrorMessage(err, "Não foi possível criar a categoria.")),
+      },
+    );
   };
 
   const handleSubmit = () => {
@@ -70,17 +112,22 @@ export function ProdutoCreateDialog({
       toast.error("Informe o nome do produto.");
       return;
     }
+    if (!menuId || !categoryId) {
+      toast.error("Selecione uma categoria.");
+      return;
+    }
     create.mutate(
       {
         nome: nome.trim(),
         descricao: descricao.trim() || undefined,
         imageUrl: imageUrl ?? undefined,
-        prepTimeMinutes: prepTime ? Number(prepTime) : undefined,
         preparationStationId: stationId === NO_STATION ? undefined : Number(stationId),
         variantName: variantName.trim() || undefined,
         sku: sku.trim() || undefined,
         priceCents,
         stockControl,
+        menuId,
+        categoryId,
       },
       {
         onSuccess: (product) => {
@@ -130,18 +177,17 @@ export function ProdutoCreateDialog({
             <ImageField value={imageUrl} onChange={setImageUrl} />
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="produto-prep">Tempo de preparo (min)</Label>
-                <Input
-                  id="produto-prep"
-                  type="number"
-                  min={0}
-                  value={prepTime}
-                  onChange={(e) => setPrepTime(e.target.value)}
-                  placeholder="Opcional"
+                <Label>Categoria</Label>
+                <CategoryCombobox
+                  categories={categories ?? []}
+                  value={categoryId}
+                  onSelectExisting={setCategoryId}
+                  onCreateNew={handleCreateCategory}
+                  disabled={createCategory.isPending}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Estação de preparo</Label>
+                <Label>Estação (opcional)</Label>
                 <Select value={stationId} onValueChange={setStationId}>
                   <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -153,48 +199,55 @@ export function ProdutoCreateDialog({
                 </Select>
               </div>
             </div>
+            <MoneyField label="Preço" cents={priceCents} onChange={setPriceCents} />
           </div>
 
-          <div className="space-y-4 rounded-xl border border-black/10 p-3">
-            <p className="text-sm font-medium text-gray-900">Primeira variação</p>
-            <p className="text-xs text-black/50">
-              Se não informar um nome, ela é criada como &quot;Padrão&quot;.
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="variante-nome">Nome (opcional)</Label>
-                <Input
-                  id="variante-nome"
-                  value={variantName}
-                  onChange={(e) => setVariantName(e.target.value)}
-                  placeholder="Padrão"
-                />
+          <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+            <CollapsibleTrigger asChild>
+              <button className="flex w-full items-center gap-1.5 text-sm font-medium text-black/60 hover:text-black/80">
+                <ChevronDown size={16} className={advancedOpen ? "rotate-180 transition-transform" : "transition-transform"} />
+                Configurações avançadas
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-3 space-y-4 rounded-xl border border-black/10 p-3">
+                <p className="text-xs text-black/50">
+                  Nome da variação e SKU — se não informar, a variação é criada como &quot;Padrão&quot;, sem SKU.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="variante-nome">Nome da variação</Label>
+                    <Input
+                      id="variante-nome"
+                      value={variantName}
+                      onChange={(e) => setVariantName(e.target.value)}
+                      placeholder="Padrão"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="variante-sku">SKU</Label>
+                    <Input
+                      id="variante-sku"
+                      value={sku}
+                      onChange={(e) => setSku(e.target.value)}
+                      placeholder="Normalizado ao salvar"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Controle de estoque</Label>
+                  <Select value={stockControl} onValueChange={(v) => setStockControl(v as VenueStockControl)}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(VENUE_STOCK_CONTROL_LABEL).map(([value, label]) => (
+                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="variante-sku">SKU (opcional)</Label>
-                <Input
-                  id="variante-sku"
-                  value={sku}
-                  onChange={(e) => setSku(e.target.value)}
-                  placeholder="Normalizado ao salvar"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <MoneyField label="Preço" cents={priceCents} onChange={setPriceCents} />
-              <div className="space-y-2">
-                <Label>Controle de estoque</Label>
-                <Select value={stockControl} onValueChange={(v) => setStockControl(v as VenueStockControl)}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(VENUE_STOCK_CONTROL_LABEL).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>{label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
         <DialogFooter>

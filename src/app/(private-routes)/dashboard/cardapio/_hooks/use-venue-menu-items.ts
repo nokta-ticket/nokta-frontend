@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   venueMenuApi,
+  type CreateVenueMenuItemBulkRowPayload,
   type CreateVenueMenuItemPayload,
   type ReorderPayload,
   type UpdateVenueMenuItemPayload,
@@ -27,6 +28,12 @@ export function useVenueMenuItemMutations(orgId: number, menuId: number) {
 
   const create = useMutation({
     mutationFn: (payload: CreateVenueMenuItemPayload) => venueMenuApi.createMenuItem(orgId, menuId, payload),
+    onSuccess: invalidate,
+  });
+
+  const createBulk = useMutation({
+    mutationFn: (items: CreateVenueMenuItemBulkRowPayload[]) =>
+      venueMenuApi.createMenuItemsBulk(orgId, menuId, items),
     onSuccess: invalidate,
   });
 
@@ -70,5 +77,5 @@ export function useVenueMenuItemMutations(orgId: number, menuId: number) {
     onSuccess: invalidate,
   });
 
-  return { create, update, remove, reorder, setVariantPrice, removeVariantPrice };
+  return { create, createBulk, update, remove, reorder, setVariantPrice, removeVariantPrice };
 }

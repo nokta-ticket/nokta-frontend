@@ -215,6 +215,37 @@ export interface CreateVenueProductPayload {
   sku?: string;
   priceCents: number;
   stockControl?: VenueStockControl;
+  /**
+   * Enviados juntos (ou nenhum dos dois) — o backend valida "ambos ou
+   * nenhum". Quando presentes, o produto já nasce vinculado ao cardápio
+   * nessa categoria (VenueMenuItem criado na mesma transação).
+   */
+  menuId?: number;
+  categoryId?: number;
+}
+
+export interface EnsureDefaultMenuResponse {
+  menu: VenueMenu;
+  defaultCategoryId: number;
+}
+
+export interface CreateVenueMenuItemBulkRowPayload {
+  nome?: string;
+  priceCents?: number;
+  preparationStationId?: number;
+  categoryId?: number;
+  categoryNome?: string;
+  status?: VenueProductStatus;
+}
+
+export interface VenueMenuItemBulkError {
+  index: number;
+  message: string;
+}
+
+export interface CreateVenueMenuItemBulkResponse {
+  created: { product: VenueProduct; category: VenueMenuCategory; menuItem: VenueMenuItem }[];
+  errors: VenueMenuItemBulkError[];
 }
 
 export interface UpdateVenueProductPayload {
@@ -318,6 +349,13 @@ export const venueMenuApi = {
     api.patch<VenuePublicProfile>(`${base(organizationId)}/menu-publico/perfil`, payload).then((r) => r.data),
 
   // ---- Cardápios ----
+  /**
+   * Idempotente — garante cardápio principal (rascunho) + categoria "Geral"
+   * + estações padrão (Bar/Cozinha), criando só o que faltar. Chamado em
+   * todo acesso à tela de Cardápio, não só na primeira vez.
+   */
+  ensureDefaultMenu: (organizationId: number) =>
+    api.post<EnsureDefaultMenuResponse>(`${base(organizationId)}/menus/ensure-default`).then((r) => r.data),
   listMenus: (organizationId: number) =>
     api.get<VenueMenu[]>(`${base(organizationId)}/menus`).then((r) => r.data),
   getMenu: (organizationId: number, menuId: number) =>
@@ -446,6 +484,14 @@ export const venueMenuApi = {
   createMenuItem: (organizationId: number, menuId: number, payload: CreateVenueMenuItemPayload) =>
     api
       .post<VenueMenuItem>(`${base(organizationId)}/menus/${menuId}/items`, payload)
+      .then((r) => r.data),
+  createMenuItemsBulk: (
+    organizationId: number,
+    menuId: number,
+    items: CreateVenueMenuItemBulkRowPayload[],
+  ) =>
+    api
+      .post<CreateVenueMenuItemBulkResponse>(`${base(organizationId)}/menus/${menuId}/items/bulk`, { items })
       .then((r) => r.data),
   updateMenuItem: (organizationId: number, menuItemId: number, payload: UpdateVenueMenuItemPayload) =>
     api

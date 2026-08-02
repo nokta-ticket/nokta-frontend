@@ -33,10 +33,21 @@ export function useVenueProductMutations(orgId: number) {
     qc.invalidateQueries({ queryKey: ["venue", orgId, "products"], exact: false });
   const invalidateDetail = (productId: number) =>
     qc.invalidateQueries({ queryKey: venueKeys.product(orgId, productId) });
+  // Quando menuId+categoryId são enviados, o produto já nasce vinculado
+  // (VenueMenuItem criado na mesma transação) — sem invalidar menuItems
+  // aqui, o preview (useVenueMenuItems) só atualizaria depois de um
+  // refetch manual/reload, nunca "imediatamente" como o requisito pede.
+  const invalidateMenuItems = (menuId?: number) => {
+    if (menuId === undefined) return;
+    qc.invalidateQueries({ queryKey: ["venue", orgId, "menuItems", menuId] });
+  };
 
   const create = useMutation({
     mutationFn: (payload: CreateVenueProductPayload) => venueMenuApi.createProduct(orgId, payload),
-    onSuccess: invalidateList,
+    onSuccess: (_data, vars) => {
+      invalidateList();
+      invalidateMenuItems(vars.menuId);
+    },
   });
 
   const update = useMutation({
