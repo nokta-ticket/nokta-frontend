@@ -58,7 +58,7 @@ const nextConfig: NextConfig = {
   images: {
     /** 2 opções: --------------------------------------------- */
     /* a) simples (array domains) ----------------------------- */
-    // domains: ['duuodcmtiswepnvwifxj.supabase.co'],
+    // domains: ['fhumkapdowazikhbxlfm.supabase.co'],
 
     /* b) mais restrito (remotePatterns) ---------------------- */
     remotePatterns: [
@@ -81,7 +81,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "duuodcmtiswepnvwifxj.supabase.co",
+        hostname: "fhumkapdowazikhbxlfm.supabase.co",
         pathname: "/storage/v1/object/public/**", // <= caminho do bucket
       },
     ],
