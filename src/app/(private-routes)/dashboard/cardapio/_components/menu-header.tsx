@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, Copy, ExternalLink, ListChecks, Pencil, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import { Check, ChevronDown, Copy, ExternalLink, ImagePlus, Pencil } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,197 +12,230 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { buildMarketingUrl } from "@/lib/surfaces";
+import { resolveMediaUrl } from "@/lib/media";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import type { VenueMenu } from "@/services/venue-menu";
 import { useVenueMenuMutations } from "../_hooks/use-venue-menus";
 import { useUpdateOrganizationSlug } from "../_hooks/use-organization-slug";
-import { MenuStatusBadge } from "./venue-status-badge";
+import { useUpdateVenuePublicProfile, useVenuePublicProfile } from "../_hooks/use-venue-public-profile";
+import { useImageUpload } from "../_hooks/use-image-upload";
 
 const MARKETING_HOST = buildMarketingUrl("").replace(/^https?:\/\//, "");
 
-function EditableName({ menu, orgId }: { menu: VenueMenu; orgId: number }) {
+function initials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase())
+    .join("");
+}
+
+function LogoUploader({ orgId, orgName }: { orgId: number; orgName: string }) {
+  const { data: profile } = useVenuePublicProfile(orgId);
+  const update = useUpdateVenuePublicProfile(orgId);
+  const { upload, uploading } = useImageUpload();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return;
+    const url = await upload(file);
+    if (!url) return;
+    update.mutate(
+      { logoUrl: url },
+      { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar a logo.")) },
+    );
+  };
+
+  const logoUrl = profile?.logoUrl ?? null;
+
+  return (
+    <div className="flex flex-col items-start">
+      <span className="mb-2 block text-xs font-medium text-black/50">Logo</span>
+      <div className="relative flex h-[118px] w-[118px] shrink-0 items-center justify-center rounded-full bg-black shadow-[0_8px_20px_rgba(0,0,0,.18)]">
+        {logoUrl ? (
+          <Image src={resolveMediaUrl(logoUrl) ?? logoUrl} alt={orgName} fill sizes="118px" className="rounded-full object-cover" unoptimized />
+        ) : (
+          <>
+            <span className="pointer-events-none absolute h-[74px] w-[74px] rounded-full border border-white/35" />
+            <span className="relative font-poppins text-[19px] font-medium tracking-[0.12em] text-white">
+              {initials(orgName)}
+            </span>
+          </>
+        )}
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          className="hidden"
+          onChange={(e) => handleFile(e.target.files?.[0])}
+        />
+        <button
+          type="button"
+          disabled={uploading}
+          onClick={() => inputRef.current?.click()}
+          aria-label="Trocar logo"
+          className="absolute bottom-0.5 right-0.5 grid h-[30px] w-[30px] place-items-center rounded-full border border-black/10 bg-white shadow-sm disabled:opacity-60"
+        >
+          <Pencil size={14} className="text-black/60" />
+        </button>
+      </div>
+      <p className="mt-3.5 text-[11.5px] leading-relaxed text-black/40">
+        Formatos: JPG, PNG ou WEBP
+        <br />
+        Tamanho recomendado: 512x512px
+      </p>
+    </div>
+  );
+}
+
+function NameAndDescription({ menu, orgId }: { menu: VenueMenu; orgId: number }) {
   const { update } = useVenueMenuMutations(orgId);
-  const [value, setValue] = useState(menu.nome);
-  const [editing, setEditing] = useState(false);
+  const [nome, setNome] = useState(menu.nome);
+  const [descricao, setDescricao] = useState(menu.descricao ?? "");
 
   useEffect(() => {
-    setValue(menu.nome);
-  }, [menu.nome]);
+    setNome(menu.nome);
+    setDescricao(menu.descricao ?? "");
+  }, [menu.id, menu.nome, menu.descricao]);
 
-  const save = () => {
-    setEditing(false);
-    const trimmed = value.trim();
+  const saveNome = () => {
+    const trimmed = nome.trim();
     if (!trimmed || trimmed === menu.nome) {
-      setValue(menu.nome);
+      setNome(menu.nome);
       return;
     }
     update.mutate(
       { menuId: menu.id, payload: { nome: trimmed } },
       {
         onError: (err) => {
-          setValue(menu.nome);
+          setNome(menu.nome);
           toast.error(getErrorMessage(err, "Não foi possível renomear o cardápio."));
         },
       },
     );
   };
 
-  if (editing) {
-    return (
-      <Input
-        autoFocus
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onBlur={save}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") e.currentTarget.blur();
-          if (e.key === "Escape") {
-            setValue(menu.nome);
-            setEditing(false);
-          }
-        }}
-        className="h-9 max-w-xs text-xl font-semibold"
-      />
+  const saveDescricao = () => {
+    const trimmed = descricao.trim();
+    if (trimmed === (menu.descricao ?? "")) return;
+    update.mutate(
+      { menuId: menu.id, payload: { descricao: trimmed } },
+      {
+        onError: (err) => {
+          setDescricao(menu.descricao ?? "");
+          toast.error(getErrorMessage(err, "Não foi possível salvar a descrição."));
+        },
+      },
     );
-  }
+  };
 
   return (
-    <button
-      onClick={() => setEditing(true)}
-      className="group flex min-w-0 items-center gap-1.5 text-left"
-      title="Renomear cardápio"
-    >
-      <h1 className="truncate text-xl font-semibold text-foreground">{menu.nome}</h1>
-      <Pencil size={14} className="shrink-0 text-black/30 opacity-0 transition-opacity group-hover:opacity-100" />
-    </button>
+    <div>
+      <div className="mb-4">
+        <span className="mb-2 block text-xs font-medium text-black/50">Nome do cardápio</span>
+        <Input
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          onBlur={saveNome}
+          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+          className="h-11 rounded-[10px]"
+        />
+      </div>
+      <div>
+        <span className="mb-2 block text-xs font-medium text-black/50">Descrição (opcional)</span>
+        <Textarea
+          value={descricao}
+          onChange={(e) => setDescricao(e.target.value)}
+          onBlur={saveDescricao}
+          rows={4}
+          className="resize-none rounded-[10px]"
+        />
+      </div>
+    </div>
   );
 }
 
-function SlugField({ orgId, orgSlug }: { orgId: number; orgSlug: string }) {
+function StatusAndLinks({
+  orgId,
+  orgSlug,
+  menu,
+  menus,
+  onSelectMenu,
+}: {
+  orgId: number;
+  orgSlug: string;
+  menu: VenueMenu;
+  menus: VenueMenu[];
+  onSelectMenu: (menuId: number) => void;
+}) {
   const updateSlug = useUpdateOrganizationSlug(orgId);
-  const [value, setValue] = useState(orgSlug);
-  const [editing, setEditing] = useState(false);
+  const [slugValue, setSlugValue] = useState(orgSlug);
+  const [editingSlug, setEditingSlug] = useState(false);
+  const [copiedSlug, setCopiedSlug] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const copyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    setValue(orgSlug);
-  }, [orgSlug]);
+  useEffect(() => setSlugValue(orgSlug), [orgSlug]);
 
-  const save = () => {
-    setEditing(false);
-    const trimmed = value.trim();
+  const publicUrl = buildMarketingUrl(`/cardapio/${orgSlug}`);
+  const canOpenPublic = menu.isMain && menu.status === "PUBLISHED";
+
+  const saveSlug = () => {
+    setEditingSlug(false);
+    const trimmed = slugValue.trim();
     if (!trimmed || trimmed === orgSlug) {
-      setValue(orgSlug);
+      setSlugValue(orgSlug);
       return;
     }
     updateSlug.mutate(trimmed, {
       onError: (err) => {
-        setValue(orgSlug);
+        setSlugValue(orgSlug);
         toast.error(getErrorMessage(err, "Não foi possível alterar o link. Tente outro."));
       },
       onSuccess: () => toast.success("Link público atualizado!"),
     });
   };
 
-  return (
-    <div className="flex min-w-0 items-center gap-1 rounded-lg border border-black/10 bg-black/[0.015] pl-2.5 text-xs text-black/60">
-      <span className="shrink-0 py-1.5">{MARKETING_HOST}/cardapio/</span>
-      {editing ? (
-        <Input
-          autoFocus
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onBlur={save}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") e.currentTarget.blur();
-            if (e.key === "Escape") {
-              setValue(orgSlug);
-              setEditing(false);
-            }
-          }}
-          className="h-6 min-w-0 flex-1 border-0 bg-transparent p-0 pr-1 text-xs shadow-none focus-visible:ring-0"
-        />
-      ) : (
-        <button
-          onClick={() => setEditing(true)}
-          className="min-w-0 flex-1 truncate py-1.5 pr-2.5 text-left font-medium text-foreground"
-          title="Editar link público"
-        >
-          {orgSlug}
-        </button>
-      )}
-    </div>
-  );
-}
-
-export function MenuHeader({
-  orgId,
-  orgSlug,
-  menu,
-  menus,
-  onSelectMenu,
-  onManageMenus,
-  onManageStations,
-  onCreateProduct,
-  onBulkCreateProducts,
-}: {
-  orgId: number;
-  orgSlug: string | null;
-  menu: VenueMenu | null;
-  menus: VenueMenu[];
-  onSelectMenu: (menuId: number) => void;
-  onManageMenus: () => void;
-  onManageStations: () => void;
-  onCreateProduct: () => void;
-  onBulkCreateProducts: () => void;
-}) {
-  const { publish } = useVenueMenuMutations(orgId);
-  const [copied, setCopied] = useState(false);
-  const copyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const canShare = Boolean(orgSlug) && menu?.isMain && menu?.status === "PUBLISHED";
-  const publicUrl = orgSlug ? buildMarketingUrl(`/cardapio/${orgSlug}`) : null;
-
-  const handleCopy = async () => {
-    if (!publicUrl) return;
+  const copy = async (value: string, kind: "slug" | "link") => {
     try {
-      await navigator.clipboard.writeText(publicUrl);
-      setCopied(true);
-      toast.success("Link copiado!");
+      await navigator.clipboard.writeText(value);
+      toast.success("Copiado!");
       if (copyTimeout.current) clearTimeout(copyTimeout.current);
-      copyTimeout.current = setTimeout(() => setCopied(false), 2000);
+      if (kind === "slug") setCopiedSlug(true);
+      else setCopiedLink(true);
+      copyTimeout.current = setTimeout(() => {
+        setCopiedSlug(false);
+        setCopiedLink(false);
+      }, 1800);
     } catch {
-      toast.error("Não foi possível copiar o link.");
+      toast.error("Não foi possível copiar.");
     }
   };
 
-  const handlePublish = () => {
-    if (!menu) return;
-    publish.mutate(menu.id, {
-      onSuccess: () =>
-        toast.success(menu.isMain ? "Cardápio publicado! Já está disponível no link público." : "Cardápio publicado."),
-      onError: (err) => toast.error(getErrorMessage(err, "Não foi possível publicar o cardápio.")),
-    });
-  };
-
-  if (!menu) return null;
-
-  const canPublish = menu.status === "DRAFT";
-
   return (
-    <div className="space-y-3 rounded-2xl border border-black/[0.06] bg-white p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
-          <EditableName menu={menu} orgId={orgId} />
-          <MenuStatusBadge status={menu.status} />
+    <div>
+      <div className="mb-4">
+        <span className="mb-2 block text-xs font-medium text-black/50">Status</span>
+        <div className="flex h-11 items-center rounded-[10px] border border-black/10 bg-[#fdfdfe] px-3.5">
+          {menu.status === "PUBLISHED" ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[13px] font-semibold text-emerald-700">
+              Publicado
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-black/5 px-2.5 py-1 text-[13px] font-semibold text-black/60">
+              {menu.status === "DRAFT" ? "Rascunho" : "Arquivado"}
+            </span>
+          )}
           {menus.length > 1 ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Trocar cardápio">
+                <button className="ml-auto text-black/30" aria-label="Trocar cardápio">
                   <ChevronDown size={16} />
-                </Button>
+                </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
+              <DropdownMenuContent align="end">
                 {menus.map((m) => (
                   <DropdownMenuItem key={m.id} onClick={() => onSelectMenu(m.id)}>
                     {m.nome} {m.isMain ? "· Principal" : ""}
@@ -211,58 +245,165 @@ export function MenuHeader({
             </DropdownMenu>
           ) : null}
         </div>
+      </div>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" onClick={onManageStations}>
-            Estações
-          </Button>
-          <Button variant="outline" size="sm" onClick={onManageMenus}>
-            Gerenciar cardápios
-          </Button>
-          {canPublish ? (
-            <Button variant="outline" size="sm" disabled={publish.isPending} onClick={handlePublish}>
-              {publish.isPending ? "Publicando…" : "Publicar cardápio"}
-            </Button>
-          ) : null}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm">
-                <Plus size={16} /> Adicionar produto
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onCreateProduct}>Adicionar um produto</DropdownMenuItem>
-              <DropdownMenuItem onClick={onBulkCreateProducts}>
-                <ListChecks size={14} /> Adicionar vários produtos
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+      <div className="mb-4">
+        <span className="mb-2 block text-xs font-medium text-black/50">Slug (link público)</span>
+        <div className="flex items-stretch gap-2.5">
+          <div className="flex flex-1 items-center overflow-hidden rounded-[10px] border border-black/10 bg-[#fdfdfe]">
+            <span className="h-11 shrink-0 whitespace-nowrap border-r border-black/10 bg-black/[0.035] px-3 text-[13px] leading-[44px] text-black/40">
+              {MARKETING_HOST}/cardapio/
+            </span>
+            {editingSlug ? (
+              <input
+                autoFocus
+                value={slugValue}
+                onChange={(e) => setSlugValue(e.target.value)}
+                onBlur={saveSlug}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") e.currentTarget.blur();
+                  if (e.key === "Escape") {
+                    setSlugValue(orgSlug);
+                    setEditingSlug(false);
+                  }
+                }}
+                className="h-11 min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none"
+              />
+            ) : (
+              <button
+                onClick={() => setEditingSlug(true)}
+                className="h-11 min-w-0 flex-1 truncate px-3 text-left text-sm text-foreground"
+              >
+                {orgSlug}
+              </button>
+            )}
+            <button onClick={() => setEditingSlug(true)} className="grid h-11 w-11 shrink-0 place-items-center text-black/40" aria-label="Editar slug">
+              <Pencil size={15} />
+            </button>
+          </div>
+          <button
+            onClick={() => copy(orgSlug, "slug")}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] border border-black/10 bg-white text-black/50 hover:bg-black/[0.02]"
+            aria-label="Copiar slug"
+          >
+            {copiedSlug ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
+          </button>
         </div>
       </div>
 
-      {orgSlug ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <SlugField orgId={orgId} orgSlug={orgSlug} />
-          <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-xs" onClick={handleCopy} disabled={!publicUrl}>
-            {copied ? <Check size={13} /> : <Copy size={13} />}
-            {copied ? "Copiado" : "Copiar link"}
-          </Button>
-          {canShare && publicUrl ? (
+      <div>
+        <span className="mb-2 block text-xs font-medium text-black/50">Link público</span>
+        <div className="flex items-stretch gap-2.5">
+          <div className="flex h-11 flex-1 items-center truncate rounded-[10px] border border-black/10 bg-[#f7f7fa] px-3.5 text-[13.5px] text-black/60">
+            {publicUrl}
+          </div>
+          <button
+            onClick={() => copy(publicUrl, "link")}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] border border-black/10 bg-white text-black/50 hover:bg-black/[0.02]"
+            aria-label="Copiar link"
+          >
+            {copiedLink ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
+          </button>
+          {canOpenPublic ? (
             <a
               href={publicUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-8 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-violet-700 hover:bg-violet-50"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] border border-black/10 bg-white text-black/50 hover:bg-black/[0.02]"
+              aria-label="Abrir cardápio público"
             >
-              <ExternalLink size={13} /> Abrir cardápio público
+              <ExternalLink size={16} />
             </a>
-          ) : (
-            <span className="text-xs text-muted-foreground">
-              {!menu.isMain ? "Só o cardápio principal fica público." : "Publique para abrir o link."}
-            </span>
-          )}
+          ) : null}
         </div>
-      ) : null}
+      </div>
+    </div>
+  );
+}
+
+function BannerUploader({ orgId }: { orgId: number }) {
+  const { data: profile } = useVenuePublicProfile(orgId);
+  const update = useUpdateVenuePublicProfile(orgId);
+  const { upload, uploading } = useImageUpload();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (file: File | undefined) => {
+    if (!file) return;
+    const url = await upload(file);
+    if (!url) return;
+    update.mutate(
+      { bannerUrl: url },
+      { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar o banner.")) },
+    );
+  };
+
+  const bannerUrl = profile?.bannerUrl ?? null;
+
+  return (
+    <div className="mt-6">
+      <span className="mb-2 block text-xs font-medium text-black/50">Banner do cardápio (capa)</span>
+      <div className="relative flex h-[180px] items-center justify-center overflow-hidden rounded-[14px] bg-[#08080a]">
+        {bannerUrl ? (
+          <Image src={resolveMediaUrl(bannerUrl) ?? bannerUrl} alt="" fill className="object-cover" unoptimized />
+        ) : (
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(115deg,transparent 40%,rgba(255,255,255,.05) 50%,transparent 60%), radial-gradient(60% 120% at 80% 120%, rgba(124,58,237,.14), transparent 60%)",
+            }}
+          />
+        )}
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/gif,image/webp"
+          className="hidden"
+          onChange={(e) => handleFile(e.target.files?.[0])}
+        />
+        <button
+          type="button"
+          disabled={uploading}
+          onClick={() => inputRef.current?.click()}
+          aria-label={bannerUrl ? "Trocar banner" : "Enviar banner"}
+          className="absolute right-3.5 top-3.5 z-[2] grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm disabled:opacity-60"
+        >
+          {bannerUrl ? <Pencil size={15} className="text-black/60" /> : <ImagePlus size={15} className="text-black/60" />}
+        </button>
+      </div>
+      <p className="mt-3 text-[11.5px] text-black/40">Tamanho recomendado: 1600x400px</p>
+    </div>
+  );
+}
+
+export function MenuHeader({
+  orgId,
+  orgName,
+  orgSlug,
+  menu,
+  menus,
+  onSelectMenu,
+}: {
+  orgId: number;
+  orgName: string;
+  orgSlug: string | null;
+  menu: VenueMenu | null;
+  menus: VenueMenu[];
+  onSelectMenu: (menuId: number) => void;
+}) {
+  if (!menu) return null;
+
+  return (
+    <div className="rounded-[18px] border border-black/[0.06] bg-white p-[26px] shadow-[0_1px_2px_rgba(20,20,35,.05),0_1px_3px_rgba(20,20,35,.03)]">
+      <div className="grid grid-cols-1 gap-[34px] lg:grid-cols-[150px_1fr_1fr]">
+        <LogoUploader orgId={orgId} orgName={orgName} />
+        <NameAndDescription menu={menu} orgId={orgId} />
+        {orgSlug ? (
+          <StatusAndLinks orgId={orgId} orgSlug={orgSlug} menu={menu} menus={menus} onSelectMenu={onSelectMenu} />
+        ) : null}
+      </div>
+
+      <BannerUploader orgId={orgId} />
     </div>
   );
 }

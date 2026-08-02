@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -9,23 +8,21 @@ import { toast } from "@/lib/toast";
 import { useUpdateVenuePublicProfile, useVenuePublicProfile } from "../_hooks/use-venue-public-profile";
 
 /**
- * Dados de vitrine do cardápio público (logo, endereço, Instagram,
- * WhatsApp) — tudo opcional, editado aqui pelo dono/gerente. Fica junto do
- * MenuSharePanel (link + QR) por ser a mesma vitrine, não uma aba separada
- * de Configurações.
+ * Endereço/Instagram/WhatsApp da vitrine do cardápio público — tudo
+ * opcional. Logo e banner saíram daqui (editáveis direto no cabeçalho da
+ * tela de Cardápio, ver menu-header.tsx) — aqui sobra só o que não tem
+ * espaço visual lá.
  */
 export function VenuePublicProfileForm({ orgId }: { orgId: number }) {
   const { data, isLoading } = useVenuePublicProfile(orgId);
   const update = useUpdateVenuePublicProfile(orgId);
 
-  const [logoUrl, setLogoUrl] = useState("");
   const [address, setAddress] = useState("");
   const [instagramUrl, setInstagramUrl] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
 
   useEffect(() => {
     if (!data) return;
-    setLogoUrl(data.logoUrl ?? "");
     setAddress(data.address ?? "");
     setInstagramUrl(data.instagramUrl ?? "");
     setWhatsappNumber(data.whatsappNumber ?? "");
@@ -34,7 +31,6 @@ export function VenuePublicProfileForm({ orgId }: { orgId: number }) {
   const handleSave = () => {
     update.mutate(
       {
-        logoUrl: logoUrl || undefined,
         address: address || undefined,
         instagramUrl: instagramUrl || undefined,
         whatsappNumber: whatsappNumber || undefined,
@@ -49,17 +45,12 @@ export function VenuePublicProfileForm({ orgId }: { orgId: number }) {
   if (isLoading) return null;
 
   return (
-    <Card className="rounded-[22px] p-5">
-      <h3 className="mb-1 text-base font-semibold text-foreground">Vitrine pública</h3>
+    <div>
       <p className="mb-4 text-xs text-muted-foreground">
-        Aparece no topo do cardápio público — tudo opcional.
+        Endereço e contatos aparecem no topo do cardápio público — tudo opcional.
       </p>
 
       <div className="space-y-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="logoUrl" className="text-xs">Logo (URL da imagem)</Label>
-          <Input id="logoUrl" value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://..." />
-        </div>
         <div className="space-y-1.5">
           <Label htmlFor="address" className="text-xs">Endereço</Label>
           <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Rua, número, bairro" />
@@ -87,6 +78,6 @@ export function VenuePublicProfileForm({ orgId }: { orgId: number }) {
       <Button className="mt-4 w-full" size="sm" onClick={handleSave} disabled={update.isPending}>
         {update.isPending ? "Salvando..." : "Salvar vitrine"}
       </Button>
-    </Card>
+    </div>
   );
 }

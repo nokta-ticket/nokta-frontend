@@ -227,51 +227,61 @@ export function ProdutosTab({
       ) : (
         <>
           {/* Desktop: tabela */}
-          <div className="hidden overflow-hidden rounded-xl border border-black/10 bg-white md:block">
+          <div className="hidden overflow-hidden rounded-[14px] border border-black/[0.06] md:block">
             <table className="w-full text-sm">
-              <thead className="border-b border-black/5 bg-black/[0.02] text-left text-xs text-black/50">
+              <thead className="border-y border-black/[0.06] bg-[#fafafb] text-left text-[12.5px] font-medium text-black/40">
                 <tr>
-                  <th className="px-4 py-2 font-medium">Produto</th>
-                  <th className="px-4 py-2 font-medium">Estação</th>
-                  <th className="px-4 py-2 font-medium">Variação principal</th>
-                  <th className="px-4 py-2 font-medium">Preço</th>
-                  <th className="px-4 py-2 font-medium">Variações</th>
-                  <th className="px-4 py-2 font-medium">Status</th>
-                  <th className="px-4 py-2" />
+                  <th className="py-3 pl-6 pr-2.5 font-medium">Produto</th>
+                  <th className="px-2.5 py-3 font-medium">Estação</th>
+                  <th className="px-2.5 py-3 font-medium">Variação principal</th>
+                  <th className="px-2.5 py-3 font-medium">Preço</th>
+                  <th className="px-2.5 py-3 font-medium">Variações</th>
+                  <th className="px-2.5 py-3 font-medium">Status</th>
+                  <th className="py-3 pl-2.5 pr-6" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-black/5">
+              <tbody>
                 {products.map((product) => {
                   const variant = defaultVariant(product);
                   return (
-                    <tr key={product.id} className="hover:bg-black/[0.015]">
-                      <td className="flex items-center gap-3 px-4 py-3">
-                        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-black/10 bg-black/5">
-                          {product.imageUrl ? (
-                            <Image
-                              src={resolveMediaUrl(product.imageUrl) ?? "/logo.png"}
-                              alt=""
-                              fill
-                              sizes="40px"
-                              className="object-cover"
-                            />
-                          ) : null}
+                    <tr key={product.id} className="border-b border-black/[0.06] last:border-0 hover:bg-black/[0.015]">
+                      <td className="py-4 pl-6 pr-2.5">
+                        <div className="flex items-center gap-3 font-medium">
+                          <div className="relative h-[42px] w-[42px] shrink-0 overflow-hidden rounded-[9px] bg-black/5">
+                            {product.imageUrl ? (
+                              <Image
+                                src={resolveMediaUrl(product.imageUrl) ?? "/logo.png"}
+                                alt=""
+                                fill
+                                sizes="42px"
+                                className="object-cover"
+                              />
+                            ) : null}
+                          </div>
+                          <button
+                            className="max-w-[220px] truncate text-left text-gray-900 hover:underline"
+                            onClick={() => openEdit(product.id)}
+                          >
+                            {product.nome}
+                          </button>
                         </div>
-                        <button
-                          className="max-w-[220px] truncate text-left font-medium text-gray-900 hover:underline"
-                          onClick={() => openEdit(product.id)}
-                        >
-                          {product.nome}
-                        </button>
                       </td>
-                      <td className="px-4 py-3 text-black/70">{product.preparationStation?.nome ?? "—"}</td>
-                      <td className="px-4 py-3 text-black/70">{variant?.nome ?? "—"}</td>
-                      <td className="px-4 py-3 text-black/70">
+                      <td className="px-2.5 py-4">
+                        {product.preparationStation ? (
+                          <span className="inline-block rounded-[7px] bg-[#0a0a0c] px-2.5 py-1 text-[11px] font-bold tracking-[0.04em] text-white">
+                            {product.preparationStation.nome.toUpperCase()}
+                          </span>
+                        ) : (
+                          <span className="text-black/40">—</span>
+                        )}
+                      </td>
+                      <td className="px-2.5 py-4 text-black/70">{variant?.nome ?? "—"}</td>
+                      <td className="px-2.5 py-4 text-black/70">
                         {variant ? centsToBRL(variant.priceCents) : "—"}
                       </td>
-                      <td className="px-4 py-3 text-black/70">{product.variants.length}</td>
-                      <td className="px-4 py-3"><ProductStatusBadge status={product.status} /></td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-2.5 py-4 text-black/70">{product.variants.length}</td>
+                      <td className="px-2.5 py-4"><ProductStatusBadge status={product.status} /></td>
+                      <td className="py-4 pl-2.5 pr-6 text-right">
                         <ProductActionsMenu
                           product={product}
                           onEdit={() => openEdit(product.id, "geral")}

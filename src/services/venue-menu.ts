@@ -332,6 +332,7 @@ const base = (organizationId: number) => `/organizations/${organizationId}/venue
 
 export interface VenuePublicProfile {
   logoUrl: string | null;
+  bannerUrl: string | null;
   address: string | null;
   instagramUrl: string | null;
   whatsappNumber: string | null;
@@ -339,6 +340,7 @@ export interface VenuePublicProfile {
 
 export interface UpdateVenuePublicProfilePayload {
   logoUrl?: string;
+  bannerUrl?: string;
   address?: string;
   instagramUrl?: string;
   whatsappNumber?: string;

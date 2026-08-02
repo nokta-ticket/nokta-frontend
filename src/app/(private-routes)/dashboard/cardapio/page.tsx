@@ -1,8 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Smartphone } from "lucide-react";
+import { ExternalLink, ListChecks, Plus, Settings2, Share2, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrganizations } from "@/context/OrganizationContext";
@@ -11,7 +18,10 @@ import { PageContainer } from "../_components/page/page-container";
 import { PageHeader } from "../_components/page/page-header";
 import { EmptyState } from "../_components/states/empty-state";
 import { BlockSkeleton } from "../_components/states/loading-state";
-import { useEnsureDefaultMenu, useVenueMenus } from "./_hooks/use-venue-menus";
+import { buildMarketingUrl } from "@/lib/surfaces";
+import { getErrorMessage } from "@/lib/axios";
+import { toast } from "@/lib/toast";
+import { useEnsureDefaultMenu, useVenueMenuMutations, useVenueMenus } from "./_hooks/use-venue-menus";
 import { useVenueMenuItems } from "./_hooks/use-venue-menu-items";
 import { useVenueCategories } from "./_hooks/use-venue-categories";
 import { ProdutosTab } from "./_components/produtos-tab";
@@ -19,10 +29,10 @@ import { CategoriasTab } from "./_components/categorias-tab";
 import { AdicionaisTab } from "./_components/adicionais-tab";
 import { MenuPreviewPhone } from "./_components/menu-preview-phone";
 import { MenuSharePanel } from "./_components/menu-share-panel";
-import { VenuePublicProfileForm } from "./_components/venue-public-profile-form";
 import { MenuHeader } from "./_components/menu-header";
 import { ManageMenusDialog } from "./_components/manage-menus-dialog";
 import { StationsSheet } from "./_components/stations-sheet";
+import { PublicProfileDialog } from "./_components/public-profile-dialog";
 import { ProdutoBulkCreateDialog } from "./_components/produto-bulk-create-dialog";
 
 type TabKey = "produtos" | "categorias" | "adicionais";
@@ -35,6 +45,7 @@ export default function VenueCardapioPage() {
   const [bulkCreateOpen, setBulkCreateOpen] = useState(false);
   const [manageMenusOpen, setManageMenusOpen] = useState(false);
   const [stationsOpen, setStationsOpen] = useState(false);
+  const [publicProfileOpen, setPublicProfileOpen] = useState(false);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [selectedMenuId, setSelectedMenuId] = useState<number | null>(null);
 
@@ -42,6 +53,7 @@ export default function VenueCardapioPage() {
 
   const { data: menus } = useVenueMenus(orgId);
   const ensureDefault = useEnsureDefaultMenu(orgId ?? -1);
+  const { publish } = useVenueMenuMutations(orgId ?? -1);
 
   // Ao trocar de organização, o cache de cada query já é isolado por orgId
   // (ver query-keys.ts) — mas o cardápio selecionado na tela precisa ser
@@ -86,36 +98,31 @@ export default function VenueCardapioPage() {
   // necessariamente o selecionado aqui — publicar um cardápio secundário
   // não gera link próprio (o público só tem espaço pra 1 cardápio).
   const canShare = Boolean(currentOrg?.slug) && selectedMenu?.isMain && selectedMenu?.status === "PUBLISHED";
+  const canOpenPublic = canShare;
   const canPublish = selectedMenu?.status === "DRAFT" && (selectedMenuItems?.length ?? 0) > 0;
+  const publicUrl = currentOrg?.slug ? buildMarketingUrl(`/cardapio/${currentOrg.slug}`) : null;
 
-  const previewPanel = orgId ? (
-    <div className="space-y-5">
-      <MenuPreviewPhone orgId={orgId} menuId={selectedMenuId} />
-      {canShare ? (
-        <>
-          <MenuSharePanel orgId={orgId} orgSlug={currentOrg!.slug!} />
-          <VenuePublicProfileForm orgId={orgId} />
-        </>
-      ) : (
-        <div className="rounded-[22px] border border-dashed border-black/10 bg-black/[0.015] p-5 text-center">
-          <p className="text-xs text-muted-foreground">
-            {!selectedMenu?.isMain
-              ? "O link e o QR code de divulgação são sempre do cardápio principal — selecione-o para publicar e compartilhar."
-              : canPublish
-                ? 'Clique em "Publicar cardápio" para gerar o link e o QR code de divulgação.'
-                : "Adicione produtos e publique o cardápio para gerar o link e o QR code de divulgação."}
-          </p>
-        </div>
-      )}
-    </div>
-  ) : null;
+  const handlePublish = () => {
+    if (!selectedMenuId) return;
+    publish.mutate(selectedMenuId, {
+      onSuccess: () =>
+        toast.success(
+          selectedMenu?.isMain
+            ? "Cardápio publicado! Já está disponível no link público."
+            : "Cardápio publicado.",
+        ),
+      onError: (err) => toast.error(getErrorMessage(err, "Não foi possível publicar o cardápio.")),
+    });
+  };
+
+  const previewPanel = orgId ? <MenuPreviewPhone orgId={orgId} menuId={selectedMenuId} /> : null;
 
   if (loadingOrgs || loadingModules) {
     return (
       <PageContainer>
         <PageHeader
           title="Cardápio"
-          description="Gerencie produtos, categorias, preços, adicionais e disponibilidade."
+          description="Gerencie seu cardápio, produtos, categorias e adicionais."
         />
         <BlockSkeleton className="h-96" />
       </PageContainer>
@@ -127,9 +134,11 @@ export default function VenueCardapioPage() {
       <PageContainer>
         <PageHeader
           title="Cardápio"
-          description="Gerencie produtos, categorias, preços, adicionais e disponibilidade."
+          description="Gerencie seu cardápio, produtos, categorias e adicionais."
           actions={
-            <Button onClick={() => guard(() => {})}>Novo produto</Button>
+            <Button onClick={() => guard(() => {})}>
+              <Plus size={16} /> Adicionar produto
+            </Button>
           }
         />
         <EmptyState
@@ -144,63 +153,169 @@ export default function VenueCardapioPage() {
 
   return (
     <PageContainer>
-      <MenuHeader
-        orgId={orgId}
-        orgSlug={currentOrg?.slug ?? null}
-        menu={selectedMenu}
-        menus={menus ?? []}
-        onSelectMenu={setSelectedMenuId}
-        onManageMenus={() => setManageMenusOpen(true)}
-        onManageStations={() => setStationsOpen(true)}
-        onCreateProduct={() => { setTab("produtos"); setCreateProductOpen(true); }}
-        onBulkCreateProducts={() => { setTab("produtos"); setBulkCreateOpen(true); }}
-      />
+      {/* TOP BAR */}
+      <div className="mb-[30px] flex flex-wrap items-start gap-5">
+        <div>
+          <h1 className="m-0 text-[27px] font-bold tracking-[-0.02em] text-foreground">Cardápio</h1>
+          <p className="mt-[7px] text-[14.5px] text-black/50">
+            Gerencie seu cardápio, produtos, categorias e adicionais.
+          </p>
+        </div>
 
-      <div className="mt-5 grid grid-cols-1 gap-6 xl:grid-cols-[1fr_300px]">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
-          <div className="flex items-center justify-between gap-3">
-            <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-              <TabsList className="w-max min-w-full sm:w-fit">
-                <TabsTrigger value="produtos">Produtos</TabsTrigger>
-                <TabsTrigger value="categorias">Categorias</TabsTrigger>
-                <TabsTrigger value="adicionais">Adicionais</TabsTrigger>
-              </TabsList>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="shrink-0 gap-1.5 xl:hidden"
-              onClick={() => setMobilePreviewOpen(true)}
+        <div className="ml-auto flex flex-wrap items-center gap-2.5">
+          {canOpenPublic && publicUrl ? (
+            <a
+              href={publicUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex h-[42px] items-center gap-2 rounded-[11px] border border-black/10 bg-white px-4 text-sm font-medium text-foreground shadow-sm hover:bg-black/[0.015]"
             >
-              <Smartphone size={14} /> Ver preview
-            </Button>
+              <ExternalLink size={16} className="text-black/50" />
+              Ver cardápio público
+            </a>
+          ) : null}
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="h-[42px] gap-2 rounded-[11px]">
+                <Share2 size={16} className="text-black/50" />
+                Compartilhar
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-auto p-0">
+              {canShare ? (
+                <MenuSharePanel orgId={orgId} orgSlug={currentOrg!.slug!} />
+              ) : (
+                <div className="max-w-[260px] p-4 text-xs text-muted-foreground">
+                  {!selectedMenu?.isMain
+                    ? "O link e o QR code de divulgação são sempre do cardápio principal — selecione-o para publicar e compartilhar."
+                    : canPublish
+                      ? 'Clique em "Publicar cardápio" para gerar o link e o QR code de divulgação.'
+                      : "Adicione produtos e publique o cardápio para gerar o link e o QR code de divulgação."}
+                </div>
+              )}
+            </PopoverContent>
+          </Popover>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon" className="h-[42px] w-[42px] rounded-[11px]" aria-label="Mais opções">
+                <Settings2 size={16} className="text-black/50" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setManageMenusOpen(true)}>Gerenciar cardápios</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setStationsOpen(true)}>Estações de preparo</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setPublicProfileOpen(true)}>Vitrine pública</DropdownMenuItem>
+              {canPublish ? (
+                <DropdownMenuItem disabled={publish.isPending} onClick={handlePublish}>
+                  {publish.isPending ? "Publicando…" : "Publicar cardápio"}
+                </DropdownMenuItem>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="h-[42px] gap-2 rounded-[11px] bg-violet-600 shadow-[0_8px_18px_rgba(109,40,217,.26)] hover:bg-violet-500">
+                <Plus size={16} /> Adicionar produto
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => { setTab("produtos"); setCreateProductOpen(true); }}>
+                Adicionar um produto
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setTab("produtos"); setBulkCreateOpen(true); }}>
+                <ListChecks size={14} /> Adicionar vários produtos
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-11 xl:grid-cols-[1fr_400px]">
+        {/* MAIN */}
+        <div>
+          <p className="mb-3.5 flex items-center gap-1.5 text-sm font-semibold text-foreground">Cardápio atual</p>
+
+          <div className="mb-[22px]">
+            <MenuHeader
+              orgId={orgId}
+              orgName={currentOrg?.nome ?? ""}
+              orgSlug={currentOrg?.slug ?? null}
+              menu={selectedMenu}
+              menus={menus ?? []}
+              onSelectMenu={setSelectedMenuId}
+            />
           </div>
 
-          <div className="mt-4">
-            <TabsContent value="produtos">
-              <ProdutosTab
-                orgId={orgId}
-                menuId={selectedMenuId}
-                defaultCategoryId={defaultCategoryId}
-                createOpen={createProductOpen}
-                onCreateOpenChange={setCreateProductOpen}
-              />
-            </TabsContent>
-            <TabsContent value="categorias">
-              <CategoriasTab
-                orgId={orgId}
-                menus={menus ?? []}
-                selectedMenuId={selectedMenuId}
-                onSelectMenu={setSelectedMenuId}
-              />
-            </TabsContent>
-            <TabsContent value="adicionais">
-              <AdicionaisTab orgId={orgId} />
-            </TabsContent>
-          </div>
-        </Tabs>
+          <div className="overflow-hidden rounded-[18px] border border-black/[0.06] bg-white shadow-[0_1px_2px_rgba(20,20,35,.05),0_1px_3px_rgba(20,20,35,.03)]">
+            <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
+              <div className="flex items-center justify-between gap-3 border-b border-black/[0.06] px-6 pt-[18px]">
+                <div className="-mb-px overflow-x-auto">
+                  <TabsList className="h-auto w-max min-w-full gap-6 rounded-none border-0 bg-transparent p-0 sm:w-fit">
+                    <TabsTrigger
+                      value="produtos"
+                      className="rounded-none border-0 border-b-2 border-transparent bg-transparent px-0 pb-3.5 text-[14.5px] font-medium text-black/50 shadow-none data-[state=active]:border-violet-600 data-[state=active]:bg-transparent data-[state=active]:text-violet-600 data-[state=active]:shadow-none"
+                    >
+                      Produtos
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="categorias"
+                      className="rounded-none border-0 border-b-2 border-transparent bg-transparent px-0 pb-3.5 text-[14.5px] font-medium text-black/50 shadow-none data-[state=active]:border-violet-600 data-[state=active]:bg-transparent data-[state=active]:text-violet-600 data-[state=active]:shadow-none"
+                    >
+                      Categorias
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="adicionais"
+                      className="rounded-none border-0 border-b-2 border-transparent bg-transparent px-0 pb-3.5 text-[14.5px] font-medium text-black/50 shadow-none data-[state=active]:border-violet-600 data-[state=active]:bg-transparent data-[state=active]:text-violet-600 data-[state=active]:shadow-none"
+                    >
+                      Adicionais
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mb-2 shrink-0 gap-1.5 xl:hidden"
+                  onClick={() => setMobilePreviewOpen(true)}
+                >
+                  <Smartphone size={14} /> Ver preview
+                </Button>
+              </div>
 
-        <div className="hidden xl:block">{previewPanel}</div>
+              <div className="p-6">
+                <TabsContent value="produtos">
+                  <ProdutosTab
+                    orgId={orgId}
+                    menuId={selectedMenuId}
+                    defaultCategoryId={defaultCategoryId}
+                    createOpen={createProductOpen}
+                    onCreateOpenChange={setCreateProductOpen}
+                  />
+                </TabsContent>
+                <TabsContent value="categorias">
+                  <CategoriasTab
+                    orgId={orgId}
+                    menus={menus ?? []}
+                    selectedMenuId={selectedMenuId}
+                    onSelectMenu={setSelectedMenuId}
+                  />
+                </TabsContent>
+                <TabsContent value="adicionais">
+                  <AdicionaisTab orgId={orgId} />
+                </TabsContent>
+              </div>
+            </Tabs>
+          </div>
+        </div>
+
+        {/* ASIDE / PREVIEW */}
+        <div className="hidden border-l border-black/[0.06] pl-11 xl:block">
+          <p className="mb-3.5 text-sm font-semibold text-foreground">Preview do cardápio</p>
+          {previewPanel}
+          <p className="mt-5 text-center text-[13px] text-black/50">Esta é uma visualização real do seu cardápio.</p>
+        </div>
       </div>
 
       <Sheet open={mobilePreviewOpen} onOpenChange={setMobilePreviewOpen}>
@@ -215,6 +330,7 @@ export default function VenueCardapioPage() {
 
       <ManageMenusDialog orgId={orgId} open={manageMenusOpen} onOpenChange={setManageMenusOpen} />
       <StationsSheet orgId={orgId} open={stationsOpen} onOpenChange={setStationsOpen} />
+      <PublicProfileDialog orgId={orgId} open={publicProfileOpen} onOpenChange={setPublicProfileOpen} />
 
       <ProdutoBulkCreateDialog
         orgId={orgId}
