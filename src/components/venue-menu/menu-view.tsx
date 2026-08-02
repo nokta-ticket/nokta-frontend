@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { Heart, LayoutGrid, List, MapPin, MessageCircle, Square } from "lucide-react";
 import { formatCentsBRL, type PublicMenuItem, type PublicMenuResponse } from "@/services/venue-menu-public";
+import { resolveMediaUrl } from "@/lib/media";
 
 type ViewMode = "list" | "grid" | "large";
 
@@ -119,9 +120,9 @@ export function MenuView({
         </div>
 
         {/* HERO */}
-        <div className="relative flex h-[180px] items-center justify-center overflow-hidden bg-[#050505] md:h-[220px]">
+        <div className="relative flex h-[180px] items-center justify-center overflow-hidden bg-[#050505] px-6 md:h-[220px]">
           <div className="absolute -top-24 h-[280px] w-[280px] rounded-full border border-white/40 md:-top-32 md:h-[340px] md:w-[340px]" />
-          <p className="relative font-poppins text-3xl font-light tracking-[0.35em] text-white md:text-[46px] md:tracking-[0.42em]">
+          <p className="relative max-w-full break-words text-center font-poppins text-2xl font-light leading-tight tracking-[0.2em] text-white md:text-[46px] md:tracking-[0.42em]">
             {data.organizationName.toUpperCase()}
           </p>
         </div>
@@ -130,7 +131,13 @@ export function MenuView({
         <div ref={profileRef} className="flex gap-4 px-5 pb-4 md:gap-6 md:px-8">
           <div className="relative -mt-12 flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-4 border-white bg-black shadow-[0_6px_18px_rgba(0,0,0,0.18)] md:-mt-14 md:h-32 md:w-32">
             {profile.logoUrl ? (
-              <Image src={profile.logoUrl} alt={data.organizationName} fill className="rounded-full object-cover" unoptimized />
+              <Image
+                src={resolveMediaUrl(profile.logoUrl) ?? profile.logoUrl}
+                alt={data.organizationName}
+                fill
+                className="rounded-full object-cover"
+                unoptimized
+              />
             ) : (
               <>
                 <div className="absolute h-14 w-14 rounded-full border border-white/40 md:h-[70px] md:w-[70px]" />
@@ -289,7 +296,7 @@ function ItemThumb({ item }: { item: PublicMenuItem }) {
   if (item.imageUrl) {
     return (
       <div className="relative h-full w-full overflow-hidden rounded-xl bg-black/5">
-        <Image src={item.imageUrl} alt={item.nome} fill className="object-cover" unoptimized />
+        <Image src={resolveMediaUrl(item.imageUrl) ?? item.imageUrl} alt={item.nome} fill className="object-cover" unoptimized />
       </div>
     );
   }
