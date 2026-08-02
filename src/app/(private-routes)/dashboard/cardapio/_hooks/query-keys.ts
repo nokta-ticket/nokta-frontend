@@ -1,5 +1,6 @@
 /** Query keys do domínio Cardápio — sempre incluem organizationId (isolamento de cache por org). */
 export const venueKeys = {
+  publicProfile: (orgId: number) => ["venue", orgId, "publicProfile"] as const,
   menus: (orgId: number) => ["venue", orgId, "menus"] as const,
   menu: (orgId: number, menuId: number) => ["venue", orgId, "menu", menuId] as const,
   categories: (orgId: number, menuId: number) => ["venue", orgId, "categories", menuId] as const,

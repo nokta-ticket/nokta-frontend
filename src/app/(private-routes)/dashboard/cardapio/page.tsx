@@ -26,6 +26,7 @@ import { EstacoesTab } from "./_components/estacoes-tab";
 import { CardapiosTab } from "./_components/cardapios-tab";
 import { MenuPreviewPhone } from "./_components/menu-preview-phone";
 import { MenuSharePanel } from "./_components/menu-share-panel";
+import { VenuePublicProfileForm } from "./_components/venue-public-profile-form";
 
 type TabKey = "produtos" | "categorias" | "adicionais" | "estacoes" | "cardapios";
 
@@ -175,7 +176,10 @@ export default function VenueCardapioPage() {
             isLoading={loadingMainMenu || loadingMainMenuItems}
           />
           {canShare ? (
-            <MenuSharePanel orgId={orgId} orgSlug={currentOrg!.slug!} />
+            <>
+              <MenuSharePanel orgId={orgId} orgSlug={currentOrg!.slug!} />
+              <VenuePublicProfileForm orgId={orgId} />
+            </>
           ) : (
             <div className="rounded-[22px] border border-dashed border-black/10 bg-black/[0.015] p-5 text-center">
               <p className="text-xs text-muted-foreground">

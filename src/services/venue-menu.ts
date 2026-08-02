@@ -296,7 +296,27 @@ export interface ReorderPayload {
 
 const base = (organizationId: number) => `/organizations/${organizationId}/venue`;
 
+export interface VenuePublicProfile {
+  logoUrl: string | null;
+  address: string | null;
+  instagramUrl: string | null;
+  whatsappNumber: string | null;
+}
+
+export interface UpdateVenuePublicProfilePayload {
+  logoUrl?: string;
+  address?: string;
+  instagramUrl?: string;
+  whatsappNumber?: string;
+}
+
 export const venueMenuApi = {
+  // ---- Perfil público (vitrine do cardápio) ----
+  getPublicProfile: (organizationId: number) =>
+    api.get<VenuePublicProfile>(`${base(organizationId)}/menu-publico/perfil`).then((r) => r.data),
+  updatePublicProfile: (organizationId: number, payload: UpdateVenuePublicProfilePayload) =>
+    api.patch<VenuePublicProfile>(`${base(organizationId)}/menu-publico/perfil`, payload).then((r) => r.data),
+
   // ---- Cardápios ----
   listMenus: (organizationId: number) =>
     api.get<VenueMenu[]>(`${base(organizationId)}/menus`).then((r) => r.data),
