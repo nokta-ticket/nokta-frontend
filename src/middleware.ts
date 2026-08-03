@@ -53,6 +53,8 @@ const publicRoutes = [
   { path: "/termos", whenAutenticated: "next" },
   { path: "/cardapio", whenAutenticated: "next" },
   { path: "/cardapio/[id]", whenAutenticated: "next" },
+  { path: "/avaliacao", whenAutenticated: "next" },
+  { path: "/avaliacao/[id]", whenAutenticated: "next" },
   { path: "/", whenAutenticated: "next" },
 ] as const;
 
