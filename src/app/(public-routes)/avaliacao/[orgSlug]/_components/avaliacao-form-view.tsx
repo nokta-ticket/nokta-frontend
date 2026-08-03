@@ -163,14 +163,8 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
     <div className="mx-auto grid min-h-screen max-w-[1120px] grid-cols-1 lg:grid-cols-[1fr_316px]">
       {/* ===== MAIN ===== */}
       <div className="min-w-0">
-        {/* Cover — mesmo banner do cardápio (VenuePublicProfile.bannerUrl); sem banner cadastrado, cai no gradiente decorativo. */}
-        <div
-          className="relative h-[150px] overflow-hidden md:h-[198px]"
-          style={{
-            background:
-              "radial-gradient(circle at 20% 30%, rgba(245,190,90,.35), transparent 6%), radial-gradient(circle at 42% 18%, rgba(245,190,90,.30), transparent 5%), radial-gradient(circle at 68% 40%, rgba(245,200,120,.25), transparent 7%), radial-gradient(circle at 85% 22%, rgba(245,190,90,.28), transparent 5%), linear-gradient(160deg,#4a3320 0%,#2a1d12 55%,#140d08 100%)",
-          }}
-        >
+        {/* Cover — mesmo banner do cardápio (VenuePublicProfile.bannerUrl); sem banner cadastrado, mesmo fallback preto sólido do MenuView (nunca o gradiente marrom/dourado antigo, que só existia aqui). */}
+        <div className="relative h-[150px] overflow-hidden bg-[#050505] md:h-[198px]">
           {profile.bannerUrl ? (
             <Image
               src={resolveMediaUrl(profile.bannerUrl) ?? profile.bannerUrl}
@@ -184,7 +178,7 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
 
         {/* Venue */}
         <div className="relative z-10 flex gap-4 px-5 md:gap-6 md:px-8">
-          <div className="-mt-16 flex h-[110px] w-[110px] shrink-0 flex-col items-center justify-center rounded-full border-4 border-white bg-[#f7f3ec] shadow-[0_8px_22px_rgba(0,0,0,.16)] md:-mt-20 md:h-[152px] md:w-[152px]">
+          <div className="-mt-16 flex h-[110px] w-[110px] shrink-0 items-center justify-center rounded-full border-4 border-white bg-black shadow-[0_8px_22px_rgba(0,0,0,.16)] md:-mt-20 md:h-[152px] md:w-[152px]">
             {profile.logoUrl ? (
               <Image
                 src={resolveMediaUrl(profile.logoUrl) ?? profile.logoUrl}
@@ -195,9 +189,12 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
                 unoptimized
               />
             ) : (
-              <span className="font-poppins text-2xl font-semibold" style={{ color: MAROON }}>
-                {initials(initialData.organizationName)}
-              </span>
+              <>
+                <div className="absolute h-[60px] w-[60px] rounded-full border border-white/40 md:h-[80px] md:w-[80px]" />
+                <span className="relative font-poppins text-lg font-light tracking-[0.25em] text-white md:text-xl">
+                  {initials(initialData.organizationName)}
+                </span>
+              </>
             )}
           </div>
           <div className="min-w-0 pt-4">
