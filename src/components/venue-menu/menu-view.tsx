@@ -191,12 +191,16 @@ export function MenuView({
               <button type="button" onClick={() => setSearchOpen(true)} title="Buscar produto" aria-label="Buscar produto">
                 <Search size={20} strokeWidth={1.8} />
               </button>
-              {orgSlug ? (
-                <a href={`/avaliacao/${orgSlug}`} title="Avaliar" aria-label="Avaliar este estabelecimento">
-                  <Star size={20} strokeWidth={1.8} />
-                </a>
-              ) : null}
             </div>
+            {orgSlug ? (
+              <a
+                href={`/avaliacao/${orgSlug}`}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-[#d9a326]"
+              >
+                Avaliar
+                <Star size={16} strokeWidth={1.8} fill="#d9a326" />
+              </a>
+            ) : null}
           </div>
         </div>
 
