@@ -15,9 +15,34 @@ export function EventMap({ address, lat, lng }: EventMapProps) {
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
+    let cancelled = false;
+    let resizeObserver: ResizeObserver | null = null;
 
-    // Leaflet só roda no browser
-    import('leaflet').then((L) => {
+    // O Leaflet mede a grade de tiles usando o CSS dele (altura da linha,
+    // overflow etc.) — inicializar antes do <link> carregar faz o mapa
+    // calcular um viewport errado (renderiza só um pedaço no canto, o
+    // resto fica em branco). Espera o CSS estar de fato aplicado antes de
+    // montar o mapa, nunca dispara os dois em paralelo.
+    const ensureLeafletCss = () =>
+      new Promise<void>((resolve) => {
+        const existing = document.querySelector<HTMLLinkElement>('#leaflet-css');
+        if (existing) {
+          // Já pode ter carregado antes deste efeito rodar.
+          if (existing.sheet) resolve();
+          else existing.addEventListener('load', () => resolve(), { once: true });
+          return;
+        }
+        const link = document.createElement('link');
+        link.id = 'leaflet-css';
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        link.addEventListener('load', () => resolve(), { once: true });
+        document.head.appendChild(link);
+      });
+
+    Promise.all([import('leaflet'), ensureLeafletCss()]).then(([L]) => {
+      if (cancelled || !containerRef.current || mapRef.current) return;
+
       // Fix ícone padrão do Leaflet no Next.js
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
@@ -27,7 +52,7 @@ export function EventMap({ address, lat, lng }: EventMapProps) {
       });
 
       const initMap = (coords: [number, number]) => {
-        if (!containerRef.current || mapRef.current) return;
+        if (cancelled || !containerRef.current || mapRef.current) return;
 
         const map = L.map(containerRef.current, {
           center: coords,
@@ -48,6 +73,15 @@ export function EventMap({ address, lat, lng }: EventMapProps) {
         // Botões de zoom customizados já estão no JSX — expõe métodos
         (containerRef.current as any)._leafletMap = map;
         mapRef.current = map;
+
+        // invalidateSize() recalcula o viewport se o container mudar de
+        // tamanho depois de montado (ex.: dentro de um dialog/accordion
+        // que só assume a altura final após a primeira pintura) — sem
+        // isso, o Leaflet fica preso nas dimensões medidas na hora do
+        // L.map(), mesmo que o elemento cresça depois.
+        requestAnimationFrame(() => map.invalidateSize());
+        resizeObserver = new ResizeObserver(() => map.invalidateSize());
+        resizeObserver.observe(containerRef.current);
       };
 
       if (lat !== undefined && lng !== undefined) {
@@ -68,16 +102,9 @@ export function EventMap({ address, lat, lng }: EventMapProps) {
       }
     });
 
-    // Carregar CSS do Leaflet dinamicamente
-    if (!document.querySelector('#leaflet-css')) {
-      const link = document.createElement('link');
-      link.id = 'leaflet-css';
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-    }
-
     return () => {
+      cancelled = true;
+      resizeObserver?.disconnect();
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
