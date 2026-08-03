@@ -70,5 +70,5 @@ export function PublicMenuView({ initialData, orgSlug }: { initialData: PublicMe
     }
   }
 
-  return <MenuView data={data} onToggleFavorite={toggleFavorite} scrollContainerSelector="main" />;
+  return <MenuView data={data} onToggleFavorite={toggleFavorite} scrollContainerSelector="main" orgSlug={orgSlug} />;
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { ArrowLeft, Heart, Home, Instagram, LayoutGrid, List, MessageCircle, Search, Square } from "lucide-react";
+import { ArrowLeft, Heart, Home, Instagram, LayoutGrid, List, MessageCircle, Search, Square, Star } from "lucide-react";
 import { formatCentsBRL, type PublicMenuItem, type PublicMenuResponse } from "@/services/venue-menu-public";
 import { resolveMediaUrl } from "@/lib/media";
 
@@ -60,10 +60,13 @@ export function MenuView({
   data,
   onToggleFavorite,
   scrollContainerSelector = "main",
+  orgSlug,
 }: {
   data: PublicMenuResponse;
   onToggleFavorite?: (item: PublicMenuItem) => void;
   scrollContainerSelector?: string;
+  /** Slug da organização, usado para linkar "Avaliar". Ausente no preview do dashboard (link real não faz sentido lá) — o ícone some nesse caso. */
+  orgSlug?: string;
 }) {
   const [activeCategoryId, setActiveCategoryId] = useState<number | "highlights">(
     data.menu.highlights.length > 0 ? "highlights" : (data.menu.categories[0]?.id ?? "highlights"),
@@ -188,6 +191,11 @@ export function MenuView({
               <button type="button" onClick={() => setSearchOpen(true)} title="Buscar produto" aria-label="Buscar produto">
                 <Search size={20} strokeWidth={1.8} />
               </button>
+              {orgSlug ? (
+                <a href={`/avaliacao/${orgSlug}`} title="Avaliar" aria-label="Avaliar este estabelecimento">
+                  <Star size={20} strokeWidth={1.8} />
+                </a>
+              ) : null}
             </div>
           </div>
         </div>
