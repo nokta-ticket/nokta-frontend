@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { Heart, Home, Instagram, LayoutGrid, List, MessageCircle, Search, Square, X } from "lucide-react";
+import { ArrowLeft, Heart, Home, Instagram, LayoutGrid, List, MessageCircle, Search, Square } from "lucide-react";
 import { formatCentsBRL, type PublicMenuItem, type PublicMenuResponse } from "@/services/venue-menu-public";
 import { resolveMediaUrl } from "@/lib/media";
 
@@ -101,22 +101,15 @@ export function MenuView({
     [data, activeCategoryId],
   );
 
+  const itemsToShow: PublicMenuItem[] =
+    activeCategoryId === "highlights" ? data.menu.highlights : (activeCategory?.items ?? []);
+
   // Busca cruza TODAS as categorias (não só a ativa) — o usuário pode não
   // lembrar em qual categoria o produto está.
   const allItems = useMemo(
     () => data.menu.categories.flatMap((c) => c.items),
     [data.menu.categories],
   );
-  const normalizedQuery = searchQuery.trim().toLowerCase();
-  const searchResults = normalizedQuery
-    ? allItems.filter((item) => item.nome.toLowerCase().includes(normalizedQuery))
-    : [];
-
-  const itemsToShow: PublicMenuItem[] = normalizedQuery
-    ? searchResults
-    : activeCategoryId === "highlights"
-      ? data.menu.highlights
-      : (activeCategory?.items ?? []);
 
   const { profile } = data;
 
@@ -176,34 +169,22 @@ export function MenuView({
             <h1 className="mb-2 truncate font-poppins text-xl font-semibold tracking-tight text-[#141414] md:text-2xl">
               {data.organizationName}
             </h1>
-            {/* Home / Instagram / WhatsApp / Busca — sempre visíveis, nessa ordem, independente de preenchidos. Home ainda não tem destino (feature futura). */}
+            {/* Início / Instagram / WhatsApp / Busca — sempre visíveis e clicáveis, nessa ordem. Instagram sem link cadastrado vai pro instagram.com genérico; WhatsApp sem número vai pro wa.me genérico (abre o app sem conversa pré-selecionada) — nunca link morto. Início ainda não tem destino (feature futura). */}
             <div className="mb-2 flex flex-wrap items-center gap-4 text-[#141414]">
               <button type="button" title="Início" aria-label="Início">
                 <Home size={20} strokeWidth={1.8} />
               </button>
-              {profile.instagramUrl ? (
-                <a href={profile.instagramUrl} target="_blank" rel="noopener noreferrer" title="Instagram">
-                  <Instagram size={20} strokeWidth={1.8} />
-                </a>
-              ) : (
-                <span title="Instagram não cadastrado" className="opacity-30">
-                  <Instagram size={20} strokeWidth={1.8} />
-                </span>
-              )}
-              {profile.whatsappNumber ? (
-                <a
-                  href={`https://wa.me/${profile.whatsappNumber.replace(/\D/g, "")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="WhatsApp"
-                >
-                  <MessageCircle size={20} strokeWidth={1.8} />
-                </a>
-              ) : (
-                <span title="WhatsApp não cadastrado" className="opacity-30">
-                  <MessageCircle size={20} strokeWidth={1.8} />
-                </span>
-              )}
+              <a href={profile.instagramUrl || "https://instagram.com"} target="_blank" rel="noopener noreferrer" title="Instagram">
+                <Instagram size={20} strokeWidth={1.8} />
+              </a>
+              <a
+                href={profile.whatsappNumber ? `https://wa.me/${profile.whatsappNumber.replace(/\D/g, "")}` : "https://wa.me"}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="WhatsApp"
+              >
+                <MessageCircle size={20} strokeWidth={1.8} />
+              </a>
               <button type="button" onClick={() => setSearchOpen(true)} title="Buscar produto" aria-label="Buscar produto">
                 <Search size={20} strokeWidth={1.8} />
               </button>
@@ -211,71 +192,46 @@ export function MenuView({
           </div>
         </div>
 
-        {/* CATEGORY CHIPS / BUSCA */}
-        <div className="sticky top-0 z-10 flex items-center gap-2.5 overflow-x-auto bg-white px-5 py-4 md:px-8">
-          {searchOpen ? (
-            <div className="flex w-full items-center gap-2 rounded-xl border border-[#e3e3e6] bg-white px-4 py-2.5">
-              <Search size={18} className="shrink-0 text-[#9a9aa0]" />
-              <input
-                ref={searchInputRef}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Escape" && closeSearch()}
-                placeholder="Buscar produto…"
-                className="min-w-0 flex-1 bg-transparent text-sm text-[#141414] outline-none md:text-base"
-              />
-              <button type="button" onClick={closeSearch} aria-label="Fechar busca" className="shrink-0 text-[#9a9aa0]">
-                <X size={18} />
-              </button>
-            </div>
-          ) : (
-            <>
-              {data.menu.highlights.length > 0 ? (
-                <button
-                  onClick={() => setActiveCategoryId("highlights")}
-                  className={`shrink-0 whitespace-nowrap rounded-xl border px-5 py-2.5 text-sm font-medium md:text-base ${
-                    activeCategoryId === "highlights"
-                      ? "border-[#0a0a0a] bg-[#0a0a0a] text-white"
-                      : "border-[#e3e3e6] bg-white text-[#141414]"
-                  }`}
-                >
-                  Destaques
-                </button>
-              ) : null}
-              {data.menu.categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setActiveCategoryId(cat.id)}
-                  className={`shrink-0 whitespace-nowrap rounded-xl border px-5 py-2.5 text-sm font-medium md:text-base ${
-                    activeCategoryId === cat.id
-                      ? "border-[#0a0a0a] bg-[#0a0a0a] text-white"
-                      : "border-[#e3e3e6] bg-white text-[#141414]"
-                  }`}
-                >
-                  {cat.nome}
-                </button>
-              ))}
-            </>
-          )}
+        {/* CATEGORY CHIPS */}
+        <div className="sticky top-0 z-10 flex gap-2.5 overflow-x-auto bg-white px-5 py-4 md:px-8">
+          {data.menu.highlights.length > 0 ? (
+            <button
+              onClick={() => setActiveCategoryId("highlights")}
+              className={`shrink-0 whitespace-nowrap rounded-xl border px-5 py-2.5 text-sm font-medium md:text-base ${
+                activeCategoryId === "highlights"
+                  ? "border-[#0a0a0a] bg-[#0a0a0a] text-white"
+                  : "border-[#e3e3e6] bg-white text-[#141414]"
+              }`}
+            >
+              Destaques
+            </button>
+          ) : null}
+          {data.menu.categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategoryId(cat.id)}
+              className={`shrink-0 whitespace-nowrap rounded-xl border px-5 py-2.5 text-sm font-medium md:text-base ${
+                activeCategoryId === cat.id
+                  ? "border-[#0a0a0a] bg-[#0a0a0a] text-white"
+                  : "border-[#e3e3e6] bg-white text-[#141414]"
+              }`}
+            >
+              {cat.nome}
+            </button>
+          ))}
         </div>
 
         {/* SECTION HEADER */}
         <div className="px-5 pt-1 md:px-8">
           <h2 className="mb-3 font-poppins text-xl font-semibold text-[#141414] md:text-2xl">
-            {normalizedQuery
-              ? `Resultados para "${searchQuery.trim()}"`
-              : activeCategoryId === "highlights"
-                ? "Destaques"
-                : (activeCategory?.nome ?? "")}
+            {activeCategoryId === "highlights" ? "Destaques" : (activeCategory?.nome ?? "")}
           </h2>
         </div>
 
         {/* ITEMS */}
         <div className="px-5 pb-24 md:px-8">
           {itemsToShow.length === 0 ? (
-            <p className="py-10 text-center text-sm text-[#9a9aa0]">
-              {normalizedQuery ? "Nenhum produto encontrado." : "Nenhum item disponível aqui no momento."}
-            </p>
+            <p className="py-10 text-center text-sm text-[#9a9aa0]">Nenhum item disponível aqui no momento.</p>
           ) : view === "grid" ? (
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
               {itemsToShow.map((item) => (
@@ -303,6 +259,74 @@ export function MenuView({
             <span className="text-[#d9a326]">N</span>OKTA
           </p>
         </div>
+      </div>
+
+      {searchOpen ? (
+        <SearchOverlay
+          allItems={allItems}
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
+          onClose={closeSearch}
+          onToggleFavorite={onToggleFavorite}
+          inputRef={searchInputRef}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function SearchOverlay({
+  allItems,
+  query,
+  onQueryChange,
+  onClose,
+  onToggleFavorite,
+  inputRef,
+}: {
+  allItems: PublicMenuItem[];
+  query: string;
+  onQueryChange: (value: string) => void;
+  onClose: () => void;
+  onToggleFavorite?: (item: PublicMenuItem) => void;
+  inputRef: React.RefObject<HTMLInputElement | null>;
+}) {
+  const normalizedQuery = query.trim().toLowerCase();
+  const results = normalizedQuery
+    ? allItems.filter((item) => item.nome.toLowerCase().includes(normalizedQuery))
+    : [];
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-white">
+      <div className="flex shrink-0 items-center gap-4 border-b border-[#ececee] px-4 py-4 md:px-8">
+        <button type="button" onClick={onClose} aria-label="Voltar" className="text-[#141414]">
+          <ArrowLeft size={22} strokeWidth={1.8} />
+        </button>
+        <h1 className="font-poppins text-base font-semibold text-[#141414] md:text-lg">Pesquisar</h1>
+      </div>
+
+      <div className="shrink-0 px-4 pt-4 pb-2 md:px-8">
+        <input
+          ref={inputRef}
+          value={query}
+          onChange={(e) => onQueryChange(e.target.value)}
+          onKeyDown={(e) => e.key === "Escape" && onClose()}
+          placeholder="O que você procura?"
+          className="w-full rounded-full border-2 border-[#d9a326] px-5 py-3 text-sm text-[#141414] outline-none md:text-base"
+        />
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 pb-24 md:px-8">
+        {!normalizedQuery ? (
+          <p className="py-10 text-center text-sm text-[#9a9aa0]">Digite para buscar produtos no cardápio.</p>
+        ) : results.length === 0 ? (
+          <p className="py-10 text-center text-sm text-[#9a9aa0]">Nenhum produto encontrado.</p>
+        ) : (
+          <div className="divide-y divide-[#ececee]">
+            {results.map((item) => (
+              <ItemListRow key={item.id} item={item} onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
