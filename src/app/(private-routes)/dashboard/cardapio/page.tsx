@@ -32,7 +32,6 @@ import { MenuSharePanel } from "./_components/menu-share-panel";
 import { MenuHeader } from "./_components/menu-header";
 import { ManageMenusDialog } from "./_components/manage-menus-dialog";
 import { StationsSheet } from "./_components/stations-sheet";
-import { PublicProfileDialog } from "./_components/public-profile-dialog";
 import { ProdutoBulkCreateDialog } from "./_components/produto-bulk-create-dialog";
 
 type TabKey = "produtos" | "categorias" | "adicionais";
@@ -45,7 +44,6 @@ export default function VenueCardapioPage() {
   const [bulkCreateOpen, setBulkCreateOpen] = useState(false);
   const [manageMenusOpen, setManageMenusOpen] = useState(false);
   const [stationsOpen, setStationsOpen] = useState(false);
-  const [publicProfileOpen, setPublicProfileOpen] = useState(false);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [selectedMenuId, setSelectedMenuId] = useState<number | null>(null);
 
@@ -207,7 +205,6 @@ export default function VenueCardapioPage() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setManageMenusOpen(true)}>Gerenciar cardápios</DropdownMenuItem>
               <DropdownMenuItem onClick={() => setStationsOpen(true)}>Estações de preparo</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setPublicProfileOpen(true)}>Vitrine pública</DropdownMenuItem>
               {canPublish ? (
                 <DropdownMenuItem disabled={publish.isPending} onClick={handlePublish}>
                   {publish.isPending ? "Publicando…" : "Publicar cardápio"}
@@ -331,7 +328,6 @@ export default function VenueCardapioPage() {
 
       <ManageMenusDialog orgId={orgId} open={manageMenusOpen} onOpenChange={setManageMenusOpen} />
       <StationsSheet orgId={orgId} open={stationsOpen} onOpenChange={setStationsOpen} />
-      <PublicProfileDialog orgId={orgId} open={publicProfileOpen} onOpenChange={setPublicProfileOpen} />
 
       <ProdutoBulkCreateDialog
         orgId={orgId}

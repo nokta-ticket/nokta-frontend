@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Check, ChevronDown, Copy, ExternalLink, ImagePlus, Pencil } from "lucide-react";
+import { Check, ChevronDown, Copy, ExternalLink, ImagePlus, Instagram, MapPin, Pencil, Phone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -172,15 +172,24 @@ function StatusAndLinks({
   onSelectMenu: (menuId: number) => void;
 }) {
   const updateSlug = useUpdateOrganizationSlug(orgId);
+  // displaySlug é o que a UI mostra fora do modo de edição — nunca cai de
+  // volta pro orgSlug antigo (prop) enquanto a mutation está em voo. Sem
+  // isso, salvar troca de editingSlug=false ANTES de refreshOrganizations()
+  // (round-trip de rede) resolver e trazer o orgSlug novo, então a UI
+  // mostra o valor antigo por um instante e só depois "pisca" pro novo.
+  const [displaySlug, setDisplaySlug] = useState(orgSlug);
   const [slugValue, setSlugValue] = useState(orgSlug ?? "");
   const [editingSlug, setEditingSlug] = useState(false);
   const [copiedSlug, setCopiedSlug] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const copyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => setSlugValue(orgSlug ?? ""), [orgSlug]);
+  useEffect(() => {
+    setSlugValue(orgSlug ?? "");
+    setDisplaySlug(orgSlug);
+  }, [orgSlug]);
 
-  const publicUrl = orgSlug ? buildMarketingUrl(`/cardapio/${orgSlug}`) : null;
+  const publicUrl = displaySlug ? buildMarketingUrl(`/cardapio/${displaySlug}`) : null;
   // Link público real só existe pro cardápio PRINCIPAL (o público só tem
   // espaço pra 1 cardápio por organização) — status Publicado/Rascunho já
   // não bloqueia mais nada aqui (todo cardápio principal nasce publicado).
@@ -189,13 +198,15 @@ function StatusAndLinks({
   const saveSlug = () => {
     setEditingSlug(false);
     const trimmed = slugValue.trim();
-    if (!trimmed || trimmed === orgSlug) {
-      setSlugValue(orgSlug ?? "");
+    if (!trimmed || trimmed === displaySlug) {
+      setSlugValue(displaySlug ?? "");
       return;
     }
+    setDisplaySlug(trimmed);
     updateSlug.mutate(trimmed, {
       onError: (err) => {
         setSlugValue(orgSlug ?? "");
+        setDisplaySlug(orgSlug);
         toast.error(getErrorMessage(err, "Não foi possível alterar o link. Tente outro."));
       },
       onSuccess: () => toast.success("Link público atualizado!"),
@@ -267,7 +278,7 @@ function StatusAndLinks({
                 onKeyDown={(e) => {
                   if (e.key === "Enter") e.currentTarget.blur();
                   if (e.key === "Escape") {
-                    setSlugValue(orgSlug ?? "");
+                    setSlugValue(displaySlug ?? "");
                     setEditingSlug(false);
                   }
                 }}
@@ -279,7 +290,7 @@ function StatusAndLinks({
                 onClick={() => setEditingSlug(true)}
                 className="h-11 min-w-0 flex-1 truncate px-3 text-left text-sm text-foreground"
               >
-                {orgSlug ?? <span className="text-black/30">definir link…</span>}
+                {displaySlug ?? <span className="text-black/30">definir link…</span>}
               </button>
             )}
             <button onClick={() => setEditingSlug(true)} className="grid h-11 w-11 shrink-0 place-items-center text-black/40" aria-label="Editar slug">
@@ -287,8 +298,8 @@ function StatusAndLinks({
             </button>
           </div>
           <button
-            onClick={() => orgSlug && copy(orgSlug, "slug")}
-            disabled={!orgSlug}
+            onClick={() => displaySlug && copy(displaySlug, "slug")}
+            disabled={!displaySlug}
             className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] border border-black/10 bg-white text-black/50 hover:bg-black/[0.02] disabled:opacity-40"
             aria-label="Copiar slug"
           >
@@ -323,6 +334,72 @@ function StatusAndLinks({
             </a>
           ) : null}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ContactFields({ orgId }: { orgId: number }) {
+  const { data: profile } = useVenuePublicProfile(orgId);
+  const update = useUpdateVenuePublicProfile(orgId);
+
+  const [address, setAddress] = useState("");
+  const [instagramUrl, setInstagramUrl] = useState("");
+  const [whatsappNumber, setWhatsappNumber] = useState("");
+
+  useEffect(() => {
+    if (!profile) return;
+    setAddress(profile.address ?? "");
+    setInstagramUrl(profile.instagramUrl ?? "");
+    setWhatsappNumber(profile.whatsappNumber ?? "");
+  }, [profile]);
+
+  const saveField = (field: "address" | "instagramUrl" | "whatsappNumber", value: string) => {
+    const trimmed = value.trim();
+    if (trimmed === (profile?.[field] ?? "")) return;
+    update.mutate(
+      { [field]: trimmed || undefined },
+      { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar. Confira o dado e tente de novo.")) },
+    );
+  };
+
+  return (
+    <div className="mt-6 grid grid-cols-1 gap-4 border-t border-black/[0.06] pt-6 sm:grid-cols-3">
+      <div>
+        <span className="mb-2 flex items-center gap-1.5 text-xs font-medium text-black/50">
+          <Instagram size={13} /> Instagram
+        </span>
+        <Input
+          value={instagramUrl}
+          onChange={(e) => setInstagramUrl(e.target.value)}
+          onBlur={() => saveField("instagramUrl", instagramUrl)}
+          placeholder="https://instagram.com/seu-bar"
+          className="h-11 rounded-[10px]"
+        />
+      </div>
+      <div>
+        <span className="mb-2 flex items-center gap-1.5 text-xs font-medium text-black/50">
+          <Phone size={13} /> WhatsApp
+        </span>
+        <Input
+          value={whatsappNumber}
+          onChange={(e) => setWhatsappNumber(e.target.value)}
+          onBlur={() => saveField("whatsappNumber", whatsappNumber)}
+          placeholder="+55 11 91234-5678"
+          className="h-11 rounded-[10px]"
+        />
+      </div>
+      <div>
+        <span className="mb-2 flex items-center gap-1.5 text-xs font-medium text-black/50">
+          <MapPin size={13} /> Endereço
+        </span>
+        <Input
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          onBlur={() => saveField("address", address)}
+          placeholder="Rua, número, bairro"
+          className="h-11 rounded-[10px]"
+        />
       </div>
     </div>
   );
@@ -407,6 +484,8 @@ export function MenuHeader({
         <NameAndDescription menu={menu} orgId={orgId} />
         <StatusAndLinks orgId={orgId} orgSlug={orgSlug} menu={menu} menus={menus} onSelectMenu={onSelectMenu} />
       </div>
+
+      <ContactFields orgId={orgId} />
 
       <BannerUploader orgId={orgId} />
     </div>

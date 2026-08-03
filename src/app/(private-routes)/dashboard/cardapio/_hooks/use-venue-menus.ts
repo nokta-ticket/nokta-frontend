@@ -5,6 +5,7 @@ import {
   venueMenuApi,
   type CreateVenueMenuPayload,
   type UpdateVenueMenuPayload,
+  type VenueMenu,
 } from "@/services/venue-menu";
 import { venueKeys } from "./query-keys";
 
@@ -67,6 +68,26 @@ export function useVenueMenuMutations(orgId: number) {
   const update = useMutation({
     mutationFn: ({ menuId, payload }: { menuId: number; payload: UpdateVenueMenuPayload }) =>
       venueMenuApi.updateMenu(orgId, menuId, payload),
+    // Optimistic update: sem isso, o campo (nome/descrição) só reflete a
+    // mudança depois que invalidateQueries refaz o GET /menus pela rede —
+    // nesse intervalo o valor exibido volta pro antigo (prop vinda do
+    // cache stale) e "pisca" de volta pro novo quando a resposta chega.
+    onMutate: async ({ menuId, payload }) => {
+      await qc.cancelQueries({ queryKey: venueKeys.menus(orgId) });
+      const previousMenus = qc.getQueryData<VenueMenu[]>(venueKeys.menus(orgId));
+      if (previousMenus) {
+        qc.setQueryData<VenueMenu[]>(
+          venueKeys.menus(orgId),
+          previousMenus.map((m) => (m.id === menuId ? { ...m, ...payload } : m)),
+        );
+      }
+      return { previousMenus };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previousMenus) {
+        qc.setQueryData(venueKeys.menus(orgId), context.previousMenus);
+      }
+    },
     onSuccess: (_data, vars) => {
       invalidateMenus();
       qc.invalidateQueries({ queryKey: venueKeys.menu(orgId, vars.menuId) });
