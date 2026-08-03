@@ -313,6 +313,9 @@ export default function VenueCardapioPage() {
           <p className="mb-3.5 text-sm font-semibold text-foreground">Preview do cardápio</p>
           {previewPanel}
           <p className="mt-5 text-center text-[13px] text-black/50">Esta é uma visualização real do seu cardápio.</p>
+          <p className="mt-3 rounded-xl bg-black/[0.02] p-3 text-center text-[12px] leading-relaxed text-black/45">
+            Os destaques são definidos automaticamente pelos clientes. Esta seção aparecerá no cardápio quando houver favoritos suficientes.
+          </p>
         </div>
       </div>
 
@@ -322,7 +325,16 @@ export default function VenueCardapioPage() {
             <SheetTitle>Preview do cardápio</SheetTitle>
           </SheetHeader>
           {/* Só monta enquanto aberto — evita duplicar a query de preview lado a lado com o painel xl:block. */}
-          <div className="px-4 pb-4">{mobilePreviewOpen ? previewPanel : null}</div>
+          <div className="px-4 pb-4">
+            {mobilePreviewOpen ? (
+              <>
+                {previewPanel}
+                <p className="mt-3 rounded-xl bg-black/[0.02] p-3 text-center text-[12px] leading-relaxed text-black/45">
+                  Os destaques são definidos automaticamente pelos clientes. Esta seção aparecerá no cardápio quando houver favoritos suficientes.
+                </p>
+              </>
+            ) : null}
+          </div>
         </SheetContent>
       </Sheet>
 
