@@ -95,7 +95,8 @@ export type IconKey =
   | "dollar"
   | "chart"
   | "users"
-  | "settings";
+  | "settings"
+  | "star";
 
 const ICON_BY_KEY: Partial<Record<string, IconKey>> = {
   PLATFORM_HOME: "home",
@@ -112,6 +113,7 @@ const ICON_BY_KEY: Partial<Record<string, IconKey>> = {
   INSIGHTS: "chart",
   TEAM: "users",
   SETTINGS: "settings",
+  REVIEWS: "star",
 };
 const ICON_BY_GROUP: Record<CapabilityGroup, IconKey> = {
   CORE: "home",
@@ -216,6 +218,7 @@ const FULL_CATALOG_PREVIEW: NavigationItem[] = [
   { key: "RESERVATIONS", label: "Reservas", route: "/dashboard/reservas", group: "RELATIONSHIP" },
   { key: "WAITLIST", label: "Fila de espera", route: "/dashboard/reservas?tab=fila", group: "RELATIONSHIP" },
   { key: "GUEST_LISTS", label: "Convidados", route: "/dashboard/convidados", group: "RELATIONSHIP" },
+  { key: "REVIEWS", label: "Avaliações", route: "/dashboard/avaliacoes", group: "RELATIONSHIP" },
   { key: "TABLES", label: "Mesas", route: "/dashboard/operacao?tab=mesas", group: "OPERATION" },
   { key: "TABS", label: "Comandas", route: "/dashboard/operacao?tab=comandas", group: "OPERATION" },
   { key: "ORDERS", label: "Pedidos", route: "/dashboard/operacao?tab=pedidos", group: "OPERATION" },
