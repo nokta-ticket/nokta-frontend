@@ -92,7 +92,6 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
   const [reviewerWhatsapp, setReviewerWhatsapp] = useState("");
   const [reviewerBirthDate, setReviewerBirthDate] = useState("");
   const [marketingOptIn, setMarketingOptIn] = useState(false);
-  const [showBirthDate, setShowBirthDate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -117,9 +116,8 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
       toast.error("Preencha nome e WhatsApp.");
       return;
     }
-    if (!showBirthDate || !reviewerBirthDate) {
-      setShowBirthDate(true);
-      toast.error("Marque e preencha sua data de nascimento para continuar.");
+    if (marketingOptIn && !reviewerBirthDate) {
+      toast.error("Preencha sua data de nascimento para receber novidades e benefícios.");
       return;
     }
 
@@ -135,7 +133,7 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
         comment: comment.trim() || undefined,
         reviewerName: reviewerName.trim(),
         reviewerWhatsapp: reviewerWhatsapp.trim(),
-        reviewerBirthDate,
+        reviewerBirthDate: reviewerBirthDate || undefined,
         marketingOptIn,
       });
       setSubmitted(true);
@@ -185,7 +183,7 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
         </div>
 
         {/* Venue */}
-        <div className="flex gap-4 px-5 md:gap-6 md:px-8">
+        <div className="relative z-10 flex gap-4 px-5 md:gap-6 md:px-8">
           <div className="-mt-16 flex h-[110px] w-[110px] shrink-0 flex-col items-center justify-center rounded-full border-4 border-white bg-[#f7f3ec] shadow-[0_8px_22px_rgba(0,0,0,.16)] md:-mt-20 md:h-[152px] md:w-[152px]">
             {profile.logoUrl ? (
               <Image
@@ -277,7 +275,7 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
                 onChange={(e) => setComment(e.target.value.slice(0, 500))}
                 maxLength={500}
                 placeholder="Deixe um comentário sobre sua experiência..."
-                className="min-h-[118px] w-full resize-y rounded-xl border border-[#e0e0e8] p-3.5 text-[15px] outline-none"
+                className="min-h-[118px] w-full resize-y rounded-xl border border-[#e0e0e8] p-3.5 text-base outline-none"
               />
               <div className="mt-2 text-right text-xs text-black/40">{comment.length}/500</div>
             </div>
@@ -289,7 +287,7 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
                   <select
                     value={complaintCategory}
                     onChange={(e) => setComplaintCategory(e.target.value as VenueReviewComplaintCategory)}
-                    className="h-[52px] w-full rounded-xl border border-[#e0e0e8] px-4 text-[15px] text-foreground outline-none"
+                    className="h-[52px] w-full rounded-xl border border-[#e0e0e8] px-4 text-base text-foreground outline-none"
                   >
                     <option value="">Selecione uma opção</option>
                     {VENUE_REVIEW_COMPLAINT_CATEGORIES.map((cat) => (
@@ -306,7 +304,7 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
                     onChange={(e) => setComment(e.target.value.slice(0, 500))}
                     maxLength={500}
                     placeholder="Descreva brevemente o problema..."
-                    className="min-h-[140px] w-full resize-y rounded-xl border border-[#e0e0e8] p-3.5 text-[15px] outline-none"
+                    className="min-h-[140px] w-full resize-y rounded-xl border border-[#e0e0e8] p-3.5 text-base outline-none"
                   />
                   <div className="mt-2 text-right text-xs text-black/40">{comment.length}/500</div>
                 </div>
@@ -342,7 +340,7 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
               value={reviewerName}
               onChange={(e) => setReviewerName(e.target.value)}
               placeholder="Nome completo *"
-              className="w-full bg-transparent text-[15px] outline-none"
+              className="w-full bg-transparent text-base outline-none"
             />
           </div>
           <div className="mb-3.5 flex items-center gap-3 rounded-xl border border-[#e0e0e8] px-4 py-3">
@@ -350,7 +348,7 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
               value={reviewerWhatsapp}
               onChange={(e) => setReviewerWhatsapp(e.target.value)}
               placeholder="WhatsApp com DDD *"
-              className="w-full bg-transparent text-[15px] outline-none"
+              className="w-full bg-transparent text-base outline-none"
             />
           </div>
 
@@ -370,49 +368,29 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
               >
                 {marketingOptIn ? <Check size={13} strokeWidth={3} /> : null}
               </span>
-              <span className="text-[15px] leading-snug text-foreground">
+              <span className="text-base leading-snug text-foreground">
                 Quero receber novidades, promoções e benefícios de {initialData.organizationName}.
                 <br />
                 <span className="text-sm text-muted-foreground">Enviaremos conteúdos exclusivos por WhatsApp.</span>
               </span>
             </button>
 
-            {/* Data de nascimento fechada por padrão — só revela o campo após marcar o check, pra não assustar quem só quer avaliar rápido. */}
-            <button
-              type="button"
-              onClick={() => setShowBirthDate((v) => !v)}
-              className="mt-4 flex w-full items-start gap-3 text-left"
-            >
-              <span
-                className="mt-0.5 grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md border-2"
-                style={
-                  showBirthDate
-                    ? { background: MAROON, borderColor: MAROON, color: "#fff" }
-                    : { borderColor: "#e0e0e8" }
-                }
-              >
-                {showBirthDate ? <Check size={13} strokeWidth={3} /> : null}
-              </span>
-              <span className="text-[15px] leading-snug text-foreground">
-                Quero informar minha data de nascimento *
-                <br />
-                <span className="text-sm text-muted-foreground">Usaremos apenas para benefícios e campanhas especiais.</span>
-              </span>
-            </button>
-
-            {showBirthDate ? (
+            {/* Data de nascimento fica fechada até o usuário marcar o opt-in de marketing acima — só faz sentido pedir a data pra quem topa receber benefícios/campanhas. */}
+            {marketingOptIn ? (
               <>
-                <div className="mt-3 flex items-center gap-3 rounded-xl border border-[#e0e0e8] px-4 py-3">
+                <div className="mt-4 flex items-center gap-3 rounded-xl border border-[#e0e0e8] px-4 py-3">
                   <input
                     type="date"
                     value={reviewerBirthDate}
                     onChange={(e) => setReviewerBirthDate(e.target.value)}
-                    className="w-full bg-transparent text-[15px] text-foreground outline-none"
+                    className="w-full bg-transparent text-base text-foreground outline-none"
                   />
                 </div>
                 <div className="mt-3 flex gap-2 text-xs leading-relaxed" style={{ color: MAROON }}>
                   <Lock size={14} className="mt-0.5 shrink-0" />
-                  <span>Você pode cancelar o uso desses dados quando quiser.</span>
+                  <span>
+                    Usaremos sua data de nascimento apenas para benefícios e campanhas especiais. Você pode cancelar quando quiser.
+                  </span>
                 </div>
               </>
             ) : null}

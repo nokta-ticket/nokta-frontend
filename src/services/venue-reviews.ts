@@ -13,7 +13,7 @@ export interface VenueReview {
   comment: string | null;
   reviewerName: string;
   reviewerWhatsapp: string;
-  reviewerBirthDate: string;
+  reviewerBirthDate: string | null;
   marketingOptIn: boolean;
   resolvedAt: string | null;
   createdAt: string;

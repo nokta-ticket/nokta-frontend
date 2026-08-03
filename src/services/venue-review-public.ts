@@ -41,7 +41,7 @@ export interface SubmitVenueReviewPayload {
   comment?: string;
   reviewerName: string;
   reviewerWhatsapp: string;
-  reviewerBirthDate: string;
+  reviewerBirthDate?: string;
   marketingOptIn?: boolean;
 }
 
