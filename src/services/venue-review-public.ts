@@ -26,6 +26,7 @@ export interface VenueReviewPageData {
   organizationName: string;
   profile: {
     logoUrl: string | null;
+    bannerUrl: string | null;
     instagramUrl: string | null;
   };
 }

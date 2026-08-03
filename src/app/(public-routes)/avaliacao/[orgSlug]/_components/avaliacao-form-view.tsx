@@ -92,6 +92,7 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
   const [reviewerWhatsapp, setReviewerWhatsapp] = useState("");
   const [reviewerBirthDate, setReviewerBirthDate] = useState("");
   const [marketingOptIn, setMarketingOptIn] = useState(false);
+  const [showBirthDate, setShowBirthDate] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
@@ -112,8 +113,13 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
       toast.error("Selecione qual foi sua principal crítica.");
       return;
     }
-    if (!reviewerName.trim() || !reviewerWhatsapp.trim() || !reviewerBirthDate) {
-      toast.error("Preencha nome, WhatsApp e data de nascimento.");
+    if (!reviewerName.trim() || !reviewerWhatsapp.trim()) {
+      toast.error("Preencha nome e WhatsApp.");
+      return;
+    }
+    if (!showBirthDate || !reviewerBirthDate) {
+      setShowBirthDate(true);
+      toast.error("Marque e preencha sua data de nascimento para continuar.");
       return;
     }
 
@@ -159,14 +165,24 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
     <div className="mx-auto grid min-h-screen max-w-[1120px] grid-cols-1 lg:grid-cols-[1fr_316px]">
       {/* ===== MAIN ===== */}
       <div className="min-w-0">
-        {/* Cover */}
+        {/* Cover — mesmo banner do cardápio (VenuePublicProfile.bannerUrl); sem banner cadastrado, cai no gradiente decorativo. */}
         <div
-          className="h-[150px] md:h-[198px]"
+          className="relative h-[150px] overflow-hidden md:h-[198px]"
           style={{
             background:
               "radial-gradient(circle at 20% 30%, rgba(245,190,90,.35), transparent 6%), radial-gradient(circle at 42% 18%, rgba(245,190,90,.30), transparent 5%), radial-gradient(circle at 68% 40%, rgba(245,200,120,.25), transparent 7%), radial-gradient(circle at 85% 22%, rgba(245,190,90,.28), transparent 5%), linear-gradient(160deg,#4a3320 0%,#2a1d12 55%,#140d08 100%)",
           }}
-        />
+        >
+          {profile.bannerUrl ? (
+            <Image
+              src={resolveMediaUrl(profile.bannerUrl) ?? profile.bannerUrl}
+              alt=""
+              fill
+              className="object-cover"
+              unoptimized
+            />
+          ) : null}
+        </div>
 
         {/* Venue */}
         <div className="flex gap-4 px-5 md:gap-6 md:px-8">
@@ -207,31 +223,31 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
           <h2 className="mb-5 text-center text-xl font-bold text-foreground md:text-[22px]">Como foi sua experiência?</h2>
 
           {/* Toggle */}
-          <div className="mb-5 grid grid-cols-2 gap-4">
+          <div className="mb-5 grid grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => setLiked(true)}
-              className="flex h-[70px] items-center justify-center gap-3 rounded-2xl border-2 text-base font-semibold transition-colors md:h-[74px]"
+              className="flex h-[46px] items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition-colors"
               style={
                 liked === true
                   ? { borderColor: GREEN, background: GREEN_SOFT, color: GREEN }
                   : { borderColor: "#e0e0e8", color: "#28282e", background: "#fff" }
               }
             >
-              <ThumbsUp size={26} strokeWidth={1.9} />
+              <ThumbsUp size={17} strokeWidth={1.9} />
               Gostei
             </button>
             <button
               type="button"
               onClick={() => setLiked(false)}
-              className="flex h-[70px] items-center justify-center gap-3 rounded-2xl border-2 text-base font-semibold transition-colors md:h-[74px]"
+              className="flex h-[46px] items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition-colors"
               style={
                 liked === false
                   ? { borderColor: MAROON, background: MAROON_SOFT, color: MAROON }
                   : { borderColor: "#e0e0e8", color: "#28282e", background: "#fff" }
               }
             >
-              <ThumbsDown size={26} strokeWidth={1.9} />
+              <ThumbsDown size={17} strokeWidth={1.9} />
               Não gostei
             </button>
           </div>
@@ -361,20 +377,45 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
               </span>
             </button>
 
-            <div className="mt-4 flex items-center gap-3 rounded-xl border border-[#e0e0e8] px-4 py-3">
-              <input
-                type="date"
-                value={reviewerBirthDate}
-                onChange={(e) => setReviewerBirthDate(e.target.value)}
-                className="w-full bg-transparent text-[15px] text-foreground outline-none"
-              />
-            </div>
-            <div className="mt-3 flex gap-2 text-xs leading-relaxed" style={{ color: MAROON }}>
-              <Lock size={14} className="mt-0.5 shrink-0" />
-              <span>
-                Usaremos sua data de nascimento apenas para benefícios e campanhas especiais. Você pode cancelar quando quiser.
+            {/* Data de nascimento fechada por padrão — só revela o campo após marcar o check, pra não assustar quem só quer avaliar rápido. */}
+            <button
+              type="button"
+              onClick={() => setShowBirthDate((v) => !v)}
+              className="mt-4 flex w-full items-start gap-3 text-left"
+            >
+              <span
+                className="mt-0.5 grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md border-2"
+                style={
+                  showBirthDate
+                    ? { background: MAROON, borderColor: MAROON, color: "#fff" }
+                    : { borderColor: "#e0e0e8" }
+                }
+              >
+                {showBirthDate ? <Check size={13} strokeWidth={3} /> : null}
               </span>
-            </div>
+              <span className="text-[15px] leading-snug text-foreground">
+                Quero informar minha data de nascimento *
+                <br />
+                <span className="text-sm text-muted-foreground">Usaremos apenas para benefícios e campanhas especiais.</span>
+              </span>
+            </button>
+
+            {showBirthDate ? (
+              <>
+                <div className="mt-3 flex items-center gap-3 rounded-xl border border-[#e0e0e8] px-4 py-3">
+                  <input
+                    type="date"
+                    value={reviewerBirthDate}
+                    onChange={(e) => setReviewerBirthDate(e.target.value)}
+                    className="w-full bg-transparent text-[15px] text-foreground outline-none"
+                  />
+                </div>
+                <div className="mt-3 flex gap-2 text-xs leading-relaxed" style={{ color: MAROON }}>
+                  <Lock size={14} className="mt-0.5 shrink-0" />
+                  <span>Você pode cancelar o uso desses dados quando quiser.</span>
+                </div>
+              </>
+            ) : null}
           </div>
 
           <button
