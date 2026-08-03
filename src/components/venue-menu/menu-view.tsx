@@ -172,11 +172,17 @@ export function MenuView({
             <h1 className="mb-2 truncate font-poppins text-xl font-semibold tracking-tight text-[#141414] md:text-2xl">
               {data.organizationName}
             </h1>
-            {/* Início / Instagram / WhatsApp / Busca — sempre visíveis e clicáveis, nessa ordem. Instagram sem link cadastrado vai pro instagram.com genérico; WhatsApp sem número vai pro wa.me genérico (abre o app sem conversa pré-selecionada) — nunca link morto. Início ainda não tem destino (feature futura). */}
+            {/* Início / Instagram / WhatsApp / Busca — sempre visíveis e clicáveis, nessa ordem. Instagram sem link cadastrado vai pro instagram.com genérico; WhatsApp sem número vai pro wa.me genérico (abre o app sem conversa pré-selecionada) — nunca link morto. Início linka pra Home pública (nokta.live/{orgSlug}); sem orgSlug (preview do dashboard), fica sem ação. */}
             <div className="mb-2 flex flex-wrap items-center gap-4 text-[#141414]">
-              <button type="button" title="Início" aria-label="Início">
-                <Home size={20} strokeWidth={1.8} />
-              </button>
+              {orgSlug ? (
+                <a href={`/${orgSlug}`} title="Início" aria-label="Início">
+                  <Home size={20} strokeWidth={1.8} />
+                </a>
+              ) : (
+                <button type="button" title="Início" aria-label="Início">
+                  <Home size={20} strokeWidth={1.8} />
+                </button>
+              )}
               <a href={profile.instagramUrl || "https://instagram.com"} target="_blank" rel="noopener noreferrer" title="Instagram">
                 <Instagram size={20} strokeWidth={1.8} />
               </a>

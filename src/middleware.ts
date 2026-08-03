@@ -58,6 +58,14 @@ const publicRoutes = [
   { path: "/", whenAutenticated: "next" },
 ] as const;
 
+// Home pública do estabelecimento (nokta.live/{orgSlug}) — catch-all de 1
+// segmento, só válido no host MARKETING (ver uso abaixo). NUNCA misturar
+// isto em `publicRoutes`: aquela lista roda em QUALQUER host (inclusive
+// PLATFORM/TICKETS_PUBLIC), e um catch-all genérico lá liberaria como
+// "pública" qualquer rota de 1 segmento não reconhecida em app.nokta.live
+// (ex.: erro de digitação), em vez de redirecionar pro login.
+const ORG_SLUG_HOME_ROUTE = { path: "/[id]", whenAutenticated: "next" } as const;
+
 // Fase 5: /produtor/* virou redirect fino pro dashboard unificado — não tem
 // mais gate de role própria (a autorização real é da API + contexto de
 // organização, mesmo padrão de qualquer outra rota /dashboard/*). Esta
@@ -298,9 +306,11 @@ export function middleware(request: NextRequest) {
 
   }
 
-  const publicRoute = publicRoutes.find((route) =>
-    matchDynamicRoute(path, route.path)
-  );
+  const publicRoute =
+    publicRoutes.find((route) => matchDynamicRoute(path, route.path)) ??
+    (enforcedSurface === "MARKETING" && matchDynamicRoute(path, ORG_SLUG_HOME_ROUTE.path)
+      ? ORG_SLUG_HOME_ROUTE
+      : undefined);
 
   // Invalid Token - clear and redirect (best-effort: só dispara nos casos
   // raros em que o cookie de sessão real é visível aqui — ver comentário

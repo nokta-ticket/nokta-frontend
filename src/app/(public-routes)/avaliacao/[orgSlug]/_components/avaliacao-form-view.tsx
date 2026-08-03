@@ -202,7 +202,9 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
               {initialData.organizationName}
             </h1>
             <div className="mt-3 flex gap-3.5 text-[#3a3a40]">
-              <Home size={20} strokeWidth={1.8} />
+              <a href={`/${orgSlug}`} title="Início" aria-label="Início">
+                <Home size={20} strokeWidth={1.8} />
+              </a>
               {profile.instagramUrl ? (
                 <a href={profile.instagramUrl} target="_blank" rel="noopener noreferrer" title="Instagram">
                   <Instagram size={20} strokeWidth={1.8} />

@@ -346,12 +346,45 @@ export interface UpdateVenuePublicProfilePayload {
   whatsappNumber?: string;
 }
 
+/** Mesmo catálogo fixo do backend — ver src/venue/menu/common/venue-amenity-catalog.ts. */
+export const VENUE_AMENITY_KEYS = [
+  "VALET",
+  "PARKING",
+  "PAYMENT_METHODS",
+  "WIFI",
+  "OUTDOOR_AREA",
+  "ACCESSIBILITY",
+  "PET_FRIENDLY",
+  "LIVE_MUSIC",
+  "AIR_CONDITIONING",
+] as const;
+export type VenueAmenityKey = (typeof VENUE_AMENITY_KEYS)[number];
+
+export interface VenueAmenityItem {
+  key: VenueAmenityKey;
+  label: string;
+  enabled: boolean;
+  value: string | null;
+}
+
+export interface SetVenueAmenityItemPayload {
+  key: VenueAmenityKey;
+  enabled: boolean;
+  value?: string;
+}
+
 export const venueMenuApi = {
   // ---- Perfil público (vitrine do cardápio) ----
   getPublicProfile: (organizationId: number) =>
     api.get<VenuePublicProfile>(`${base(organizationId)}/menu-publico/perfil`).then((r) => r.data),
   updatePublicProfile: (organizationId: number, payload: UpdateVenuePublicProfilePayload) =>
     api.patch<VenuePublicProfile>(`${base(organizationId)}/menu-publico/perfil`, payload).then((r) => r.data),
+
+  // ---- Amenidades (Informações úteis da Home pública) ----
+  getAmenities: (organizationId: number) =>
+    api.get<VenueAmenityItem[]>(`${base(organizationId)}/menu-publico/amenidades`).then((r) => r.data),
+  updateAmenities: (organizationId: number, items: SetVenueAmenityItemPayload[]) =>
+    api.put<VenueAmenityItem[]>(`${base(organizationId)}/menu-publico/amenidades`, { items }).then((r) => r.data),
 
   // ---- Cardápios ----
   /**
