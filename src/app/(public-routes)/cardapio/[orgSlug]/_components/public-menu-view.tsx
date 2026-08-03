@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getVisitorToken, venueMenuPublicApi, type PublicMenuItem, type PublicMenuResponse } from "@/services/venue-menu-public";
 import { MenuView } from "@/components/venue-menu/menu-view";
 
@@ -10,6 +10,13 @@ import { MenuView } from "@/components/venue-menu/menu-view";
  * dashboard) aos dados/favoritos de verdade da API pública. Nenhuma
  * decisão visual mora aqui — está toda em MenuView, pra nunca existir uma
  * segunda implementação divergente do cardápio.
+ *
+ * initialData vem do servidor (page.tsx é Server Component agora, ver
+ * comentário lá) sem visitorToken — favoritedByVisitor chega sempre false
+ * nesse fetch inicial (localStorage não existe no servidor). Assim que o
+ * componente monta no navegador, refaz o mesmo GET com o token real em
+ * segundo plano (sem mostrar loading) só pra corrigir os corações já
+ * favoritados em visitas anteriores — nunca bloqueia a primeira renderização.
  */
 export function PublicMenuView({ initialData, orgSlug }: { initialData: PublicMenuResponse; orgSlug: string }) {
   const [data, setData] = useState(initialData);
@@ -17,6 +24,15 @@ export function PublicMenuView({ initialData, orgSlug }: { initialData: PublicMe
   if (!visitorTokenRef.current && typeof window !== "undefined") {
     visitorTokenRef.current = getVisitorToken();
   }
+
+  useEffect(() => {
+    const token = visitorTokenRef.current;
+    if (!token) return;
+    venueMenuPublicApi
+      .getByOrgSlug(orgSlug, token)
+      .then(setData)
+      .catch(() => {});
+  }, [orgSlug]);
 
   async function toggleFavorite(item: PublicMenuItem) {
     const token = visitorTokenRef.current;
