@@ -311,7 +311,10 @@ function SearchOverlay({
           onChange={(e) => onQueryChange(e.target.value)}
           onKeyDown={(e) => e.key === "Escape" && onClose()}
           placeholder="O que você procura?"
-          className="w-full rounded-full border-2 border-[#d9a326] px-5 py-3 text-sm text-[#141414] outline-none md:text-base"
+          // text-base (16px) sempre, mesmo em mobile — abaixo de 16px o
+          // Safari/iOS dá zoom automático na página inteira ao focar o
+          // input (autoFocus dispara isso na hora que o overlay abre).
+          className="w-full rounded-full border-2 border-[#d9a326] px-5 py-3 text-base text-[#141414] outline-none"
         />
       </div>
 
