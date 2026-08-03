@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import api from '@/lib/axios';
 
 interface EventMapProps {
   address: string;
@@ -52,14 +53,18 @@ export function EventMap({ address, lat, lng }: EventMapProps) {
       if (lat !== undefined && lng !== undefined) {
         initMap([lat, lng]);
       } else {
-        // Geocode via Nominatim
-        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`)
-          .then((r) => r.json())
-          .then((results) => {
-            if (results?.[0]) {
-              initMap([parseFloat(results[0].lat), parseFloat(results[0].lon)]);
+        // Geocoding via backend (nunca direto do Nominatim no browser —
+        // respostas cacheadas por eles às vezes vêm sem
+        // Access-Control-Allow-Origin, e o fetch é bloqueado por CORS
+        // silenciosamente, sem erro visível: o mapa fica vazio pra sempre).
+        api
+          .get<{ lat: number | null; lng: number | null }>('/geocoding', { params: { address } })
+          .then(({ data }) => {
+            if (data.lat !== null && data.lng !== null) {
+              initMap([data.lat, data.lng]);
             }
-          });
+          })
+          .catch(() => {});
       }
     });
 
