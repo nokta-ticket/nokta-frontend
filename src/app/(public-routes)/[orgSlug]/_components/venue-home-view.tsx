@@ -2,14 +2,12 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ChevronDown, Instagram, MapPin, MessageCircle } from "lucide-react";
+import { ChevronDown, ChevronRight, Instagram, MapPin, MessageCircle } from "lucide-react";
 import { resolveMediaUrl } from "@/lib/media";
-import { EventMap } from "@/components/EventMap";
 import type { VenueHomePageData } from "@/services/venue-home-public";
 
 const MAROON = "#8a1e2c";
 const GREEN = "#1f9d55";
-const BLUE = "#3b7fc4";
 
 function initials(name: string): string {
   return name
@@ -161,40 +159,48 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                       Ver no mapa →
                     </a>
                   </div>
-                  <div className="w-[110px] shrink-0 overflow-hidden rounded-xl border border-[#ececf0]">
-                    <EventMap address={profile.address} height={90} showZoomControls={false} />
+                  {/* Embed real do Google Maps — nunca o Leaflet/CartoDB aqui: usuário pediu explicitamente o visual nativo do Maps. Sem API key (modo "output=embed" é público). */}
+                  <div className="h-[90px] w-[110px] shrink-0 overflow-hidden rounded-xl border border-[#ececf0]">
+                    <iframe
+                      title="Mapa de localização"
+                      src={`https://www.google.com/maps?q=${addressQuery}&output=embed`}
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                    />
                   </div>
                 </div>
 
-                <div className="mt-4 grid grid-cols-3 gap-2.5">
+                <div className="mt-4 flex flex-col gap-2.5">
                   <a
                     href={`https://waze.com/ul?q=${addressQuery}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex flex-col items-center gap-1.5 rounded-xl border border-[#e4e4ea] bg-white py-2 text-center"
+                    className="overflow-hidden rounded-xl"
                   >
-                    <Image src="/waze.svg" alt="Waze" width={28} height={10} className="h-[18px] w-auto" unoptimized />
-                    <span className="text-xs font-semibold" style={{ color: BLUE }}>
-                      Abrir no Waze
-                    </span>
+                    <Image src="/waze.svg" alt="Waze" width={332} height={114} className="block h-[54px] w-full object-cover" unoptimized />
                   </a>
                   <a
                     href={`https://m.uber.com/ul/?action=setPickup&dropoff[formatted_address]=${addressQuery}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex flex-col items-center gap-1.5 rounded-xl border border-[#e4e4ea] bg-white py-2 text-center"
+                    className="flex items-center gap-3 rounded-xl border border-[#e4e4ea] bg-white py-3.5 pl-4 pr-3.5"
                   >
-                    <Image src="/uber.svg" alt="Uber" width={24} height={24} className="h-5 w-5" unoptimized />
-                    <span className="text-xs font-semibold text-[#25252b]">Chamar Uber</span>
+                    <Image src="/uber.svg" alt="Uber" width={40} height={40} className="h-10 w-10 rounded-lg" unoptimized />
+                    <span className="flex-1 text-[15px] font-semibold text-[#25252b]">Chamar Uber</span>
+                    <ChevronRight size={18} className="text-[#9a9aa4]" />
                   </a>
                   <a
-                    href={`https://99app.com/`}
+                    href="https://99app.com/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex flex-col items-center gap-1.5 rounded-xl border border-[#e4e4ea] bg-white py-2 text-center"
+                    className="flex items-center gap-3 rounded-xl border border-[#e4e4ea] bg-white py-3.5 pl-4 pr-3.5"
                   >
-                    <Image src="/99.svg" alt="99" width={24} height={24} className="h-5 w-5" unoptimized />
-                    <span className="text-xs font-semibold text-[#25252b]">Vá de 99</span>
+                    <Image src="/99.svg" alt="99" width={40} height={40} className="h-10 w-10 rounded-lg" unoptimized />
+                    <span className="flex-1 text-[15px] font-semibold text-[#25252b]">Vá de 99</span>
+                    <ChevronRight size={18} className="text-[#9a9aa4]" />
                   </a>
                 </div>
               </div>
