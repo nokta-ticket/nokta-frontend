@@ -163,8 +163,10 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
     <div className="mx-auto grid min-h-screen max-w-[1120px] grid-cols-1 lg:grid-cols-[1fr_316px]">
       {/* ===== MAIN ===== */}
       <div className="min-w-0">
-        {/* Cover — mesmo banner do cardápio (VenuePublicProfile.bannerUrl); sem banner cadastrado, mesmo fallback preto sólido do MenuView (nunca o gradiente marrom/dourado antigo, que só existia aqui). */}
-        <div className="relative h-[150px] overflow-hidden bg-[#050505] md:h-[198px]">
+        {/* Cover — mesmo banner do cardápio (VenuePublicProfile.bannerUrl); sem banner cadastrado, mesmo fallback preto sólido do MenuView (nunca o gradiente marrom/dourado antigo, que só existia aqui). Borda inferior só com banner, mesmo critério do MenuView/Home pública. */}
+        <div
+          className={`relative h-[150px] overflow-hidden bg-[#050505] md:h-[198px] ${profile.bannerUrl ? "border-b border-black/15" : ""}`}
+        >
           {profile.bannerUrl ? (
             <Image
               src={resolveMediaUrl(profile.bannerUrl) ?? profile.bannerUrl}
