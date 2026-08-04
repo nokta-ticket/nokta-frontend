@@ -266,7 +266,7 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
 
         {/* FOOTER — faixa simples com razão social/CNPJ da Nokta (não do estabelecimento) + Instagram discreto, pedido explícito do usuário pra reduzir o rodapé anterior (card grande "Siga nas redes sociais"). */}
         <div className="flex items-center justify-between gap-3 border-t border-[#ececf0] px-[18px] py-3.5">
-          <span className="text-[11px] leading-snug text-[#9a9aa4]">
+          <span className="-translate-y-[1.5px] text-[11px] leading-snug text-[#9a9aa4]">
             Nokta Tecnologia LTDA • CNPJ: 59.386.582/0001-39
           </span>
           <a
