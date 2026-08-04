@@ -178,9 +178,9 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                     href={`https://waze.com/ul?q=${addressQuery}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="overflow-hidden rounded-xl"
+                    className="overflow-hidden rounded-xl bg-[#33cbfd] py-3"
                   >
-                    <Image src="/waze.svg" alt="Waze" width={332} height={114} className="block h-[54px] w-full object-cover" unoptimized />
+                    <Image src="/waze.svg" alt="Waze" width={332} height={114} className="mx-auto block h-9 w-auto" unoptimized />
                   </a>
                   <a
                     href={`https://m.uber.com/ul/?action=setPickup&dropoff[formatted_address]=${addressQuery}`}
