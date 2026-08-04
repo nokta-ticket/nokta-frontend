@@ -11,7 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ImageCropperDialog } from "@/components/media/ImageCropperDialog";
+import { extensionForMimeType, ImageCropperDialog } from "@/components/media/ImageCropperDialog";
 import { buildMarketingUrl } from "@/lib/surfaces";
 import { resolveMediaUrl } from "@/lib/media";
 import { getErrorMessage } from "@/lib/axios";
@@ -59,7 +59,10 @@ function LogoUploader({ orgId, orgName }: { orgId: number; orgName: string }) {
   };
 
   const handleConfirmCrop = async (blob: Blob) => {
-    const file = new File([blob], "logo.jpg", { type: "image/jpeg" });
+    // blob.type já vem correto do ImageCropperDialog (PNG/WEBP quando a
+    // origem tinha transparência, JPEG caso contrário) — nunca forçar
+    // .jpg/image/jpeg aqui, senão o fundo transparente vira preto de novo.
+    const file = new File([blob], `logo.${extensionForMimeType(blob.type)}`, { type: blob.type });
     const url = await upload(file);
     if (!url) return;
     const originalUrl = pendingOriginalUrl ?? profile?.logoOriginalUrl ?? undefined;
@@ -493,7 +496,7 @@ function BannerUploader({ orgId }: { orgId: number }) {
   };
 
   const handleConfirmCrop = async (blob: Blob) => {
-    const file = new File([blob], "banner.jpg", { type: "image/jpeg" });
+    const file = new File([blob], `banner.${extensionForMimeType(blob.type)}`, { type: blob.type });
     const url = await upload(file);
     if (!url) return;
     const originalUrl = pendingOriginalUrl ?? profile?.bannerOriginalUrl ?? undefined;
