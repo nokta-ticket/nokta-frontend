@@ -140,12 +140,24 @@ export function MenuView({
           </div>
         </div>
 
-        {/* HERO */}
+        {/* HERO — banner real do perfil quando definido (mesma imagem editada em "Banner do cardápio (capa)" no dashboard, só a imagem, sem nome sobreposto); sem banner, mantém o fallback de sempre (fundo escuro + nome + anel decorativo). */}
         <div className="relative flex h-[180px] items-center justify-center overflow-hidden bg-[#050505] px-6 md:h-[220px]">
-          <div className="absolute -top-24 h-[280px] w-[280px] rounded-full border border-white/40 md:-top-32 md:h-[340px] md:w-[340px]" />
-          <p className="relative max-w-full break-words text-center font-poppins text-2xl font-light leading-tight tracking-[0.2em] text-white md:text-[46px] md:tracking-[0.42em]">
-            {data.organizationName.toUpperCase()}
-          </p>
+          {profile.bannerUrl ? (
+            <Image
+              src={resolveMediaUrl(profile.bannerUrl) ?? profile.bannerUrl}
+              alt=""
+              fill
+              className="object-cover"
+              unoptimized
+            />
+          ) : (
+            <>
+              <div className="absolute -top-24 h-[280px] w-[280px] rounded-full border border-white/40 md:-top-32 md:h-[340px] md:w-[340px]" />
+              <p className="relative max-w-full break-words text-center font-poppins text-2xl font-light leading-tight tracking-[0.2em] text-white md:text-[46px] md:tracking-[0.42em]">
+                {data.organizationName.toUpperCase()}
+              </p>
+            </>
+          )}
         </div>
 
         {/* PROFILE */}

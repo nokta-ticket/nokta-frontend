@@ -29,6 +29,7 @@ export interface PublicMenuCategory {
 
 export interface PublicVenueProfile {
   logoUrl: string | null;
+  bannerUrl: string | null;
   address: string | null;
   instagramUrl: string | null;
   whatsappNumber: string | null;

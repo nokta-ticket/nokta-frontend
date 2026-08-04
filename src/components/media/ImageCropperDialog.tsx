@@ -112,7 +112,18 @@ export function ImageCropperDialog({
 
         {imageSrc ? (
           <>
-            <div className="relative w-full overflow-hidden rounded-xl bg-black" style={{ height: 320 }}>
+            {/* Fundo em xadrez (padrão de qualquer editor de imagem pra indicar transparência) em vez de bg-black sólido — um bg-black escondia lettering preto de logos com fundo transparente durante o ajuste, mesmo sem afetar o arquivo final salvo. */}
+            <div
+              className="relative w-full overflow-hidden rounded-xl"
+              style={{
+                height: 320,
+                backgroundImage:
+                  "linear-gradient(45deg,#ccc 25%,transparent 25%),linear-gradient(-45deg,#ccc 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#ccc 75%),linear-gradient(-45deg,transparent 75%,#ccc 75%)",
+                backgroundSize: "16px 16px",
+                backgroundPosition: "0 0, 0 8px, 8px -8px, -8px 0",
+                backgroundColor: "#fff",
+              }}
+            >
               {/* restrictPosition=false + minZoom bem baixo: usuário pediu liberdade total de arraste/zoom (o padrão da lib trava a imagem nos limites da área de recorte, impedindo mostrar espaço vazio nas bordas — não é o comportamento desejado aqui). */}
               <Cropper
                 image={imageSrc}

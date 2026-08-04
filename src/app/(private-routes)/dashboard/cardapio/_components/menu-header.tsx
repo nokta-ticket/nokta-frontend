@@ -528,7 +528,11 @@ function BannerUploader({ orgId }: { orgId: number }) {
   return (
     <div className="mt-6">
       <span className="mb-2 block text-xs font-medium text-black/50">Banner do cardápio (capa)</span>
-      <div className="relative flex h-[180px] items-center justify-center overflow-hidden rounded-[14px] bg-[#08080a]">
+      {/* aspect-ratio trava a proporção de exibição em 4:1 (1600x400), IGUAL ao aspect usado no crop — sem isso o container esticava conforme a largura da tela (h-[180px] fixo com largura variável), fazendo o object-cover recortar mais do que o usuário viu/ajustou no editor. */}
+      <div
+        className="relative flex max-h-[180px] items-center justify-center overflow-hidden rounded-[14px] bg-[#08080a]"
+        style={{ aspectRatio: "1600 / 400" }}
+      >
         {resolvedBannerUrl ? (
           <Image src={resolvedBannerUrl} alt="" fill className="object-cover" unoptimized />
         ) : (
