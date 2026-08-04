@@ -1,6 +1,13 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+// Importado estaticamente (não injetado via <link> de CDN): o CSP do site
+// só libera style-src 'self' — um <link> pra unpkg.com é bloqueado pelo
+// navegador (erro de console, silencioso pro usuário), e a Promise que
+// esperava o evento 'load' do <link> nunca resolvia, deixando o mapa
+// vazio pra sempre em produção. Next.js empacota este CSS como parte do
+// próprio bundle (mesma origem), sem depender de CDN externa.
+import 'leaflet/dist/leaflet.css';
 import api from '@/lib/axios';
 
 interface EventMapProps {
@@ -22,37 +29,18 @@ export function EventMap({ address, lat, lng, height = 180, showZoomControls = t
     let cancelled = false;
     let resizeObserver: ResizeObserver | null = null;
 
-    // O Leaflet mede a grade de tiles usando o CSS dele (altura da linha,
-    // overflow etc.) — inicializar antes do <link> carregar faz o mapa
-    // calcular um viewport errado (renderiza só um pedaço no canto, o
-    // resto fica em branco). Espera o CSS estar de fato aplicado antes de
-    // montar o mapa, nunca dispara os dois em paralelo.
-    const ensureLeafletCss = () =>
-      new Promise<void>((resolve) => {
-        const existing = document.querySelector<HTMLLinkElement>('#leaflet-css');
-        if (existing) {
-          // Já pode ter carregado antes deste efeito rodar.
-          if (existing.sheet) resolve();
-          else existing.addEventListener('load', () => resolve(), { once: true });
-          return;
-        }
-        const link = document.createElement('link');
-        link.id = 'leaflet-css';
-        link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-        link.addEventListener('load', () => resolve(), { once: true });
-        document.head.appendChild(link);
-      });
-
-    Promise.all([import('leaflet'), ensureLeafletCss()]).then(([L]) => {
+    import('leaflet').then((L) => {
       if (cancelled || !containerRef.current || mapRef.current) return;
 
-      // Fix ícone padrão do Leaflet no Next.js
+      // Ícones do marker servidos pelo próprio domínio (/leaflet/*.png),
+      // nunca unpkg.com — mesmo motivo do CSS: bloqueados pelo CSP em
+      // produção (img-src aceita https: amplo, mas evitar dependência de
+      // CDN externa que já causou um bug real aqui).
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        iconUrl: '/leaflet/marker-icon.png',
+        iconRetinaUrl: '/leaflet/marker-icon-2x.png',
+        shadowUrl: '/leaflet/marker-shadow.png',
       });
 
       const initMap = (coords: [number, number]) => {

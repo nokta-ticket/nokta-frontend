@@ -173,6 +173,7 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                     rel="noopener noreferrer"
                     className="flex flex-col items-center gap-1.5 rounded-xl border border-[#e4e4ea] bg-white py-2 text-center"
                   >
+                    <Image src="/waze.svg" alt="Waze" width={28} height={10} className="h-[18px] w-auto" unoptimized />
                     <span className="text-xs font-semibold" style={{ color: BLUE }}>
                       Abrir no Waze
                     </span>
@@ -183,7 +184,7 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                     rel="noopener noreferrer"
                     className="flex flex-col items-center gap-1.5 rounded-xl border border-[#e4e4ea] bg-white py-2 text-center"
                   >
-                    <span className="rounded-md bg-black px-2.5 py-1 text-xs font-bold text-white">Uber</span>
+                    <Image src="/uber.svg" alt="Uber" width={24} height={24} className="h-5 w-5" unoptimized />
                     <span className="text-xs font-semibold text-[#25252b]">Chamar Uber</span>
                   </a>
                   <a
@@ -192,7 +193,7 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                     rel="noopener noreferrer"
                     className="flex flex-col items-center gap-1.5 rounded-xl border border-[#e4e4ea] bg-white py-2 text-center"
                   >
-                    <span className="rounded-md bg-black px-2.5 py-1 text-xs font-bold text-white">99</span>
+                    <Image src="/99.svg" alt="99" width={24} height={24} className="h-5 w-5" unoptimized />
                     <span className="text-xs font-semibold text-[#25252b]">Vá de 99</span>
                   </a>
                 </div>
