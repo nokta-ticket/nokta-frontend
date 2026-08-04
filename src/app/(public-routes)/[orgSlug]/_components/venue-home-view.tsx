@@ -188,9 +188,9 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                     {/* uber.svg já é o logo completo (quadrado preto + "Uber" vazado em branco) — preenche o botão inteiro. */}
                     <Image src="/uber.svg" alt="Uber" width={2000} height={2000} className="h-full w-full object-cover" unoptimized />
                   </a>
-                  {/* 99.svg cortava feio em object-cover (proporção muito vertical/apertada) — mantido só como fundo (gradiente equivalente ao do SVG), com texto por cima, mesmo padrão do Uber. Sem destino pré-preenchido: diferente de Waze/Uber, a 99 não documenta nenhum deep-link oficial de endereço — https://99app.com abre o app instalado (ou a loja, se não tiver). */}
+                  {/* 99.svg cortava feio em object-cover (proporção muito vertical/apertada) — mantido só como fundo (gradiente equivalente ao do SVG), com texto por cima, mesmo padrão do Uber. Sem destino pré-preenchido: diferente de Waze/Uber, a 99 não documenta nenhum deep-link oficial de endereço. Link oficial (Onelink/AppsFlyer da 99) — abre o app instalado ou a loja certa (iOS/Android), fornecido pelo usuário. */}
                   <a
-                    href="https://99app.com"
+                    href="https://99app-pax.onelink.me/qDRG/dcwrjtqm"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex h-12 items-center justify-center gap-1.5 rounded-xl text-sm font-extrabold tracking-tight text-black"
