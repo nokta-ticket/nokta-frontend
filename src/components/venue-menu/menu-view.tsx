@@ -140,8 +140,10 @@ export function MenuView({
           </div>
         </div>
 
-        {/* HERO — banner real do perfil quando definido (mesma imagem editada em "Banner do cardápio (capa)" no dashboard, só a imagem, sem nome sobreposto); sem banner, mantém o fallback de sempre (fundo escuro + nome + anel decorativo). */}
-        <div className="relative flex h-[180px] items-center justify-center overflow-hidden bg-[#050505] px-6 md:h-[220px]">
+        {/* HERO — banner real do perfil quando definido (mesma imagem editada em "Banner do cardápio (capa)" no dashboard, só a imagem, sem nome sobreposto); sem banner, mantém o fallback de sempre (fundo escuro + nome + anel decorativo). Borda inferior só com banner: uma imagem clara/branca se misturava com o fundo da página logo abaixo, sem nenhuma linha demarcando onde o banner termina. */}
+        <div
+          className={`relative flex h-[180px] items-center justify-center overflow-hidden bg-[#050505] px-6 md:h-[220px] ${profile.bannerUrl ? "border-b border-black/15" : ""}`}
+        >
           {profile.bannerUrl ? (
             <Image
               src={resolveMediaUrl(profile.bannerUrl) ?? profile.bannerUrl}
