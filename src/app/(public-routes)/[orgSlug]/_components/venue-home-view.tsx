@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ChevronDown, Instagram, MapPin, MessageCircle } from "lucide-react";
+import { ChevronDown, MapPin } from "lucide-react";
+import { InstagramIcon } from "@/components/icons/InstagramIcon";
+import { WhatsappIcon } from "@/components/icons/WhatsappIcon";
 import { resolveMediaUrl } from "@/lib/media";
 import type { VenueHomePageData } from "@/services/venue-home-public";
 
@@ -70,24 +72,24 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
             <h1 className="break-words font-poppins text-[19px] font-extrabold leading-tight tracking-tight text-[#25252b]">
               {data.organizationName}
             </h1>
-            <div className="mt-2 flex gap-2.5">
+            <div className="mt-2 flex gap-3">
               <a
                 href={profile.instagramUrl || "https://instagram.com"}
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Instagram"
-                className="grid h-9 w-9 place-items-center rounded-[10px] border border-[#e4e4ea] text-[#3a3a40]"
+                className="text-[#3a3a40]"
               >
-                <Instagram size={18} />
+                <InstagramIcon size={22} />
               </a>
               <a
                 href={profile.whatsappNumber ? `https://wa.me/${profile.whatsappNumber.replace(/\D/g, "")}` : "https://wa.me"}
                 target="_blank"
                 rel="noopener noreferrer"
                 title="WhatsApp"
-                className="grid h-9 w-9 place-items-center rounded-[10px] border border-[#e4e4ea] text-[#3a3a40]"
+                className="text-[#3a3a40]"
               >
-                <MessageCircle size={18} />
+                <WhatsappIcon size={22} />
               </a>
             </div>
           </div>
@@ -238,9 +240,9 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
             rel="noopener noreferrer"
             title="Instagram"
             aria-label="Instagram"
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-[#9a9aa4]"
+            className="shrink-0 text-[#9a9aa4]"
           >
-            <Instagram size={16} />
+            <InstagramIcon size={16} />
           </a>
         </div>
       </div>
