@@ -206,7 +206,15 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                     rel="noopener noreferrer"
                     className="flex h-12 items-center justify-center overflow-hidden rounded-xl bg-[#33cbfd]"
                   >
-                    <Image src="/waze.svg" alt="Waze" width={332} height={114} className="h-6 w-auto object-contain" unoptimized />
+                    {/* waze.svg tem espaço vazio maior abaixo do desenho dentro do próprio viewBox (332x114) — o desenho real fica um pouco acima do centro geométrico do arquivo, por isso o object-contain sozinho empurrava o conteúdo visualmente pra baixo em relação aos botões Uber/99. Compensado com -translate-y. */}
+                    <Image
+                      src="/waze.svg"
+                      alt="Waze"
+                      width={332}
+                      height={114}
+                      className="h-6 w-auto -translate-y-[3px] object-contain"
+                      unoptimized
+                    />
                   </a>
                   <a
                     href={`https://m.uber.com/ul/?action=setPickup&dropoff[formatted_address]=${addressQuery}`}
@@ -222,10 +230,11 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                     href="https://99app-pax.onelink.me/qDRG/dcwrjtqm"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex h-12 items-center justify-center gap-1.5 rounded-xl text-sm font-extrabold tracking-tight text-black"
+                    className="flex h-12 items-center justify-center gap-1 rounded-xl leading-none text-black"
                     style={{ background: "linear-gradient(135deg, #ffdd00, #ff8200)" }}
                   >
-                    Vai de 99
+                    <span className="text-[14px] font-semibold leading-none">Vai de</span>
+                    <span className="text-[19px] font-extrabold leading-none">99</span>
                   </a>
                 </div>
               </div>
