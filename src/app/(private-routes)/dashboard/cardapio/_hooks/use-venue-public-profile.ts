@@ -33,6 +33,13 @@ export function useUpdateVenuePublicProfile(orgId: number) {
         qc.setQueryData(venueKeys.publicProfile(orgId), context.previous);
       }
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: venueKeys.publicProfile(orgId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: venueKeys.publicProfile(orgId) });
+      // logoUrl/bannerUrl também aparecem no preview do celular (endpoint
+      // separado, ver menu-preview-phone.tsx) — sem isso o preview só
+      // atualiza a logo/banner depois de outra mutation qualquer disparar
+      // essa invalidação por acidente (ex.: criar um produto).
+      qc.invalidateQueries({ queryKey: ["venue", orgId, "menuPreview"] });
+    },
   });
 }

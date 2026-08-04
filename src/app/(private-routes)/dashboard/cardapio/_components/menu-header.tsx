@@ -60,13 +60,21 @@ function LogoUploader({ orgId, orgName }: { orgId: number; orgName: string }) {
   };
 
   const logoUrl = profile?.logoUrl ?? null;
+  const resolvedLogoUrl = logoUrl ? (resolveMediaUrl(logoUrl) ?? logoUrl) : null;
+  // Botão único: reabre o cropper direto na logo já salva (reajustar zoom/
+  // posição sem precisar escolher o arquivo de novo); sem logo ainda, abre
+  // o seletor de arquivo normalmente.
+  const handleEditClick = () => {
+    if (resolvedLogoUrl) setImageSrc(resolvedLogoUrl);
+    else inputRef.current?.click();
+  };
 
   return (
     <div className="flex flex-col items-start">
       <span className="mb-2 block text-xs font-medium text-black/50">Logo</span>
       <div className="relative flex h-[118px] w-[118px] shrink-0 items-center justify-center rounded-full bg-black shadow-[0_8px_20px_rgba(0,0,0,.18)]">
-        {logoUrl ? (
-          <Image src={resolveMediaUrl(logoUrl) ?? logoUrl} alt={orgName} fill sizes="118px" className="rounded-full object-cover" unoptimized />
+        {resolvedLogoUrl ? (
+          <Image src={resolvedLogoUrl} alt={orgName} fill sizes="118px" className="rounded-full object-cover" unoptimized />
         ) : (
           <>
             <span className="pointer-events-none absolute h-[74px] w-[74px] rounded-full border border-white/35" />
@@ -82,15 +90,34 @@ function LogoUploader({ orgId, orgName }: { orgId: number; orgName: string }) {
           className="hidden"
           onChange={(e) => handleFile(e.target.files?.[0])}
         />
-        <button
-          type="button"
-          disabled={uploading}
-          onClick={() => inputRef.current?.click()}
-          aria-label="Trocar logo"
-          className="absolute bottom-0.5 right-0.5 grid h-[30px] w-[30px] place-items-center rounded-full border border-black/10 bg-white shadow-sm disabled:opacity-60"
-        >
-          <Pencil size={14} className="text-black/60" />
-        </button>
+        {resolvedLogoUrl ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                disabled={uploading}
+                aria-label="Editar logo"
+                className="absolute bottom-0.5 right-0.5 grid h-[30px] w-[30px] place-items-center rounded-full border border-black/10 bg-white shadow-sm disabled:opacity-60"
+              >
+                <Pencil size={14} className="text-black/60" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setImageSrc(resolvedLogoUrl)}>Ajustar zoom/posição</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => inputRef.current?.click()}>Trocar imagem</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={handleEditClick}
+            aria-label="Enviar logo"
+            className="absolute bottom-0.5 right-0.5 grid h-[30px] w-[30px] place-items-center rounded-full border border-black/10 bg-white shadow-sm disabled:opacity-60"
+          >
+            <Pencil size={14} className="text-black/60" />
+          </button>
+        )}
       </div>
       <p className="mt-3.5 text-[11.5px] leading-relaxed text-black/40">
         Formatos: JPG, PNG ou WEBP
@@ -171,7 +198,7 @@ function NameAndDescription({ menu, orgId }: { menu: VenueMenu; orgId: number })
           onChange={(e) => setDescricao(e.target.value)}
           onBlur={saveDescricao}
           rows={4}
-          className="resize-none rounded-[10px]"
+          className="resize-none whitespace-pre-wrap break-words rounded-[10px]"
         />
       </div>
     </div>
@@ -453,13 +480,14 @@ function BannerUploader({ orgId }: { orgId: number }) {
   };
 
   const bannerUrl = profile?.bannerUrl ?? null;
+  const resolvedBannerUrl = bannerUrl ? (resolveMediaUrl(bannerUrl) ?? bannerUrl) : null;
 
   return (
     <div className="mt-6">
       <span className="mb-2 block text-xs font-medium text-black/50">Banner do cardápio (capa)</span>
       <div className="relative flex h-[180px] items-center justify-center overflow-hidden rounded-[14px] bg-[#08080a]">
-        {bannerUrl ? (
-          <Image src={resolveMediaUrl(bannerUrl) ?? bannerUrl} alt="" fill className="object-cover" unoptimized />
+        {resolvedBannerUrl ? (
+          <Image src={resolvedBannerUrl} alt="" fill className="object-cover" unoptimized />
         ) : (
           <div
             className="absolute inset-0"
@@ -476,15 +504,34 @@ function BannerUploader({ orgId }: { orgId: number }) {
           className="hidden"
           onChange={(e) => handleFile(e.target.files?.[0])}
         />
-        <button
-          type="button"
-          disabled={uploading}
-          onClick={() => inputRef.current?.click()}
-          aria-label={bannerUrl ? "Trocar banner" : "Enviar banner"}
-          className="absolute right-3.5 top-3.5 z-[2] grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm disabled:opacity-60"
-        >
-          {bannerUrl ? <Pencil size={15} className="text-black/60" /> : <ImagePlus size={15} className="text-black/60" />}
-        </button>
+        {resolvedBannerUrl ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                disabled={uploading}
+                aria-label="Editar banner"
+                className="absolute right-3.5 top-3.5 z-[2] grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm disabled:opacity-60"
+              >
+                <Pencil size={15} className="text-black/60" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setImageSrc(resolvedBannerUrl)}>Ajustar zoom/posição</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => inputRef.current?.click()}>Trocar imagem</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => inputRef.current?.click()}
+            aria-label="Enviar banner"
+            className="absolute right-3.5 top-3.5 z-[2] grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm disabled:opacity-60"
+          >
+            <ImagePlus size={15} className="text-black/60" />
+          </button>
+        )}
       </div>
       <p className="mt-3 text-[11.5px] text-black/40">Tamanho recomendado: 1600x400px</p>
       <ImageCropperDialog

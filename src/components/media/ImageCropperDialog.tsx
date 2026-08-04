@@ -83,6 +83,8 @@ export function ImageCropperDialog({
                 image={imageSrc}
                 crop={crop}
                 zoom={zoom}
+                minZoom={0.5}
+                maxZoom={3}
                 aspect={aspect}
                 cropShape={cropShape}
                 showGrid={cropShape === "rect"}
@@ -95,7 +97,7 @@ export function ImageCropperDialog({
               <ZoomOut size={16} className="shrink-0 text-black/40" />
               <input
                 type="range"
-                min={1}
+                min={0.5}
                 max={3}
                 step={0.05}
                 value={zoom}
