@@ -230,11 +230,10 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                     href="https://99app-pax.onelink.me/qDRG/dcwrjtqm"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex h-12 items-center justify-center gap-1 rounded-xl leading-none text-black"
+                    className="flex h-12 items-center justify-center gap-1.5 rounded-xl text-[19px] font-black leading-none text-black"
                     style={{ background: "linear-gradient(135deg, #ffdd00, #ff8200)" }}
                   >
-                    <span className="text-[17px] font-semibold leading-none">Vai de</span>
-                    <span className="text-[26px] font-black leading-none">99</span>
+                    Vai de 99
                   </a>
                 </div>
               </div>
