@@ -96,18 +96,25 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
         </div>
 
         <div className="flex-1 p-[18px]">
-          {/* STATUS */}
-          {data.isOpenNow !== null ? (
-            <div className="mb-4 rounded-2xl border border-[#ececf0] bg-white shadow-[0_1px_2px_rgba(30,20,20,.05),0_2px_8px_rgba(30,20,20,.04)]">
-              <div className="flex items-center gap-3.5 px-4 py-4">
+          {/* STATUS — card sempre visível, mesmo sem nenhum horário cadastrado (isOpenNow null nesse caso). */}
+          <div className="mb-4 rounded-2xl border border-[#ececf0] bg-white shadow-[0_1px_2px_rgba(30,20,20,.05),0_2px_8px_rgba(30,20,20,.04)]">
+            <div className="flex items-center gap-3.5 px-4 py-4">
+              {data.isOpenNow !== null ? (
                 <div className="flex items-center gap-2 whitespace-nowrap text-[15px] font-bold" style={{ color: data.isOpenNow ? GREEN : MAROON }}>
                   <span className="h-2.5 w-2.5 rounded-full" style={{ background: data.isOpenNow ? GREEN : MAROON }} />
                   {data.isOpenNow ? "Aberto agora" : "Fechado agora"}
                 </div>
-                <div className="h-full w-px self-stretch bg-[#ececf0]" />
-                <div className="min-w-0 flex-1 truncate text-[14.5px] text-[#65656f]">
-                  {data.todayHoursLabel ? `Hoje • ${data.todayHoursLabel}` : "Hoje sem horário definido"}
+              ) : (
+                <div className="flex items-center gap-2 whitespace-nowrap text-[15px] font-bold text-[#9a9aa4]">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#c7c7cf]" />
+                  Horário não informado
                 </div>
+              )}
+              <div className="h-full w-px self-stretch bg-[#ececf0]" />
+              <div className="min-w-0 flex-1 truncate text-[14.5px] text-[#65656f]">
+                {data.todayHoursLabel ? `Hoje • ${data.todayHoursLabel}` : "Hoje sem horário definido"}
+              </div>
+              {data.weekHours.length > 0 ? (
                 <button
                   type="button"
                   onClick={() => setSchedOpen((v) => !v)}
@@ -117,19 +124,19 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                 >
                   <ChevronDown size={20} />
                 </button>
-              </div>
-              {schedOpen ? (
-                <div className="px-[18px] pb-1">
-                  {data.weekHours.map((day) => (
-                    <div key={day.dayOfWeek} className="flex justify-between border-t border-[#ececf0] py-2.5 text-sm">
-                      <b className="font-semibold">{day.label}</b>
-                      <span className="text-[#65656f]">{day.hours ?? "Fechado"}</span>
-                    </div>
-                  ))}
-                </div>
               ) : null}
             </div>
-          ) : null}
+            {schedOpen && data.weekHours.length > 0 ? (
+              <div className="px-[18px] pb-1">
+                {data.weekHours.map((day) => (
+                  <div key={day.dayOfWeek} className="flex justify-between border-t border-[#ececf0] py-2.5 text-sm">
+                    <b className="font-semibold">{day.label}</b>
+                    <span className="text-[#65656f]">{day.hours ?? "Fechado"}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
 
           {/* CARDÁPIO DIGITAL — outline fino, fundo branco, texto na cor da marca (referência visual enviada pelo usuário), largura total mantida. */}
           <a
@@ -205,13 +212,13 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
             </div>
           ) : null}
 
-          {/* INFORMAÇÕES ÚTEIS */}
-          {data.amenities.length > 0 ? (
-            <div className="mb-5 rounded-2xl border border-[#ececf0] bg-white shadow-[0_1px_2px_rgba(30,20,20,.05),0_2px_8px_rgba(30,20,20,.04)]">
-              <div className="flex items-center gap-2.5 px-[18px] pt-[18px]">
-                <MapPin size={20} style={{ color: MAROON }} />
-                <h2 className="text-lg font-bold">Informações úteis</h2>
-              </div>
+          {/* INFORMAÇÕES ÚTEIS — card sempre visível (mesmo sem nenhuma amenidade habilitada), pedido explícito do usuário pra ocupar espaço/manter a estrutura da página consistente. */}
+          <div className="mb-5 rounded-2xl border border-[#ececf0] bg-white shadow-[0_1px_2px_rgba(30,20,20,.05),0_2px_8px_rgba(30,20,20,.04)]">
+            <div className="flex items-center gap-2.5 px-[18px] pt-[18px]">
+              <MapPin size={20} style={{ color: MAROON }} />
+              <h2 className="text-lg font-bold">Informações úteis</h2>
+            </div>
+            {data.amenities.length > 0 ? (
               <div className="px-[18px] pb-2 pt-1.5 md:grid md:grid-cols-2 md:gap-x-6">
                 {data.amenities.map((item, i) => (
                   <div
@@ -225,8 +232,10 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                   </div>
                 ))}
               </div>
-            </div>
-          ) : null}
+            ) : (
+              <p className="px-[18px] pb-[18px] pt-2 text-[14px] text-[#9a9aa4]">Nenhuma informação cadastrada ainda.</p>
+            )}
+          </div>
         </div>
 
         {/* FOOTER — faixa simples com razão social/CNPJ da Nokta (não do estabelecimento) + Instagram discreto, pedido explícito do usuário pra reduzir o rodapé anterior (card grande "Siga nas redes sociais"). */}
