@@ -7,9 +7,13 @@ interface EventMapProps {
   address: string;
   lat?: number;
   lng?: number;
+  /** Altura em px do mapa — default 180 (usado na página de evento). A Home pública do Venue usa um valor menor (mapa ilustrativo ao lado do endereço). */
+  height?: number;
+  /** Default true. Desligar em mapas pequenos/ilustrativos — os botões (28px cada) dominam um mapa de ~90px de altura. */
+  showZoomControls?: boolean;
 }
 
-export function EventMap({ address, lat, lng }: EventMapProps) {
+export function EventMap({ address, lat, lng, height = 180, showZoomControls = true }: EventMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
 
@@ -116,22 +120,24 @@ export function EventMap({ address, lat, lng }: EventMapProps) {
   const zoomOut = () => mapRef.current?.zoomOut();
 
   return (
-    <div className="relative" style={{ height: 180 }}>
+    <div className="relative" style={{ height }}>
       <div ref={containerRef} style={{ height: '100%', width: '100%' }} />
 
       {/* Botões de zoom */}
-      <div className="absolute top-2 right-2 flex flex-col gap-px z-[999]">
-        <button
-          onClick={zoomIn}
-          className="h-7 w-7 flex items-center justify-center rounded-t-lg bg-white shadow text-gray-700 hover:bg-gray-50 text-base font-bold leading-none transition"
-          aria-label="Zoom in"
-        >+</button>
-        <button
-          onClick={zoomOut}
-          className="h-7 w-7 flex items-center justify-center rounded-b-lg bg-white shadow text-gray-700 hover:bg-gray-50 text-base font-bold leading-none transition"
-          aria-label="Zoom out"
-        >−</button>
-      </div>
+      {showZoomControls ? (
+        <div className="absolute top-2 right-2 flex flex-col gap-px z-[999]">
+          <button
+            onClick={zoomIn}
+            className="h-7 w-7 flex items-center justify-center rounded-t-lg bg-white shadow text-gray-700 hover:bg-gray-50 text-base font-bold leading-none transition"
+            aria-label="Zoom in"
+          >+</button>
+          <button
+            onClick={zoomOut}
+            className="h-7 w-7 flex items-center justify-center rounded-b-lg bg-white shadow text-gray-700 hover:bg-gray-50 text-base font-bold leading-none transition"
+            aria-label="Zoom out"
+          >−</button>
+        </div>
+      ) : null}
     </div>
   );
 }

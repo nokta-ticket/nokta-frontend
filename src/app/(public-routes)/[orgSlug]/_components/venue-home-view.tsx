@@ -148,19 +148,22 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                 <h2 className="text-lg font-bold">Localização</h2>
               </div>
               <div className="px-[18px] pb-[18px] pt-3.5">
-                <p className="mb-2.5 whitespace-pre-line text-[15px] leading-relaxed text-[#65656f]">{profile.address}</p>
-                <a
-                  href={`https://www.google.com/maps/dir/?api=1&destination=${addressQuery}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-[14.5px] font-bold"
-                  style={{ color: MAROON }}
-                >
-                  Ver no mapa →
-                </a>
-
-                <div className="mt-3.5 overflow-hidden rounded-xl border border-[#ececf0]">
-                  <EventMap address={profile.address} />
+                <div className="flex items-start gap-3.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="mb-2.5 whitespace-pre-line text-[15px] leading-relaxed text-[#65656f]">{profile.address}</p>
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${addressQuery}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-[14.5px] font-bold"
+                      style={{ color: MAROON }}
+                    >
+                      Ver no mapa →
+                    </a>
+                  </div>
+                  <div className="w-[110px] shrink-0 overflow-hidden rounded-xl border border-[#ececf0]">
+                    <EventMap address={profile.address} height={90} showZoomControls={false} />
+                  </div>
                 </div>
 
                 <div className="mt-4 grid grid-cols-3 gap-2.5">
@@ -168,26 +171,26 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                     href={`https://waze.com/ul?q=${addressQuery}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex flex-col items-center gap-2 rounded-xl border border-[#e4e4ea] bg-white p-3.5 text-center"
+                    className="flex flex-col items-center gap-1.5 rounded-xl border border-[#e4e4ea] bg-white py-2 text-center"
                   >
                     <span className="text-xs font-semibold" style={{ color: BLUE }}>
                       Abrir no Waze
                     </span>
                   </a>
                   <a
-                    href={`https://m.uber.com/ul/?action=setPickup&dropoff[formatted_address]=${addressQuery}`}
+                    href={`https://99app.com/`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex flex-col items-center gap-2 rounded-xl border border-[#e4e4ea] bg-white p-3.5 text-center"
+                    className="flex flex-col items-center gap-1.5 rounded-xl border border-[#e4e4ea] bg-white py-2 text-center"
                   >
-                    <span className="rounded-md bg-black px-2.5 py-1 text-xs font-bold text-white">Uber</span>
-                    <span className="text-xs font-semibold text-[#25252b]">Chamar Uber</span>
+                    <span className="rounded-md bg-black px-2.5 py-1 text-xs font-bold text-white">99</span>
+                    <span className="text-xs font-semibold text-[#25252b]">Vá de 99</span>
                   </a>
                   <a
                     href={`https://www.google.com/maps/search/?api=1&query=${addressQuery}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex flex-col items-center gap-2 rounded-xl border border-[#e4e4ea] bg-white p-3.5 text-center"
+                    className="flex flex-col items-center gap-1.5 rounded-xl border border-[#e4e4ea] bg-white py-2 text-center"
                   >
                     <span className="text-xs font-semibold" style={{ color: MAROON }}>
                       Abrir no Maps
