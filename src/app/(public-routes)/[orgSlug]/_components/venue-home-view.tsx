@@ -173,34 +173,34 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                   </div>
                 </div>
 
-                <div className="mt-4 flex flex-col gap-2.5">
+                <div className="mt-4 grid grid-cols-3 gap-2.5">
                   <a
                     href={`https://waze.com/ul?q=${addressQuery}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="overflow-hidden rounded-xl bg-[#33cbfd] py-3"
+                    className="flex items-center justify-center overflow-hidden rounded-xl bg-[#33cbfd] px-2 py-3"
                   >
-                    <Image src="/waze.svg" alt="Waze" width={332} height={114} className="mx-auto block h-9 w-auto" unoptimized />
+                    <Image src="/waze.svg" alt="Waze" width={332} height={114} className="h-6 w-auto" unoptimized />
                   </a>
                   <a
                     href={`https://m.uber.com/ul/?action=setPickup&dropoff[formatted_address]=${addressQuery}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 rounded-xl border border-[#e4e4ea] bg-white py-3.5 pl-4 pr-3.5"
+                    className="flex items-center gap-1.5 rounded-xl border border-[#e4e4ea] bg-white px-2.5 py-3"
                   >
-                    <Image src="/uber.svg" alt="Uber" width={40} height={40} className="h-10 w-10 rounded-lg" unoptimized />
-                    <span className="flex-1 text-[15px] font-semibold text-[#25252b]">Chamar Uber</span>
-                    <ChevronRight size={18} className="text-[#9a9aa4]" />
+                    <Image src="/uber.svg" alt="Uber" width={28} height={28} className="h-7 w-7 shrink-0 rounded-md" unoptimized />
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-[#25252b]">Chamar Uber</span>
+                    <ChevronRight size={16} className="shrink-0 text-[#9a9aa4]" />
                   </a>
                   <a
                     href="https://99app.com/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 rounded-xl border border-[#e4e4ea] bg-white py-3.5 pl-4 pr-3.5"
+                    className="flex items-center gap-1.5 rounded-xl border border-[#e4e4ea] bg-white px-2.5 py-3"
                   >
-                    <Image src="/99.svg" alt="99" width={40} height={40} className="h-10 w-10 rounded-lg" unoptimized />
-                    <span className="flex-1 text-[15px] font-semibold text-[#25252b]">Vá de 99</span>
-                    <ChevronRight size={18} className="text-[#9a9aa4]" />
+                    <Image src="/99.svg" alt="99" width={28} height={28} className="h-7 w-7 shrink-0 rounded-md" unoptimized />
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-[#25252b]">Vá de 99</span>
+                    <ChevronRight size={16} className="shrink-0 text-[#9a9aa4]" />
                   </a>
                 </div>
               </div>
