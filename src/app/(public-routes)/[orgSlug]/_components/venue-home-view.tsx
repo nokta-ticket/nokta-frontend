@@ -284,7 +284,7 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
             rel="noopener noreferrer"
             title="Instagram"
             aria-label="Instagram"
-            className="shrink-0 text-[#9a9aa4]"
+            className="-translate-y-[1.5px] shrink-0 text-[#9a9aa4]"
           >
             <InstagramIcon size={16} />
           </a>
