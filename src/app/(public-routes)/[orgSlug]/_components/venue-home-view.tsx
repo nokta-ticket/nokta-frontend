@@ -142,7 +142,8 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
           {profile.address ? (
             <div className="mb-4 rounded-2xl border border-[#ececf0] bg-white shadow-[0_1px_2px_rgba(30,20,20,.05),0_2px_8px_rgba(30,20,20,.04)]">
               <div className="p-[18px]">
-                <div className="flex items-stretch gap-3.5">
+                {/* Área superior com altura fixa (~145px) — mapa precisa de uma altura explícita pra não ficar raso, já que a coluna do endereço sozinha não garante altura suficiente. */}
+                <div className="flex h-[145px] gap-3.5">
                   <div className="flex min-w-0 flex-1 flex-col">
                     <div className="flex items-center gap-2.5">
                       <MapPin size={20} style={{ color: MAROON }} />
@@ -150,12 +151,12 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                     </div>
                     <p className="mt-2.5 whitespace-pre-line text-[15px] leading-relaxed text-[#65656f]">{profile.address}</p>
                   </div>
-                  {/* Embed real do Google Maps — nunca o Leaflet/CartoDB aqui: usuário pediu explicitamente o visual nativo do Maps. Sem API key (modo "output=embed" é público). Coluna da direita ocupa quase toda a altura do card, mapa inteiro clicável. */}
+                  {/* Embed real do Google Maps — nunca o Leaflet/CartoDB aqui: usuário pediu explicitamente o visual nativo do Maps. Sem API key (modo "output=embed" é público). Mapa grande (~175x145), preenche toda a altura da área superior, nunca uma miniatura. */}
                   <a
                     href={`https://www.google.com/maps/dir/?api=1&destination=${addressQuery}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="relative block w-[150px] shrink-0 overflow-hidden rounded-xl border border-[#ececf0]"
+                    className="relative block h-full w-[175px] shrink-0 overflow-hidden rounded-xl border border-[#ececf0]"
                   >
                     <iframe
                       title="Mapa de localização"
