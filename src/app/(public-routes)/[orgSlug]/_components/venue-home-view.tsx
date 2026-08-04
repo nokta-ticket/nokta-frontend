@@ -54,14 +54,17 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
             className={`relative -mt-6 flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-4 border-white shadow-[0_4px_12px_rgba(0,0,0,.14)] ${profile.logoUrl ? "" : "bg-black"}`}
           >
             {profile.logoUrl ? (
-              // Sem fundo forçado — logo com transparência real aparece como enviada.
-              <Image
-                src={resolveMediaUrl(profile.logoUrl) ?? profile.logoUrl}
-                alt={data.organizationName}
-                fill
-                className="rounded-full object-cover"
-                unoptimized
-              />
+              <>
+                {/* Vidro fosco atrás da logo — sem isso, uma logo com fundo transparente sobreposta na borda do banner se misturava direto com a foto atrás dela. Nunca uma cor sólida forçada (pedido explícito: a logo aparece como enviada), só desfoque + leve véu branco. */}
+                <div className="absolute inset-0 rounded-full bg-white/55 backdrop-blur-md" />
+                <Image
+                  src={resolveMediaUrl(profile.logoUrl) ?? profile.logoUrl}
+                  alt={data.organizationName}
+                  fill
+                  className="relative rounded-full object-cover"
+                  unoptimized
+                />
+              </>
             ) : (
               <>
                 <div className="absolute h-16 w-16 rounded-full border border-white/40" />

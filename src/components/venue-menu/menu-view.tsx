@@ -166,14 +166,17 @@ export function MenuView({
             className={`relative -mt-12 flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-4 border-white shadow-[0_6px_18px_rgba(0,0,0,0.18)] md:-mt-14 md:h-32 md:w-32 ${profile.logoUrl ? "" : "bg-black"}`}
           >
             {profile.logoUrl ? (
-              // Sem fundo forçado — logo com transparência real aparece como enviada.
-              <Image
-                src={resolveMediaUrl(profile.logoUrl) ?? profile.logoUrl}
-                alt={data.organizationName}
-                fill
-                className="rounded-full object-cover"
-                unoptimized
-              />
+              <>
+                {/* Vidro fosco atrás da logo — sem isso, uma logo com fundo transparente sobreposta na borda do banner se misturava direto com a foto atrás dela. */}
+                <div className="absolute inset-0 rounded-full bg-white/55 backdrop-blur-md" />
+                <Image
+                  src={resolveMediaUrl(profile.logoUrl) ?? profile.logoUrl}
+                  alt={data.organizationName}
+                  fill
+                  className="relative rounded-full object-cover"
+                  unoptimized
+                />
+              </>
             ) : (
               <>
                 <div className="absolute h-14 w-14 rounded-full border border-white/40 md:h-[70px] md:w-[70px]" />

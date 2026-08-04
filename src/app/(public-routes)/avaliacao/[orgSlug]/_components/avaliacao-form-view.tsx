@@ -179,18 +179,21 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
         {/* Venue */}
         <div className="relative z-10 flex gap-4 px-5 md:gap-6 md:px-8">
           <div
-            className={`-mt-16 flex h-[110px] w-[110px] shrink-0 items-center justify-center rounded-full border-4 border-white shadow-[0_8px_22px_rgba(0,0,0,.16)] md:-mt-20 md:h-[152px] md:w-[152px] ${profile.logoUrl ? "" : "bg-black"}`}
+            className={`relative -mt-16 flex h-[110px] w-[110px] shrink-0 items-center justify-center rounded-full border-4 border-white shadow-[0_8px_22px_rgba(0,0,0,.16)] md:-mt-20 md:h-[152px] md:w-[152px] ${profile.logoUrl ? "" : "bg-black"}`}
           >
             {profile.logoUrl ? (
-              // Sem fundo forçado — logo com transparência real aparece como enviada.
-              <Image
-                src={resolveMediaUrl(profile.logoUrl) ?? profile.logoUrl}
-                alt={initialData.organizationName}
-                width={110}
-                height={110}
-                className="h-full w-full rounded-full object-cover"
-                unoptimized
-              />
+              <>
+                {/* Vidro fosco atrás da logo — sem isso, uma logo com fundo transparente sobreposta na borda do banner se misturava direto com a foto atrás dela. */}
+                <div className="absolute inset-0 rounded-full bg-white/55 backdrop-blur-md" />
+                <Image
+                  src={resolveMediaUrl(profile.logoUrl) ?? profile.logoUrl}
+                  alt={initialData.organizationName}
+                  width={110}
+                  height={110}
+                  className="relative h-full w-full rounded-full object-cover"
+                  unoptimized
+                />
+              </>
             ) : (
               <>
                 <div className="absolute h-[60px] w-[60px] rounded-full border border-white/40 md:h-[80px] md:w-[80px]" />
