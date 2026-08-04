@@ -178,9 +178,9 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                     href={`https://waze.com/ul?q=${addressQuery}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center overflow-hidden rounded-xl bg-[#33cbfd] px-2 py-3"
+                    className="flex h-12 items-center justify-center overflow-hidden rounded-xl bg-[#33cbfd]"
                   >
-                    <Image src="/waze.svg" alt="Waze" width={332} height={114} className="h-6 w-auto" unoptimized />
+                    <Image src="/waze.svg" alt="Waze" width={332} height={114} className="h-6 w-auto object-contain" unoptimized />
                   </a>
                   <a
                     href={`https://m.uber.com/ul/?action=setPickup&dropoff[formatted_address]=${addressQuery}`}
@@ -188,16 +188,18 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                     rel="noopener noreferrer"
                     className="flex h-12 items-center justify-center overflow-hidden rounded-xl bg-white"
                   >
-                    {/* uber.svg já é o logo completo (quadrado preto + "Uber" vazado em branco) — preenche o botão igual ao 99, sem inverter cor nem forçar tamanho pequeno. */}
+                    {/* uber.svg já é o logo completo (quadrado preto + "Uber" vazado em branco) — preenche o botão inteiro. */}
                     <Image src="/uber.svg" alt="Uber" width={2000} height={2000} className="h-full w-full object-cover" unoptimized />
                   </a>
+                  {/* 99.svg cortava feio em object-cover (proporção muito vertical/apertada) — mantido só como fundo (gradiente equivalente ao do SVG), com texto por cima, mesmo padrão do Uber. */}
                   <a
                     href="https://99app.com/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex h-12 items-center justify-center overflow-hidden rounded-xl"
+                    className="flex h-12 items-center justify-center gap-1.5 rounded-xl text-sm font-bold text-black"
+                    style={{ background: "linear-gradient(135deg, #ffdd00, #ff8200)" }}
                   >
-                    <Image src="/99.svg" alt="99" width={1000} height={1000} className="h-full w-full object-cover" unoptimized />
+                    Vá de 99
                   </a>
                 </div>
               </div>
