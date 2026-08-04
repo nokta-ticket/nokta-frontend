@@ -141,36 +141,31 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
           {/* LOCALIZAÇÃO */}
           {profile.address ? (
             <div className="mb-4 rounded-2xl border border-[#ececf0] bg-white shadow-[0_1px_2px_rgba(30,20,20,.05),0_2px_8px_rgba(30,20,20,.04)]">
-              <div className="flex items-center gap-2.5 px-[18px] pt-[18px]">
-                <MapPin size={20} style={{ color: MAROON }} />
-                <h2 className="text-lg font-bold">Localização</h2>
-              </div>
-              <div className="px-[18px] pb-[18px] pt-3.5">
-                <div className="flex items-start gap-3.5">
-                  <div className="min-w-0 flex-1">
-                    <p className="mb-2.5 whitespace-pre-line text-[15px] leading-relaxed text-[#65656f]">{profile.address}</p>
-                    <a
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${addressQuery}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-[14.5px] font-bold"
-                      style={{ color: MAROON }}
-                    >
-                      Ver no mapa →
-                    </a>
+              <div className="p-[18px]">
+                <div className="flex items-stretch gap-3.5">
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <div className="flex items-center gap-2.5">
+                      <MapPin size={20} style={{ color: MAROON }} />
+                      <h2 className="text-lg font-bold">Localização</h2>
+                    </div>
+                    <p className="mt-2.5 whitespace-pre-line text-[15px] leading-relaxed text-[#65656f]">{profile.address}</p>
                   </div>
-                  {/* Embed real do Google Maps — nunca o Leaflet/CartoDB aqui: usuário pediu explicitamente o visual nativo do Maps. Sem API key (modo "output=embed" é público). */}
-                  <div className="h-[90px] w-[110px] shrink-0 overflow-hidden rounded-xl border border-[#ececf0]">
+                  {/* Embed real do Google Maps — nunca o Leaflet/CartoDB aqui: usuário pediu explicitamente o visual nativo do Maps. Sem API key (modo "output=embed" é público). Coluna da direita ocupa quase toda a altura do card, mapa inteiro clicável. */}
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${addressQuery}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative block w-[150px] shrink-0 overflow-hidden rounded-xl border border-[#ececf0]"
+                  >
                     <iframe
                       title="Mapa de localização"
                       src={`https://www.google.com/maps?q=${addressQuery}&output=embed`}
-                      width="100%"
-                      height="100%"
+                      className="pointer-events-none absolute inset-0 h-full w-full"
                       style={{ border: 0 }}
                       loading="lazy"
                       referrerPolicy="no-referrer-when-downgrade"
                     />
-                  </div>
+                  </a>
                 </div>
 
                 <div className="mt-4 grid grid-cols-3 gap-2.5">
