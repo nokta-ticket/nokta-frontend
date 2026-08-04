@@ -98,34 +98,54 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
         <div className="flex-1 p-[18px]">
           {/* STATUS — card sempre visível, mesmo sem nenhum horário cadastrado (isOpenNow null nesse caso). */}
           <div className="mb-4 rounded-2xl border border-[#ececf0] bg-white shadow-[0_1px_2px_rgba(30,20,20,.05),0_2px_8px_rgba(30,20,20,.04)]">
-            <div className="flex items-center gap-3.5 px-4 py-2.5">
-              {data.isOpenNow !== null ? (
-                <div className="flex items-center gap-2 whitespace-nowrap text-[15px] font-bold" style={{ color: data.isOpenNow ? GREEN : MAROON }}>
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: data.isOpenNow ? GREEN : MAROON }} />
-                  {data.isOpenNow ? "Aberto agora" : "Fechado agora"}
+            {data.weekHours.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setSchedOpen((v) => !v)}
+                aria-expanded={schedOpen}
+                aria-label="Ver horários da semana"
+                className="flex w-full items-center gap-3.5 px-4 py-2.5 text-left"
+              >
+                {data.isOpenNow !== null ? (
+                  <div className="flex items-center gap-2 whitespace-nowrap text-[15px] font-bold" style={{ color: data.isOpenNow ? GREEN : MAROON }}>
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: data.isOpenNow ? GREEN : MAROON }} />
+                    {data.isOpenNow ? "Aberto agora" : "Fechado agora"}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 whitespace-nowrap text-[15px] font-bold text-[#9a9aa4]">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#c7c7cf]" />
+                    Horário não informado
+                  </div>
+                )}
+                <div className="h-full w-px self-stretch bg-[#ececf0]" />
+                <div className="min-w-0 flex-1 truncate text-[14.5px] text-[#65656f]">
+                  {data.todayHoursLabel ? `Hoje • ${data.todayHoursLabel}` : "Hoje sem horário definido"}
                 </div>
-              ) : (
-                <div className="flex items-center gap-2 whitespace-nowrap text-[15px] font-bold text-[#9a9aa4]">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#c7c7cf]" />
-                  Horário não informado
-                </div>
-              )}
-              <div className="h-full w-px self-stretch bg-[#ececf0]" />
-              <div className="min-w-0 flex-1 truncate text-[14.5px] text-[#65656f]">
-                {data.todayHoursLabel ? `Hoje • ${data.todayHoursLabel}` : "Hoje sem horário definido"}
-              </div>
-              {data.weekHours.length > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => setSchedOpen((v) => !v)}
-                  aria-label="Ver horários da semana"
-                  className="ml-auto text-[#9a9aa4] transition-transform"
+                <ChevronDown
+                  size={20}
+                  className="ml-auto shrink-0 text-[#9a9aa4] transition-transform"
                   style={{ transform: schedOpen ? "rotate(180deg)" : "none" }}
-                >
-                  <ChevronDown size={20} />
-                </button>
-              ) : null}
-            </div>
+                />
+              </button>
+            ) : (
+              <div className="flex items-center gap-3.5 px-4 py-2.5">
+                {data.isOpenNow !== null ? (
+                  <div className="flex items-center gap-2 whitespace-nowrap text-[15px] font-bold" style={{ color: data.isOpenNow ? GREEN : MAROON }}>
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: data.isOpenNow ? GREEN : MAROON }} />
+                    {data.isOpenNow ? "Aberto agora" : "Fechado agora"}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 whitespace-nowrap text-[15px] font-bold text-[#9a9aa4]">
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#c7c7cf]" />
+                    Horário não informado
+                  </div>
+                )}
+                <div className="h-full w-px self-stretch bg-[#ececf0]" />
+                <div className="min-w-0 flex-1 truncate text-[14.5px] text-[#65656f]">
+                  {data.todayHoursLabel ? `Hoje • ${data.todayHoursLabel}` : "Hoje sem horário definido"}
+                </div>
+              </div>
+            )}
             {schedOpen && data.weekHours.length > 0 ? (
               <div className="px-[18px] pb-1">
                 {data.weekHours.map((day) => (
