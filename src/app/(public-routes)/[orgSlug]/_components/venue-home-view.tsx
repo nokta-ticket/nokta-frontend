@@ -46,9 +46,9 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
           ) : null}
         </div>
 
-        {/* HEADER */}
-        <div className="flex gap-4 px-[18px] pb-1">
-          <div className="relative -mt-16 flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-4 border-white bg-black shadow-[0_8px_20px_rgba(0,0,0,.16)] md:h-32 md:w-32">
+        {/* HEADER — logo pequena (64px) alinhada ao lado do nome/ícones, sem flutuar por cima do banner (pedido explícito, referência enviada pelo usuário). */}
+        <div className="flex items-center gap-3.5 px-[18px] pb-1 pt-3.5">
+          <div className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-4 border-white bg-black shadow-[0_4px_12px_rgba(0,0,0,.14)]">
             {profile.logoUrl ? (
               <Image
                 src={resolveMediaUrl(profile.logoUrl) ?? profile.logoUrl}
@@ -59,35 +59,35 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
               />
             ) : (
               <>
-                <div className="absolute h-14 w-14 rounded-full border border-white/40 md:h-[70px] md:w-[70px]" />
-                <span className="relative font-poppins text-sm font-light tracking-[0.25em] text-white md:text-base">
+                <div className="absolute h-9 w-9 rounded-full border border-white/40" />
+                <span className="relative font-poppins text-[11px] font-light tracking-[0.2em] text-white">
                   {initials(data.organizationName)}
                 </span>
               </>
             )}
           </div>
-          <div className="min-w-0 pt-3.5">
-            <h1 className="break-words font-poppins text-[22px] font-extrabold leading-tight tracking-tight text-[#25252b]">
+          <div className="min-w-0">
+            <h1 className="break-words font-poppins text-[19px] font-extrabold leading-tight tracking-tight text-[#25252b]">
               {data.organizationName}
             </h1>
-            <div className="mt-3 flex gap-2.5">
+            <div className="mt-2 flex gap-2.5">
               <a
                 href={profile.instagramUrl || "https://instagram.com"}
                 target="_blank"
                 rel="noopener noreferrer"
                 title="Instagram"
-                className="grid h-10 w-10 place-items-center rounded-[11px] border border-[#e4e4ea] text-[#3a3a40]"
+                className="grid h-9 w-9 place-items-center rounded-[10px] border border-[#e4e4ea] text-[#3a3a40]"
               >
-                <Instagram size={20} />
+                <Instagram size={18} />
               </a>
               <a
                 href={profile.whatsappNumber ? `https://wa.me/${profile.whatsappNumber.replace(/\D/g, "")}` : "https://wa.me"}
                 target="_blank"
                 rel="noopener noreferrer"
                 title="WhatsApp"
-                className="grid h-10 w-10 place-items-center rounded-[11px] border border-[#e4e4ea] text-[#3a3a40]"
+                className="grid h-9 w-9 place-items-center rounded-[10px] border border-[#e4e4ea] text-[#3a3a40]"
               >
-                <MessageCircle size={20} />
+                <MessageCircle size={18} />
               </a>
             </div>
           </div>
@@ -129,13 +129,14 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
             </div>
           ) : null}
 
-          {/* VER CARDÁPIO */}
+          {/* CARDÁPIO DIGITAL — altura reduzida (~56px) e sombra mais leve, cor mantida a pedido do usuário. */}
           <a
             href={`/cardapio/${orgSlug}`}
-            className="mb-4 flex w-full items-center rounded-2xl px-5 py-5 text-lg font-bold text-white shadow-[0_10px_22px_rgba(138,30,44,.22)]"
+            className="mb-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-[15.5px] font-bold text-white shadow-[0_4px_12px_rgba(138,30,44,.16)]"
             style={{ background: MAROON }}
           >
-            <span className="mx-auto">Ver cardápio</span>
+            <span aria-hidden>🍽️</span>
+            Cardápio digital
           </a>
 
           {/* LOCALIZAÇÃO */}
@@ -145,11 +146,11 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                 {/* Área superior com altura fixa (~145px) — mapa precisa de uma altura explícita pra não ficar raso, já que a coluna do endereço sozinha não garante altura suficiente. */}
                 <div className="flex h-[145px] gap-3.5">
                   <div className="flex min-w-0 flex-1 flex-col">
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex h-5 items-center gap-2.5">
                       <MapPin size={20} style={{ color: MAROON }} />
-                      <h2 className="text-lg font-bold">Localização</h2>
+                      <h2 className="text-lg font-bold leading-none">Localização</h2>
                     </div>
-                    <p className="mt-2.5 whitespace-pre-line text-[15px] leading-relaxed text-[#65656f]">{profile.address}</p>
+                    <p className="mt-2.5 whitespace-pre-line text-[15px] leading-relaxed text-[#3a3a40]">{profile.address}</p>
                   </div>
                   {/* Embed real do Google Maps — nunca o Leaflet/CartoDB aqui: usuário pediu explicitamente o visual nativo do Maps. Sem API key (modo "output=embed" é público). Mapa grande (~175x145), preenche toda a altura da área superior, nunca uma miniatura. */}
                   <a
@@ -187,9 +188,9 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                     {/* uber.svg já é o logo completo (quadrado preto + "Uber" vazado em branco) — preenche o botão inteiro. */}
                     <Image src="/uber.svg" alt="Uber" width={2000} height={2000} className="h-full w-full object-cover" unoptimized />
                   </a>
-                  {/* 99.svg cortava feio em object-cover (proporção muito vertical/apertada) — mantido só como fundo (gradiente equivalente ao do SVG), com texto por cima, mesmo padrão do Uber. */}
+                  {/* 99.svg cortava feio em object-cover (proporção muito vertical/apertada) — mantido só como fundo (gradiente equivalente ao do SVG), com texto por cima, mesmo padrão do Uber. Sem destino pré-preenchido: diferente de Waze/Uber, a 99 não documenta nenhum deep-link oficial de endereço — https://99app.com abre o app instalado (ou a loja, se não tiver). */}
                   <a
-                    href="https://99app.com/"
+                    href="https://99app.com"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex h-12 items-center justify-center gap-1.5 rounded-xl text-sm font-extrabold tracking-tight text-black"
@@ -226,20 +227,21 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
           ) : null}
         </div>
 
-        {/* FOOTER */}
-        <div className="border-t border-[#ececf0] px-[18px] py-[22px] text-center">
-          <div className="mb-3.5 text-[14.5px] font-bold">Siga {data.organizationName} nas redes sociais</div>
+        {/* FOOTER — faixa simples com razão social/CNPJ da Nokta (não do estabelecimento) + Instagram discreto, pedido explícito do usuário pra reduzir o rodapé anterior (card grande "Siga nas redes sociais"). */}
+        <div className="flex items-center justify-between gap-3 border-t border-[#ececf0] px-[18px] py-3.5">
+          <span className="text-[11px] leading-snug text-[#9a9aa4]">
+            Nokta Tecnologia LTDA • CNPJ: 59.386.582/0001-39
+          </span>
           <a
             href={profile.instagramUrl || "https://instagram.com"}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-grid h-11 w-11 place-items-center rounded-xl border border-[#e4e4ea] text-[#3a3a40]"
+            title="Instagram"
+            aria-label="Instagram"
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-[#9a9aa4]"
           >
-            <Instagram size={22} />
+            <Instagram size={16} />
           </a>
-          <div className="mt-4 text-xs leading-relaxed text-[#9a9aa4]">
-            © {new Date().getFullYear()} {data.organizationName}. Todos os direitos reservados.
-          </div>
         </div>
       </div>
     </div>
