@@ -186,17 +186,18 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                     href={`https://m.uber.com/ul/?action=setPickup&dropoff[formatted_address]=${addressQuery}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center overflow-hidden rounded-xl border border-[#e4e4ea] bg-white px-2 py-3"
+                    className="flex h-12 items-center justify-center overflow-hidden rounded-xl bg-white"
                   >
-                    <Image src="/uber.svg" alt="Uber" width={40} height={40} className="h-8 w-8 rounded-lg" unoptimized />
+                    {/* uber.svg já é o logo completo (quadrado preto + "Uber" vazado em branco) — preenche o botão igual ao 99, sem inverter cor nem forçar tamanho pequeno. */}
+                    <Image src="/uber.svg" alt="Uber" width={2000} height={2000} className="h-full w-full object-cover" unoptimized />
                   </a>
                   <a
                     href="https://99app.com/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center overflow-hidden rounded-xl border border-[#e4e4ea] bg-white px-2 py-3"
+                    className="flex h-12 items-center justify-center overflow-hidden rounded-xl"
                   >
-                    <Image src="/99.svg" alt="99" width={40} height={40} className="h-8 w-8 rounded-lg" unoptimized />
+                    <Image src="/99.svg" alt="99" width={1000} height={1000} className="h-full w-full object-cover" unoptimized />
                   </a>
                 </div>
               </div>
