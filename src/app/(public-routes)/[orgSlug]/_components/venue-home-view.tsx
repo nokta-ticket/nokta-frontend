@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ChevronDown, ChevronRight, Instagram, MapPin, MessageCircle } from "lucide-react";
+import { ChevronDown, Instagram, MapPin, MessageCircle } from "lucide-react";
 import { resolveMediaUrl } from "@/lib/media";
 import type { VenueHomePageData } from "@/services/venue-home-public";
 
@@ -186,21 +186,17 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                     href={`https://m.uber.com/ul/?action=setPickup&dropoff[formatted_address]=${addressQuery}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 rounded-xl border border-[#e4e4ea] bg-white px-2.5 py-3"
+                    className="flex items-center justify-center overflow-hidden rounded-xl border border-[#e4e4ea] bg-white px-2 py-3"
                   >
-                    <Image src="/uber.svg" alt="Uber" width={28} height={28} className="h-7 w-7 shrink-0 rounded-md" unoptimized />
-                    <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-[#25252b]">Chamar Uber</span>
-                    <ChevronRight size={16} className="shrink-0 text-[#9a9aa4]" />
+                    <Image src="/uber.svg" alt="Uber" width={40} height={40} className="h-8 w-8 rounded-lg" unoptimized />
                   </a>
                   <a
                     href="https://99app.com/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 rounded-xl border border-[#e4e4ea] bg-white px-2.5 py-3"
+                    className="flex items-center justify-center overflow-hidden rounded-xl border border-[#e4e4ea] bg-white px-2 py-3"
                   >
-                    <Image src="/99.svg" alt="99" width={28} height={28} className="h-7 w-7 shrink-0 rounded-md" unoptimized />
-                    <span className="min-w-0 flex-1 truncate text-[13px] font-semibold text-[#25252b]">Vá de 99</span>
-                    <ChevronRight size={16} className="shrink-0 text-[#9a9aa4]" />
+                    <Image src="/99.svg" alt="99" width={40} height={40} className="h-8 w-8 rounded-lg" unoptimized />
                   </a>
                 </div>
               </div>
