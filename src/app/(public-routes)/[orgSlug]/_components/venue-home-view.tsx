@@ -196,10 +196,10 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                     href="https://99app.com/"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex h-12 items-center justify-center gap-1.5 rounded-xl text-sm font-bold text-black"
+                    className="flex h-12 items-center justify-center gap-1.5 rounded-xl text-sm font-extrabold tracking-tight text-black"
                     style={{ background: "linear-gradient(135deg, #ffdd00, #ff8200)" }}
                   >
-                    Vá de 99
+                    Vai de 99
                   </a>
                 </div>
               </div>
