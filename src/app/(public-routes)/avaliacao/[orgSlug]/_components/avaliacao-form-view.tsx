@@ -178,8 +178,11 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
 
         {/* Venue */}
         <div className="relative z-10 flex gap-4 px-5 md:gap-6 md:px-8">
-          <div className="-mt-16 flex h-[110px] w-[110px] shrink-0 items-center justify-center rounded-full border-4 border-white bg-black shadow-[0_8px_22px_rgba(0,0,0,.16)] md:-mt-20 md:h-[152px] md:w-[152px]">
+          <div
+            className={`-mt-16 flex h-[110px] w-[110px] shrink-0 items-center justify-center rounded-full border-4 border-white shadow-[0_8px_22px_rgba(0,0,0,.16)] md:-mt-20 md:h-[152px] md:w-[152px] ${profile.logoUrl ? "" : "bg-black"}`}
+          >
             {profile.logoUrl ? (
+              // Sem fundo forçado — logo com transparência real aparece como enviada.
               <Image
                 src={resolveMediaUrl(profile.logoUrl) ?? profile.logoUrl}
                 alt={initialData.organizationName}

@@ -50,8 +50,11 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
 
         {/* HEADER — logo grande (112px), sobrepondo só ~20% da própria altura sobre a borda do banner (não 50%) — nome/ícones alinhados ao lado dela nessa mesma altura. */}
         <div className="flex gap-3.5 px-[18px] pb-1">
-          <div className="relative -mt-6 flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-4 border-white bg-black shadow-[0_4px_12px_rgba(0,0,0,.14)]">
+          <div
+            className={`relative -mt-6 flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-4 border-white shadow-[0_4px_12px_rgba(0,0,0,.14)] ${profile.logoUrl ? "" : "bg-black"}`}
+          >
             {profile.logoUrl ? (
+              // Sem fundo forçado — logo com transparência real aparece como enviada.
               <Image
                 src={resolveMediaUrl(profile.logoUrl) ?? profile.logoUrl}
                 alt={data.organizationName}

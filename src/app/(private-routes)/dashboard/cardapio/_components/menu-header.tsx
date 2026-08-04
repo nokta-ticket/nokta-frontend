@@ -88,8 +88,14 @@ function LogoUploader({ orgId, orgName }: { orgId: number; orgName: string }) {
   return (
     <div className="flex flex-col items-start">
       <span className="mb-2 block text-xs font-medium text-black/50">Logo</span>
-      <div className="relative flex h-[118px] w-[118px] shrink-0 items-center justify-center rounded-full bg-black shadow-[0_8px_20px_rgba(0,0,0,.18)]">
+      <div
+        className={`relative flex h-[118px] w-[118px] shrink-0 items-center justify-center rounded-full shadow-[0_8px_20px_rgba(0,0,0,.18)] ${resolvedLogoUrl ? "" : "bg-black"}`}
+      >
         {resolvedLogoUrl ? (
+          // Sem fundo forçado atrás da imagem — se a logo tiver transparência
+          // real, deve mostrar o fundo da página por trás dela, nunca um
+          // preto artificial (pedido explícito do usuário: a logo aparece
+          // exatamente como foi enviada).
           <Image src={resolvedLogoUrl} alt={orgName} fill sizes="118px" className="rounded-full object-cover" unoptimized />
         ) : (
           <>
