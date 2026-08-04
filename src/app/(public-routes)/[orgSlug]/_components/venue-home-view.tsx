@@ -98,7 +98,7 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
         <div className="flex-1 p-[18px]">
           {/* STATUS — card sempre visível, mesmo sem nenhum horário cadastrado (isOpenNow null nesse caso). */}
           <div className="mb-4 rounded-2xl border border-[#ececf0] bg-white shadow-[0_1px_2px_rgba(30,20,20,.05),0_2px_8px_rgba(30,20,20,.04)]">
-            <div className="flex items-center gap-3.5 px-4 py-4">
+            <div className="flex items-center gap-3.5 px-4 py-2.5">
               {data.isOpenNow !== null ? (
                 <div className="flex items-center gap-2 whitespace-nowrap text-[15px] font-bold" style={{ color: data.isOpenNow ? GREEN : MAROON }}>
                   <span className="h-2.5 w-2.5 rounded-full" style={{ background: data.isOpenNow ? GREEN : MAROON }} />
@@ -212,28 +212,34 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
             </div>
           ) : null}
 
-          {/* INFORMAÇÕES ÚTEIS — card sempre visível (mesmo sem nenhuma amenidade habilitada), pedido explícito do usuário pra ocupar espaço/manter a estrutura da página consistente. */}
+          {/* INFORMAÇÕES ÚTEIS — card sempre visível (mesmo sem nenhuma amenidade habilitada), mas minimalista/compacto nesse estado vazio (pedido explícito do usuário, a versão anterior ficou alta demais). */}
           <div className="mb-5 rounded-2xl border border-[#ececf0] bg-white shadow-[0_1px_2px_rgba(30,20,20,.05),0_2px_8px_rgba(30,20,20,.04)]">
-            <div className="flex items-center gap-2.5 px-[18px] pt-[18px]">
-              <MapPin size={20} style={{ color: MAROON }} />
-              <h2 className="text-lg font-bold">Informações úteis</h2>
-            </div>
             {data.amenities.length > 0 ? (
-              <div className="px-[18px] pb-2 pt-1.5 md:grid md:grid-cols-2 md:gap-x-6">
-                {data.amenities.map((item, i) => (
-                  <div
-                    key={item.key}
-                    className={`flex items-center gap-3.5 py-3.5 ${i > 0 ? "border-t border-[#ececf0] md:border-t-0" : ""} ${i > 1 ? "md:border-t md:border-[#ececf0]" : ""}`}
-                  >
-                    <div className="min-w-0">
-                      <div className="text-[15px] font-bold leading-tight">{item.label}</div>
-                      <div className="mt-0.5 text-[13.5px] text-[#65656f]">{item.value || "Disponível"}</div>
+              <>
+                <div className="flex items-center gap-2.5 px-[18px] pt-[18px]">
+                  <MapPin size={20} style={{ color: MAROON }} />
+                  <h2 className="text-lg font-bold">Informações úteis</h2>
+                </div>
+                <div className="px-[18px] pb-2 pt-1.5 md:grid md:grid-cols-2 md:gap-x-6">
+                  {data.amenities.map((item, i) => (
+                    <div
+                      key={item.key}
+                      className={`flex items-center gap-3.5 py-3.5 ${i > 0 ? "border-t border-[#ececf0] md:border-t-0" : ""} ${i > 1 ? "md:border-t md:border-[#ececf0]" : ""}`}
+                    >
+                      <div className="min-w-0">
+                        <div className="text-[15px] font-bold leading-tight">{item.label}</div>
+                        <div className="mt-0.5 text-[13.5px] text-[#65656f]">{item.value || "Disponível"}</div>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </>
             ) : (
-              <p className="px-[18px] pb-[18px] pt-2 text-[14px] text-[#9a9aa4]">Nenhuma informação cadastrada ainda.</p>
+              <div className="flex items-center gap-2.5 px-[18px] py-3.5">
+                <MapPin size={16} style={{ color: MAROON }} />
+                <span className="text-[14px] font-semibold">Informações úteis</span>
+                <span className="text-[13px] text-[#9a9aa4]">— nenhuma cadastrada</span>
+              </div>
             )}
           </div>
         </div>
