@@ -46,9 +46,9 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
           ) : null}
         </div>
 
-        {/* HEADER — logo grande (96px), sobreposta na borda do banner (metade sobre a foto, metade sobre o fundo branco), nome/ícones alinhados ao lado dela nessa mesma altura — exatamente como no print de referência do usuário, nunca em linha "plana" abaixo do banner. */}
+        {/* HEADER — logo grande (112px), sobrepondo só ~20% da própria altura sobre a borda do banner (não 50%) — nome/ícones alinhados ao lado dela nessa mesma altura. */}
         <div className="flex gap-3.5 px-[18px] pb-1">
-          <div className="relative -mt-12 flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-4 border-white bg-black shadow-[0_4px_12px_rgba(0,0,0,.14)]">
+          <div className="relative -mt-6 flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-4 border-white bg-black shadow-[0_4px_12px_rgba(0,0,0,.14)]">
             {profile.logoUrl ? (
               <Image
                 src={resolveMediaUrl(profile.logoUrl) ?? profile.logoUrl}
@@ -59,14 +59,14 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
               />
             ) : (
               <>
-                <div className="absolute h-14 w-14 rounded-full border border-white/40" />
-                <span className="relative font-poppins text-sm font-light tracking-[0.25em] text-white">
+                <div className="absolute h-16 w-16 rounded-full border border-white/40" />
+                <span className="relative font-poppins text-base font-light tracking-[0.25em] text-white">
                   {initials(data.organizationName)}
                 </span>
               </>
             )}
           </div>
-          <div className="min-w-0 pt-3.5">
+          <div className="min-w-0 pt-6">
             <h1 className="break-words font-poppins text-[19px] font-extrabold leading-tight tracking-tight text-[#25252b]">
               {data.organizationName}
             </h1>
