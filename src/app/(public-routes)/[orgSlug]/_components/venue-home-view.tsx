@@ -66,7 +66,7 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
               </>
             )}
           </div>
-          <div className="min-w-0 pt-1">
+          <div className="min-w-0 pt-1.5">
             <h1 className="break-words font-poppins text-[19px] font-extrabold leading-tight tracking-tight text-[#25252b]">
               {data.organizationName}
             </h1>
@@ -129,14 +129,14 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
             </div>
           ) : null}
 
-          {/* CARDÁPIO DIGITAL — altura reduzida (~56px) e sombra mais leve, cor mantida a pedido do usuário. */}
+          {/* CARDÁPIO DIGITAL — outline fino, fundo branco, texto na cor da marca (referência visual enviada pelo usuário), largura total mantida. */}
           <a
             href={`/cardapio/${orgSlug}`}
-            className="mb-4 flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-[15.5px] font-bold text-white shadow-[0_4px_12px_rgba(138,30,44,.16)]"
-            style={{ background: MAROON }}
+            className="mb-4 flex h-14 w-full items-center justify-center gap-2 rounded-full border text-[15.5px] font-semibold"
+            style={{ borderColor: MAROON, color: MAROON }}
           >
-            <span aria-hidden>🍽️</span>
-            Cardápio digital
+            <span aria-hidden>🍴</span>
+            Cardápio Digital
           </a>
 
           {/* LOCALIZAÇÃO */}
