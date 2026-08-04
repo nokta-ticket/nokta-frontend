@@ -178,6 +178,15 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                     </span>
                   </a>
                   <a
+                    href={`https://m.uber.com/ul/?action=setPickup&dropoff[formatted_address]=${addressQuery}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-col items-center gap-1.5 rounded-xl border border-[#e4e4ea] bg-white py-2 text-center"
+                  >
+                    <span className="rounded-md bg-black px-2.5 py-1 text-xs font-bold text-white">Uber</span>
+                    <span className="text-xs font-semibold text-[#25252b]">Chamar Uber</span>
+                  </a>
+                  <a
                     href={`https://99app.com/`}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -185,16 +194,6 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
                   >
                     <span className="rounded-md bg-black px-2.5 py-1 text-xs font-bold text-white">99</span>
                     <span className="text-xs font-semibold text-[#25252b]">Vá de 99</span>
-                  </a>
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${addressQuery}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex flex-col items-center gap-1.5 rounded-xl border border-[#e4e4ea] bg-white py-2 text-center"
-                  >
-                    <span className="text-xs font-semibold" style={{ color: MAROON }}>
-                      Abrir no Maps
-                    </span>
                   </a>
                 </div>
               </div>
