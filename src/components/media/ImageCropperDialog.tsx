@@ -79,15 +79,17 @@ export function ImageCropperDialog({
         {imageSrc ? (
           <>
             <div className="relative w-full overflow-hidden rounded-xl bg-black" style={{ height: 320 }}>
+              {/* restrictPosition=false + minZoom bem baixo: usuário pediu liberdade total de arraste/zoom (o padrão da lib trava a imagem nos limites da área de recorte, impedindo mostrar espaço vazio nas bordas — não é o comportamento desejado aqui). */}
               <Cropper
                 image={imageSrc}
                 crop={crop}
                 zoom={zoom}
-                minZoom={0.5}
+                minZoom={0.2}
                 maxZoom={3}
                 aspect={aspect}
                 cropShape={cropShape}
                 showGrid={cropShape === "rect"}
+                restrictPosition={false}
                 onCropChange={setCrop}
                 onZoomChange={setZoom}
                 onCropComplete={onCropComplete}
@@ -97,7 +99,7 @@ export function ImageCropperDialog({
               <ZoomOut size={16} className="shrink-0 text-black/40" />
               <input
                 type="range"
-                min={0.5}
+                min={0.2}
                 max={3}
                 step={0.05}
                 value={zoom}

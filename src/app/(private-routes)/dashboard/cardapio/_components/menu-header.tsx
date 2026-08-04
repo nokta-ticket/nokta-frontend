@@ -39,9 +39,19 @@ function LogoUploader({ orgId, orgName }: { orgId: number; orgName: string }) {
   const { upload, uploading } = useImageUpload();
   const inputRef = useRef<HTMLInputElement>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
+  // Guarda a URL já enviada da imagem ORIGINAL (sem crop) enquanto o dialog
+  // está aberto — reabrir "Ajustar zoom/posição" depois sempre parte dela,
+  // nunca do resultado já recortado (evita degradar a cada reajuste). Ao
+  // escolher um arquivo novo, o próprio arquivo já sobe como original antes
+  // de abrir o cropper; ao reabrir a partir do que já existe, reaproveita
+  // logoOriginalUrl salvo (sem upload de novo).
+  const [pendingOriginalUrl, setPendingOriginalUrl] = useState<string | null>(null);
 
-  const handleFile = (file: File | undefined) => {
+  const handleFile = async (file: File | undefined) => {
     if (!file) return;
+    const originalUrl = await upload(file);
+    if (!originalUrl) return;
+    setPendingOriginalUrl(originalUrl);
     const reader = new FileReader();
     reader.onload = () => setImageSrc(reader.result as string);
     reader.readAsDataURL(file);
@@ -52,21 +62,24 @@ function LogoUploader({ orgId, orgName }: { orgId: number; orgName: string }) {
     const file = new File([blob], "logo.jpg", { type: "image/jpeg" });
     const url = await upload(file);
     if (!url) return;
+    const originalUrl = pendingOriginalUrl ?? profile?.logoOriginalUrl ?? undefined;
     update.mutate(
-      { logoUrl: url },
+      { logoUrl: url, ...(originalUrl ? { logoOriginalUrl: originalUrl } : {}) },
       { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar a logo.")) },
     );
     setImageSrc(null);
+    setPendingOriginalUrl(null);
   };
 
   const logoUrl = profile?.logoUrl ?? null;
   const resolvedLogoUrl = logoUrl ? (resolveMediaUrl(logoUrl) ?? logoUrl) : null;
-  // Botão único: reabre o cropper direto na logo já salva (reajustar zoom/
-  // posição sem precisar escolher o arquivo de novo); sem logo ainda, abre
-  // o seletor de arquivo normalmente.
-  const handleEditClick = () => {
-    if (resolvedLogoUrl) setImageSrc(resolvedLogoUrl);
-    else inputRef.current?.click();
+  const resolvedOriginalUrl = profile?.logoOriginalUrl
+    ? (resolveMediaUrl(profile.logoOriginalUrl) ?? profile.logoOriginalUrl)
+    : resolvedLogoUrl; // fallback: logos salvas antes desse campo existir reajustam a partir do próprio recorte já salvo.
+
+  const handleAdjustClick = () => {
+    setPendingOriginalUrl(null);
+    if (resolvedOriginalUrl) setImageSrc(resolvedOriginalUrl);
   };
 
   return (
@@ -103,7 +116,7 @@ function LogoUploader({ orgId, orgName }: { orgId: number; orgName: string }) {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setImageSrc(resolvedLogoUrl)}>Ajustar zoom/posição</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleAdjustClick}>Ajustar zoom/posição</DropdownMenuItem>
               <DropdownMenuItem onClick={() => inputRef.current?.click()}>Trocar imagem</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -111,7 +124,7 @@ function LogoUploader({ orgId, orgName }: { orgId: number; orgName: string }) {
           <button
             type="button"
             disabled={uploading}
-            onClick={handleEditClick}
+            onClick={() => inputRef.current?.click()}
             aria-label="Enviar logo"
             className="absolute bottom-0.5 right-0.5 grid h-[30px] w-[30px] place-items-center rounded-full border border-black/10 bg-white shadow-sm disabled:opacity-60"
           >
@@ -126,7 +139,12 @@ function LogoUploader({ orgId, orgName }: { orgId: number; orgName: string }) {
       </p>
       <ImageCropperDialog
         open={Boolean(imageSrc)}
-        onOpenChange={(v) => !v && setImageSrc(null)}
+        onOpenChange={(v) => {
+          if (!v) {
+            setPendingOriginalUrl(null);
+            setImageSrc(null);
+          }
+        }}
         imageSrc={imageSrc}
         aspect={1}
         cropShape="round"
@@ -180,7 +198,7 @@ function NameAndDescription({ menu, orgId }: { menu: VenueMenu; orgId: number })
   };
 
   return (
-    <div>
+    <div className="min-w-0">
       <div className="mb-4">
         <span className="mb-2 block text-xs font-medium text-black/50">Nome do cardápio</span>
         <Input
@@ -278,7 +296,7 @@ function StatusAndLinks({
   };
 
   return (
-    <div>
+    <div className="min-w-0">
       <div className="mb-4">
         <span className="mb-2 block text-xs font-medium text-black/50">Status</span>
         <div className="flex h-11 items-center rounded-[10px] border border-black/10 bg-[#fdfdfe] px-3.5">
@@ -459,9 +477,15 @@ function BannerUploader({ orgId }: { orgId: number }) {
   const { upload, uploading } = useImageUpload();
   const inputRef = useRef<HTMLInputElement>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
+  // Mesmo padrão do LogoUploader — reajustar sempre parte da imagem
+  // original sem crop, nunca do resultado já recortado.
+  const [pendingOriginalUrl, setPendingOriginalUrl] = useState<string | null>(null);
 
-  const handleFile = (file: File | undefined) => {
+  const handleFile = async (file: File | undefined) => {
     if (!file) return;
+    const originalUrl = await upload(file);
+    if (!originalUrl) return;
+    setPendingOriginalUrl(originalUrl);
     const reader = new FileReader();
     reader.onload = () => setImageSrc(reader.result as string);
     reader.readAsDataURL(file);
@@ -472,15 +496,25 @@ function BannerUploader({ orgId }: { orgId: number }) {
     const file = new File([blob], "banner.jpg", { type: "image/jpeg" });
     const url = await upload(file);
     if (!url) return;
+    const originalUrl = pendingOriginalUrl ?? profile?.bannerOriginalUrl ?? undefined;
     update.mutate(
-      { bannerUrl: url },
+      { bannerUrl: url, ...(originalUrl ? { bannerOriginalUrl: originalUrl } : {}) },
       { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar o banner.")) },
     );
     setImageSrc(null);
+    setPendingOriginalUrl(null);
   };
 
   const bannerUrl = profile?.bannerUrl ?? null;
   const resolvedBannerUrl = bannerUrl ? (resolveMediaUrl(bannerUrl) ?? bannerUrl) : null;
+  const resolvedOriginalUrl = profile?.bannerOriginalUrl
+    ? (resolveMediaUrl(profile.bannerOriginalUrl) ?? profile.bannerOriginalUrl)
+    : resolvedBannerUrl;
+
+  const handleAdjustClick = () => {
+    setPendingOriginalUrl(null);
+    if (resolvedOriginalUrl) setImageSrc(resolvedOriginalUrl);
+  };
 
   return (
     <div className="mt-6">
@@ -517,7 +551,7 @@ function BannerUploader({ orgId }: { orgId: number }) {
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setImageSrc(resolvedBannerUrl)}>Ajustar zoom/posição</DropdownMenuItem>
+              <DropdownMenuItem onClick={handleAdjustClick}>Ajustar zoom/posição</DropdownMenuItem>
               <DropdownMenuItem onClick={() => inputRef.current?.click()}>Trocar imagem</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -536,7 +570,12 @@ function BannerUploader({ orgId }: { orgId: number }) {
       <p className="mt-3 text-[11.5px] text-black/40">Tamanho recomendado: 1600x400px</p>
       <ImageCropperDialog
         open={Boolean(imageSrc)}
-        onOpenChange={(v) => !v && setImageSrc(null)}
+        onOpenChange={(v) => {
+          if (!v) {
+            setPendingOriginalUrl(null);
+            setImageSrc(null);
+          }
+        }}
         imageSrc={imageSrc}
         aspect={1600 / 400}
         cropShape="rect"

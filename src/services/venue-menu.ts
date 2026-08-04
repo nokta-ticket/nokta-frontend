@@ -332,7 +332,10 @@ const base = (organizationId: number) => `/organizations/${organizationId}/venue
 
 export interface VenuePublicProfile {
   logoUrl: string | null;
+  /** Imagem original enviada (antes do recorte/zoom) — usada só para reabrir o editor de crop sem degradar a cada reajuste, nunca exibida diretamente. */
+  logoOriginalUrl: string | null;
   bannerUrl: string | null;
+  bannerOriginalUrl: string | null;
   address: string | null;
   instagramUrl: string | null;
   whatsappNumber: string | null;
@@ -340,7 +343,9 @@ export interface VenuePublicProfile {
 
 export interface UpdateVenuePublicProfilePayload {
   logoUrl?: string;
+  logoOriginalUrl?: string;
   bannerUrl?: string;
+  bannerOriginalUrl?: string;
   address?: string;
   instagramUrl?: string;
   whatsappNumber?: string;
