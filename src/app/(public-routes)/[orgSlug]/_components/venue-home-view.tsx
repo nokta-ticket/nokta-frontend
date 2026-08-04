@@ -31,8 +31,8 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
   const addressQuery = profile.address ? encodeURIComponent(profile.address) : null;
 
   return (
-    <div className="relative min-h-full bg-[#f4f4f6] font-sans">
-      <div className="mx-auto min-h-full w-full max-w-[480px] bg-white shadow-[0_0_40px_rgba(0,0,0,0.06)] md:max-w-2xl">
+    <div className="relative flex min-h-full flex-col bg-[#f4f4f6] font-sans">
+      <div className="mx-auto flex w-full max-w-[480px] flex-1 flex-col bg-white shadow-[0_0_40px_rgba(0,0,0,0.06)] md:max-w-2xl">
         {/* BANNER — mesmo fallback preto sólido do MenuView, nunca outro visual quando não há bannerUrl. */}
         <div className="relative h-[172px] overflow-hidden bg-[#050505]">
           {profile.bannerUrl ? (
@@ -93,7 +93,7 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
           </div>
         </div>
 
-        <div className="p-[18px]">
+        <div className="flex-1 p-[18px]">
           {/* STATUS */}
           {data.isOpenNow !== null ? (
             <div className="mb-4 rounded-2xl border border-[#ececf0] bg-white shadow-[0_1px_2px_rgba(30,20,20,.05),0_2px_8px_rgba(30,20,20,.04)]">
@@ -132,10 +132,10 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
           {/* CARDÁPIO DIGITAL — outline fino, fundo branco, texto na cor da marca (referência visual enviada pelo usuário), largura total mantida. */}
           <a
             href={`/cardapio/${orgSlug}`}
-            className="mb-4 flex h-14 w-full items-center justify-center gap-2 rounded-full border text-[15.5px] font-semibold"
+            className="mb-4 flex h-14 w-full items-center justify-center gap-2.5 rounded-full border text-[18px] font-semibold"
             style={{ borderColor: MAROON, color: MAROON }}
           >
-            <span aria-hidden>🍴</span>
+            <span aria-hidden className="text-[22px] leading-none">🍴</span>
             Cardápio Digital
           </a>
 
