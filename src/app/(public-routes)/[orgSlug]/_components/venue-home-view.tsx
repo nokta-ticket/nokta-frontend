@@ -66,7 +66,7 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
               </>
             )}
           </div>
-          <div className="min-w-0 pt-6">
+          <div className="min-w-0 pt-1">
             <h1 className="break-words font-poppins text-[19px] font-extrabold leading-tight tracking-tight text-[#25252b]">
               {data.organizationName}
             </h1>
