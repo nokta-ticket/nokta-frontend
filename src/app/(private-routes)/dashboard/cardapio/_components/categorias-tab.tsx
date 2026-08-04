@@ -226,7 +226,7 @@ export function CategoriasTab({
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-gray-900">{category.nome}</p>
                   {category.descricao ? (
-                    <p className="truncate text-xs text-black/50">{category.descricao}</p>
+                    <p className="line-clamp-2 break-words text-xs text-black/50">{category.descricao}</p>
                   ) : null}
                 </div>
                 <ActiveBadge active={category.active} />

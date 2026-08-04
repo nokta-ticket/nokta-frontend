@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrganizations } from "@/context/OrganizationContext";
+import { useVenueAccess } from "@/context/VenueAccessContext";
 import { useRequireWorkspace } from "../_components/require-workspace-provider";
 import { PageContainer } from "../_components/page/page-container";
 import { PageHeader } from "../_components/page/page-header";
@@ -33,12 +34,15 @@ import { MenuHeader } from "./_components/menu-header";
 import { ManageMenusDialog } from "./_components/manage-menus-dialog";
 import { StationsSheet } from "./_components/stations-sheet";
 import { AmenitiesDialog } from "./_components/amenities-dialog";
+import { BusinessHoursSummary } from "./_components/business-hours-summary";
+import { BusinessHoursDialog } from "./_components/business-hours-dialog";
 import { ProdutoBulkCreateDialog } from "./_components/produto-bulk-create-dialog";
 
 type TabKey = "produtos" | "categorias" | "adicionais";
 
 export default function VenueCardapioPage() {
   const { currentOrg, loadingOrgs, loadingModules } = useOrganizations();
+  const { can } = useVenueAccess();
   const { guard } = useRequireWorkspace();
   const [tab, setTab] = useState<TabKey>("produtos");
   const [createProductOpen, setCreateProductOpen] = useState(false);
@@ -46,6 +50,7 @@ export default function VenueCardapioPage() {
   const [manageMenusOpen, setManageMenusOpen] = useState(false);
   const [stationsOpen, setStationsOpen] = useState(false);
   const [amenitiesOpen, setAmenitiesOpen] = useState(false);
+  const [businessHoursOpen, setBusinessHoursOpen] = useState(false);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [selectedMenuId, setSelectedMenuId] = useState<number | null>(null);
 
@@ -166,6 +171,8 @@ export default function VenueCardapioPage() {
         </div>
 
         <div className="ml-auto flex flex-wrap items-center gap-2.5">
+          <BusinessHoursSummary orgId={orgId} onClick={() => setBusinessHoursOpen(true)} />
+
           {canOpenPublic && publicUrl ? (
             <a
               href={publicUrl}
@@ -344,6 +351,12 @@ export default function VenueCardapioPage() {
       <ManageMenusDialog orgId={orgId} open={manageMenusOpen} onOpenChange={setManageMenusOpen} />
       <StationsSheet orgId={orgId} open={stationsOpen} onOpenChange={setStationsOpen} />
       <AmenitiesDialog orgId={orgId} open={amenitiesOpen} onOpenChange={setAmenitiesOpen} />
+      <BusinessHoursDialog
+        orgId={orgId}
+        canManage={can("organization.settings.manage")}
+        open={businessHoursOpen}
+        onOpenChange={setBusinessHoursOpen}
+      />
 
       <ProdutoBulkCreateDialog
         orgId={orgId}

@@ -11,6 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ImageCropperDialog } from "@/components/media/ImageCropperDialog";
 import { buildMarketingUrl } from "@/lib/surfaces";
 import { resolveMediaUrl } from "@/lib/media";
 import { getErrorMessage } from "@/lib/axios";
@@ -37,15 +38,25 @@ function LogoUploader({ orgId, orgName }: { orgId: number; orgName: string }) {
   const update = useUpdateVenuePublicProfile(orgId);
   const { upload, uploading } = useImageUpload();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
 
-  const handleFile = async (file: File | undefined) => {
+  const handleFile = (file: File | undefined) => {
     if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setImageSrc(reader.result as string);
+    reader.readAsDataURL(file);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  const handleConfirmCrop = async (blob: Blob) => {
+    const file = new File([blob], "logo.jpg", { type: "image/jpeg" });
     const url = await upload(file);
     if (!url) return;
     update.mutate(
       { logoUrl: url },
       { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar a logo.")) },
     );
+    setImageSrc(null);
   };
 
   const logoUrl = profile?.logoUrl ?? null;
@@ -86,6 +97,16 @@ function LogoUploader({ orgId, orgName }: { orgId: number; orgName: string }) {
         <br />
         Tamanho recomendado: 512x512px
       </p>
+      <ImageCropperDialog
+        open={Boolean(imageSrc)}
+        onOpenChange={(v) => !v && setImageSrc(null)}
+        imageSrc={imageSrc}
+        aspect={1}
+        cropShape="round"
+        title="Ajustar logo"
+        saving={uploading}
+        onConfirm={handleConfirmCrop}
+      />
     </div>
   );
 }
@@ -410,15 +431,25 @@ function BannerUploader({ orgId }: { orgId: number }) {
   const update = useUpdateVenuePublicProfile(orgId);
   const { upload, uploading } = useImageUpload();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [imageSrc, setImageSrc] = useState<string | null>(null);
 
-  const handleFile = async (file: File | undefined) => {
+  const handleFile = (file: File | undefined) => {
     if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setImageSrc(reader.result as string);
+    reader.readAsDataURL(file);
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  const handleConfirmCrop = async (blob: Blob) => {
+    const file = new File([blob], "banner.jpg", { type: "image/jpeg" });
     const url = await upload(file);
     if (!url) return;
     update.mutate(
       { bannerUrl: url },
       { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar o banner.")) },
     );
+    setImageSrc(null);
   };
 
   const bannerUrl = profile?.bannerUrl ?? null;
@@ -456,6 +487,16 @@ function BannerUploader({ orgId }: { orgId: number }) {
         </button>
       </div>
       <p className="mt-3 text-[11.5px] text-black/40">Tamanho recomendado: 1600x400px</p>
+      <ImageCropperDialog
+        open={Boolean(imageSrc)}
+        onOpenChange={(v) => !v && setImageSrc(null)}
+        imageSrc={imageSrc}
+        aspect={1600 / 400}
+        cropShape="rect"
+        title="Ajustar banner"
+        saving={uploading}
+        onConfirm={handleConfirmCrop}
+      />
     </div>
   );
 }
