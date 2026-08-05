@@ -258,14 +258,14 @@ export function MenuView({
 
         {/* CATEGORIAS — carrossel de avatares circulares (foto + nome embaixo), clicar rola até o início da seção (scrollToSection), nunca esconde as demais categorias. Sem imageUrl na categoria, cai no mesmo fallback de iniciais usado em logo/avatar (nunca um terceiro estilo de fallback). "Ver todas" abre uma lista completa (modal) como atalho.
 
-        Avatar maior (mobile: w-16→w-[74px], md: w-20→w-[86px]) — nessa
-        largura, ~4 avatares cabem na tela de um celular real (a referência
-        visual enviada pelo usuário), o resto fica fora e só aparece
-        arrastando. Nunca uma "caixa" com largura calculada à parte (isso foi
-        tentado e ficou errado — criava um container mais estreito que o
-        card e deslocado, cortando os dois lados de forma incorreta) — o
-        corte em ~4 é só uma CONSEQUÊNCIA do tamanho do avatar cabendo (ou
-        não) na largura real do card, nunca um limite artificial.
+        Avatar de 76px + gap de 30px entre eles — nessa proporção, ~4
+        avatares completos cabem na tela de um celular real (a referência
+        visual enviada pelo usuário), sem cortar o próximo item; o resto só
+        aparece arrastando. Nunca uma "caixa" com largura calculada à parte
+        (isso foi tentado e ficou errado — criava um container mais estreito
+        que o card e deslocado, cortando os dois lados de forma incorreta) —
+        o corte em ~4 é só uma CONSEQUÊNCIA do tamanho do avatar+gap cabendo
+        (ou não) na largura real do card, nunca um limite artificial.
 
         O carrossel em si vai de ponta a ponta DO CARD (full-bleed), ignorando
         o padding lateral (px-5/md:px-8) — só o título/"Ver todas" continuam
@@ -277,21 +277,21 @@ export function MenuView({
         viewport real do navegador). O mesmo padding volta como padding
         interno do carrossel (primeiro/último avatar não cola na borda
         física). */}
-        <div className="pt-5">
-          <div className="mb-3 flex items-center justify-between px-5 md:px-8">
-            <h3 className="font-poppins text-lg font-semibold text-[#141414] md:text-xl">Categorias</h3>
+        <div className="border-b border-black/[0.03] pb-6 pt-5">
+          <div className="mb-5 flex items-center justify-between px-5 md:px-8">
+            <h3 className="font-poppins text-[18px] font-semibold leading-none text-[#141414] md:text-xl">Categorias</h3>
             {data.menu.categories.length > 0 ? (
               <button
                 type="button"
                 onClick={() => setAllCategoriesOpen(true)}
-                className="text-sm font-medium text-[#8b8b90]"
+                className="text-sm font-normal leading-none text-[#a3a3a8]"
               >
                 Ver todas →
               </button>
             ) : null}
           </div>
           <div className="-mx-5 w-full overflow-x-auto [scrollbar-width:none] md:-mx-8 [&::-webkit-scrollbar]:hidden">
-            <div className="flex gap-4 px-5 md:gap-5 md:px-8">
+            <div className="flex gap-x-[30px] px-5 pb-1 md:px-8">
               {data.menu.highlights.length > 0 ? (
                 <CategoryAvatarButton
                   label="Destaques"
@@ -630,9 +630,9 @@ function CategoryAvatarButton({
   onClick: () => void;
 }) {
   return (
-    <button onClick={onClick} className="flex shrink-0 flex-col items-center gap-2">
+    <button onClick={onClick} className="flex w-[76px] shrink-0 flex-col items-center gap-3">
       <div
-        className={`relative flex h-[74px] w-[74px] items-center justify-center overflow-hidden rounded-full bg-black ring-2 md:h-[86px] md:w-[86px] ${
+        className={`relative flex h-[76px] w-[76px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-black shadow-[0_2px_10px_rgba(0,0,0,0.18)] ring-2 ${
           active ? "ring-[#0a0a0a]" : "ring-transparent"
         }`}
       >
@@ -643,7 +643,7 @@ function CategoryAvatarButton({
         )}
       </div>
       <span
-        className={`max-w-[74px] truncate text-xs font-medium md:max-w-[86px] md:text-sm ${
+        className={`w-full truncate text-center text-sm font-normal ${
           active ? "text-[#0a0a0a]" : "text-[#8b8b90]"
         }`}
       >
