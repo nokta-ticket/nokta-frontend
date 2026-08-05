@@ -258,7 +258,7 @@ export function MenuView({
         {/* CATEGORIAS — carrossel de avatares circulares (foto + nome embaixo), clicar rola até o início da seção (scrollToSection), nunca esconde as demais categorias. Sem imageUrl na categoria, cai no mesmo fallback de iniciais usado em logo/avatar (nunca um terceiro estilo de fallback). */}
         <div className="px-5 pt-5 md:px-8">
           <h3 className="mb-3 font-poppins text-lg font-semibold text-[#141414] md:text-xl">Categorias</h3>
-          <div className="flex gap-4 overflow-x-auto pb-1">
+          <div className="flex gap-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {data.menu.highlights.length > 0 ? (
               <CategoryAvatarButton
                 label="Destaques"
@@ -390,7 +390,7 @@ const HighlightsSection = forwardRef<
       <h2 className="mb-3 border-b border-[#ececee] pb-3 font-poppins text-xl font-semibold text-[#141414] md:text-2xl">
         Destaques
       </h2>
-      <div className="flex gap-3.5 overflow-x-auto pb-1">
+      <div className="flex gap-3.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {items.map((item) => (
           <HighlightCard key={item.id} item={item} onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined} />
         ))}
