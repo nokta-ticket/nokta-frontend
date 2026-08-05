@@ -17,6 +17,8 @@ export interface PublicMenuItem {
   prices: PublicMenuPrice[];
   favoriteCount: number;
   favoritedByVisitor: boolean;
+  /** Só preenchido nos itens de `menu.highlights` (nunca dentro de `category.items`, onde seria redundante) — nome da categoria de origem, mostrado como faixa no card do carrossel de Destaques. */
+  categoryNome?: string | null;
 }
 
 export interface PublicMenuCategory {

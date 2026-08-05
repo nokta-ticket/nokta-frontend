@@ -56,7 +56,7 @@ export function MenuPreviewPhone({ orgId, menuId }: { orgId: number | null; menu
           </div>
         ) : (
           <div style={{ width: FRAME_WIDTH, transform: `scale(${SCALE})`, transformOrigin: "top left" }}>
-            <MenuView data={data} scrollContainerSelector={`.${PREVIEW_SCROLL_CLASS}`} />
+            <MenuView data={data} scrollContainerSelector={`.${PREVIEW_SCROLL_CLASS}`} disableSticky />
           </div>
         )}
       </div>

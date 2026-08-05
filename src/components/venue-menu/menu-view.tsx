@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { ArrowLeft, Heart, Home, Instagram, LayoutGrid, List, MessageCircle, Search, Square, Star } from "lucide-react";
 import { InstagramIcon } from "@/components/icons/InstagramIcon";
@@ -62,13 +62,29 @@ export function MenuView({
   onToggleFavorite,
   scrollContainerSelector = "main",
   orgSlug,
+  disableSticky = false,
 }: {
   data: PublicMenuResponse;
   onToggleFavorite?: (item: PublicMenuItem) => void;
   scrollContainerSelector?: string;
   /** Slug da organização, usado para linkar "Avaliar". Ausente no preview do dashboard (link real não faz sentido lá) — o ícone some nesse caso. */
   orgSlug?: string;
+  /**
+   * `position: sticky` não se comporta corretamente dentro de um ancestral
+   * com `transform` (ex.: o preview do dashboard, que usa `scale()` pra
+   * caber no bezel de celular) — os chips/appbar ficam presos numa posição
+   * errada, criando uma faixa visual estranha. Sem solução de CSS real pra
+   * isso (limitação conhecida do spec), então o preview passa
+   * `disableSticky` pra virar `relative` ali, evitando o artefato — só a
+   * página pública real (sem scale) usa sticky de verdade.
+   */
+  disableSticky?: boolean;
 }) {
+  // Chip "ativo" é só indicativo (destaca visualmente qual seção o clique
+  // mais recente mirou) — todas as categorias (e Destaques) ficam sempre
+  // visíveis, empilhadas, cada uma com seu próprio título/separador. Clicar
+  // num chip rola até o início daquela seção (scrollIntoView), nunca
+  // esconde as demais.
   const [activeCategoryId, setActiveCategoryId] = useState<number | "highlights">(
     data.menu.highlights.length > 0 ? "highlights" : (data.menu.categories[0]?.id ?? "highlights"),
   );
@@ -78,6 +94,7 @@ export function MenuView({
   const [searchQuery, setSearchQuery] = useState("");
   const profileRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const sectionRefs = useRef(new Map<number | "highlights", HTMLDivElement>());
 
   useEffect(() => {
     const scrollParent = profileRef.current?.closest(scrollContainerSelector);
@@ -100,13 +117,10 @@ export function MenuView({
     setSearchQuery("");
   };
 
-  const activeCategory = useMemo(
-    () => data.menu.categories.find((c) => c.id === activeCategoryId),
-    [data, activeCategoryId],
-  );
-
-  const itemsToShow: PublicMenuItem[] =
-    activeCategoryId === "highlights" ? data.menu.highlights : (activeCategory?.items ?? []);
+  const scrollToSection = (id: number | "highlights") => {
+    setActiveCategoryId(id);
+    sectionRefs.current.get(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   // Busca cruza TODAS as categorias (não só a ativa) — o usuário pode não
   // lembrar em qual categoria o produto está.
@@ -125,7 +139,8 @@ export function MenuView({
   return (
     <div className="relative min-h-full bg-[#e9e9ec] font-sans">
       <div className="mx-auto min-h-full w-full max-w-[440px] bg-white shadow-[0_0_50px_rgba(0,0,0,0.1)] md:max-w-2xl lg:max-w-4xl">
-        {/* APPBAR — sticky (não fixed, ver comentário no topo do arquivo). h-0 pra nunca empurrar o hero abaixo; o conteúdo visual mora num filho absolute. */}
+        {/* APPBAR — sticky (não fixed, ver comentário no topo do arquivo). h-0 pra nunca empurrar o hero abaixo; o conteúdo visual mora num filho absolute. disableSticky também esconde a appbar por completo (nunca aparece de forma torta dentro do preview escalado). */}
+        {disableSticky ? null : (
         <div className="sticky top-0 z-40 h-0">
           <div
             className={`absolute inset-x-0 top-0 h-[52px] items-center gap-4 bg-[#0f0f11] px-4 text-white shadow-[0_4px_16px_rgba(0,0,0,0.25)] transition-transform duration-200 ${
@@ -145,6 +160,7 @@ export function MenuView({
             </div>
           </div>
         </div>
+        )}
 
         {/* HERO — banner real do perfil quando definido (mesma imagem editada em "Banner do cardápio (capa)" no dashboard, só a imagem, sem nome sobreposto); sem banner, mantém o fallback de sempre (fundo escuro + nome + anel decorativo, altura fixa). Borda inferior só com banner: uma imagem clara/branca se misturava com o fundo da página logo abaixo, sem nenhuma linha demarcando onde o banner termina.
 
@@ -239,65 +255,55 @@ export function MenuView({
           </div>
         </div>
 
-        {/* CATEGORY CHIPS */}
-        <div className="sticky top-0 z-10 flex gap-2.5 overflow-x-auto bg-white px-5 py-4 md:px-8">
+        {/* CATEGORIAS — carrossel de avatares circulares (foto + nome embaixo), clicar rola até o início da seção (scrollToSection), nunca esconde as demais categorias. Sem imageUrl na categoria, cai no mesmo fallback de iniciais usado em logo/avatar (nunca um terceiro estilo de fallback). */}
+        <div className="px-5 pt-5 md:px-8">
+          <h3 className="mb-3 font-poppins text-lg font-semibold text-[#141414] md:text-xl">Categorias</h3>
+          <div className="flex gap-4 overflow-x-auto pb-1">
+            {data.menu.highlights.length > 0 ? (
+              <CategoryAvatarButton
+                label="Destaques"
+                imageUrl={null}
+                active={activeCategoryId === "highlights"}
+                onClick={() => scrollToSection("highlights")}
+              />
+            ) : null}
+            {data.menu.categories.map((cat) => (
+              <CategoryAvatarButton
+                key={cat.id}
+                label={cat.nome}
+                imageUrl={cat.imageUrl}
+                active={activeCategoryId === cat.id}
+                onClick={() => scrollToSection(cat.id)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* SECTIONS — todas as categorias (e Destaques) empilhadas em sequência, cada uma com título próprio funcionando como separador visual entre a categoria anterior e a próxima (pedido explícito do usuário: "acabou Cervejas, avisar que começa a próxima"). */}
+        <div className="pb-24">
           {data.menu.highlights.length > 0 ? (
-            <button
-              onClick={() => setActiveCategoryId("highlights")}
-              className={`shrink-0 whitespace-nowrap rounded-xl border px-5 py-2.5 text-sm font-medium md:text-base ${
-                activeCategoryId === "highlights"
-                  ? "border-[#0a0a0a] bg-[#0a0a0a] text-white"
-                  : "border-[#e3e3e6] bg-white text-[#141414]"
-              }`}
-            >
-              Destaques
-            </button>
+            <HighlightsSection
+              ref={(el) => {
+                if (el) sectionRefs.current.set("highlights", el);
+                else sectionRefs.current.delete("highlights");
+              }}
+              items={data.menu.highlights}
+              onToggleFavorite={onToggleFavorite}
+            />
           ) : null}
           {data.menu.categories.map((cat) => (
-            <button
+            <MenuSection
               key={cat.id}
-              onClick={() => setActiveCategoryId(cat.id)}
-              className={`shrink-0 whitespace-nowrap rounded-xl border px-5 py-2.5 text-sm font-medium md:text-base ${
-                activeCategoryId === cat.id
-                  ? "border-[#0a0a0a] bg-[#0a0a0a] text-white"
-                  : "border-[#e3e3e6] bg-white text-[#141414]"
-              }`}
-            >
-              {cat.nome}
-            </button>
+              ref={(el) => {
+                if (el) sectionRefs.current.set(cat.id, el);
+                else sectionRefs.current.delete(cat.id);
+              }}
+              title={cat.nome}
+              items={cat.items}
+              view={view}
+              onToggleFavorite={onToggleFavorite}
+            />
           ))}
-        </div>
-
-        {/* SECTION HEADER */}
-        <div className="px-5 pt-1 md:px-8">
-          <h2 className="mb-3 font-poppins text-xl font-semibold text-[#141414] md:text-2xl">
-            {activeCategoryId === "highlights" ? "Destaques" : (activeCategory?.nome ?? "")}
-          </h2>
-        </div>
-
-        {/* ITEMS */}
-        <div className="px-5 pb-24 md:px-8">
-          {itemsToShow.length === 0 ? (
-            <p className="py-10 text-center text-sm text-[#9a9aa0]">Nenhum item disponível aqui no momento.</p>
-          ) : view === "grid" ? (
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-              {itemsToShow.map((item) => (
-                <ItemGridCard key={item.id} item={item} onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined} />
-              ))}
-            </div>
-          ) : view === "large" ? (
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {itemsToShow.map((item) => (
-                <ItemLargeCard key={item.id} item={item} onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined} />
-              ))}
-            </div>
-          ) : (
-            <div className="divide-y divide-[#ececee]">
-              {itemsToShow.map((item) => (
-                <ItemListRow key={item.id} item={item} onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined} />
-              ))}
-            </div>
-          )}
         </div>
 
         {/* FOOTER — mesmo rodapé da Home pública (venue-home-view.tsx): faixa simples com razão social/CNPJ da Nokta + Instagram discreto, no lugar do antigo "NOKTA" estilizado em faixa preta. */}
@@ -331,6 +337,116 @@ export function MenuView({
     </div>
   );
 }
+
+/**
+ * Card do carrossel de Destaques — foto grande + faixa colorida com o
+ * nome da categoria de origem por cima da foto + nome/preço do produto
+ * embaixo (referência visual enviada pelo usuário). Sempre em carrossel
+ * horizontal, independente do modo de visualização (lista/grade/cards)
+ * escolhido pro resto do cardápio — pedido explícito: "quero a lista na
+ * horizontal e não vertical igual o restante".
+ */
+function HighlightCard({ item, onToggleFavorite }: { item: PublicMenuItem; onToggleFavorite?: () => void }) {
+  const price = itemPriceLabel(item);
+  return (
+    <article className={`w-[168px] shrink-0 ${item.available ? "" : "opacity-60"}`}>
+      <div className="relative h-[168px] overflow-hidden rounded-2xl">
+        <ItemThumb item={item} />
+        <FavoriteButtonSlot item={item} onToggleFavorite={onToggleFavorite} />
+        {item.categoryNome ? (
+          <div className="absolute inset-x-0 bottom-0 bg-[#1f7a3d] px-3 py-1.5 text-center text-sm font-semibold text-white">
+            {item.categoryNome}
+          </div>
+        ) : null}
+      </div>
+      <div className="pt-2.5">
+        <h4 className="truncate text-sm font-semibold text-[#141414]">{item.nome}</h4>
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          {price ? <span className="text-sm font-semibold text-[#141414]">{price}</span> : null}
+          {item.favoriteCount > 0 ? (
+            <span className="flex items-center gap-1 text-xs text-[#9a9aa0]">
+              {item.favoriteCount} <Heart size={13} className="fill-[#ef4444] stroke-[#ef4444]" />
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function FavoriteButtonSlot({ item, onToggleFavorite }: { item: PublicMenuItem; onToggleFavorite?: () => void }) {
+  if (!onToggleFavorite) return null;
+  return <FavoriteButton item={item} onToggle={onToggleFavorite} />;
+}
+
+const HighlightsSection = forwardRef<
+  HTMLDivElement,
+  { items: PublicMenuItem[]; onToggleFavorite?: (item: PublicMenuItem) => void }
+>(function HighlightsSection({ items, onToggleFavorite }, ref) {
+  if (items.length === 0) return null;
+
+  return (
+    <div ref={ref} className="scroll-mt-[68px] px-5 pt-6 md:px-8">
+      <h2 className="mb-3 border-b border-[#ececee] pb-3 font-poppins text-xl font-semibold text-[#141414] md:text-2xl">
+        Destaques
+      </h2>
+      <div className="flex gap-3.5 overflow-x-auto pb-1">
+        {items.map((item) => (
+          <HighlightCard key={item.id} item={item} onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined} />
+        ))}
+      </div>
+    </div>
+  );
+});
+
+/**
+ * Uma seção do cardápio (categoria): título próprio + lista de itens no
+ * modo de visualização ativo (lista/grade/cards). O título funciona como
+ * separador visual entre o fim de uma categoria e o início da próxima, já
+ * que todas as seções ficam empilhadas na mesma página (pedido explícito
+ * do usuário — antes só a categoria selecionada no chip aparecia,
+ * escondendo as demais). Sem itens, a seção inteira nem renderiza (nunca
+ * um título "Cervejas" seguido de nada). Destaques usa HighlightsSection
+ * (carrossel sempre horizontal), nunca esta.
+ */
+const MenuSection = forwardRef<
+  HTMLDivElement,
+  {
+    title: string;
+    items: PublicMenuItem[];
+    view: ViewMode;
+    onToggleFavorite?: (item: PublicMenuItem) => void;
+  }
+>(function MenuSection({ title, items, view, onToggleFavorite }, ref) {
+  if (items.length === 0) return null;
+
+  return (
+    <div ref={ref} className="scroll-mt-[68px] px-5 pt-6 md:px-8">
+      <h2 className="mb-3 border-b border-[#ececee] pb-3 font-poppins text-xl font-semibold text-[#141414] md:text-2xl">
+        {title}
+      </h2>
+      {view === "grid" ? (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          {items.map((item) => (
+            <ItemGridCard key={item.id} item={item} onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined} />
+          ))}
+        </div>
+      ) : view === "large" ? (
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {items.map((item) => (
+            <ItemLargeCard key={item.id} item={item} onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined} />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {items.map((item) => (
+            <ItemListRow key={item.id} item={item} onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});
 
 function SearchOverlay({
   allItems,
@@ -389,6 +505,41 @@ function SearchOverlay({
         )}
       </div>
     </div>
+  );
+}
+
+function CategoryAvatarButton({
+  label,
+  imageUrl,
+  active,
+  onClick,
+}: {
+  label: string;
+  imageUrl: string | null;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button onClick={onClick} className="flex shrink-0 flex-col items-center gap-2">
+      <div
+        className={`relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-black ring-2 md:h-20 md:w-20 ${
+          active ? "ring-[#0a0a0a]" : "ring-transparent"
+        }`}
+      >
+        {imageUrl ? (
+          <Image src={resolveMediaUrl(imageUrl) ?? imageUrl} alt="" fill className="object-cover" unoptimized />
+        ) : (
+          <span className="font-poppins text-xs font-light tracking-[0.2em] text-white">{initials(label)}</span>
+        )}
+      </div>
+      <span
+        className={`max-w-[72px] truncate text-xs font-medium md:max-w-[88px] md:text-sm ${
+          active ? "text-[#0a0a0a]" : "text-[#8b8b90]"
+        }`}
+      >
+        {label}
+      </span>
+    </button>
   );
 }
 
@@ -491,7 +642,9 @@ function ItemGridCard({ item, onToggleFavorite }: { item: PublicMenuItem; onTogg
 function ItemListRow({ item, onToggleFavorite }: { item: PublicMenuItem; onToggleFavorite?: () => void }) {
   const price = itemPriceLabel(item);
   return (
-    <article className={`flex gap-4 py-5 ${item.available ? "" : "opacity-60"}`}>
+    <article
+      className={`flex gap-4 rounded-2xl border border-[#ececee] bg-white p-3.5 ${item.available ? "" : "opacity-60"}`}
+    >
       <div className="flex min-w-0 flex-1 flex-col">
         <h4 className="font-poppins text-base font-semibold text-[#141414] md:text-lg">{item.nome}</h4>
         {item.descricao ? <p className="mt-1.5 text-sm leading-snug text-[#9a9aa0]">{item.descricao}</p> : null}
