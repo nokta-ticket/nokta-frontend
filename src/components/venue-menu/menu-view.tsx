@@ -2,9 +2,9 @@
 
 import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { ArrowLeft, Heart, Home, Instagram, LayoutGrid, List, MessageCircle, Search, Square, Star } from "lucide-react";
+import { ArrowLeft, Heart, Home, Instagram, LayoutGrid, List, MessageCircle, Search, Square, Star, X } from "lucide-react";
 import { InstagramIcon } from "@/components/icons/InstagramIcon";
-import { formatCentsBRL, type PublicMenuItem, type PublicMenuResponse } from "@/services/venue-menu-public";
+import { formatCentsBRL, type PublicMenuCategory, type PublicMenuItem, type PublicMenuResponse } from "@/services/venue-menu-public";
 import { resolveMediaUrl } from "@/lib/media";
 
 type ViewMode = "list" | "grid" | "large";
@@ -91,6 +91,7 @@ export function MenuView({
   const [view, setView] = useState<ViewMode>("list");
   const [showAppbar, setShowAppbar] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [allCategoriesOpen, setAllCategoriesOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const profileRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -255,9 +256,20 @@ export function MenuView({
           </div>
         </div>
 
-        {/* CATEGORIAS — carrossel de avatares circulares (foto + nome embaixo), clicar rola até o início da seção (scrollToSection), nunca esconde as demais categorias. Sem imageUrl na categoria, cai no mesmo fallback de iniciais usado em logo/avatar (nunca um terceiro estilo de fallback). */}
+        {/* CATEGORIAS — carrossel de avatares circulares (foto + nome embaixo), clicar rola até o início da seção (scrollToSection), nunca esconde as demais categorias. Sem imageUrl na categoria, cai no mesmo fallback de iniciais usado em logo/avatar (nunca um terceiro estilo de fallback). "Ver todas" abre uma lista completa (modal) como atalho — o carrossel em si continua arrastável normalmente, nunca truncado. */}
         <div className="px-5 pt-5 md:px-8">
-          <h3 className="mb-3 font-poppins text-lg font-semibold text-[#141414] md:text-xl">Categorias</h3>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="font-poppins text-lg font-semibold text-[#141414] md:text-xl">Categorias</h3>
+            {data.menu.categories.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setAllCategoriesOpen(true)}
+                className="text-sm font-medium text-[#8b8b90]"
+              >
+                Ver todas →
+              </button>
+            ) : null}
+          </div>
           <div className="flex gap-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {data.menu.highlights.length > 0 ? (
               <CategoryAvatarButton
@@ -324,6 +336,19 @@ export function MenuView({
         </div>
       </div>
 
+      {allCategoriesOpen ? (
+        <AllCategoriesOverlay
+          hasHighlights={data.menu.highlights.length > 0}
+          categories={data.menu.categories}
+          activeCategoryId={activeCategoryId}
+          onSelect={(id) => {
+            setAllCategoriesOpen(false);
+            scrollToSection(id);
+          }}
+          onClose={() => setAllCategoriesOpen(false)}
+        />
+      ) : null}
+
       {searchOpen ? (
         <SearchOverlay
           allItems={allItems}
@@ -349,12 +374,12 @@ export function MenuView({
 function HighlightCard({ item, onToggleFavorite }: { item: PublicMenuItem; onToggleFavorite?: () => void }) {
   const price = itemPriceLabel(item);
   return (
-    <article className={`w-[168px] shrink-0 ${item.available ? "" : "opacity-60"}`}>
-      <div className="relative h-[168px] overflow-hidden rounded-2xl">
+    <article className={`w-[200px] shrink-0 ${item.available ? "" : "opacity-60"}`}>
+      <div className="relative h-[200px] overflow-hidden rounded-2xl">
         <ItemThumb item={item} />
-        <FavoriteButtonSlot item={item} onToggleFavorite={onToggleFavorite} />
+        <FavoriteButtonSlot item={item} onToggleFavorite={onToggleFavorite} compact />
         {item.categoryNome ? (
-          <div className="absolute inset-x-0 bottom-0 bg-[#1f7a3d] px-3 py-1.5 text-center text-sm font-semibold text-white">
+          <div className="absolute inset-x-0 bottom-0 bg-[#0a0a0a] px-3 py-1.5 text-center text-sm font-semibold text-white">
             {item.categoryNome}
           </div>
         ) : null}
@@ -365,7 +390,7 @@ function HighlightCard({ item, onToggleFavorite }: { item: PublicMenuItem; onTog
           {price ? <span className="text-sm font-semibold text-[#141414]">{price}</span> : null}
           {item.favoriteCount > 0 ? (
             <span className="flex items-center gap-1 text-xs text-[#9a9aa0]">
-              {item.favoriteCount} <Heart size={13} className="fill-[#ef4444] stroke-[#ef4444]" />
+              {item.favoriteCount} <Heart size={11} className="fill-[#ef4444] stroke-[#ef4444]" />
             </span>
           ) : null}
         </div>
@@ -374,9 +399,17 @@ function HighlightCard({ item, onToggleFavorite }: { item: PublicMenuItem; onTog
   );
 }
 
-function FavoriteButtonSlot({ item, onToggleFavorite }: { item: PublicMenuItem; onToggleFavorite?: () => void }) {
+function FavoriteButtonSlot({
+  item,
+  onToggleFavorite,
+  compact = false,
+}: {
+  item: PublicMenuItem;
+  onToggleFavorite?: () => void;
+  compact?: boolean;
+}) {
   if (!onToggleFavorite) return null;
-  return <FavoriteButton item={item} onToggle={onToggleFavorite} />;
+  return <FavoriteButton item={item} onToggle={onToggleFavorite} compact={compact} />;
 }
 
 const HighlightsSection = forwardRef<
@@ -447,6 +480,61 @@ const MenuSection = forwardRef<
     </div>
   );
 });
+
+/**
+ * Modal "Ver todas" — atalho pra lista completa de categorias, sem
+ * substituir o carrossel arrastável (que continua com scroll horizontal
+ * normal). Reaproveita o mesmo avatar/fallback de CategoryAvatarButton,
+ * só em grade em vez de carrossel.
+ */
+function AllCategoriesOverlay({
+  hasHighlights,
+  categories,
+  activeCategoryId,
+  onSelect,
+  onClose,
+}: {
+  hasHighlights: boolean;
+  categories: PublicMenuCategory[];
+  activeCategoryId: number | "highlights";
+  onSelect: (id: number | "highlights") => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 md:items-center" onClick={onClose}>
+      <div
+        className="max-h-[80vh] w-full max-w-[440px] overflow-y-auto rounded-t-3xl bg-white p-5 md:max-w-lg md:rounded-3xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-poppins text-lg font-semibold text-[#141414]">Todas as categorias</h2>
+          <button type="button" onClick={onClose} aria-label="Fechar" className="text-[#8b8b90]">
+            <X size={20} strokeWidth={1.8} />
+          </button>
+        </div>
+        <div className="grid grid-cols-4 gap-4">
+          {hasHighlights ? (
+            <CategoryAvatarButton
+              label="Destaques"
+              imageUrl={null}
+              active={activeCategoryId === "highlights"}
+              onClick={() => onSelect("highlights")}
+            />
+          ) : null}
+          {categories.map((cat) => (
+            <CategoryAvatarButton
+              key={cat.id}
+              label={cat.nome}
+              imageUrl={cat.imageUrl}
+              active={activeCategoryId === cat.id}
+              onClick={() => onSelect(cat.id)}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function SearchOverlay({
   allItems,
@@ -565,7 +653,16 @@ function ViewButton({
   );
 }
 
-function FavoriteButton({ item, onToggle }: { item: PublicMenuItem; onToggle: () => void }) {
+function FavoriteButton({
+  item,
+  onToggle,
+  compact = false,
+}: {
+  item: PublicMenuItem;
+  onToggle: () => void;
+  /** Card de Destaques é menor — o botão de 36px chamava atenção demais nele (feedback explícito do usuário). */
+  compact?: boolean;
+}) {
   return (
     <button
       onClick={(e) => {
@@ -573,9 +670,15 @@ function FavoriteButton({ item, onToggle }: { item: PublicMenuItem; onToggle: ()
         onToggle();
       }}
       aria-label="favoritar"
-      className="absolute right-2.5 top-2.5 z-[3] grid h-9 w-9 place-items-center rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.18)]"
+      className={`absolute z-[3] grid place-items-center rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.18)] ${
+        compact ? "right-2 top-2 h-7 w-7" : "right-2.5 top-2.5 h-9 w-9"
+      }`}
     >
-      <Heart size={18} strokeWidth={2} className={item.favoritedByVisitor ? "fill-[#ef4444] stroke-[#ef4444]" : "stroke-[#ef4444]"} />
+      <Heart
+        size={compact ? 14 : 18}
+        strokeWidth={2}
+        className={item.favoritedByVisitor ? "fill-[#ef4444] stroke-[#ef4444]" : "stroke-[#ef4444]"}
+      />
     </button>
   );
 }

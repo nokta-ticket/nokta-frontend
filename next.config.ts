@@ -84,6 +84,12 @@ const nextConfig: NextConfig = {
         hostname: "fhumkapdowazikhbxlfm.supabase.co",
         pathname: "/storage/v1/object/public/**", // <= caminho do bucket
       },
+      {
+        // Fotos de produto/categoria de teste (scripts/seed-fervo-menu-produtos.mjs) —
+        // banco de imagens livre, sem upload real.
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
     ],
   },
 };
