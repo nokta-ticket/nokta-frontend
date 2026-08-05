@@ -163,10 +163,10 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
     <div className="mx-auto grid min-h-screen max-w-[1120px] grid-cols-1 lg:grid-cols-[1fr_316px]">
       {/* ===== MAIN ===== */}
       <div className="min-w-0">
-        {/* Cover — mesmo banner do cardápio (VenuePublicProfile.bannerUrl); sem banner cadastrado, mesmo fallback preto sólido do MenuView (nunca o gradiente marrom/dourado antigo, que só existia aqui). Borda inferior só com banner. COM banner: altura fixa trocada por aspect-ratio real (1600/400, igual ao crop) — evita sobrar fundo escuro como "faixa" nas bordas. */}
+        {/* Cover — mesmo banner do cardápio (VenuePublicProfile.bannerUrl); sem banner cadastrado, mesmo fallback preto sólido do MenuView (nunca o gradiente marrom/dourado antigo, que só existia aqui). Borda inferior só com banner. COM banner: altura fixa trocada por aspect-ratio real (430/190, igual ao crop) — evita sobrar fundo escuro como "faixa" nas bordas. */}
         <div
           className={`relative overflow-hidden bg-[#050505] ${profile.bannerUrl ? "border-b border-black/15" : "h-[150px] md:h-[198px]"}`}
-          style={profile.bannerUrl ? { aspectRatio: "1600 / 400" } : undefined}
+          style={profile.bannerUrl ? { aspectRatio: "430 / 190" } : undefined}
         >
           {profile.bannerUrl ? (
             <Image

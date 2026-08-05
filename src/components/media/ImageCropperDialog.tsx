@@ -72,7 +72,7 @@ export function ImageCropperDialog({
   onOpenChange: (v: boolean) => void;
   /** data URL (FileReader.readAsDataURL) da imagem escolhida pelo usuário. */
   imageSrc: string | null;
-  /** largura/altura do recorte final — 1 para logo circular, 4 (1600x400) para banner, etc. */
+  /** largura/altura do recorte final — 1 para logo circular, 430/190 para banner, etc. */
   aspect: number;
   cropShape?: "rect" | "round";
   title?: string;

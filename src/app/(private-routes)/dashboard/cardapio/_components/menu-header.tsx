@@ -528,10 +528,10 @@ function BannerUploader({ orgId }: { orgId: number }) {
   return (
     <div className="mt-6">
       <span className="mb-2 block text-xs font-medium text-black/50">Banner do cardápio (capa)</span>
-      {/* aspect-ratio trava a proporção de exibição em 4:1 (1600x400), IGUAL ao aspect usado no crop — sem isso o container esticava conforme a largura da tela (h-[180px] fixo com largura variável), fazendo o object-cover recortar mais do que o usuário viu/ajustou no editor. */}
+      {/* aspect-ratio trava a proporção de exibição em ~2.26:1 (430x190, medida do concorrente/referência — pedido explícito do usuário: "não quero recorte, quero que o sistema ajuste automaticamente"), IGUAL ao aspect usado no crop — sem isso o container esticava conforme a largura da tela (h-[180px] fixo com largura variável), fazendo o object-cover recortar mais do que o usuário viu/ajustou no editor. */}
       <div
-        className="relative flex max-h-[180px] items-center justify-center overflow-hidden rounded-[14px] bg-[#08080a]"
-        style={{ aspectRatio: "1600 / 400" }}
+        className="relative flex max-h-[210px] items-center justify-center overflow-hidden rounded-[14px] bg-[#08080a]"
+        style={{ aspectRatio: "430 / 190" }}
       >
         {resolvedBannerUrl ? (
           <Image src={resolvedBannerUrl} alt="" fill className="object-cover" unoptimized />
@@ -580,7 +580,7 @@ function BannerUploader({ orgId }: { orgId: number }) {
           </button>
         )}
       </div>
-      <p className="mt-3 text-[11.5px] text-black/40">Tamanho recomendado: 1600x400px</p>
+      <p className="mt-3 text-[11.5px] text-black/40">Tamanho recomendado: 430x190px</p>
       <ImageCropperDialog
         open={Boolean(imageSrc)}
         onOpenChange={(v) => {
@@ -590,7 +590,7 @@ function BannerUploader({ orgId }: { orgId: number }) {
           }
         }}
         imageSrc={imageSrc}
-        aspect={1600 / 400}
+        aspect={430 / 190}
         cropShape="rect"
         title="Ajustar banner"
         saving={uploading}

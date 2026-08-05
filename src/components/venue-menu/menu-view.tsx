@@ -165,10 +165,10 @@ export function MenuView({
 
         {/* HERO — banner real do perfil quando definido (mesma imagem editada em "Banner do cardápio (capa)" no dashboard, só a imagem, sem nome sobreposto); sem banner, mantém o fallback de sempre (fundo escuro + nome + anel decorativo, altura fixa). Borda inferior só com banner: uma imagem clara/branca se misturava com o fundo da página logo abaixo, sem nenhuma linha demarcando onde o banner termina.
 
-        COM banner: altura fixa (h-[180px]) trocada por aspect-ratio real (1600/400, igual ao crop do dashboard) — a altura do hero passa a variar com a largura da tela pra manter a proporção exata da imagem, então object-cover nunca corta nada (a imagem recortada já tem exatamente essa proporção) e nunca sobra tarja de fundo nas bordas (o que acontecia com object-contain + altura fixa: sobrava fundo escuro visível nas laterais/topo sempre que a proporção não batia). */}
+        COM banner: altura fixa (h-[180px]) trocada por aspect-ratio real (430/190, medida da referência/concorrente — igual ao crop do dashboard) — a altura do hero passa a variar com a largura da tela pra manter a proporção exata da imagem, então object-cover nunca corta nada (a imagem recortada já tem exatamente essa proporção) e nunca sobra tarja de fundo nas bordas (o que acontecia com object-contain + altura fixa: sobrava fundo escuro visível nas laterais/topo sempre que a proporção não batia). */}
         <div
           className={`relative flex items-center justify-center overflow-hidden bg-[#050505] ${profile.bannerUrl ? "border-b border-black/15" : "h-[180px] px-6 md:h-[220px]"}`}
-          style={profile.bannerUrl ? { aspectRatio: "1600 / 400" } : undefined}
+          style={profile.bannerUrl ? { aspectRatio: "430 / 190" } : undefined}
         >
           {profile.bannerUrl ? (
             <Image
