@@ -258,28 +258,25 @@ export function MenuView({
 
         {/* CATEGORIAS — carrossel de avatares circulares (foto + nome embaixo), clicar rola até o início da seção (scrollToSection), nunca esconde as demais categorias. Sem imageUrl na categoria, cai no mesmo fallback de iniciais usado em logo/avatar (nunca um terceiro estilo de fallback). "Ver todas" abre uma lista completa (modal) como atalho.
 
-        Só ~4 avatares visíveis por vez (pedido explícito: "só deve aparecer
-        Destaques, Cerveja, Porções, Bebidas... o resto só se arrastar") — como
-        cada avatar (w-16/w-20 + gap) normalmente cabe 5+ na largura de uma
-        tela de celular, um overflow-x-auto comum não corta nada sozinho.
-        Trava-se a largura do carrossel a "4 × (avatar + gap)" via calc(),
-        então o 5º item sempre fica fora da área visível, exigindo arrastar —
-        nunca depende de quantos cabem na tela do aparelho. Avatar maior
-        (mobile: w-16→w-[74px], md: w-20→w-[86px]) aproveitando o espaço que
-        sobra ao mostrar só 4 em vez de todos.
+        Avatar maior (mobile: w-16→w-[74px], md: w-20→w-[86px]) — nessa
+        largura, ~4 avatares cabem na tela de um celular real (a referência
+        visual enviada pelo usuário), o resto fica fora e só aparece
+        arrastando. Nunca uma "caixa" com largura calculada à parte (isso foi
+        tentado e ficou errado — criava um container mais estreito que o
+        card e deslocado, cortando os dois lados de forma incorreta) — o
+        corte em ~4 é só uma CONSEQUÊNCIA do tamanho do avatar cabendo (ou
+        não) na largura real do card, nunca um limite artificial.
 
         O carrossel em si vai de ponta a ponta DO CARD (full-bleed), ignorando
         o padding lateral (px-5/md:px-8) — só o título/"Ver todas" continuam
-        com o padding normal. Nunca usa unidades de viewport (100vw) aqui: o
-        preview do dashboard (MenuPreviewPhone) renderiza este componente
-        numa largura FIXA de 390px dentro de um `transform: scale()`, bem
-        menor que a viewport real do navegador — 100vw mediria a janela
-        inteira, não o card, e o carrossel ficaria enorme/errado só ali.
-        Full-bleed correto e portável entre os dois contextos: margem
-        negativa igual ao padding do card (-mx-5/md:-mx-8) estica o
-        carrossel até a borda do CARD (não da tela), e o mesmo padding volta
-        como padding interno do carrossel (primeiro/último avatar não cola
-        na borda física). */}
+        com o padding normal. margem negativa igual ao padding do card
+        (-mx-5/md:-mx-8) estica o carrossel até a borda do CARD, sem limitar
+        sua largura (w-full — sempre a largura inteira disponível, nunca
+        w-screen: o preview do dashboard renderiza este componente numa
+        largura FIXA de 390px escalada via transform, bem menor que a
+        viewport real do navegador). O mesmo padding volta como padding
+        interno do carrossel (primeiro/último avatar não cola na borda
+        física). */}
         <div className="pt-5">
           <div className="mb-3 flex items-center justify-between px-5 md:px-8">
             <h3 className="font-poppins text-lg font-semibold text-[#141414] md:text-xl">Categorias</h3>
@@ -293,7 +290,7 @@ export function MenuView({
               </button>
             ) : null}
           </div>
-          <div className="-mx-5 max-w-[calc(4*74px+3*1rem+2*1.25rem)] overflow-x-auto [scrollbar-width:none] md:-mx-8 md:max-w-[calc(4*86px+3*1.25rem+2*2rem)] [&::-webkit-scrollbar]:hidden">
+          <div className="-mx-5 w-full overflow-x-auto [scrollbar-width:none] md:-mx-8 [&::-webkit-scrollbar]:hidden">
             <div className="flex gap-4 px-5 md:gap-5 md:px-8">
               {data.menu.highlights.length > 0 ? (
                 <CategoryAvatarButton
