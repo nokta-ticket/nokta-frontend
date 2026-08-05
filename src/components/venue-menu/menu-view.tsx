@@ -256,7 +256,17 @@ export function MenuView({
           </div>
         </div>
 
-        {/* CATEGORIAS — carrossel de avatares circulares (foto + nome embaixo), clicar rola até o início da seção (scrollToSection), nunca esconde as demais categorias. Sem imageUrl na categoria, cai no mesmo fallback de iniciais usado em logo/avatar (nunca um terceiro estilo de fallback). "Ver todas" abre uma lista completa (modal) como atalho — o carrossel em si continua arrastável normalmente, nunca truncado. */}
+        {/* CATEGORIAS — carrossel de avatares circulares (foto + nome embaixo), clicar rola até o início da seção (scrollToSection), nunca esconde as demais categorias. Sem imageUrl na categoria, cai no mesmo fallback de iniciais usado em logo/avatar (nunca um terceiro estilo de fallback). "Ver todas" abre uma lista completa (modal) como atalho.
+
+        Só ~4 avatares visíveis por vez (pedido explícito: "só deve aparecer
+        Destaques, Cerveja, Porções, Bebidas... o resto só se arrastar") — como
+        cada avatar (w-16/w-20 + gap) normalmente cabe 5+ na largura de uma
+        tela de celular, um overflow-x-auto comum não corta nada sozinho.
+        Trava-se a largura do carrossel a "4 × (avatar + gap)" via
+        calc()/CSS var, então o 5º item sempre fica fora da área visível,
+        exigindo arrastar — nunca depende de quantos cabem na tela do
+        aparelho. Avatar maior (mobile: w-16→w-[74px], md: w-20→w-[86px])
+        aproveitando o espaço que sobra ao mostrar só 4 em vez de todos. */}
         <div className="px-5 pt-5 md:px-8">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="font-poppins text-lg font-semibold text-[#141414] md:text-xl">Categorias</h3>
@@ -270,7 +280,7 @@ export function MenuView({
               </button>
             ) : null}
           </div>
-          <div className="flex gap-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex max-w-[calc(4*74px+3*1rem)] gap-4 overflow-x-auto [scrollbar-width:none] md:max-w-[calc(4*86px+3*1.25rem)] md:gap-5 [&::-webkit-scrollbar]:hidden">
             {data.menu.highlights.length > 0 ? (
               <CategoryAvatarButton
                 label="Destaques"
@@ -610,18 +620,18 @@ function CategoryAvatarButton({
   return (
     <button onClick={onClick} className="flex shrink-0 flex-col items-center gap-2">
       <div
-        className={`relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-black ring-2 md:h-20 md:w-20 ${
+        className={`relative flex h-[74px] w-[74px] items-center justify-center overflow-hidden rounded-full bg-black ring-2 md:h-[86px] md:w-[86px] ${
           active ? "ring-[#0a0a0a]" : "ring-transparent"
         }`}
       >
         {imageUrl ? (
           <Image src={resolveMediaUrl(imageUrl) ?? imageUrl} alt="" fill className="object-cover" unoptimized />
         ) : (
-          <span className="font-poppins text-xs font-light tracking-[0.2em] text-white">{initials(label)}</span>
+          <span className="font-poppins text-sm font-light tracking-[0.2em] text-white">{initials(label)}</span>
         )}
       </div>
       <span
-        className={`max-w-[72px] truncate text-xs font-medium md:max-w-[88px] md:text-sm ${
+        className={`max-w-[74px] truncate text-xs font-medium md:max-w-[86px] md:text-sm ${
           active ? "text-[#0a0a0a]" : "text-[#8b8b90]"
         }`}
       >
