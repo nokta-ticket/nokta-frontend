@@ -227,7 +227,24 @@ function MenuAttachmentRow({
       </div>
 
       {expanded ? (
-        <div className="space-y-2 border-t border-black/5 p-3">
+        <div className="space-y-3 border-t border-black/5 p-3">
+          <div className="flex items-center justify-between gap-2 rounded-lg bg-black/[0.02] px-3 py-2">
+            <div>
+              <Label className="text-sm text-gray-900">Destacar este item</Label>
+              <p className="text-xs text-black/45">Aparece na seção &quot;Destaques&quot; do cardápio público — use para promoções do dia.</p>
+            </div>
+            <Switch
+              checked={menuInfo.highlighted}
+              aria-label={menuInfo.highlighted ? "Remover dos destaques" : "Destacar este item"}
+              onCheckedChange={(checked) =>
+                update.mutate(
+                  { menuItemId: menuInfo.menuItemId, payload: { highlighted: checked } },
+                  { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível atualizar o destaque.")) },
+                )
+              }
+            />
+          </div>
+
           <Label className="text-xs text-black/50">Preço por variação neste cardápio</Label>
           {menuInfo.prices.map((price) => (
             <div key={price.variantId} className="flex items-center gap-2 text-sm">

@@ -100,6 +100,8 @@ export interface VenueProductMenuInfo {
   categoryId: number;
   displayOrder: number;
   active: boolean;
+  /** Curadoria manual de "Destaques" (promoção do dia, item em desconto) — nunca calculado por favoritos. */
+  highlighted: boolean;
   prices: VenueMenuItemVariantPriceInfo[];
 }
 
@@ -155,6 +157,7 @@ export interface VenueMenuItem {
   productId: number;
   displayOrder: number;
   active: boolean;
+  highlighted: boolean;
   createdAt: string;
   updatedAt: string;
   product: {
@@ -287,6 +290,7 @@ export interface UpdateVenueMenuItemPayload {
   categoryId?: number;
   displayOrder?: number;
   active?: boolean;
+  highlighted?: boolean;
 }
 
 export interface CreateVenueModifierGroupPayload {
