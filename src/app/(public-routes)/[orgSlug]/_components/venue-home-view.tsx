@@ -35,14 +35,14 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
   return (
     <div className="relative flex min-h-full flex-col bg-[#f4f4f6] font-sans">
       <div className="mx-auto flex w-full max-w-[480px] flex-1 flex-col bg-white shadow-[0_0_40px_rgba(0,0,0,0.06)] md:max-w-2xl">
-        {/* BANNER — mesmo fallback preto sólido do MenuView, nunca outro visual quando não há bannerUrl. Borda inferior só com banner (mesmo critério do MenuView): imagem clara/branca se misturava com o fundo da página logo abaixo. */}
+        {/* BANNER — mesmo fallback preto sólido do MenuView, nunca outro visual quando não há bannerUrl. Borda inferior só com banner (mesmo critério do MenuView): imagem clara/branca se misturava com o fundo da página logo abaixo. object-contain: mostra a imagem inteira, sem cortar laterais (banners costumam ser flyers com texto importante nas bordas). */}
         <div className={`relative h-[172px] overflow-hidden bg-[#050505] ${profile.bannerUrl ? "border-b border-black/15" : ""}`}>
           {profile.bannerUrl ? (
             <Image
               src={resolveMediaUrl(profile.bannerUrl) ?? profile.bannerUrl}
               alt=""
               fill
-              className="object-cover"
+              className="object-contain"
               unoptimized
             />
           ) : null}

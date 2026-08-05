@@ -115,6 +115,11 @@ export function MenuView({
   );
 
   const { profile } = data;
+  // Nome exibido publicamente é o do CARDÁPIO (menu.nome, editável em
+  // "Nome do cardápio" no dashboard) — nunca o nome da organização
+  // (data.organizationName), que é um dado interno/de conta, não o nome do
+  // estabelecimento que o cliente vê.
+  const displayName = data.menu.nome;
 
   return (
     <div className="relative min-h-full bg-[#e9e9ec] font-sans">
@@ -126,7 +131,7 @@ export function MenuView({
               showAppbar ? "flex translate-y-0" : "flex -translate-y-full"
             }`}
           >
-            <span className="truncate font-poppins text-sm font-medium md:text-base">{data.organizationName}</span>
+            <span className="truncate font-poppins text-sm font-medium md:text-base">{displayName}</span>
             <div className="ml-auto flex gap-1">
               <ViewButton active={view === "list"} onClick={() => setView("list")} icon={<List size={18} />} label="Lista" />
               <ViewButton active={view === "grid"} onClick={() => setView("grid")} icon={<LayoutGrid size={18} />} label="Grade" />
@@ -140,7 +145,7 @@ export function MenuView({
           </div>
         </div>
 
-        {/* HERO — banner real do perfil quando definido (mesma imagem editada em "Banner do cardápio (capa)" no dashboard, só a imagem, sem nome sobreposto); sem banner, mantém o fallback de sempre (fundo escuro + nome + anel decorativo). Borda inferior só com banner: uma imagem clara/branca se misturava com o fundo da página logo abaixo, sem nenhuma linha demarcando onde o banner termina. */}
+        {/* HERO — banner real do perfil quando definido (mesma imagem editada em "Banner do cardápio (capa)" no dashboard, só a imagem, sem nome sobreposto); sem banner, mantém o fallback de sempre (fundo escuro + nome + anel decorativo). Borda inferior só com banner: uma imagem clara/branca se misturava com o fundo da página logo abaixo, sem nenhuma linha demarcando onde o banner termina. object-contain (não object-cover): a imagem inteira precisa aparecer, sem cortar as laterais — banners costumam ser flyers/artes com texto importante nas bordas, cortar perdia conteúdo. */}
         <div
           className={`relative flex h-[180px] items-center justify-center overflow-hidden bg-[#050505] px-6 md:h-[220px] ${profile.bannerUrl ? "border-b border-black/15" : ""}`}
         >
@@ -149,14 +154,14 @@ export function MenuView({
               src={resolveMediaUrl(profile.bannerUrl) ?? profile.bannerUrl}
               alt=""
               fill
-              className="object-cover"
+              className="object-contain"
               unoptimized
             />
           ) : (
             <>
               <div className="absolute -top-24 h-[280px] w-[280px] rounded-full border border-white/40 md:-top-32 md:h-[340px] md:w-[340px]" />
               <p className="relative max-w-full break-words text-center font-poppins text-2xl font-light leading-tight tracking-[0.2em] text-white md:text-[46px] md:tracking-[0.42em]">
-                {data.organizationName.toUpperCase()}
+                {displayName.toUpperCase()}
               </p>
             </>
           )}
@@ -173,7 +178,7 @@ export function MenuView({
                 <div className="absolute inset-0 rounded-full bg-white/55 backdrop-blur-md" />
                 <Image
                   src={resolveMediaUrl(profile.logoUrl) ?? profile.logoUrl}
-                  alt={data.organizationName}
+                  alt={displayName}
                   fill
                   className="relative rounded-full object-cover"
                   unoptimized
@@ -183,14 +188,14 @@ export function MenuView({
               <>
                 <div className="absolute h-14 w-14 rounded-full border border-white/40 md:h-[70px] md:w-[70px]" />
                 <span className="relative font-poppins text-sm font-light tracking-[0.25em] text-white md:text-base">
-                  {initials(data.organizationName)}
+                  {initials(displayName)}
                 </span>
               </>
             )}
           </div>
           <div className="min-w-0 pt-3">
             <h1 className="mb-2 truncate font-poppins text-xl font-semibold tracking-tight text-[#141414] md:text-2xl">
-              {data.organizationName}
+              {displayName}
             </h1>
             {/* Início / Instagram / WhatsApp / Busca — sempre visíveis e clicáveis, nessa ordem. Instagram sem link cadastrado vai pro instagram.com genérico; WhatsApp sem número vai pro wa.me genérico (abre o app sem conversa pré-selecionada) — nunca link morto. Início linka pra Home pública (nokta.live/{orgSlug}); sem orgSlug (preview do dashboard), fica sem ação. */}
             <div className="mb-2 flex flex-wrap items-center gap-4 text-[#141414]">

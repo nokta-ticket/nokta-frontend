@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ExternalLink, ListChecks, Plus, Settings2, Share2, Smartphone } from "lucide-react";
+import { ExternalLink, Info, ListChecks, Plus, Settings2, Share2, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -173,6 +173,15 @@ export default function VenueCardapioPage() {
         <div className="ml-auto flex flex-wrap items-center gap-2.5">
           <BusinessHoursSummary orgId={orgId} onClick={() => setBusinessHoursOpen(true)} />
 
+          <Button
+            variant="outline"
+            className="h-[42px] gap-2 rounded-[11px]"
+            onClick={() => setAmenitiesOpen(true)}
+          >
+            <Info size={16} className="text-black/50" />
+            Informações úteis
+          </Button>
+
           {canOpenPublic && publicUrl ? (
             <a
               href={publicUrl}
@@ -214,7 +223,6 @@ export default function VenueCardapioPage() {
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setManageMenusOpen(true)}>Gerenciar cardápios</DropdownMenuItem>
               <DropdownMenuItem onClick={() => setStationsOpen(true)}>Estações de preparo</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setAmenitiesOpen(true)}>Informações úteis</DropdownMenuItem>
               {canPublish ? (
                 <DropdownMenuItem disabled={publish.isPending} onClick={handlePublish}>
                   {publish.isPending ? "Publicando…" : "Publicar cardápio"}
