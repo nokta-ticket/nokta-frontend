@@ -124,7 +124,7 @@ export function ImageCropperDialog({
                 backgroundColor: "#fff",
               }}
             >
-              {/* restrictPosition=false + minZoom bem baixo: usuário pediu liberdade total de arraste/zoom (o padrão da lib trava a imagem nos limites da área de recorte, impedindo mostrar espaço vazio nas bordas — não é o comportamento desejado aqui). */}
+              {/* restrictPosition=true (padrão da lib): a imagem nunca pode ficar menor que a área de recorte nem sair arrastada pra fora dela — com restrictPosition=false, era possível deixar uma faixa "vazia" dentro da área (fora dos limites reais da imagem), e getCroppedBlob desenha isso como preto sólido no canvas (bordas pretas no banner salvo, mesmo o preview do cropper parecendo correto). */}
               <Cropper
                 image={imageSrc}
                 crop={crop}
@@ -134,7 +134,6 @@ export function ImageCropperDialog({
                 aspect={aspect}
                 cropShape={cropShape}
                 showGrid={cropShape === "rect"}
-                restrictPosition={false}
                 onCropChange={setCrop}
                 onZoomChange={setZoom}
                 onCropComplete={onCropComplete}
