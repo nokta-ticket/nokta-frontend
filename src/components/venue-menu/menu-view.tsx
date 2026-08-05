@@ -262,13 +262,26 @@ export function MenuView({
         Destaques, Cerveja, Porções, Bebidas... o resto só se arrastar") — como
         cada avatar (w-16/w-20 + gap) normalmente cabe 5+ na largura de uma
         tela de celular, um overflow-x-auto comum não corta nada sozinho.
-        Trava-se a largura do carrossel a "4 × (avatar + gap)" via
-        calc()/CSS var, então o 5º item sempre fica fora da área visível,
-        exigindo arrastar — nunca depende de quantos cabem na tela do
-        aparelho. Avatar maior (mobile: w-16→w-[74px], md: w-20→w-[86px])
-        aproveitando o espaço que sobra ao mostrar só 4 em vez de todos. */}
-        <div className="px-5 pt-5 md:px-8">
-          <div className="mb-3 flex items-center justify-between">
+        Trava-se a largura do carrossel a "4 × (avatar + gap)" via calc(),
+        então o 5º item sempre fica fora da área visível, exigindo arrastar —
+        nunca depende de quantos cabem na tela do aparelho. Avatar maior
+        (mobile: w-16→w-[74px], md: w-20→w-[86px]) aproveitando o espaço que
+        sobra ao mostrar só 4 em vez de todos.
+
+        O carrossel em si vai de ponta a ponta DO CARD (full-bleed), ignorando
+        o padding lateral (px-5/md:px-8) — só o título/"Ver todas" continuam
+        com o padding normal. Nunca usa unidades de viewport (100vw) aqui: o
+        preview do dashboard (MenuPreviewPhone) renderiza este componente
+        numa largura FIXA de 390px dentro de um `transform: scale()`, bem
+        menor que a viewport real do navegador — 100vw mediria a janela
+        inteira, não o card, e o carrossel ficaria enorme/errado só ali.
+        Full-bleed correto e portável entre os dois contextos: margem
+        negativa igual ao padding do card (-mx-5/md:-mx-8) estica o
+        carrossel até a borda do CARD (não da tela), e o mesmo padding volta
+        como padding interno do carrossel (primeiro/último avatar não cola
+        na borda física). */}
+        <div className="pt-5">
+          <div className="mb-3 flex items-center justify-between px-5 md:px-8">
             <h3 className="font-poppins text-lg font-semibold text-[#141414] md:text-xl">Categorias</h3>
             {data.menu.categories.length > 0 ? (
               <button
@@ -280,24 +293,26 @@ export function MenuView({
               </button>
             ) : null}
           </div>
-          <div className="flex max-w-[calc(4*74px+3*1rem)] gap-4 overflow-x-auto [scrollbar-width:none] md:max-w-[calc(4*86px+3*1.25rem)] md:gap-5 [&::-webkit-scrollbar]:hidden">
-            {data.menu.highlights.length > 0 ? (
-              <CategoryAvatarButton
-                label="Destaques"
-                imageUrl={null}
-                active={activeCategoryId === "highlights"}
-                onClick={() => scrollToSection("highlights")}
-              />
-            ) : null}
-            {data.menu.categories.map((cat) => (
-              <CategoryAvatarButton
-                key={cat.id}
-                label={cat.nome}
-                imageUrl={cat.imageUrl}
-                active={activeCategoryId === cat.id}
-                onClick={() => scrollToSection(cat.id)}
-              />
-            ))}
+          <div className="-mx-5 max-w-[calc(4*74px+3*1rem+2*1.25rem)] overflow-x-auto [scrollbar-width:none] md:-mx-8 md:max-w-[calc(4*86px+3*1.25rem+2*2rem)] [&::-webkit-scrollbar]:hidden">
+            <div className="flex gap-4 px-5 md:gap-5 md:px-8">
+              {data.menu.highlights.length > 0 ? (
+                <CategoryAvatarButton
+                  label="Destaques"
+                  imageUrl={null}
+                  active={activeCategoryId === "highlights"}
+                  onClick={() => scrollToSection("highlights")}
+                />
+              ) : null}
+              {data.menu.categories.map((cat) => (
+                <CategoryAvatarButton
+                  key={cat.id}
+                  label={cat.nome}
+                  imageUrl={cat.imageUrl}
+                  active={activeCategoryId === cat.id}
+                  onClick={() => scrollToSection(cat.id)}
+                />
+              ))}
+            </div>
           </div>
         </div>
 
