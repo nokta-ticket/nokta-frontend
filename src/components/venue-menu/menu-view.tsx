@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { ArrowLeft, Heart, Home, Instagram, LayoutGrid, List, MessageCircle, Search, Square, Star } from "lucide-react";
+import { InstagramIcon } from "@/components/icons/InstagramIcon";
 import { formatCentsBRL, type PublicMenuItem, type PublicMenuResponse } from "@/services/venue-menu-public";
 import { resolveMediaUrl } from "@/lib/media";
 
@@ -299,11 +300,21 @@ export function MenuView({
           )}
         </div>
 
-        {/* FOOTER */}
-        <div className="bg-[#1a1a1c] px-6 py-6 text-right">
-          <p className="font-poppins text-sm font-bold tracking-[0.18em] text-white">
-            <span className="text-[#d9a326]">N</span>OKTA
-          </p>
+        {/* FOOTER — mesmo rodapé da Home pública (venue-home-view.tsx): faixa simples com razão social/CNPJ da Nokta + Instagram discreto, no lugar do antigo "NOKTA" estilizado em faixa preta. */}
+        <div className="flex items-center justify-between gap-3 border-t border-[#ececee] px-[18px] py-3.5">
+          <span className="-translate-y-[1.5px] text-[11px] leading-snug text-[#9a9aa4]">
+            Nokta Tecnologia LTDA • CNPJ: 59.386.582/0001-39
+          </span>
+          <a
+            href={profile.instagramUrl || "https://instagram.com"}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Instagram"
+            aria-label="Instagram"
+            className="-translate-y-[1.5px] shrink-0 text-[#9a9aa4]"
+          >
+            <InstagramIcon size={16} />
+          </a>
         </div>
       </div>
 
