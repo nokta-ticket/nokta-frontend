@@ -165,19 +165,29 @@ export function MenuView({
 
         {/* HERO — banner real do perfil quando definido (mesma imagem editada em "Banner do cardápio (capa)" no dashboard, só a imagem, sem nome sobreposto); sem banner, mantém o fallback de sempre (fundo escuro + nome + anel decorativo, altura fixa). Borda inferior só com banner: uma imagem clara/branca se misturava com o fundo da página logo abaixo, sem nenhuma linha demarcando onde o banner termina.
 
-        COM banner: mesmo padrão exato da Home pública (venue-home-view.tsx) — aspect-ratio real (430/190, igual ao crop do dashboard) em vez de altura fixa, então object-cover nunca corta nada (a imagem recortada já tem exatamente essa proporção) e nunca sobra tarja de fundo nas bordas. */}
+        COM banner: mesmo padrão exato da Home pública (venue-home-view.tsx) — aspect-ratio real (430/190, igual ao crop do dashboard) em vez de altura fixa. Imagem principal em object-contain (nunca corta as laterais, ao contrário de object-cover); uma cópia da mesma imagem ampliada+desfocada preenche o fundo pra nunca sobrar tarja sólida nos espaços que sobram acima/abaixo. */}
         <div
           className={`relative flex items-center justify-center overflow-hidden bg-[#050505] ${profile.bannerUrl ? "border-b border-black/15" : "h-[180px] px-6 md:h-[220px]"}`}
           style={profile.bannerUrl ? { aspectRatio: "430 / 190" } : undefined}
         >
           {profile.bannerUrl ? (
-            <Image
-              src={resolveMediaUrl(profile.bannerUrl) ?? profile.bannerUrl}
-              alt=""
-              fill
-              className="object-cover"
-              unoptimized
-            />
+            <>
+              <Image
+                src={resolveMediaUrl(profile.bannerUrl) ?? profile.bannerUrl}
+                alt=""
+                fill
+                className="scale-110 object-cover object-center blur-2xl"
+                aria-hidden
+                unoptimized
+              />
+              <Image
+                src={resolveMediaUrl(profile.bannerUrl) ?? profile.bannerUrl}
+                alt=""
+                fill
+                className="relative object-contain"
+                unoptimized
+              />
+            </>
           ) : (
             <>
               <div className="absolute -top-24 h-[280px] w-[280px] rounded-full border border-white/40 md:-top-32 md:h-[340px] md:w-[340px]" />
