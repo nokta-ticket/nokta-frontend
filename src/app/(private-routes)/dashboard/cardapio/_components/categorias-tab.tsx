@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { ListChecks, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,6 +31,7 @@ import { ImageField } from "./image-field";
 import { EmptyState } from "../../_components/states/empty-state";
 import { TableSkeleton } from "../../_components/states/loading-state";
 import { ErrorState } from "../../_components/states/error-state";
+import { CategoriaBulkCreateDialog } from "./categoria-bulk-create-dialog";
 
 function CategoryFormDialog({
   open,
@@ -121,6 +122,7 @@ export function CategoriasTab({
   );
 
   const [formOpen, setFormOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [editing, setEditing] = useState<VenueMenuCategory | null>(null);
 
   const list = categories ?? [];
@@ -185,13 +187,23 @@ export function CategoriasTab({
             </SelectContent>
           </Select>
         </div>
-        <Button
-          size="sm"
-          disabled={!selectedMenuId || selectedMenu?.status === "ARCHIVED"}
-          onClick={() => { setEditing(null); setFormOpen(true); }}
-        >
-          <Plus size={16} /> Nova categoria
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={!selectedMenuId || selectedMenu?.status === "ARCHIVED"}
+            onClick={() => setBulkOpen(true)}
+          >
+            <ListChecks size={16} /> Adicionar várias
+          </Button>
+          <Button
+            size="sm"
+            disabled={!selectedMenuId || selectedMenu?.status === "ARCHIVED"}
+            onClick={() => { setEditing(null); setFormOpen(true); }}
+          >
+            <Plus size={16} /> Nova categoria
+          </Button>
+        </div>
       </div>
 
       {selectedMenu?.status === "ARCHIVED" ? (
@@ -227,6 +239,11 @@ export function CategoriasTab({
                   <p className="truncate font-medium text-gray-900">{category.nome}</p>
                   {category.descricao ? (
                     <p className="line-clamp-2 break-words text-xs text-black/50">{category.descricao}</p>
+                  ) : null}
+                  {category.itemCount === 0 ? (
+                    <p className="mt-0.5 text-xs font-medium text-amber-600">
+                      Vazia — não aparece no cardápio público ainda
+                    </p>
                   ) : null}
                 </div>
                 <ActiveBadge active={category.active} />
@@ -265,6 +282,14 @@ export function CategoriasTab({
         category={editing}
         onSubmit={handleSubmit}
         loading={create.isPending || update.isPending}
+      />
+
+      <CategoriaBulkCreateDialog
+        orgId={orgId}
+        menuId={selectedMenuId}
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        onCreated={() => refetch()}
       />
     </div>
   );

@@ -37,6 +37,8 @@ export interface VenueMenuCategory {
   imageUrl: string | null;
   displayOrder: number;
   active: boolean;
+  /** Quantos itens de cardápio a categoria tem — 0 significa que ela ainda não aparece no cardápio público (categoria vazia é sempre escondida do cliente). */
+  itemCount: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -202,6 +204,22 @@ export interface CreateVenueMenuCategoryPayload {
   active?: boolean;
 }
 export type UpdateVenueMenuCategoryPayload = Partial<CreateVenueMenuCategoryPayload>;
+
+export interface CreateVenueMenuCategoryBulkRowPayload {
+  nome?: string;
+  descricao?: string;
+  active?: boolean;
+}
+
+export interface VenueMenuCategoryBulkError {
+  index: number;
+  message: string;
+}
+
+export interface CreateVenueMenuCategoryBulkResponse {
+  created: VenueMenuCategory[];
+  errors: VenueMenuCategoryBulkError[];
+}
 
 export interface CreateVenuePreparationStationPayload {
   nome: string;
@@ -429,6 +447,10 @@ export const venueMenuApi = {
   createCategory: (organizationId: number, menuId: number, payload: CreateVenueMenuCategoryPayload) =>
     api
       .post<VenueMenuCategory>(`${base(organizationId)}/menus/${menuId}/categories`, payload)
+      .then((r) => r.data),
+  createCategoriesBulk: (organizationId: number, menuId: number, categories: CreateVenueMenuCategoryBulkRowPayload[]) =>
+    api
+      .post<CreateVenueMenuCategoryBulkResponse>(`${base(organizationId)}/menus/${menuId}/categories/bulk`, { categories })
       .then((r) => r.data),
   updateCategory: (organizationId: number, categoryId: number, payload: UpdateVenueMenuCategoryPayload) =>
     api
