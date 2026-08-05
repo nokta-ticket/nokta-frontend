@@ -165,10 +165,10 @@ export function MenuView({
 
         {/* HERO — banner real do perfil quando definido (mesma imagem editada em "Banner do cardápio (capa)" no dashboard, só a imagem, sem nome sobreposto); sem banner, mantém o fallback de sempre (fundo escuro + nome + anel decorativo, altura fixa). Borda inferior só com banner: uma imagem clara/branca se misturava com o fundo da página logo abaixo, sem nenhuma linha demarcando onde o banner termina.
 
-        COM banner: altura fixa (h-[180px]) trocada por aspect-ratio real (430/190, medida da referência/concorrente — igual ao crop do dashboard) — a altura do hero passa a variar com a largura da tela pra manter a proporção exata da imagem, então object-cover nunca corta nada (a imagem recortada já tem exatamente essa proporção) e nunca sobra tarja de fundo nas bordas (o que acontecia com object-contain + altura fixa: sobrava fundo escuro visível nas laterais/topo sempre que a proporção não batia). */}
+        COM banner: altura fixa (h-[180px]) trocada por aspect-ratio real (430/230 — mais alto que a proporção anterior de 430/190, pra dar mais presença visual ao banner) — a altura do hero passa a variar com a largura da tela pra manter a proporção exata da imagem, então object-cover nunca corta nada (a imagem recortada já tem exatamente essa proporção) e nunca sobra tarja de fundo nas bordas (o que acontecia com object-contain + altura fixa: sobrava fundo escuro visível nas laterais/topo sempre que a proporção não batia). */}
         <div
           className={`relative flex items-center justify-center overflow-hidden bg-[#050505] ${profile.bannerUrl ? "border-b border-black/15" : "h-[180px] px-6 md:h-[220px]"}`}
-          style={profile.bannerUrl ? { aspectRatio: "430 / 190" } : undefined}
+          style={profile.bannerUrl ? { aspectRatio: "430 / 230" } : undefined}
         >
           {profile.bannerUrl ? (
             <Image
@@ -188,10 +188,10 @@ export function MenuView({
           )}
         </div>
 
-        {/* PROFILE */}
+        {/* PROFILE — logo com só 20% da própria altura sobreposta ao banner (-mt igual a 20% de h-24/h-32, os outros 80% ficam na área branca abaixo). O bloco "nome + ícones" fica centralizado verticalmente em relação à FATIA da logo que sobra na área branca (80% de h-24/h-32), não em relação à logo inteira — daí a altura explícita no wrapper do texto batendo com esses 80% e items-center dentro dele. */}
         <div ref={profileRef} className="flex gap-4 px-5 pb-4 md:gap-6 md:px-8">
           <div
-            className={`relative -mt-12 flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-4 border-white shadow-[0_6px_18px_rgba(0,0,0,0.18)] md:-mt-14 md:h-32 md:w-32 ${profile.logoUrl ? "" : "bg-black"}`}
+            className={`relative -mt-[19px] flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-4 border-white shadow-[0_6px_18px_rgba(0,0,0,0.18)] md:-mt-[26px] md:h-32 md:w-32 ${profile.logoUrl ? "" : "bg-black"}`}
           >
             {profile.logoUrl ? (
               <>
@@ -214,35 +214,37 @@ export function MenuView({
               </>
             )}
           </div>
-          <div className="min-w-0 pt-3">
-            <h1 className="mb-2 truncate font-poppins text-xl font-semibold tracking-tight text-[#141414] md:text-2xl">
-              {displayName}
-            </h1>
-            {/* Início / Instagram / WhatsApp / Busca — sempre visíveis e clicáveis, nessa ordem. Instagram sem link cadastrado vai pro instagram.com genérico; WhatsApp sem número vai pro wa.me genérico (abre o app sem conversa pré-selecionada) — nunca link morto. Início linka pra Home pública (nokta.live/{orgSlug}); sem orgSlug (preview do dashboard), fica sem ação. */}
-            <div className="mb-2 flex flex-wrap items-center gap-4 text-[#141414]">
-              {orgSlug ? (
-                <a href={`/${orgSlug}`} title="Início" aria-label="Início">
-                  <Home size={20} strokeWidth={1.8} />
+          <div className="min-w-0">
+            <div className="flex h-[76.8px] flex-col justify-center md:h-[102.4px]">
+              <h1 className="mb-2 truncate font-poppins text-xl font-semibold tracking-tight text-[#141414] md:text-2xl">
+                {displayName}
+              </h1>
+              {/* Início / Instagram / WhatsApp / Busca — sempre visíveis e clicáveis, nessa ordem. Instagram sem link cadastrado vai pro instagram.com genérico; WhatsApp sem número vai pro wa.me genérico (abre o app sem conversa pré-selecionada) — nunca link morto. Início linka pra Home pública (nokta.live/{orgSlug}); sem orgSlug (preview do dashboard), fica sem ação. Alinhados à esquerda, no mesmo eixo vertical do início do nome (nunca centralizados pela largura da tela). */}
+              <div className="flex flex-wrap items-center gap-4 text-[#141414]">
+                {orgSlug ? (
+                  <a href={`/${orgSlug}`} title="Início" aria-label="Início">
+                    <Home size={20} strokeWidth={1.8} />
+                  </a>
+                ) : (
+                  <button type="button" title="Início" aria-label="Início">
+                    <Home size={20} strokeWidth={1.8} />
+                  </button>
+                )}
+                <a href={profile.instagramUrl || "https://instagram.com"} target="_blank" rel="noopener noreferrer" title="Instagram">
+                  <Instagram size={20} strokeWidth={1.8} />
                 </a>
-              ) : (
-                <button type="button" title="Início" aria-label="Início">
-                  <Home size={20} strokeWidth={1.8} />
+                <a
+                  href={profile.whatsappNumber ? `https://wa.me/${profile.whatsappNumber.replace(/\D/g, "")}` : "https://wa.me"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="WhatsApp"
+                >
+                  <MessageCircle size={20} strokeWidth={1.8} />
+                </a>
+                <button type="button" onClick={() => setSearchOpen(true)} title="Buscar produto" aria-label="Buscar produto">
+                  <Search size={20} strokeWidth={1.8} />
                 </button>
-              )}
-              <a href={profile.instagramUrl || "https://instagram.com"} target="_blank" rel="noopener noreferrer" title="Instagram">
-                <Instagram size={20} strokeWidth={1.8} />
-              </a>
-              <a
-                href={profile.whatsappNumber ? `https://wa.me/${profile.whatsappNumber.replace(/\D/g, "")}` : "https://wa.me"}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="WhatsApp"
-              >
-                <MessageCircle size={20} strokeWidth={1.8} />
-              </a>
-              <button type="button" onClick={() => setSearchOpen(true)} title="Buscar produto" aria-label="Buscar produto">
-                <Search size={20} strokeWidth={1.8} />
-              </button>
+              </div>
             </div>
             {orgSlug ? (
               <a
