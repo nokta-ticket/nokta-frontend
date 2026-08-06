@@ -278,7 +278,17 @@ export function MenuView({
         real do card (sem -mx-5/w-full), e o padding lateral (px-5/md:px-8)
         mora nele mesmo — cada ponta do scroll físico já é o respiro
         correto, sem depender de a margem negativa "vazar" pra fora de nada.
-        */}
+
+        pt-1.5 no flex interno: `overflow-x-auto` corta o eixo Y na altura
+        exata do conteúdo (regra do CSS spec — eixo com overflow não-visible
+        força o outro eixo a não ficar visible também); sem esse respiro no
+        topo, a sombra do avatar (`shadow-[...]` em CategoryAvatarButton)
+        ficava cortada (relatado com print). Nome de categoria usa
+        `line-clamp-2` (não `truncate`) — pedido explícito do usuário pra
+        quebrar em 2 linhas em vez de reticências; o botão inteiro é
+        flex-col dentro de um pai `items-stretch` (padrão do flex, sem
+        override), então todos os itens da mesma altura ficam alinhados
+        pelo topo do círculo automaticamente. */}
         <div className="border-b border-black/[0.03] pb-6 pt-5">
           <div className="mb-5 flex items-center justify-between px-5 md:px-8">
             <h3 className="font-poppins text-[18px] font-semibold leading-none text-[#141414] md:text-xl">Categorias</h3>
@@ -293,7 +303,7 @@ export function MenuView({
             ) : null}
           </div>
           <div className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex gap-x-[30px] px-5 pb-1 md:px-8">
+            <div className="flex gap-x-[30px] px-5 pb-1 pt-1.5 md:px-8">
               {data.menu.highlights.length > 0 ? (
                 <CategoryAvatarButton
                   label="Destaques"
@@ -651,7 +661,7 @@ function CategoryAvatarButton({
         )}
       </div>
       <span
-        className={`w-full truncate text-center text-sm font-normal ${
+        className={`line-clamp-2 w-full text-center text-sm font-normal leading-tight ${
           active ? "text-[#0a0a0a]" : "text-[#8b8b90]"
         }`}
       >
