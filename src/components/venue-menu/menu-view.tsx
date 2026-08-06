@@ -443,11 +443,17 @@ const HighlightsSection = forwardRef<
   if (items.length === 0) return null;
 
   return (
-    <div ref={ref} className="scroll-mt-[68px] px-5 pt-6 md:px-8">
-      <h2 className="mb-3 border-b border-[#ececee] pb-3 font-poppins text-xl font-semibold text-[#141414] md:text-2xl">
+    <div ref={ref} className="scroll-mt-[68px] pt-6">
+      <h2 className="mb-3 border-b border-[#ececee] px-5 pb-3 font-poppins text-xl font-semibold text-[#141414] md:px-8 md:text-2xl">
         Destaques
       </h2>
-      <div className="flex gap-3.5 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {/* Padding lateral mora DENTRO do scroller (px-5/md:px-8 aqui, não no
+      container pai) — só o padding do pai cobre o início do conteúdo
+      rolável; o fim do scroll expõe o scrollWidth real do flex, que sem
+      padding próprio no fim deixa um vão vazio depois do último card
+      (mesma causa-raiz do bug corrigido no carrossel de Categorias, só que
+      por FALTA de padding em vez de margem negativa vazando). */}
+      <div className="flex gap-3.5 overflow-x-auto overscroll-x-contain px-5 [scrollbar-width:none] md:px-8 [&::-webkit-scrollbar]:hidden">
         {items.map((item) => (
           <HighlightCard key={item.id} item={item} onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined} />
         ))}
