@@ -267,16 +267,18 @@ export function MenuView({
         o corte em ~4 é só uma CONSEQUÊNCIA do tamanho do avatar+gap cabendo
         (ou não) na largura real do card, nunca um limite artificial.
 
-        O carrossel em si vai de ponta a ponta DO CARD (full-bleed), ignorando
-        o padding lateral (px-5/md:px-8) — só o título/"Ver todas" continuam
-        com o padding normal. margem negativa igual ao padding do card
-        (-mx-5/md:-mx-8) estica o carrossel até a borda do CARD, sem limitar
-        sua largura (w-full — sempre a largura inteira disponível, nunca
-        w-screen: o preview do dashboard renderiza este componente numa
-        largura FIXA de 390px escalada via transform, bem menor que a
-        viewport real do navegador). O mesmo padding volta como padding
-        interno do carrossel (primeiro/último avatar não cola na borda
-        física). */}
+        O scroller NUNCA usa margem negativa (-mx-5) pra simular full-bleed —
+        isso foi tentado e quebrou em telas reais: quando o card ocupa a
+        viewport inteira (mobile, sem sobra de max-w), a margem negativa
+        empurra o elemento pra fora da viewport física, e o padding interno
+        (px-5) que deveria abrir respiro na primeira/última posição do
+        scroll fica "escondido" atrás desse offset — o primeiro avatar
+        nasce cortado na borda, e sobra um vão vazio depois do último
+        (relatado pelo usuário com print). O scroller agora ocupa a largura
+        real do card (sem -mx-5/w-full), e o padding lateral (px-5/md:px-8)
+        mora nele mesmo — cada ponta do scroll físico já é o respiro
+        correto, sem depender de a margem negativa "vazar" pra fora de nada.
+        */}
         <div className="border-b border-black/[0.03] pb-6 pt-5">
           <div className="mb-5 flex items-center justify-between px-5 md:px-8">
             <h3 className="font-poppins text-[18px] font-semibold leading-none text-[#141414] md:text-xl">Categorias</h3>
@@ -290,7 +292,7 @@ export function MenuView({
               </button>
             ) : null}
           </div>
-          <div className="-mx-5 w-full overflow-x-auto [scrollbar-width:none] md:-mx-8 [&::-webkit-scrollbar]:hidden">
+          <div className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex gap-x-[30px] px-5 pb-1 md:px-8">
               {data.menu.highlights.length > 0 ? (
                 <CategoryAvatarButton
@@ -445,7 +447,7 @@ const HighlightsSection = forwardRef<
       <h2 className="mb-3 border-b border-[#ececee] pb-3 font-poppins text-xl font-semibold text-[#141414] md:text-2xl">
         Destaques
       </h2>
-      <div className="flex gap-3.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex gap-3.5 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {items.map((item) => (
           <HighlightCard key={item.id} item={item} onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined} />
         ))}
