@@ -290,13 +290,19 @@ export function MenuView({
         override), então todos os itens da mesma altura ficam alinhados
         pelo topo do círculo automaticamente. */}
         <div className="border-b border-black/[0.03] pb-6 pt-5">
+          {/* leading-none corta a caixa de linha rente ao cap-height, sem
+          espaço pro descendente do "g" de "Categorias" — mesmo com mb-5
+          logo depois, o "g" parecia colado no carrossel abaixo (relatado
+          com print). Trocado por leading-normal (caixa de linha real da
+          fonte, com espaço pra descendentes); items-center no flex mantém
+          título e "Ver todas" alinhados na mesma linha visual. */}
           <div className="mb-5 flex items-center justify-between px-5 md:px-8">
-            <h3 className="font-poppins text-[18px] font-semibold leading-none text-[#141414] md:text-xl">Categorias</h3>
+            <h3 className="font-poppins text-[18px] font-semibold leading-normal text-[#141414] md:text-xl">Categorias</h3>
             {data.menu.categories.length > 0 ? (
               <button
                 type="button"
                 onClick={() => setAllCategoriesOpen(true)}
-                className="text-sm font-normal leading-none text-[#a3a3a8]"
+                className="text-sm font-normal leading-normal text-[#a3a3a8]"
               >
                 Ver todas →
               </button>
