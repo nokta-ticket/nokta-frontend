@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { extensionForMimeType, ImageCropperDialog } from "@/components/media/ImageCropperDialog";
+import { MenuQrCodeDialog } from "./menu-qr-code-dialog";
 import { buildMarketingUrl } from "@/lib/surfaces";
 import { resolveMediaUrl } from "@/lib/media";
 import { getErrorMessage } from "@/lib/axios";
@@ -234,12 +235,14 @@ function NameAndDescription({ menu, orgId }: { menu: VenueMenu; orgId: number })
 
 function StatusAndLinks({
   orgId,
+  orgName,
   orgSlug,
   menu,
   menus,
   onSelectMenu,
 }: {
   orgId: number;
+  orgName: string;
   /** Organization.slug — sempre gerado na criação da org, mas o tipo permite null (ver schema); nesse caso mostramos um placeholder em vez de sumir com a seção inteira. */
   orgSlug: string | null;
   menu: VenueMenu;
@@ -397,6 +400,7 @@ function StatusAndLinks({
           >
             {copiedLink ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
           </button>
+          <MenuQrCodeDialog publicUrl={publicUrl} orgName={orgName} />
           {canOpenPublic && publicUrl ? (
             <a
               href={publicUrl}
@@ -622,7 +626,7 @@ export function MenuHeader({
       <div className="grid grid-cols-1 gap-[34px] lg:grid-cols-[150px_1fr_1fr]">
         <LogoUploader orgId={orgId} orgName={orgName} />
         <NameAndDescription menu={menu} orgId={orgId} />
-        <StatusAndLinks orgId={orgId} orgSlug={orgSlug} menu={menu} menus={menus} onSelectMenu={onSelectMenu} />
+        <StatusAndLinks orgId={orgId} orgName={orgName} orgSlug={orgSlug} menu={menu} menus={menus} onSelectMenu={onSelectMenu} />
       </div>
 
       <ContactFields orgId={orgId} />
