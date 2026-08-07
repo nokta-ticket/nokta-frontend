@@ -15,6 +15,7 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
+import { HomeIcon } from "@/components/icons/HomeIcon";
 import { InstagramIcon } from "@/components/icons/InstagramIcon";
 import { resolveMediaUrl } from "@/lib/media";
 import { toast } from "@/lib/toast";
@@ -206,13 +207,13 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
             )}
           </div>
           <div className="min-w-0 pt-1.5">
-            {/* Mesma fonte/tamanho/cor do nome e dos ícones do MenuView/Home pública — só o conjunto de ícones exibidos é próprio desta tela (Início/Instagram, sem WhatsApp/Busca). Instagram usa o ícone preenchido (InstagramIcon, size 22, igual à Home/cardápio); Início (lucide, outline) sobe pra size 22 pra acompanhar o mesmo peso visual. */}
+            {/* Mesma fonte/tamanho/cor do nome e dos ícones do MenuView/Home pública — só o conjunto de ícones exibidos é próprio desta tela (Início/Instagram, sem WhatsApp/Busca). Início e Instagram são SVGs próprios do projeto (HomeIcon/InstagramIcon, size 22) — nunca o Home do lucide aqui: outline não tem o mesmo peso visual de um SVG sólido, mesmo em tamanho maior. */}
             <h1 className="mb-2 truncate font-poppins text-xl font-semibold tracking-tight text-[#141414] md:text-2xl">
               {initialData.organizationName}
             </h1>
             <div className="flex flex-wrap items-center gap-4 text-[#141414]">
               <a href={`/${orgSlug}`} title="Início" aria-label="Início">
-                <Home size={22} strokeWidth={1.8} />
+                <HomeIcon size={22} />
               </a>
               {profile.instagramUrl ? (
                 <a href={profile.instagramUrl} target="_blank" rel="noopener noreferrer" title="Instagram">

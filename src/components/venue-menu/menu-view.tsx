@@ -2,8 +2,10 @@
 
 import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { ArrowLeft, Heart, Home, LayoutGrid, List, Search, Square, Star, X } from "lucide-react";
+import { ArrowLeft, Heart, LayoutGrid, List, Square, Star, X } from "lucide-react";
+import { HomeIcon } from "@/components/icons/HomeIcon";
 import { InstagramIcon } from "@/components/icons/InstagramIcon";
+import { SearchIcon } from "@/components/icons/SearchIcon";
 import { WhatsappIcon } from "@/components/icons/WhatsappIcon";
 import { formatCentsBRL, type PublicMenuCategory, type PublicMenuItem, type PublicMenuResponse } from "@/services/venue-menu-public";
 import { resolveMediaUrl } from "@/lib/media";
@@ -219,15 +221,15 @@ export function MenuView({
             <h1 className="mb-2 truncate font-poppins text-xl font-semibold tracking-tight text-[#141414] md:text-2xl">
               {displayName}
             </h1>
-            {/* Início / Instagram / WhatsApp / Busca — sempre visíveis e clicáveis, nessa ordem. Instagram sem link cadastrado vai pro instagram.com genérico; WhatsApp sem número vai pro wa.me genérico (abre o app sem conversa pré-selecionada) — nunca link morto. Início linka pra Home pública (nokta.live/{orgSlug}); sem orgSlug (preview do dashboard), fica sem ação. Instagram/WhatsApp usam os ícones preenchidos (InstagramIcon/WhatsappIcon, size 22) — mesmos da Home pública, que é a referência de peso visual; Home/Busca (lucide, outline) sobem de size 20 para 22 pra acompanhar o mesmo peso. */}
+            {/* Início / Instagram / WhatsApp / Busca — sempre visíveis e clicáveis, nessa ordem. Instagram sem link cadastrado vai pro instagram.com genérico; WhatsApp sem número vai pro wa.me genérico (abre o app sem conversa pré-selecionada) — nunca link morto. Início linka pra Home pública (nokta.live/{orgSlug}); sem orgSlug (preview do dashboard), fica sem ação. Todos os 4 ícones (HomeIcon/InstagramIcon/WhatsappIcon/SearchIcon) são SVGs próprios do projeto em size 22 — nunca lucide aqui: um ícone lucide outline, mesmo maior, não fica com o mesmo peso visual de um SVG sólido (relatado pelo usuário: Início/Busca pareciam "mais grossos"/diferentes de Instagram/WhatsApp mesmo no mesmo tamanho). SearchIcon é o mesmo SVG do input de busca de eventos (search-overlay.tsx); HomeIcon vem de public/icons8-casa.svg. */}
             <div className="mb-2 flex flex-wrap items-center gap-4 text-[#141414]">
               {orgSlug ? (
                 <a href={`/${orgSlug}`} title="Início" aria-label="Início">
-                  <Home size={22} strokeWidth={1.8} />
+                  <HomeIcon size={22} />
                 </a>
               ) : (
                 <button type="button" title="Início" aria-label="Início">
-                  <Home size={22} strokeWidth={1.8} />
+                  <HomeIcon size={22} />
                 </button>
               )}
               <a href={profile.instagramUrl || "https://instagram.com"} target="_blank" rel="noopener noreferrer" title="Instagram">
@@ -242,7 +244,7 @@ export function MenuView({
                 <WhatsappIcon size={22} />
               </a>
               <button type="button" onClick={() => setSearchOpen(true)} title="Buscar produto" aria-label="Buscar produto">
-                <Search size={22} strokeWidth={1.8} />
+                <SearchIcon size={22} />
               </button>
             </div>
             {orgSlug ? (
