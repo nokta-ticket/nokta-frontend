@@ -2,8 +2,9 @@
 
 import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { ArrowLeft, Heart, Home, Instagram, LayoutGrid, List, MessageCircle, Search, Square, Star, X } from "lucide-react";
+import { ArrowLeft, Heart, Home, LayoutGrid, List, Search, Square, Star, X } from "lucide-react";
 import { InstagramIcon } from "@/components/icons/InstagramIcon";
+import { WhatsappIcon } from "@/components/icons/WhatsappIcon";
 import { formatCentsBRL, type PublicMenuCategory, type PublicMenuItem, type PublicMenuResponse } from "@/services/venue-menu-public";
 import { resolveMediaUrl } from "@/lib/media";
 
@@ -218,19 +219,19 @@ export function MenuView({
             <h1 className="mb-2 truncate font-poppins text-xl font-semibold tracking-tight text-[#141414] md:text-2xl">
               {displayName}
             </h1>
-            {/* Início / Instagram / WhatsApp / Busca — sempre visíveis e clicáveis, nessa ordem. Instagram sem link cadastrado vai pro instagram.com genérico; WhatsApp sem número vai pro wa.me genérico (abre o app sem conversa pré-selecionada) — nunca link morto. Início linka pra Home pública (nokta.live/{orgSlug}); sem orgSlug (preview do dashboard), fica sem ação. */}
+            {/* Início / Instagram / WhatsApp / Busca — sempre visíveis e clicáveis, nessa ordem. Instagram sem link cadastrado vai pro instagram.com genérico; WhatsApp sem número vai pro wa.me genérico (abre o app sem conversa pré-selecionada) — nunca link morto. Início linka pra Home pública (nokta.live/{orgSlug}); sem orgSlug (preview do dashboard), fica sem ação. Instagram/WhatsApp usam os ícones preenchidos (InstagramIcon/WhatsappIcon, size 22) — mesmos da Home pública, que é a referência de peso visual; Home/Busca (lucide, outline) sobem de size 20 para 22 pra acompanhar o mesmo peso. */}
             <div className="mb-2 flex flex-wrap items-center gap-4 text-[#141414]">
               {orgSlug ? (
                 <a href={`/${orgSlug}`} title="Início" aria-label="Início">
-                  <Home size={20} strokeWidth={1.8} />
+                  <Home size={22} strokeWidth={1.8} />
                 </a>
               ) : (
                 <button type="button" title="Início" aria-label="Início">
-                  <Home size={20} strokeWidth={1.8} />
+                  <Home size={22} strokeWidth={1.8} />
                 </button>
               )}
               <a href={profile.instagramUrl || "https://instagram.com"} target="_blank" rel="noopener noreferrer" title="Instagram">
-                <Instagram size={20} strokeWidth={1.8} />
+                <InstagramIcon size={22} />
               </a>
               <a
                 href={profile.whatsappNumber ? `https://wa.me/${profile.whatsappNumber.replace(/\D/g, "")}` : "https://wa.me"}
@@ -238,10 +239,10 @@ export function MenuView({
                 rel="noopener noreferrer"
                 title="WhatsApp"
               >
-                <MessageCircle size={20} strokeWidth={1.8} />
+                <WhatsappIcon size={22} />
               </a>
               <button type="button" onClick={() => setSearchOpen(true)} title="Buscar produto" aria-label="Buscar produto">
-                <Search size={20} strokeWidth={1.8} />
+                <Search size={22} strokeWidth={1.8} />
               </button>
             </div>
             {orgSlug ? (

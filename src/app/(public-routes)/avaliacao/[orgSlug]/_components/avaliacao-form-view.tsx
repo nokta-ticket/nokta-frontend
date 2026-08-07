@@ -6,7 +6,6 @@ import {
   Award,
   Check,
   Home,
-  Instagram,
   Lock,
   Receipt,
   Send,
@@ -16,6 +15,7 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
+import { InstagramIcon } from "@/components/icons/InstagramIcon";
 import { resolveMediaUrl } from "@/lib/media";
 import { toast } from "@/lib/toast";
 import {
@@ -206,20 +206,20 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
             )}
           </div>
           <div className="min-w-0 pt-1.5">
-            {/* Mesma fonte/tamanho/cor do nome e dos ícones do MenuView/Home pública — só o conjunto de ícones exibidos é próprio desta tela (Início/Instagram, sem WhatsApp/Busca). */}
+            {/* Mesma fonte/tamanho/cor do nome e dos ícones do MenuView/Home pública — só o conjunto de ícones exibidos é próprio desta tela (Início/Instagram, sem WhatsApp/Busca). Instagram usa o ícone preenchido (InstagramIcon, size 22, igual à Home/cardápio); Início (lucide, outline) sobe pra size 22 pra acompanhar o mesmo peso visual. */}
             <h1 className="mb-2 truncate font-poppins text-xl font-semibold tracking-tight text-[#141414] md:text-2xl">
               {initialData.organizationName}
             </h1>
             <div className="flex flex-wrap items-center gap-4 text-[#141414]">
               <a href={`/${orgSlug}`} title="Início" aria-label="Início">
-                <Home size={20} strokeWidth={1.8} />
+                <Home size={22} strokeWidth={1.8} />
               </a>
               {profile.instagramUrl ? (
                 <a href={profile.instagramUrl} target="_blank" rel="noopener noreferrer" title="Instagram">
-                  <Instagram size={20} strokeWidth={1.8} />
+                  <InstagramIcon size={22} />
                 </a>
               ) : (
-                <Instagram size={20} strokeWidth={1.8} className="opacity-30" />
+                <InstagramIcon size={22} className="opacity-30" />
               )}
             </div>
           </div>
