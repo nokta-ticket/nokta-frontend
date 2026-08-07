@@ -87,9 +87,12 @@ export function MenuView({
   // mais recente mirou) — todas as categorias (e Destaques) ficam sempre
   // visíveis, empilhadas, cada uma com seu próprio título/separador. Clicar
   // num chip rola até o início daquela seção (scrollIntoView), nunca
-  // esconde as demais.
+  // esconde as demais. "Destaques" não tem mais chip próprio no carrossel
+  // (já aparecia repetido logo abaixo do carrossel, pedido explícito do
+  // usuário pra remover a duplicação) — a seção continua existindo, só sem
+  // atalho de clique dedicado; o estado inicial cai direto na 1ª categoria.
   const [activeCategoryId, setActiveCategoryId] = useState<number | "highlights">(
-    data.menu.highlights.length > 0 ? "highlights" : (data.menu.categories[0]?.id ?? "highlights"),
+    data.menu.categories[0]?.id ?? "highlights",
   );
   const [view, setView] = useState<ViewMode>("list");
   const [showAppbar, setShowAppbar] = useState(false);
@@ -313,14 +316,7 @@ export function MenuView({
           </div>
           <div className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex gap-x-[30px] px-5 pb-1 pt-1.5 md:px-8">
-              {data.menu.highlights.length > 0 ? (
-                <CategoryAvatarButton
-                  label="Destaques"
-                  imageUrl={null}
-                  active={activeCategoryId === "highlights"}
-                  onClick={() => scrollToSection("highlights")}
-                />
-              ) : null}
+              {/* Chip "Destaques" removido do carrossel — a seção Destaques já aparece logo abaixo dele, o chip era uma duplicação do mesmo conceito (pedido explícito do usuário). A seção continua existindo normalmente. */}
               {data.menu.categories.map((cat) => (
                 <CategoryAvatarButton
                   key={cat.id}
@@ -381,7 +377,6 @@ export function MenuView({
 
       {allCategoriesOpen ? (
         <AllCategoriesOverlay
-          hasHighlights={data.menu.highlights.length > 0}
           categories={data.menu.categories}
           activeCategoryId={activeCategoryId}
           onSelect={(id) => {
@@ -537,13 +532,11 @@ const MenuSection = forwardRef<
  * só em grade em vez de carrossel.
  */
 function AllCategoriesOverlay({
-  hasHighlights,
   categories,
   activeCategoryId,
   onSelect,
   onClose,
 }: {
-  hasHighlights: boolean;
   categories: PublicMenuCategory[];
   activeCategoryId: number | "highlights";
   onSelect: (id: number | "highlights") => void;
@@ -562,14 +555,7 @@ function AllCategoriesOverlay({
           </button>
         </div>
         <div className="grid grid-cols-4 gap-4">
-          {hasHighlights ? (
-            <CategoryAvatarButton
-              label="Destaques"
-              imageUrl={null}
-              active={activeCategoryId === "highlights"}
-              onClick={() => onSelect("highlights")}
-            />
-          ) : null}
+          {/* Chip "Destaques" removido daqui também (mesmo pedido do carrossel principal) — este modal espelha o mesmo conjunto de chips. */}
           {categories.map((cat) => (
             <CategoryAvatarButton
               key={cat.id}
