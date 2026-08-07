@@ -5,7 +5,6 @@ import Image from "next/image";
 import { ChevronDown, MapPin } from "lucide-react";
 import { InstagramIcon } from "@/components/icons/InstagramIcon";
 import { WhatsappIcon } from "@/components/icons/WhatsappIcon";
-import { ImageWithSkeleton } from "@/components/media/ImageWithSkeleton";
 import { resolveMediaUrl } from "@/lib/media";
 import type { VenueHomePageData } from "@/services/venue-home-public";
 
@@ -42,7 +41,7 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
           style={profile.bannerUrl ? { aspectRatio: "430 / 190" } : undefined}
         >
           {profile.bannerUrl ? (
-            <ImageWithSkeleton
+            <Image
               src={resolveMediaUrl(profile.bannerUrl) ?? profile.bannerUrl}
               alt=""
               fill
@@ -61,7 +60,7 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
               <>
                 {/* Vidro fosco atrás da logo — sem isso, uma logo com fundo transparente sobreposta na borda do banner se misturava direto com a foto atrás dela. Nunca uma cor sólida forçada (pedido explícito: a logo aparece como enviada), só desfoque + leve véu branco. */}
                 <div className="absolute inset-0 rounded-full bg-white/55 backdrop-blur-md" />
-                <ImageWithSkeleton
+                <Image
                   src={resolveMediaUrl(profile.logoUrl) ?? profile.logoUrl}
                   alt={data.organizationName}
                   fill

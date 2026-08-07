@@ -21,8 +21,31 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
  */
 const MAX_OUTPUT_DIMENSION = 1200;
 
+/**
+ * PNG é compressão sem perdas — ótimo pra logo com poucas cores/texto
+ * nítido, péssimo pra foto/arte gráfica complexa (gradientes, muitas
+ * cores): um banner de evento em PNG a 1200x530 ainda pesava 1.3MB depois
+ * do cap de resolução, porque PNG não consegue comprimir esse tipo de
+ * conteúdo como JPEG consegue. Decidir isso só pelo formato de ORIGEM
+ * (PNG entrava, PNG saía, versão anterior desta função) não bastava — a
+ * maioria dos PNGs
+ * enviados aqui na prática não tem nenhum pixel transparente de verdade
+ * (banner exportado do Canva/Photoshop como PNG "por padrão", não porque
+ * precisa de alfa). Checar os pixels reais do canvas é a única forma
+ * confiável de saber se há transparência de verdade — só aí vale manter
+ * PNG; sem nenhum pixel com alpha < 255, converte pra JPEG e ganha a
+ * compressão sem perder nada (nunca haveria transparência visível mesmo).
+ */
+function canvasHasTransparency(ctx: CanvasRenderingContext2D, width: number, height: number): boolean {
+  const { data } = ctx.getImageData(0, 0, width, height);
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] < 255) return true;
+  }
+  return false;
+}
+
 /** Mesma lógica de recorte usada em (private-routes)/perfil/editar/page.tsx — extraída aqui pra reaproveitar em qualquer upload de imagem (logo/banner de organização, etc.), nunca duplicada. */
-async function getCroppedBlob(src: string, area: Area, mimeType: string): Promise<Blob> {
+async function getCroppedBlob(src: string, area: Area, sourceMimeType: string): Promise<Blob> {
   const img = new Image();
   img.crossOrigin = "anonymous";
   await new Promise<void>((res, rej) => {
@@ -44,10 +67,9 @@ async function getCroppedBlob(src: string, area: Area, mimeType: string): Promis
   const ctx = canvas.getContext("2d")!;
   ctx.drawImage(img, area.x, area.y, area.width, area.height, 0, 0, outputWidth, outputHeight);
 
-  // JPEG não suporta canal alfa — exportar PNG (ou WEBP) preserva fundo
-  // transparente do arquivo original; JPEG só entra quando a fonte já não
-  // tem transparência (ex.: foto comum), pra manter o arquivo final leve.
-  const quality = mimeType === "image/jpeg" ? 0.92 : undefined;
+  const canPreserveAlpha = sourceMimeType === "image/png" || sourceMimeType === "image/webp" || sourceMimeType === "image/gif";
+  const mimeType = canPreserveAlpha && canvasHasTransparency(ctx, outputWidth, outputHeight) ? sourceMimeType : "image/jpeg";
+  const quality = mimeType === "image/jpeg" ? 0.85 : undefined;
   return new Promise((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error("crop failed"))), mimeType, quality));
 }
 
@@ -57,14 +79,6 @@ export function extensionForMimeType(mimeType: string): string {
   if (mimeType === "image/webp") return "webp";
   if (mimeType === "image/gif") return "gif";
   return "jpg";
-}
-
-/** PNG/WEBP (com alfa) e GIF preservam transparência; qualquer outro formato de origem exporta como JPEG. */
-function outputMimeType(sourceMimeType: string | null): string {
-  if (sourceMimeType === "image/png" || sourceMimeType === "image/webp" || sourceMimeType === "image/gif") {
-    return sourceMimeType;
-  }
-  return "image/jpeg";
 }
 
 /** imageSrc é uma data URL (novo upload, prefixo data:mime;base64) ou uma URL remota (reabrindo a partir da imagem original já salva) — nos dois casos dá pra inferir o formato de origem sem precisar carregar o arquivo. */
@@ -112,7 +126,7 @@ export function ImageCropperDialog({
 
   const handleConfirm = async () => {
     if (!imageSrc || !croppedArea) return;
-    const blob = await getCroppedBlob(imageSrc, croppedArea, outputMimeType(detectSourceMimeType(imageSrc)));
+    const blob = await getCroppedBlob(imageSrc, croppedArea, detectSourceMimeType(imageSrc) ?? "image/jpeg");
     onConfirm(blob);
   };
 
