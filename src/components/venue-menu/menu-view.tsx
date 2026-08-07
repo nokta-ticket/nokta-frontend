@@ -21,10 +21,69 @@ function initials(name: string): string {
     .join("");
 }
 
-function itemPriceLabel(item: PublicMenuItem): string | null {
+/**
+ * Extrai uma magnitude numérica comparável do nome livre de uma variação
+ * (ex.: "200 ml" → 200, "1 L" → 1000, "1,5kg" → 1500) para ordenar por
+ * tamanho real em vez de confiar cegamente no displayOrder cadastrado no
+ * dashboard (o produtor pode cadastrar fora de ordem). Unidades de volume/
+ * massa maiores (L, kg) convertem pra base ml/g pra comparar com as
+ * menores (ml, g) na mesma escala; unidades sem conversão conhecida (un,
+ * fatia, "P"/"M"/"G"...) usam o número puro. Retorna null quando não há
+ * nenhum número no nome (nunca lança) — nesse caso o chamador cai no
+ * displayOrder original, que já vem ordenado 'asc' do backend.
+ */
+function parseVariantSize(nome: string): number | null {
+  const match = nome.replace(",", ".").match(/(\d+(?:\.\d+)?)\s*(ml|l|kg|g|un|oz)?/i);
+  if (!match) return null;
+  const value = parseFloat(match[1]);
+  const unit = (match[2] ?? "").toLowerCase();
+  if (unit === "l") return value * 1000;
+  if (unit === "kg") return value * 1000;
+  return value;
+}
+
+/**
+ * Variações ordenadas da menor pra maior unidade real (200ml antes de
+ * 600ml antes de 1L...). Quando pelo menos uma variação tem tamanho
+ * parseável, ordena por ele (as sem tamanho parseável vão pro fim, na
+ * ordem original entre si); sem nenhum tamanho parseável no item inteiro,
+ * mantém a ordem original (displayOrder do backend) — nunca embaralha uma
+ * lista tipo "Pequeno/Médio/Grande" tentando adivinhar tamanho.
+ */
+function sortVariantsBySize(prices: PublicMenuItem["prices"]): PublicMenuItem["prices"] {
+  const sizes = prices.map((p) => parseVariantSize(p.variantNome));
+  if (sizes.every((s) => s === null)) return prices;
+  return prices
+    .map((p, i) => ({ p, size: sizes[i] }))
+    .sort((a, b) => {
+      if (a.size === null && b.size === null) return 0;
+      if (a.size === null) return 1;
+      if (b.size === null) return -1;
+      return a.size - b.size;
+    })
+    .map(({ p }) => p);
+}
+
+/**
+ * Variação principal (menor tamanho real) + preço, sempre visível no
+ * card — nunca "a partir de", pra permitir comparar preço entre produtos
+ * sem abrir nada (pedido explícito do usuário). Produto sem variação
+ * (prices.length <= 1) não tem nome de variação pra mostrar, só o preço.
+ */
+function itemMainPriceLabel(item: PublicMenuItem): string | null {
   if (item.prices.length === 0) return null;
-  if (item.prices.length === 1) return formatCentsBRL(item.prices[0].effectivePriceCents);
-  return `a partir de ${formatCentsBRL(Math.min(...item.prices.map((p) => p.effectivePriceCents)))}`;
+  const price = formatCentsBRL(item.prices[0].effectivePriceCents);
+  if (item.prices.length === 1) return price;
+  const sorted = sortVariantsBySize(item.prices);
+  return `${sorted[0].variantNome} · ${formatCentsBRL(sorted[0].effectivePriceCents)}`;
+}
+
+/** "5 tamanhos", "3 opções" — rótulo do acionador do bottom sheet de variações; null quando não há múltiplas variações (nada a mostrar). */
+function variantCountLabel(item: PublicMenuItem): string | null {
+  if (item.prices.length <= 1) return null;
+  const count = item.prices.length;
+  const word = item.prices.every((p) => parseVariantSize(p.variantNome) !== null) ? "tamanho" : "opção";
+  return `${count} ${word}${count > 1 ? (word === "tamanho" ? "s" : "ões") : ""}`;
 }
 
 /**
@@ -99,6 +158,11 @@ export function MenuView({
   const [searchOpen, setSearchOpen] = useState(false);
   const [allCategoriesOpen, setAllCategoriesOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  // Item com o bottom sheet "Escolha o tamanho" aberto — só um por vez,
+  // controlado aqui (não dentro de cada card) pra nunca haver dois sheets
+  // montados simultaneamente e pra qualquer card (lista/grade/cards/
+  // destaques) poder abrir o mesmo overlay compartilhado.
+  const [variantSheetItem, setVariantSheetItem] = useState<PublicMenuItem | null>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const sectionRefs = useRef(new Map<number | "highlights", HTMLDivElement>());
@@ -340,6 +404,7 @@ export function MenuView({
               }}
               items={data.menu.highlights}
               onToggleFavorite={onToggleFavorite}
+              onOpenVariants={setVariantSheetItem}
             />
           ) : null}
           {data.menu.categories.map((cat) => (
@@ -353,6 +418,7 @@ export function MenuView({
               items={cat.items}
               view={view}
               onToggleFavorite={onToggleFavorite}
+              onOpenVariants={setVariantSheetItem}
             />
           ))}
         </div>
@@ -394,8 +460,13 @@ export function MenuView({
           onQueryChange={setSearchQuery}
           onClose={closeSearch}
           onToggleFavorite={onToggleFavorite}
+          onOpenVariants={setVariantSheetItem}
           inputRef={searchInputRef}
         />
+      ) : null}
+
+      {variantSheetItem ? (
+        <VariantSheet item={variantSheetItem} onClose={() => setVariantSheetItem(null)} />
       ) : null}
     </div>
   );
@@ -409,8 +480,17 @@ export function MenuView({
  * escolhido pro resto do cardápio — pedido explícito: "quero a lista na
  * horizontal e não vertical igual o restante".
  */
-function HighlightCard({ item, onToggleFavorite }: { item: PublicMenuItem; onToggleFavorite?: () => void }) {
-  const price = itemPriceLabel(item);
+function HighlightCard({
+  item,
+  onToggleFavorite,
+  onOpenVariants,
+}: {
+  item: PublicMenuItem;
+  onToggleFavorite?: () => void;
+  onOpenVariants: () => void;
+}) {
+  const price = itemMainPriceLabel(item);
+  const variantCount = variantCountLabel(item);
   return (
     <article className={`w-[200px] shrink-0 ${item.available ? "" : "opacity-60"}`}>
       <div className="relative h-[200px] overflow-hidden rounded-2xl">
@@ -425,11 +505,19 @@ function HighlightCard({ item, onToggleFavorite }: { item: PublicMenuItem; onTog
       <div className="pt-2.5">
         <h4 className="truncate text-sm font-semibold text-[#141414]">{item.nome}</h4>
         <div className="mt-1.5 flex items-center justify-between gap-2">
-          {price ? <span className="text-sm font-semibold text-[#141414]">{price}</span> : null}
+          {price ? <span className="truncate text-sm font-semibold text-[#141414]">{price}</span> : null}
           {item.favoriteCount > 0 ? (
-            <span className="flex items-center gap-1 text-xs text-[#9a9aa0]">
+            <span className="flex shrink-0 items-center gap-1 text-xs text-[#9a9aa0]">
               {item.favoriteCount} <Heart size={11} className="fill-[#ef4444] stroke-[#ef4444]" />
             </span>
+          ) : null}
+        </div>
+        {/* min-h reserva a altura da 2ª linha sempre (com ou sem variantes) — nenhum card do carrossel fica mais alto/baixo que o vizinho por ter ou não múltiplos tamanhos. */}
+        <div className="mt-0.5 min-h-[16px]">
+          {variantCount ? (
+            <button type="button" onClick={onOpenVariants} className="text-xs font-medium text-[#d9a326]">
+              {variantCount} ›
+            </button>
           ) : null}
         </div>
       </div>
@@ -452,8 +540,12 @@ function FavoriteButtonSlot({
 
 const HighlightsSection = forwardRef<
   HTMLDivElement,
-  { items: PublicMenuItem[]; onToggleFavorite?: (item: PublicMenuItem) => void }
->(function HighlightsSection({ items, onToggleFavorite }, ref) {
+  {
+    items: PublicMenuItem[];
+    onToggleFavorite?: (item: PublicMenuItem) => void;
+    onOpenVariants: (item: PublicMenuItem) => void;
+  }
+>(function HighlightsSection({ items, onToggleFavorite, onOpenVariants }, ref) {
   if (items.length === 0) return null;
 
   return (
@@ -469,7 +561,12 @@ const HighlightsSection = forwardRef<
       por FALTA de padding em vez de margem negativa vazando). */}
       <div className="flex gap-3.5 overflow-x-auto overscroll-x-contain px-5 [scrollbar-width:none] md:px-8 [&::-webkit-scrollbar]:hidden">
         {items.map((item) => (
-          <HighlightCard key={item.id} item={item} onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined} />
+          <HighlightCard
+            key={item.id}
+            item={item}
+            onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined}
+            onOpenVariants={() => onOpenVariants(item)}
+          />
         ))}
       </div>
     </div>
@@ -493,8 +590,9 @@ const MenuSection = forwardRef<
     items: PublicMenuItem[];
     view: ViewMode;
     onToggleFavorite?: (item: PublicMenuItem) => void;
+    onOpenVariants: (item: PublicMenuItem) => void;
   }
->(function MenuSection({ title, items, view, onToggleFavorite }, ref) {
+>(function MenuSection({ title, items, view, onToggleFavorite, onOpenVariants }, ref) {
   if (items.length === 0) return null;
 
   return (
@@ -505,19 +603,34 @@ const MenuSection = forwardRef<
       {view === "grid" ? (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
           {items.map((item) => (
-            <ItemGridCard key={item.id} item={item} onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined} />
+            <ItemGridCard
+              key={item.id}
+              item={item}
+              onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined}
+              onOpenVariants={() => onOpenVariants(item)}
+            />
           ))}
         </div>
       ) : view === "large" ? (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {items.map((item) => (
-            <ItemLargeCard key={item.id} item={item} onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined} />
+            <ItemLargeCard
+              key={item.id}
+              item={item}
+              onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined}
+              onOpenVariants={() => onOpenVariants(item)}
+            />
           ))}
         </div>
       ) : (
         <div className="space-y-2.5">
           {items.map((item) => (
-            <ItemListRow key={item.id} item={item} onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined} />
+            <ItemListRow
+              key={item.id}
+              item={item}
+              onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined}
+              onOpenVariants={() => onOpenVariants(item)}
+            />
           ))}
         </div>
       )}
@@ -577,6 +690,7 @@ function SearchOverlay({
   onQueryChange,
   onClose,
   onToggleFavorite,
+  onOpenVariants,
   inputRef,
 }: {
   allItems: PublicMenuItem[];
@@ -584,6 +698,7 @@ function SearchOverlay({
   onQueryChange: (value: string) => void;
   onClose: () => void;
   onToggleFavorite?: (item: PublicMenuItem) => void;
+  onOpenVariants: (item: PublicMenuItem) => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
 }) {
   const normalizedQuery = query.trim().toLowerCase();
@@ -622,10 +737,131 @@ function SearchOverlay({
         ) : (
           <div className="divide-y divide-[#ececee]">
             {results.map((item) => (
-              <ItemListRow key={item.id} item={item} onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined} />
+              <ItemListRow
+                key={item.id}
+                item={item}
+                onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined}
+                onOpenVariants={() => onOpenVariants(item)}
+              />
             ))}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Bottom sheet "Escolha o tamanho" — aberto pelo acionador discreto do
+ * card ("N tamanhos ›"), nunca lista as variações dentro do próprio card
+ * (isso quebraria a altura uniforme entre cards, pedido explícito do
+ * usuário). Sobe de baixo, cantos superiores arredondados, fundo do
+ * cardápio visível e escurecido (overlay), altura dinâmica conforme a
+ * quantidade de opções (nunca tela cheia por padrão — só um scroll
+ * interno se a lista for realmente grande), fecha arrastando pra baixo,
+ * tocando fora, ou pelo botão "X". `env(safe-area-inset-bottom)` evita a
+ * barra de gestos do iPhone cobrir a última opção.
+ */
+function VariantSheet({ item, onClose }: { item: PublicMenuItem; onClose: () => void }) {
+  const [dragY, setDragY] = useState(0);
+  const [closing, setClosing] = useState(false);
+  const dragStartY = useRef<number | null>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+
+  const sorted = useMemo(() => sortVariantsBySize(item.prices), [item.prices]);
+
+  // Pequeno atraso pra rodar a transição de entrada/saída (translateY) em
+  // vez de o sheet simplesmente "aparecer" já na posição final.
+  const [entered, setEntered] = useState(false);
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setEntered(true));
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  const handleClose = () => {
+    setClosing(true);
+    setTimeout(onClose, 200);
+  };
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    dragStartY.current = e.clientY;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (dragStartY.current === null) return;
+    const delta = e.clientY - dragStartY.current;
+    if (delta > 0) setDragY(delta);
+  };
+  const onPointerUp = () => {
+    if (dragStartY.current === null) return;
+    dragStartY.current = null;
+    if (dragY > 80) {
+      handleClose();
+    } else {
+      setDragY(0);
+    }
+  };
+
+  const translateY = closing ? "100%" : !entered ? "100%" : `${dragY}px`;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center">
+      {/* Overlay — fecha ao tocar fora, cardápio continua visível por trás, só escurecido. */}
+      <div
+        className={`absolute inset-0 bg-black/50 transition-opacity duration-200 ${closing || !entered ? "opacity-0" : "opacity-100"}`}
+        onClick={handleClose}
+      />
+      <div
+        ref={sheetRef}
+        className="relative z-10 flex max-h-[80vh] w-full max-w-[440px] flex-col rounded-t-3xl bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.2)] md:max-w-lg"
+        style={{
+          transform: `translateY(${translateY})`,
+          transition: dragStartY.current !== null ? "none" : "transform 200ms ease-out",
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
+      >
+        {/* Handle de arrastar — toda a área do cabeçalho responde ao drag, não só a barrinha visual. */}
+        <div
+          className="flex shrink-0 cursor-grab flex-col items-center pt-2.5 active:cursor-grabbing"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+        >
+          <div className="h-1 w-9 rounded-full bg-black/15" />
+        </div>
+
+        <div className="flex shrink-0 items-center justify-between px-5 pb-3 pt-3">
+          <div className="min-w-0">
+            <h2 className="truncate font-poppins text-base font-semibold text-[#141414]">{item.nome}</h2>
+            <p className="text-sm text-[#9a9aa0]">Escolha o tamanho</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleClose}
+            aria-label="Fechar"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-black/5 text-[#8b8b90]"
+          >
+            <X size={18} strokeWidth={1.8} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 pb-2">
+          <div className="divide-y divide-[#ececee]">
+            {/* Sem carrinho/pedido no cardápio público (só consulta) — cada linha é clicável e reage ao toque (active:bg), mas serve pra destacar/consultar a opção, não pra "adicionar" nada. */}
+            {sorted.map((price) => (
+              <button
+                key={price.variantId}
+                type="button"
+                className="flex w-full items-center justify-between gap-4 rounded-xl py-3.5 text-left transition-colors active:bg-black/[0.03]"
+              >
+                <span className="text-[15px] text-[#141414]">{price.variantNome}</span>
+                <span className="font-poppins text-[15px] font-semibold text-[#141414]">
+                  {formatCentsBRL(price.effectivePriceCents)}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -731,8 +967,17 @@ function ItemThumb({ item }: { item: PublicMenuItem }) {
   );
 }
 
-function ItemLargeCard({ item, onToggleFavorite }: { item: PublicMenuItem; onToggleFavorite?: () => void }) {
-  const price = itemPriceLabel(item);
+function ItemLargeCard({
+  item,
+  onToggleFavorite,
+  onOpenVariants,
+}: {
+  item: PublicMenuItem;
+  onToggleFavorite?: () => void;
+  onOpenVariants: () => void;
+}) {
+  const price = itemMainPriceLabel(item);
+  const variantCount = variantCountLabel(item);
   return (
     <article className={item.available ? "" : "opacity-60"}>
       <div className="relative h-[200px] md:h-[240px]">
@@ -742,11 +987,19 @@ function ItemLargeCard({ item, onToggleFavorite }: { item: PublicMenuItem; onTog
       <div className="pt-3.5">
         <h4 className="font-poppins text-base font-semibold text-[#141414] md:text-lg">{item.nome}</h4>
         <div className="mt-3 flex items-center justify-between gap-2">
-          {price ? <span className="font-poppins text-base font-semibold text-[#141414]">{price}</span> : null}
+          {price ? <span className="truncate font-poppins text-base font-semibold text-[#141414]">{price}</span> : null}
           {item.favoriteCount > 0 ? (
-            <span className="flex items-center gap-1.5 text-sm text-[#9a9aa0]">
+            <span className="flex shrink-0 items-center gap-1.5 text-sm text-[#9a9aa0]">
               {item.favoriteCount} <Heart size={16} className="fill-[#ef4444] stroke-[#ef4444]" />
             </span>
+          ) : null}
+        </div>
+        {/* min-h reserva a altura da 2ª linha sempre — cards vizinhos na mesma grade nunca ficam com altura diferente por causa da presença/ausência de variantes. */}
+        <div className="mt-1 min-h-[20px]">
+          {variantCount ? (
+            <button type="button" onClick={onOpenVariants} className="text-sm font-medium text-[#d9a326]">
+              {variantCount} ›
+            </button>
           ) : null}
         </div>
       </div>
@@ -754,8 +1007,17 @@ function ItemLargeCard({ item, onToggleFavorite }: { item: PublicMenuItem; onTog
   );
 }
 
-function ItemGridCard({ item, onToggleFavorite }: { item: PublicMenuItem; onToggleFavorite?: () => void }) {
-  const price = itemPriceLabel(item);
+function ItemGridCard({
+  item,
+  onToggleFavorite,
+  onOpenVariants,
+}: {
+  item: PublicMenuItem;
+  onToggleFavorite?: () => void;
+  onOpenVariants: () => void;
+}) {
+  const price = itemMainPriceLabel(item);
+  const variantCount = variantCountLabel(item);
   return (
     <article className={item.available ? "" : "opacity-60"}>
       <div className="relative h-[130px] md:h-[150px]">
@@ -765,11 +1027,19 @@ function ItemGridCard({ item, onToggleFavorite }: { item: PublicMenuItem; onTogg
       <div className="pt-2.5">
         <h4 className="truncate text-sm font-semibold text-[#141414]">{item.nome}</h4>
         <div className="mt-2 flex items-center justify-between gap-2">
-          {price ? <span className="text-sm font-semibold text-[#141414]">{price}</span> : null}
+          {price ? <span className="truncate text-sm font-semibold text-[#141414]">{price}</span> : null}
           {item.favoriteCount > 0 ? (
-            <span className="flex items-center gap-1 text-xs text-[#9a9aa0]">
+            <span className="flex shrink-0 items-center gap-1 text-xs text-[#9a9aa0]">
               {item.favoriteCount} <Heart size={13} className="fill-[#ef4444] stroke-[#ef4444]" />
             </span>
+          ) : null}
+        </div>
+        {/* min-h reserva a altura da 2ª linha sempre (mesmo raciocínio do ItemLargeCard). */}
+        <div className="mt-0.5 min-h-[16px]">
+          {variantCount ? (
+            <button type="button" onClick={onOpenVariants} className="text-xs font-medium text-[#d9a326]">
+              {variantCount} ›
+            </button>
           ) : null}
         </div>
       </div>
@@ -777,26 +1047,47 @@ function ItemGridCard({ item, onToggleFavorite }: { item: PublicMenuItem; onTogg
   );
 }
 
-function ItemListRow({ item, onToggleFavorite }: { item: PublicMenuItem; onToggleFavorite?: () => void }) {
-  const price = itemPriceLabel(item);
+function ItemListRow({
+  item,
+  onToggleFavorite,
+  onOpenVariants,
+}: {
+  item: PublicMenuItem;
+  onToggleFavorite?: () => void;
+  onOpenVariants: () => void;
+}) {
+  const price = itemMainPriceLabel(item);
+  const variantCount = variantCountLabel(item);
   return (
     <article
       className={`flex gap-4 rounded-2xl border border-[#ececee] bg-white p-3.5 ${item.available ? "" : "opacity-60"}`}
     >
       <div className="flex min-w-0 flex-1 flex-col">
-        <h4 className="font-poppins text-base font-semibold text-[#141414] md:text-lg">{item.nome}</h4>
-        {item.descricao ? <p className="mt-1.5 text-sm leading-snug text-[#9a9aa0]">{item.descricao}</p> : null}
+        <h4 className="truncate font-poppins text-base font-semibold text-[#141414] md:text-lg">{item.nome}</h4>
+        {item.descricao ? <p className="mt-1.5 line-clamp-2 text-sm leading-snug text-[#9a9aa0]">{item.descricao}</p> : null}
         {!item.available ? (
           <span className="mt-1.5 w-fit rounded-full bg-black/5 px-2 py-0.5 text-[11px] font-medium text-black/50">
             Esgotado
           </span>
         ) : null}
-        <div className="mt-auto flex items-center gap-3 pt-4">
-          {price ? <span className="font-poppins text-base font-semibold text-[#141414]">{price}</span> : null}
-          {item.favoriteCount > 0 ? (
-            <span className="flex items-center gap-1.5 text-sm text-[#9a9aa0]">
-              {item.favoriteCount} <Heart size={16} className="fill-[#ef4444] stroke-[#ef4444]" />
-            </span>
+        {/* Card compacto sempre com a mesma altura (travada pela thumb h-[124px] ao lado) — variação principal (menor tamanho) + preço juntos numa linha, nunca "a partir de", pra comparar preço entre produtos sem abrir nada. O acionador de variantes fica numa 2ª linha discreta, abaixo do preço, sem crescer o card: abre o bottom sheet "Escolha o tamanho" (VariantSheet) em vez de listar tudo aqui. */}
+        <div className="mt-auto flex flex-col gap-0.5 pt-3">
+          <div className="flex items-center gap-3">
+            {price ? <span className="truncate font-poppins text-base font-semibold text-[#141414]">{price}</span> : null}
+            {item.favoriteCount > 0 ? (
+              <span className="flex shrink-0 items-center gap-1.5 text-sm text-[#9a9aa0]">
+                {item.favoriteCount} <Heart size={16} className="fill-[#ef4444] stroke-[#ef4444]" />
+              </span>
+            ) : null}
+          </div>
+          {variantCount ? (
+            <button
+              type="button"
+              onClick={onOpenVariants}
+              className="w-fit text-sm font-medium text-[#d9a326]"
+            >
+              {variantCount} ›
+            </button>
           ) : null}
         </div>
       </div>
