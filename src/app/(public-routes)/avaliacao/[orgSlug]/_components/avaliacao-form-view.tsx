@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import {
   Award,
   Check,
@@ -17,6 +16,7 @@ import {
 } from "lucide-react";
 import { HomeIcon } from "@/components/icons/HomeIcon";
 import { InstagramIcon } from "@/components/icons/InstagramIcon";
+import { ImageWithSkeleton } from "@/components/media/ImageWithSkeleton";
 import { resolveMediaUrl } from "@/lib/media";
 import { toast } from "@/lib/toast";
 import {
@@ -170,7 +170,7 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
           style={profile.bannerUrl ? { aspectRatio: "430 / 190" } : undefined}
         >
           {profile.bannerUrl ? (
-            <Image
+            <ImageWithSkeleton
               src={resolveMediaUrl(profile.bannerUrl) ?? profile.bannerUrl}
               alt=""
               fill
@@ -189,7 +189,7 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
               <>
                 {/* Vidro fosco atrás da logo — sem isso, uma logo com fundo transparente sobreposta na borda do banner se misturava direto com a foto atrás dela. */}
                 <div className="absolute inset-0 rounded-full bg-white/55 backdrop-blur-md" />
-                <Image
+                <ImageWithSkeleton
                   src={resolveMediaUrl(profile.logoUrl) ?? profile.logoUrl}
                   alt={initialData.organizationName}
                   fill
