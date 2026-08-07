@@ -67,8 +67,31 @@ async function getCroppedBlob(src: string, area: Area, sourceMimeType: string): 
   const ctx = canvas.getContext("2d")!;
   ctx.drawImage(img, area.x, area.y, area.width, area.height, 0, 0, outputWidth, outputHeight);
 
+  // Decide o formato ANTES de qualquer fundo — canvasHasTransparency
+  // precisa ler os pixels como a imagem realmente os desenhou, sem nada
+  // por trás; pintar de branco primeiro esconderia transparência real
+  // (ex.: logo com fundo transparente) e faria essa checagem sempre dar
+  // "sem transparência" por engano.
   const canPreserveAlpha = sourceMimeType === "image/png" || sourceMimeType === "image/webp" || sourceMimeType === "image/gif";
   const mimeType = canPreserveAlpha && canvasHasTransparency(ctx, outputWidth, outputHeight) ? sourceMimeType : "image/jpeg";
+
+  // Canvas novo nasce transparente (RGBA 0,0,0,0) — se por qualquer motivo
+  // sobrar até 1px não coberto pela imagem (restrictPosition=true na lib
+  // de crop já evita isso na prática, mas o canvas em si não garante
+  // nada), esse pixel vira PRETO ao exportar como JPEG (sem canal alfa,
+  // transparência 0 é lida como preto puro) — mesmo bug de "borda preta"
+  // documentado abaixo, só que causado aqui em vez de por drag-fora-dos-
+  // limites. Só entra quando o resultado final É JPEG (decisão já
+  // tomada acima) — nunca preenche o fundo de um PNG/WEBP que preserva
+  // transparência real, senão apagaria justamente o que devia ficar
+  // transparente. Desenha o branco ATRÁS da imagem já pronta (globalCompositeOperation
+  // "destination-over": só pinta onde ainda está vazio).
+  if (mimeType === "image/jpeg") {
+    ctx.globalCompositeOperation = "destination-over";
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, outputWidth, outputHeight);
+  }
+
   const quality = mimeType === "image/jpeg" ? 0.85 : undefined;
   return new Promise((res, rej) => canvas.toBlob((b) => (b ? res(b) : rej(new Error("crop failed"))), mimeType, quality));
 }
