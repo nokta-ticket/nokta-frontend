@@ -206,10 +206,11 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
             )}
           </div>
           <div className="min-w-0 pt-1.5">
-            <h1 className="truncate text-lg font-semibold tracking-tight text-foreground md:text-2xl">
+            {/* Mesma fonte/tamanho/cor do nome e dos ícones do MenuView/Home pública — só o conjunto de ícones exibidos é próprio desta tela (Início/Instagram, sem WhatsApp/Busca). */}
+            <h1 className="mb-2 truncate font-poppins text-xl font-semibold tracking-tight text-[#141414] md:text-2xl">
               {initialData.organizationName}
             </h1>
-            <div className="mt-3 flex gap-3.5 text-[#3a3a40]">
+            <div className="flex flex-wrap items-center gap-4 text-[#141414]">
               <a href={`/${orgSlug}`} title="Início" aria-label="Início">
                 <Home size={20} strokeWidth={1.8} />
               </a>
