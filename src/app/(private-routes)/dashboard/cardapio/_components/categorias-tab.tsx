@@ -1,7 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ListChecks, Plus } from "lucide-react";
+import { GripVertical, ListChecks, Plus } from "lucide-react";
+import {
+  DndContext,
+  type DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,7 +43,6 @@ import { toast } from "@/lib/toast";
 import type { VenueMenu, VenueMenuCategory } from "@/services/venue-menu";
 import { useVenueCategories, useVenueCategoryMutations } from "../_hooks/use-venue-categories";
 import { ActiveBadge } from "./venue-status-badge";
-import { ReorderControls, buildSwapReorderPayload } from "./reorder-controls";
 import { ImageField } from "./image-field";
 import { EmptyState } from "../../_components/states/empty-state";
 import { TableSkeleton } from "../../_components/states/loading-state";
@@ -104,6 +120,67 @@ function CategoryFormDialog({
   );
 }
 
+/**
+ * Linha de categoria arrastável (@dnd-kit/sortable) — a alça (GripVertical)
+ * é a única área que inicia o drag (`listeners`/`attributes` só nela),
+ * nunca a linha inteira: precisa deixar "Editar"/o Switch clicáveis sem
+ * disparar um drag por acidente.
+ */
+function SortableCategoryRow({
+  category,
+  onToggleActive,
+  onEdit,
+  activePending,
+}: {
+  category: VenueMenuCategory;
+  onToggleActive: (checked: boolean) => void;
+  onEdit: () => void;
+  activePending: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: category.id,
+  });
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={`flex items-center gap-3 bg-white px-4 py-3 ${isDragging ? "relative z-10 shadow-lg" : ""}`}
+    >
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        aria-label="Arrastar para reordenar"
+        className="shrink-0 cursor-grab touch-none text-black/30 active:cursor-grabbing"
+      >
+        <GripVertical size={18} />
+      </button>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium text-gray-900">{category.nome}</p>
+        {category.descricao ? (
+          <p className="line-clamp-2 break-words text-xs text-black/50">{category.descricao}</p>
+        ) : null}
+        {category.itemCount === 0 ? (
+          <p className="mt-0.5 text-xs font-medium text-amber-600">
+            Vazia — não aparece no cardápio público ainda
+          </p>
+        ) : null}
+      </div>
+      <ActiveBadge active={category.active} />
+      <Switch
+        checked={category.active}
+        aria-label={category.active ? "Desativar categoria" : "Ativar categoria"}
+        disabled={activePending}
+        onCheckedChange={onToggleActive}
+      />
+      <Button variant="outline" size="sm" onClick={onEdit}>
+        Editar
+      </Button>
+    </li>
+  );
+}
+
 export function CategoriasTab({
   orgId,
   menus,
@@ -124,8 +201,22 @@ export function CategoriasTab({
   const [formOpen, setFormOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [editing, setEditing] = useState<VenueMenuCategory | null>(null);
+  // Ordem exibida otimisticamente durante/após o drag — atualiza na hora,
+  // sem esperar a resposta do servidor. Sincronizada com `categories` (a
+  // fonte real) sempre que ela mudar de referência (nova busca, outra
+  // mutation invalidando a query); durante um drag em andamento não há
+  // conflito porque o usuário só solta uma vez por gesto.
+  const [orderedList, setOrderedList] = useState<VenueMenuCategory[]>(categories ?? []);
+  useEffect(() => {
+    setOrderedList(categories ?? []);
+  }, [categories]);
 
-  const list = categories ?? [];
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  const list = orderedList;
   const selectedMenu = menus.find((m) => m.id === selectedMenuId) ?? null;
 
   if (menus.length === 0) {
@@ -157,12 +248,32 @@ export function CategoriasTab({
       .catch((err) => toast.error(getErrorMessage(err, "Não foi possível salvar a categoria.")));
   };
 
-  const move = (index: number, direction: -1 | 1) => {
-    const target = index + direction;
-    if (target < 0 || target >= list.length) return;
-    const payload = buildSwapReorderPayload(list, index, target);
+  /**
+   * Solta o drag em qualquer posição da lista (não só swap com o vizinho
+   * adjacente, como nas antigas setas ↑↓) — arrastar até o topo já deixa a
+   * categoria em 1º lugar num gesto só. Atualiza a ordem local na hora
+   * (otimista) e manda o displayOrder de TODAS as categorias reordenadas
+   * pro backend em lote (o endpoint /reorder já aceita isso). Em caso de
+   * erro, desfaz o otimismo revertendo pra ordem anterior.
+   */
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = list.findIndex((c) => c.id === active.id);
+    const newIndex = list.findIndex((c) => c.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const previousList = list;
+    const reordered = arrayMove(list, oldIndex, newIndex);
+    setOrderedList(reordered);
+
+    const payload = { items: reordered.map((c, i) => ({ id: c.id, displayOrder: i })) };
     reorder.mutate(payload, {
-      onError: (err) => toast.error(getErrorMessage(err, "Não foi possível reordenar.")),
+      onError: (err) => {
+        setOrderedList(previousList);
+        toast.error(getErrorMessage(err, "Não foi possível reordenar."));
+      },
     });
   };
 
@@ -225,54 +336,32 @@ export function CategoriasTab({
         />
       ) : (
         <div className="overflow-hidden rounded-xl border border-black/10 bg-white">
-          <ul className="divide-y divide-black/5">
-            {list.map((category, i) => (
-              <li key={category.id} className="flex items-center gap-3 px-4 py-3">
-                <ReorderControls
-                  index={i}
-                  total={list.length}
-                  onMoveUp={() => move(i, -1)}
-                  onMoveDown={() => move(i, 1)}
-                  disabled={reorder.isPending}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-gray-900">{category.nome}</p>
-                  {category.descricao ? (
-                    <p className="line-clamp-2 break-words text-xs text-black/50">{category.descricao}</p>
-                  ) : null}
-                  {category.itemCount === 0 ? (
-                    <p className="mt-0.5 text-xs font-medium text-amber-600">
-                      Vazia — não aparece no cardápio público ainda
-                    </p>
-                  ) : null}
-                </div>
-                <ActiveBadge active={category.active} />
-                <Switch
-                  checked={category.active}
-                  aria-label={category.active ? "Desativar categoria" : "Ativar categoria"}
-                  onCheckedChange={(checked) =>
-                    setActive.mutate(
-                      { categoryId: category.id, active: checked },
-                      {
-                        onError: (err) =>
-                          toast.error(getErrorMessage(err, "Não foi possível atualizar a categoria.")),
-                      },
-                    )
-                  }
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setEditing(category);
-                    setFormOpen(true);
-                  }}
-                >
-                  Editar
-                </Button>
-              </li>
-            ))}
-          </ul>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={list.map((c) => c.id)} strategy={verticalListSortingStrategy}>
+              <ul className="divide-y divide-black/5">
+                {list.map((category) => (
+                  <SortableCategoryRow
+                    key={category.id}
+                    category={category}
+                    activePending={setActive.isPending}
+                    onToggleActive={(checked) =>
+                      setActive.mutate(
+                        { categoryId: category.id, active: checked },
+                        {
+                          onError: (err) =>
+                            toast.error(getErrorMessage(err, "Não foi possível atualizar a categoria.")),
+                        },
+                      )
+                    }
+                    onEdit={() => {
+                      setEditing(category);
+                      setFormOpen(true);
+                    }}
+                  />
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
         </div>
       )}
 
