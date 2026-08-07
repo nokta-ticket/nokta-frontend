@@ -163,9 +163,9 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
     <div className="mx-auto grid min-h-screen max-w-[1120px] grid-cols-1 lg:grid-cols-[1fr_316px]">
       {/* ===== MAIN ===== */}
       <div className="min-w-0">
-        {/* Cover — mesmo banner do cardápio (VenuePublicProfile.bannerUrl); sem banner cadastrado, mesmo fallback preto sólido do MenuView (nunca o gradiente marrom/dourado antigo, que só existia aqui). Borda inferior só com banner. COM banner: altura fixa trocada por aspect-ratio real (430/190, igual ao crop) — evita sobrar fundo escuro como "faixa" nas bordas. */}
+        {/* Cover — mesmo banner do cardápio/Home pública (VenuePublicProfile.bannerUrl, MenuView): aspect-ratio real (430/190) com object-fill (nunca corta lateral, distorção é responsabilidade de quem envia a imagem) e mesma altura de fallback sem banner. Sem banner cadastrado, mesmo fallback preto sólido do MenuView (nunca o gradiente marrom/dourado antigo, que só existia aqui). Borda inferior só com banner. */}
         <div
-          className={`relative overflow-hidden bg-[#050505] ${profile.bannerUrl ? "border-b border-black/15" : "h-[150px] md:h-[198px]"}`}
+          className={`relative overflow-hidden bg-[#050505] ${profile.bannerUrl ? "border-b border-black/15" : "h-[180px] md:h-[220px]"}`}
           style={profile.bannerUrl ? { aspectRatio: "430 / 190" } : undefined}
         >
           {profile.bannerUrl ? (
@@ -173,16 +173,16 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
               src={resolveMediaUrl(profile.bannerUrl) ?? profile.bannerUrl}
               alt=""
               fill
-              className="object-cover"
+              className="object-fill"
               unoptimized
             />
           ) : null}
         </div>
 
-        {/* Venue */}
+        {/* Venue — mesmo padrão exato do MenuView/Home pública: logo h-28/w-28 (112px, md:h-32/w-32), -mt-6 (24px sobrepostos ao banner). */}
         <div className="relative z-10 flex gap-4 px-5 md:gap-6 md:px-8">
           <div
-            className={`relative -mt-16 flex h-[110px] w-[110px] shrink-0 items-center justify-center rounded-full border-4 border-white shadow-[0_8px_22px_rgba(0,0,0,.16)] md:-mt-20 md:h-[152px] md:w-[152px] ${profile.logoUrl ? "" : "bg-black"}`}
+            className={`relative -mt-6 flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-4 border-white shadow-[0_4px_12px_rgba(0,0,0,.14)] md:h-32 md:w-32 ${profile.logoUrl ? "" : "bg-black"}`}
           >
             {profile.logoUrl ? (
               <>
@@ -191,22 +191,21 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
                 <Image
                   src={resolveMediaUrl(profile.logoUrl) ?? profile.logoUrl}
                   alt={initialData.organizationName}
-                  width={110}
-                  height={110}
-                  className="relative h-full w-full rounded-full object-cover"
+                  fill
+                  className="relative rounded-full object-cover"
                   unoptimized
                 />
               </>
             ) : (
               <>
-                <div className="absolute h-[60px] w-[60px] rounded-full border border-white/40 md:h-[80px] md:w-[80px]" />
-                <span className="relative font-poppins text-lg font-light tracking-[0.25em] text-white md:text-xl">
+                <div className="absolute h-16 w-16 rounded-full border border-white/40 md:h-[70px] md:w-[70px]" />
+                <span className="relative font-poppins text-sm font-light tracking-[0.25em] text-white md:text-base">
                   {initials(initialData.organizationName)}
                 </span>
               </>
             )}
           </div>
-          <div className="min-w-0 pt-4">
+          <div className="min-w-0 pt-1.5">
             <h1 className="truncate text-lg font-semibold tracking-tight text-foreground md:text-2xl">
               {initialData.organizationName}
             </h1>
