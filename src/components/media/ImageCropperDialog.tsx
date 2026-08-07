@@ -5,6 +5,22 @@ import Cropper, { Area } from "react-easy-crop";
 import { Loader2, ZoomIn, ZoomOut } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
+/**
+ * Nenhum dos 3 usos deste cropper (logo/banner de organização, avatar de
+ * perfil) precisa de mais que 1200px no lado maior pra exibição em tela —
+ * sem esse teto, o canvas final saía na resolução ORIGINAL da foto (uma
+ * foto de celular moderno facilmente teria 3000-4000px+ no lado maior),
+ * gerando arquivos de vários MB salvos sem nenhuma compressão de tamanho
+ * no Supabase Storage e servidos com <Image unoptimized> no cardápio
+ * público (necessário pra fotos de terceiros como Unsplash/Wikimedia, que
+ * não têm otimização automática do Next configurada) — resultado:
+ * logo/banner demoravam visivelmente pra carregar no cardápio, sobretudo
+ * em rede móvel (relatado pelo usuário). Reduzir aqui, na origem, corrige
+ * pra qualquer imagem futura sem depender de mexer em otimização de
+ * imagem remota nem arriscar quebrar hosts externos já configurados.
+ */
+const MAX_OUTPUT_DIMENSION = 1200;
+
 /** Mesma lógica de recorte usada em (private-routes)/perfil/editar/page.tsx — extraída aqui pra reaproveitar em qualquer upload de imagem (logo/banner de organização, etc.), nunca duplicada. */
 async function getCroppedBlob(src: string, area: Area, mimeType: string): Promise<Blob> {
   const img = new Image();
@@ -15,11 +31,18 @@ async function getCroppedBlob(src: string, area: Area, mimeType: string): Promis
     img.src = src;
   });
 
+  // Escala pra baixo (nunca pra cima) se o crop exceder o teto — mantém a
+  // proporção exata do retângulo recortado, só reduz a densidade de
+  // pixels final.
+  const scale = Math.min(1, MAX_OUTPUT_DIMENSION / Math.max(area.width, area.height));
+  const outputWidth = Math.round(area.width * scale);
+  const outputHeight = Math.round(area.height * scale);
+
   const canvas = document.createElement("canvas");
-  canvas.width = area.width;
-  canvas.height = area.height;
+  canvas.width = outputWidth;
+  canvas.height = outputHeight;
   const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(img, area.x, area.y, area.width, area.height, 0, 0, area.width, area.height);
+  ctx.drawImage(img, area.x, area.y, area.width, area.height, 0, 0, outputWidth, outputHeight);
 
   // JPEG não suporta canal alfa — exportar PNG (ou WEBP) preserva fundo
   // transparente do arquivo original; JPEG só entra quando a fonte já não
