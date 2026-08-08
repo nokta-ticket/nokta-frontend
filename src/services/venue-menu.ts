@@ -75,6 +75,8 @@ export interface VenueProduct {
   organizationId: number;
   nome: string;
   descricao: string | null;
+  harmonizaCom: string | null;
+  contraindicacoes: string | null;
   imageUrl: string | null;
   prepTimeMinutes: number | null;
   status: VenueProductStatus;
@@ -232,6 +234,8 @@ export type UpdateVenuePreparationStationPayload = Partial<CreateVenuePreparatio
 export interface CreateVenueProductPayload {
   nome: string;
   descricao?: string;
+  harmonizaCom?: string;
+  contraindicacoes?: string;
   imageUrl?: string;
   prepTimeMinutes?: number;
   preparationStationId?: number;
@@ -275,6 +279,8 @@ export interface CreateVenueMenuItemBulkResponse {
 export interface UpdateVenueProductPayload {
   nome?: string;
   descricao?: string;
+  harmonizaCom?: string;
+  contraindicacoes?: string;
   imageUrl?: string;
   prepTimeMinutes?: number;
   preparationStationId?: number;

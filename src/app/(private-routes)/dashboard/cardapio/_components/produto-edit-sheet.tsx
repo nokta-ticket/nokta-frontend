@@ -52,6 +52,8 @@ function DadosGeraisSection({ orgId, productId }: { orgId: number; productId: nu
 
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
+  const [harmonizaCom, setHarmonizaCom] = useState("");
+  const [contraindicacoes, setContraindicacoes] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [prepTime, setPrepTime] = useState("");
   const [stationId, setStationId] = useState(NO_STATION);
@@ -61,6 +63,8 @@ function DadosGeraisSection({ orgId, productId }: { orgId: number; productId: nu
     if (!product) return;
     setNome(product.nome);
     setDescricao(product.descricao ?? "");
+    setHarmonizaCom(product.harmonizaCom ?? "");
+    setContraindicacoes(product.contraindicacoes ?? "");
     setImageUrl(product.imageUrl);
     setPrepTime(product.prepTimeMinutes ? String(product.prepTimeMinutes) : "");
     setStationId(product.preparationStationId ? String(product.preparationStationId) : NO_STATION);
@@ -77,6 +81,8 @@ function DadosGeraisSection({ orgId, productId }: { orgId: number; productId: nu
         payload: {
           nome: nome.trim(),
           descricao: descricao.trim() || undefined,
+          harmonizaCom: harmonizaCom.trim() || undefined,
+          contraindicacoes: contraindicacoes.trim() || undefined,
           imageUrl: imageUrl ?? undefined,
           prepTimeMinutes: prepTime ? Number(prepTime) : undefined,
           preparationStationId: stationId === NO_STATION ? undefined : Number(stationId),
@@ -119,6 +125,24 @@ function DadosGeraisSection({ orgId, productId }: { orgId: number; productId: nu
       <div className="space-y-2">
         <Label htmlFor="edit-descricao">Descrição</Label>
         <Textarea id="edit-descricao" value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={3} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="edit-harmoniza">Harmoniza com</Label>
+        <Input
+          id="edit-harmoniza"
+          placeholder="Ex.: Sol, vinho tinto seco..."
+          value={harmonizaCom}
+          onChange={(e) => setHarmonizaCom(e.target.value)}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="edit-contraindicacoes">Contraindicações / alergênicos</Label>
+        <Input
+          id="edit-contraindicacoes"
+          placeholder="Ex.: Contém crustáceos e lactose"
+          value={contraindicacoes}
+          onChange={(e) => setContraindicacoes(e.target.value)}
+        />
       </div>
       <ImageField value={imageUrl} onChange={setImageUrl} />
       <div className="grid grid-cols-2 gap-3">

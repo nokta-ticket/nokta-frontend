@@ -2,7 +2,7 @@
 
 import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { ArrowLeft, Heart, LayoutGrid, List, Square, Star, X } from "lucide-react";
+import { ArrowLeft, Heart, LayoutGrid, List, Square, Star, TriangleAlert, X } from "lucide-react";
 import { HomeIcon } from "@/components/icons/HomeIcon";
 import { InstagramIcon } from "@/components/icons/InstagramIcon";
 import { SearchIcon } from "@/components/icons/SearchIcon";
@@ -163,6 +163,14 @@ export function MenuView({
   // montados simultaneamente e pra qualquer card (lista/grade/cards/
   // destaques) poder abrir o mesmo overlay compartilhado.
   const [variantSheetItem, setVariantSheetItem] = useState<PublicMenuItem | null>(null);
+  // Tela de detalhe do produto (foto grande, descrição, harmoniza com,
+  // contraindicações) — aberta pelo clique no card, nunca automaticamente.
+  // Compartilhada por todos os modos de visualização/carrossel, igual ao
+  // VariantSheet, pra nunca existir uma segunda implementação divergente.
+  // Guarda só o ID (não o objeto do card clicado): favoritar dentro do
+  // detalhe precisa refletir o favoriteCount/favoritedByVisitor atualizado
+  // vindo de `data`, nunca uma cópia congelada do momento do clique.
+  const [detailItemId, setDetailItemId] = useState<number | null>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const sectionRefs = useRef(new Map<number | "highlights", HTMLDivElement>());
@@ -199,6 +207,17 @@ export function MenuView({
     () => data.menu.categories.flatMap((c) => c.items),
     [data.menu.categories],
   );
+
+  // Resolve o item atual pelo ID a cada render (nunca guarda o objeto do
+  // card clicado) — favoritar dentro da tela de detalhe precisa refletir o
+  // favoriteCount/favoritedByVisitor atualizado vindo de `data`, incluindo
+  // itens de `highlights` (que não estão em allItems).
+  const detailItem =
+    detailItemId === null
+      ? null
+      : (allItems.find((i) => i.id === detailItemId) ??
+        data.menu.highlights.find((i) => i.id === detailItemId) ??
+        null);
 
   const { profile } = data;
   // Nome exibido publicamente é o do CARDÁPIO (menu.nome, editável em
@@ -405,6 +424,7 @@ export function MenuView({
               items={data.menu.highlights}
               onToggleFavorite={onToggleFavorite}
               onOpenVariants={setVariantSheetItem}
+              onOpenDetail={(item) => setDetailItemId(item.id)}
             />
           ) : null}
           {data.menu.categories.map((cat) => (
@@ -419,6 +439,7 @@ export function MenuView({
               view={view}
               onToggleFavorite={onToggleFavorite}
               onOpenVariants={setVariantSheetItem}
+              onOpenDetail={(item) => setDetailItemId(item.id)}
             />
           ))}
         </div>
@@ -461,12 +482,22 @@ export function MenuView({
           onClose={closeSearch}
           onToggleFavorite={onToggleFavorite}
           onOpenVariants={setVariantSheetItem}
+          onOpenDetail={(item) => setDetailItemId(item.id)}
           inputRef={searchInputRef}
         />
       ) : null}
 
       {variantSheetItem ? (
         <VariantSheet item={variantSheetItem} onClose={() => setVariantSheetItem(null)} />
+      ) : null}
+
+      {detailItem ? (
+        <ProductDetailOverlay
+          item={detailItem}
+          onClose={() => setDetailItemId(null)}
+          onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(detailItem) : undefined}
+          onOpenVariants={() => setVariantSheetItem(detailItem)}
+        />
       ) : null}
     </div>
   );
@@ -484,15 +515,20 @@ function HighlightCard({
   item,
   onToggleFavorite,
   onOpenVariants,
+  onOpenDetail,
 }: {
   item: PublicMenuItem;
   onToggleFavorite?: () => void;
   onOpenVariants: () => void;
+  onOpenDetail: () => void;
 }) {
   const price = itemMainPriceLabel(item);
   const variantCount = variantCountLabel(item);
   return (
-    <article className={`w-[200px] shrink-0 ${item.available ? "" : "opacity-60"}`}>
+    <article
+      onClick={onOpenDetail}
+      className={`w-[200px] shrink-0 cursor-pointer ${item.available ? "" : "opacity-60"}`}
+    >
       <div className="relative h-[200px] overflow-hidden rounded-2xl">
         <ItemThumb item={item} />
         <FavoriteButtonSlot item={item} onToggleFavorite={onToggleFavorite} compact />
@@ -515,7 +551,14 @@ function HighlightCard({
         {/* min-h reserva a altura da 2ª linha sempre (com ou sem variantes) — nenhum card do carrossel fica mais alto/baixo que o vizinho por ter ou não múltiplos tamanhos. */}
         <div className="mt-0.5 min-h-[16px]">
           {variantCount ? (
-            <button type="button" onClick={onOpenVariants} className="text-xs font-medium text-[#d9a326]">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenVariants();
+              }}
+              className="text-xs font-medium text-[#d9a326]"
+            >
               {variantCount} ›
             </button>
           ) : null}
@@ -544,8 +587,9 @@ const HighlightsSection = forwardRef<
     items: PublicMenuItem[];
     onToggleFavorite?: (item: PublicMenuItem) => void;
     onOpenVariants: (item: PublicMenuItem) => void;
+    onOpenDetail: (item: PublicMenuItem) => void;
   }
->(function HighlightsSection({ items, onToggleFavorite, onOpenVariants }, ref) {
+>(function HighlightsSection({ items, onToggleFavorite, onOpenVariants, onOpenDetail }, ref) {
   if (items.length === 0) return null;
 
   return (
@@ -566,6 +610,7 @@ const HighlightsSection = forwardRef<
             item={item}
             onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined}
             onOpenVariants={() => onOpenVariants(item)}
+            onOpenDetail={() => onOpenDetail(item)}
           />
         ))}
       </div>
@@ -591,8 +636,9 @@ const MenuSection = forwardRef<
     view: ViewMode;
     onToggleFavorite?: (item: PublicMenuItem) => void;
     onOpenVariants: (item: PublicMenuItem) => void;
+    onOpenDetail: (item: PublicMenuItem) => void;
   }
->(function MenuSection({ title, items, view, onToggleFavorite, onOpenVariants }, ref) {
+>(function MenuSection({ title, items, view, onToggleFavorite, onOpenVariants, onOpenDetail }, ref) {
   if (items.length === 0) return null;
 
   return (
@@ -608,6 +654,7 @@ const MenuSection = forwardRef<
               item={item}
               onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined}
               onOpenVariants={() => onOpenVariants(item)}
+              onOpenDetail={() => onOpenDetail(item)}
             />
           ))}
         </div>
@@ -619,6 +666,7 @@ const MenuSection = forwardRef<
               item={item}
               onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined}
               onOpenVariants={() => onOpenVariants(item)}
+              onOpenDetail={() => onOpenDetail(item)}
             />
           ))}
         </div>
@@ -630,6 +678,7 @@ const MenuSection = forwardRef<
               item={item}
               onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined}
               onOpenVariants={() => onOpenVariants(item)}
+              onOpenDetail={() => onOpenDetail(item)}
             />
           ))}
         </div>
@@ -691,6 +740,7 @@ function SearchOverlay({
   onClose,
   onToggleFavorite,
   onOpenVariants,
+  onOpenDetail,
   inputRef,
 }: {
   allItems: PublicMenuItem[];
@@ -699,6 +749,7 @@ function SearchOverlay({
   onClose: () => void;
   onToggleFavorite?: (item: PublicMenuItem) => void;
   onOpenVariants: (item: PublicMenuItem) => void;
+  onOpenDetail: (item: PublicMenuItem) => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
 }) {
   const normalizedQuery = query.trim().toLowerCase();
@@ -742,6 +793,7 @@ function SearchOverlay({
                 item={item}
                 onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined}
                 onOpenVariants={() => onOpenVariants(item)}
+                onOpenDetail={() => onOpenDetail(item)}
               />
             ))}
           </div>
@@ -867,6 +919,104 @@ function VariantSheet({ item, onClose }: { item: PublicMenuItem; onClose: () => 
   );
 }
 
+/**
+ * Tela de detalhe do produto — aberta pelo clique em qualquer card (lista/
+ * grade/cards/destaques/busca), overlay full-screen igual ao SearchOverlay
+ * (nunca uma rota própria: o cardápio inteiro já é uma SPA sem navegação de
+ * URL por item, então uma nova rota exigiria replicar o fetch dos dados que
+ * o MenuView já tem em mãos). Foto grande no topo (mesma proporção da
+ * referência visual enviada pelo usuário), botão voltar + favoritar
+ * sobrepostos à foto, nome/descrição/harmoniza-com/preço/contraindicações
+ * abaixo. "Esgotado" reaproveita a mesma badge do card da lista — nunca um
+ * segundo texto/estilo pra dizer a mesma coisa.
+ */
+function ProductDetailOverlay({
+  item,
+  onClose,
+  onToggleFavorite,
+  onOpenVariants,
+}: {
+  item: PublicMenuItem;
+  onClose: () => void;
+  onToggleFavorite?: () => void;
+  onOpenVariants: () => void;
+}) {
+  const price = itemMainPriceLabel(item);
+  const variantCount = variantCountLabel(item);
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-white">
+      <div className="relative h-[320px] shrink-0 md:h-[380px]">
+        <ItemThumb item={item} />
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Voltar"
+          className="absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/90 text-[#141414] shadow-[0_2px_8px_rgba(0,0,0,0.18)]"
+        >
+          <ArrowLeft size={20} strokeWidth={1.8} />
+        </button>
+        {onToggleFavorite ? (
+          <button
+            type="button"
+            onClick={onToggleFavorite}
+            aria-label="favoritar"
+            className="absolute right-4 top-4 flex h-10 items-center gap-1.5 rounded-full bg-white/90 px-3 shadow-[0_2px_8px_rgba(0,0,0,0.18)]"
+          >
+            <Heart
+              size={18}
+              strokeWidth={2}
+              className={item.favoritedByVisitor ? "fill-[#ef4444] stroke-[#ef4444]" : "stroke-[#ef4444]"}
+            />
+            {item.favoriteCount > 0 ? (
+              <span className="text-sm font-medium text-[#141414]">{item.favoriteCount}</span>
+            ) : null}
+          </button>
+        ) : null}
+      </div>
+
+      <div className="mx-auto w-full max-w-[440px] flex-1 px-6 py-6 text-center md:max-w-2xl">
+        <h1 className="font-poppins text-2xl font-semibold text-[#141414]">{item.nome}</h1>
+        {item.descricao ? (
+          <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-[#9a9aa0]">{item.descricao}</p>
+        ) : null}
+        {item.harmonizaCom ? (
+          <p className="mt-3 text-sm text-[#9a9aa0]">Harmoniza com {item.harmonizaCom}</p>
+        ) : null}
+
+        {price ? (
+          <div className="mt-5 flex flex-col items-center gap-1.5">
+            <span className="font-poppins text-2xl font-semibold text-[#2f9e44]">{price}</span>
+            {variantCount ? (
+              <button type="button" onClick={onOpenVariants} className="text-sm font-medium text-[#d9a326]">
+                {variantCount} ›
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {!item.available ? (
+          <span className="mt-4 inline-block w-fit rounded-full bg-black/5 px-3 py-1 text-xs font-medium text-black/50">
+            Esgotado
+          </span>
+        ) : null}
+
+        {item.contraindicacoes ? (
+          <div className="mt-8">
+            <h2 className="text-sm font-semibold text-[#141414]">Alergênicos</h2>
+            <div className="mt-3 flex justify-center">
+              <span className="flex items-center gap-2 rounded-full border border-[#ececee] bg-[#faf9fb] px-4 py-2 text-sm text-[#5a5a60]">
+                <TriangleAlert size={16} className="text-[#b45309]" />
+                {item.contraindicacoes}
+              </span>
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function CategoryAvatarButton({
   label,
   imageUrl,
@@ -971,15 +1121,17 @@ function ItemLargeCard({
   item,
   onToggleFavorite,
   onOpenVariants,
+  onOpenDetail,
 }: {
   item: PublicMenuItem;
   onToggleFavorite?: () => void;
   onOpenVariants: () => void;
+  onOpenDetail: () => void;
 }) {
   const price = itemMainPriceLabel(item);
   const variantCount = variantCountLabel(item);
   return (
-    <article className={item.available ? "" : "opacity-60"}>
+    <article onClick={onOpenDetail} className={`cursor-pointer ${item.available ? "" : "opacity-60"}`}>
       <div className="relative h-[200px] md:h-[240px]">
         <ItemThumb item={item} />
         {onToggleFavorite ? <FavoriteButton item={item} onToggle={onToggleFavorite} /> : null}
@@ -997,7 +1149,14 @@ function ItemLargeCard({
         {/* min-h reserva a altura da 2ª linha sempre — cards vizinhos na mesma grade nunca ficam com altura diferente por causa da presença/ausência de variantes. */}
         <div className="mt-1 min-h-[20px]">
           {variantCount ? (
-            <button type="button" onClick={onOpenVariants} className="text-sm font-medium text-[#d9a326]">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenVariants();
+              }}
+              className="text-sm font-medium text-[#d9a326]"
+            >
               {variantCount} ›
             </button>
           ) : null}
@@ -1011,15 +1170,17 @@ function ItemGridCard({
   item,
   onToggleFavorite,
   onOpenVariants,
+  onOpenDetail,
 }: {
   item: PublicMenuItem;
   onToggleFavorite?: () => void;
   onOpenVariants: () => void;
+  onOpenDetail: () => void;
 }) {
   const price = itemMainPriceLabel(item);
   const variantCount = variantCountLabel(item);
   return (
-    <article className={item.available ? "" : "opacity-60"}>
+    <article onClick={onOpenDetail} className={`cursor-pointer ${item.available ? "" : "opacity-60"}`}>
       <div className="relative h-[130px] md:h-[150px]">
         <ItemThumb item={item} />
         {onToggleFavorite ? <FavoriteButton item={item} onToggle={onToggleFavorite} /> : null}
@@ -1037,7 +1198,14 @@ function ItemGridCard({
         {/* min-h reserva a altura da 2ª linha sempre (mesmo raciocínio do ItemLargeCard). */}
         <div className="mt-0.5 min-h-[16px]">
           {variantCount ? (
-            <button type="button" onClick={onOpenVariants} className="text-xs font-medium text-[#d9a326]">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenVariants();
+              }}
+              className="text-xs font-medium text-[#d9a326]"
+            >
               {variantCount} ›
             </button>
           ) : null}
@@ -1051,16 +1219,19 @@ function ItemListRow({
   item,
   onToggleFavorite,
   onOpenVariants,
+  onOpenDetail,
 }: {
   item: PublicMenuItem;
   onToggleFavorite?: () => void;
   onOpenVariants: () => void;
+  onOpenDetail: () => void;
 }) {
   const price = itemMainPriceLabel(item);
   const variantCount = variantCountLabel(item);
   return (
     <article
-      className={`flex gap-4 rounded-2xl border border-[#ececee] bg-white p-3.5 ${item.available ? "" : "opacity-60"}`}
+      onClick={onOpenDetail}
+      className={`flex cursor-pointer gap-4 rounded-2xl border border-[#ececee] bg-white p-3.5 ${item.available ? "" : "opacity-60"}`}
     >
       <div className="flex min-w-0 flex-1 flex-col">
         <h4 className="truncate font-poppins text-base font-semibold text-[#141414] md:text-lg">{item.nome}</h4>
@@ -1083,7 +1254,10 @@ function ItemListRow({
           {variantCount ? (
             <button
               type="button"
-              onClick={onOpenVariants}
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenVariants();
+              }}
               className="w-fit text-sm font-medium text-[#d9a326]"
             >
               {variantCount} ›

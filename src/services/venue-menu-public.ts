@@ -12,6 +12,10 @@ export interface PublicMenuItem {
   id: number;
   nome: string;
   descricao: string | null;
+  /** Texto livre do produtor (ex.: "Harmoniza com Sol") — mostrado na tela de detalhe do produto. */
+  harmonizaCom: string | null;
+  /** Texto livre do produtor (ex.: "Contém: Crustáceos") — mostrado na tela de detalhe do produto. */
+  contraindicacoes: string | null;
   imageUrl: string | null;
   available: boolean;
   prices: PublicMenuPrice[];

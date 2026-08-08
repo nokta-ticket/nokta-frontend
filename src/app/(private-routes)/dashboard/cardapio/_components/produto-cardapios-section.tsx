@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Plus, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, Star, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -195,6 +195,23 @@ function MenuAttachmentRow({
           {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           <span className="font-medium text-gray-900">{menuInfo.menuNome}</span>
         </button>
+        <button
+          type="button"
+          title={menuInfo.highlighted ? "Remover dos destaques" : "Destacar este item neste cardápio"}
+          aria-label={menuInfo.highlighted ? "Remover dos destaques" : "Destacar este item"}
+          onClick={() =>
+            update.mutate(
+              { menuItemId: menuInfo.menuItemId, payload: { highlighted: !menuInfo.highlighted } },
+              { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível atualizar o destaque.")) },
+            )
+          }
+          className="rounded-full p-1.5 transition-colors hover:bg-black/5"
+        >
+          <Star
+            size={18}
+            className={menuInfo.highlighted ? "fill-[#d9a326] stroke-[#d9a326]" : "stroke-black/30"}
+          />
+        </button>
         <Select
           value={String(menuInfo.categoryId)}
           onValueChange={(v) =>
@@ -228,23 +245,6 @@ function MenuAttachmentRow({
 
       {expanded ? (
         <div className="space-y-3 border-t border-black/5 p-3">
-          <div className="flex items-center justify-between gap-2 rounded-lg bg-black/[0.02] px-3 py-2">
-            <div>
-              <Label className="text-sm text-gray-900">Destacar este item</Label>
-              <p className="text-xs text-black/45">Aparece na seção &quot;Destaques&quot; do cardápio público — use para promoções do dia.</p>
-            </div>
-            <Switch
-              checked={menuInfo.highlighted}
-              aria-label={menuInfo.highlighted ? "Remover dos destaques" : "Destacar este item"}
-              onCheckedChange={(checked) =>
-                update.mutate(
-                  { menuItemId: menuInfo.menuItemId, payload: { highlighted: checked } },
-                  { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível atualizar o destaque.")) },
-                )
-              }
-            />
-          </div>
-
           <Label className="text-xs text-black/50">Preço por variação neste cardápio</Label>
           {menuInfo.prices.map((price) => (
             <div key={price.variantId} className="flex items-center gap-2 text-sm">
