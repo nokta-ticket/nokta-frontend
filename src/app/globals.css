@@ -3,6 +3,17 @@
 @import 'keen-slider/keen-slider.min.css';
 @custom-variant dark (&:is(.dark *));
 
+/* Sem isso, um puxão rápido pra baixo no topo de qualquer tela (gesto de
+   pull-to-refresh do navegador mobile) faz o <html>/<body> (documento
+   real, por trás de qualquer `fixed inset-0` como o <main> das rotas
+   públicas de cardápio/avaliação/home) fazer rubber-band sozinho —
+   revelando por um instante o que existe atrás do overlay fixo (o
+   header/shell padrão do layout raiz) antes do navegador soltar o puxão,
+   mesmo o <main> interno tendo seu próprio scroll isolado. */
+html, body {
+  overscroll-behavior-y: none;
+}
+
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
