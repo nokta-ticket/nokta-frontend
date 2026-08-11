@@ -16,6 +16,7 @@ import { MEDIA_FALLBACK, resolveThumbnailUrl } from "@/lib/media";
 import { formatarDataCurta } from "@/lib/formatarData";
 import EventCard from "./EventCard";
 import EventCardSmall from "./EventCardSmall";
+import EmptyEventsState from "./empty-events-state";
 
 dayjs.extend(isBetween);
 dayjs.locale("pt-br");
@@ -230,6 +231,11 @@ function PeriodDropdown({
    ═══════════════════════════════════════════════════════════ */
 export default function EventGrid() {
   const [events, setEvents] = useState<EventoAPI[]>([]);
+  // paginate.total (nunca events.length) decide o estado vazio — o backend
+  // já filtra só eventos elegíveis (publicados e ainda não encerrados, ver
+  // EventService.getEvents), então total=0 é a fonte de verdade real, sem
+  // depender do tamanho da 1ª página buscada (limit padrão do backend).
+  const [total, setTotal] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [periodo, setPeriodo] = useState<Periodo>("hoje");
@@ -238,6 +244,7 @@ export default function EventGrid() {
     try {
       const res = await api.get("/eventos");
       setEvents(res.data.data as EventoAPI[]);
+      setTotal(res.data.paginate?.total ?? res.data.data.length);
     } catch (err) {
     } finally {
       setLoading(false);
@@ -291,6 +298,10 @@ export default function EventGrid() {
         <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
       </div>
     );
+  }
+
+  if (total === 0) {
+    return <EmptyEventsState />;
   }
 
   return (
