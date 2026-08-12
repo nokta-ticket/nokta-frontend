@@ -29,14 +29,11 @@ export default function EmptyEventsState() {
 
       <div className="mx-auto w-full max-w-[760px]">
         {/* HERO */}
-        <div className="relative overflow-hidden px-6 pb-8 pt-14 sm:px-10 sm:pt-[70px]">
-          <TicketOutline className="pointer-events-none absolute -right-16 top-24 z-0 h-auto w-[170px] opacity-70 sm:-right-8 sm:top-14 sm:w-[360px] sm:opacity-100" />
+        <div className="relative overflow-hidden px-6 pb-3 pt-4 sm:px-10 sm:pt-7">
+          <TicketOutline className="pointer-events-none absolute right-2 top-14 z-0 h-auto w-[120px] opacity-70 sm:right-4 sm:top-10 sm:w-[300px] sm:opacity-100" />
 
           <div className="relative z-10">
-            <p className="mb-5 font-poppins text-[13px] font-bold tracking-[0.28em] text-violet-600">
-              VEM AÍ
-            </p>
-            <h1 className="font-poppins text-[clamp(38px,10.5vw,52px)] font-extrabold leading-[1.06] tracking-[-0.02em] text-[#201b3b]">
+            <h1 className="font-poppins text-[clamp(26px,7.5vw,44px)] font-extrabold leading-[0.98] tracking-[-0.02em] text-[#201b3b]">
               Os próximos
               <br />
               <RolesGoodDog />
@@ -45,20 +42,18 @@ export default function EmptyEventsState() {
               <br />
               por aqui.
             </h1>
-            <p className="mt-6 text-[16.5px] font-normal leading-[1.65] text-[#6f6f7c]">
-              Shows, festas, festivais
-              <br />
-              e experiências.
+            <p className="mt-3 text-[14px] font-normal leading-[1.4] text-[#6f6f7c]">
+              Shows, festas, festivais e experiências.
               <br />
               Tudo em um só lugar.
             </p>
-            <div className="mt-7 h-[3px] w-16 rounded-full bg-violet-600" />
+            <div className="mt-3 h-[3px] w-16 rounded-full bg-violet-600" />
           </div>
         </div>
 
         {/* TICKER */}
         <div
-          className="overflow-hidden whitespace-nowrap bg-[#f3f0fd] py-[18px]"
+          className="mx-6 overflow-hidden whitespace-nowrap rounded-2xl bg-[#f3f0fd] py-[9px] sm:mx-10"
           style={{
             WebkitMaskImage: "linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent)",
             maskImage: "linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent)",
@@ -74,23 +69,23 @@ export default function EmptyEventsState() {
         </div>
 
         {/* PROMO */}
-        <div className="flex gap-5 px-6 pb-14 pt-11 sm:px-10 sm:pb-[60px] sm:pt-11">
+        <div className="flex gap-5 px-6 pb-3 pt-3 sm:px-10 sm:pb-7 sm:pt-7">
           <div className="w-[3px] shrink-0 rounded-full bg-violet-600" />
           <div>
-            <h2 className="font-poppins text-[23px] font-bold tracking-[-0.01em] text-[#201b3b]">
+            <h2 className="font-poppins text-[18px] font-bold tracking-[-0.01em] text-[#201b3b]">
               Produz eventos?
             </h2>
-            <p className="mt-3 text-[15.5px] leading-[1.6] text-[#6f6f7c]">
+            <p className="mt-2 text-[14px] leading-[1.5] text-[#6f6f7c]">
               Leve sua bilheteria para a Nokta
               <br />
               e venda mais.
             </p>
             <Link
               href="/para-produtores"
-              className="mt-5 inline-flex items-center gap-2 border-b-2 border-violet-600 pb-[3px] font-poppins text-[15px] font-semibold text-violet-600"
+              className="mt-3 inline-flex items-center gap-2 border-b-2 border-violet-600 pb-[3px] font-poppins text-[14px] font-semibold text-violet-600"
             >
               Conheça a Nokta
-              <ArrowRight className="h-[18px] w-[18px]" strokeWidth={2.2} />
+              <ArrowRight className="h-[16px] w-[16px]" strokeWidth={2.2} />
             </Link>
           </div>
         </div>
