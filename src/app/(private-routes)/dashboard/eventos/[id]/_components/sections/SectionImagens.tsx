@@ -10,10 +10,13 @@ import { AspectRatio } from "@/components/ui/aspect-ratio"
 import { cn } from "@/lib/utils"
 import api from "@/lib/axios"
 import { resolveMediaUrl } from "@/lib/media"
+import { ImageCropperDialog, extensionForMimeType } from "@/components/media/ImageCropperDialog"
 import { SectionProps } from "../types"
 
 const MAX_IMAGES   = 3
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"]
+// Mesma proporção já anunciada na tela ("Tamanho recomendado: 818 × 355 px").
+const BANNER_ASPECT = 818 / 355
 
 function CardShell({ children }: { children: React.ReactNode }) {
   return (
@@ -34,11 +37,35 @@ export default function SectionImagens({ event, onRefresh }: SectionProps) {
   const [uploading, setUploading] = useState(false)
   const [saving,    setSaving]    = useState(false)
 
+  // Fila de arquivos aguardando recorte (upload permite múltiplos de uma
+  // vez, mas o cropper é 1 imagem por vez) + a data URL da imagem atual
+  // sendo ajustada. Sem isso, imagens de evento subiam sem cap de
+  // resolução/compressão — o mesmo problema já corrigido no cardápio
+  // (ImageCropperDialog: teto de 1200px, PNG opaco vira JPEG ~0.85) nunca
+  // tinha sido aplicado aqui, deixando banners de vários MB indo pro
+  // Supabase Storage sem redução (relatado pelo usuário, evento "Modo Baile
+  // On" com banner de 2MB).
+  const [cropQueue, setCropQueue] = useState<File[]>([])
+  const [imageSrc,  setImageSrc]  = useState<string | null>(null)
+
   const canAddMore = paths.length < MAX_IMAGES
   const hasChanges = JSON.stringify(paths) !== JSON.stringify(event.thumbnails?.map((t) => t.url) ?? [])
 
+  const loadNextInQueue = useCallback((queue: File[]) => {
+    const [next, ...rest] = queue
+    if (!next) {
+      setCropQueue([])
+      setImageSrc(null)
+      return
+    }
+    setCropQueue(rest)
+    const reader = new FileReader()
+    reader.onload = () => setImageSrc(reader.result as string)
+    reader.readAsDataURL(next)
+  }, [])
+
   const handleFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: React.ChangeEvent<HTMLInputElement>) => {
       if (!e.target.files) return
       const selected = Array.from(e.target.files)
 
@@ -50,15 +77,21 @@ export default function SectionImagens({ event, onRefresh }: SectionProps) {
 
       const quota    = MAX_IMAGES - paths.length
       const accepted = valid.slice(0, quota)
-      if (accepted.length === 0) {
-        if (fileInputRef.current) fileInputRef.current.value = ""
-        return
-      }
+      if (fileInputRef.current) fileInputRef.current.value = ""
+      if (accepted.length === 0) return
 
+      loadNextInQueue(accepted)
+    },
+    [paths, loadNextInQueue]
+  )
+
+  const handleConfirmCrop = useCallback(
+    async (blob: Blob) => {
       setUploading(true)
       try {
+        const file = new File([blob], `evento.${extensionForMimeType(blob.type)}`, { type: blob.type })
         const formData = new FormData()
-        accepted.forEach((f) => formData.append("files", f, f.name))
+        formData.append("files", file, file.name)
 
         const res = await api.post<{ data: string[] }>("/upload", formData, {
           headers: { "Content-Type": "multipart/form-data" },
@@ -68,10 +101,10 @@ export default function SectionImagens({ event, onRefresh }: SectionProps) {
         toast.error("Erro ao fazer upload da imagem.")
       } finally {
         setUploading(false)
-        if (fileInputRef.current) fileInputRef.current.value = ""
+        loadNextInQueue(cropQueue)
       }
     },
-    [paths]
+    [cropQueue, loadNextInQueue]
   )
 
   const removeImage = (idx: number) => {
@@ -261,6 +294,21 @@ export default function SectionImagens({ event, onRefresh }: SectionProps) {
           )}
         </Button>
       </div>
+
+      <ImageCropperDialog
+        open={Boolean(imageSrc)}
+        onOpenChange={(v) => {
+          // Fechar sem confirmar pula pra próxima da fila (se houver) em vez
+          // de descartar o restante do lote selecionado.
+          if (!v) loadNextInQueue(cropQueue)
+        }}
+        imageSrc={imageSrc}
+        aspect={BANNER_ASPECT}
+        cropShape="rect"
+        title="Ajustar imagem do evento"
+        saving={uploading}
+        onConfirm={handleConfirmCrop}
+      />
     </CardShell>
   )
 }
