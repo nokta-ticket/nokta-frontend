@@ -90,7 +90,7 @@ const protectedAdminRoutes = [
 // (login, register, recuperar-senha, convites, auth/callback, termos,
 // privacidade) é rota compartilhada — a MESMA página funciona nos dois
 // hosts, sem duplicação (o host só muda pra onde os botões/links apontam).
-const PLATFORM_ONLY_PREFIXES = ["/dashboard", "/produtor", "/admin", "/solicitar-produtor"];
+const PLATFORM_ONLY_PREFIXES = ["/dashboard", "/produtor", "/admin", "/solicitar-produtor", "/cardapio-preview"];
 const TICKETS_ONLY_PREFIXES = [
   "/eventos",
   "/evento",

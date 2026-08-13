@@ -33,8 +33,23 @@ const CSP_DIRECTIVES = [
   "upgrade-insecure-requests",
 ].join("; ");
 
+// 2026-08-13: /cardapio-preview/* é carregada dentro de um <iframe> pela
+// própria origem (MenuPreviewPhone, dashboard/cardapio) — precisa da mesma
+// política de segurança de cima, só com `frame-ancestors 'self'` em vez de
+// `'none'`, senão o navegador recusa o próprio iframe (mesmo sendo a mesma
+// origem se embutindo). Isolado nesta rota só — o resto do site continua
+// 'none' (protegido contra clickjacking de origem externa).
+const PREVIEW_FRAME_CSP_DIRECTIVES = CSP_DIRECTIVES.replace("frame-ancestors 'none'", "frame-ancestors 'self'");
+
 const securityHeaders = [
   { key: "Content-Security-Policy", value: CSP_DIRECTIVES },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+];
+
+const previewFrameSecurityHeaders = [
+  { key: "Content-Security-Policy", value: PREVIEW_FRAME_CSP_DIRECTIVES },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
@@ -50,8 +65,17 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        source: "/:path*",
+        // Path negativo (nunca casa /cardapio-preview/*) — garante que só
+        // UMA regra de CSP se aplica a cada rota, nunca as duas
+        // concatenadas (o Next não faz "last wins" entre regras diferentes
+        // que casam a mesma URL; comportamento de concatenar dois headers
+        // Content-Security-Policy é ambíguo e não é o que se quer aqui).
+        source: "/:path((?!cardapio-preview).*)",
         headers: securityHeaders,
+      },
+      {
+        source: "/cardapio-preview/:path*",
+        headers: previewFrameSecurityHeaders,
       },
     ];
   },

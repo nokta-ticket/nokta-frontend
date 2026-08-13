@@ -1,65 +1,57 @@
 "use client";
 
-import { UtensilsCrossed } from "lucide-react";
-import { MenuView } from "@/components/venue-menu/menu-view";
-import { useVenueMenuPreview } from "../_hooks/use-venue-menus";
-
-const PREVIEW_SCROLL_CLASS = "menu-preview-phone-scroll";
-
-// MenuView é desenhado mobile-first para uma tela de celular REAL
-// (~375-440px de largura) — textos, avatar e paddings em px fixos que só
-// cabem nesse tamanho. O bezel do preview tem só ~278px de área útil
-// (300px - bordas), então renderizar o MenuView direto nessa largura
-// cortava tudo (hero "NOKTA TICKETS", nome da org, avatar). Em vez de
-// reimplementar um MenuView "menor" (o que criaria divergência visual do
-// componente real), ele é renderizado na largura REAL (FRAME_WIDTH) e
-// escalado visualmente pra caber no bezel — como qualquer preview de
-// celular de verdade (Figma, editores de site).
-const FRAME_WIDTH = 390;
-const BEZEL_INNER_WIDTH = 278; // 300px de bezel - 11px de borda de cada lado
-const SCALE = BEZEL_INNER_WIDTH / FRAME_WIDTH;
-
 /**
- * Preview real do cardápio — renderiza o MESMO componente (MenuView) e os
- * mesmos dados (useVenueMenuPreview, endpoint de preview autenticado) da
- * página pública, dentro de um bezel de celular navegável. Nunca uma
- * segunda implementação visual: qualquer mudança de cor, layout ou regra
- * do cardápio público aparece aqui automaticamente, porque é o mesmo
- * código. Funciona para cardápio DRAFT ou PUBLISHED — o preview não exige
- * publicação (ver VenueMenuPublicService.getMenuPreview no backend).
+ * Preview real do cardápio — carrega a mesma renderização (MenuView) da
+ * página pública dentro de um `<iframe>`, dentro de um bezel de celular
+ * navegável. Nunca uma segunda implementação visual: qualquer mudança de
+ * cor, layout ou regra do cardápio público aparece aqui automaticamente,
+ * porque o iframe carrega o mesmo componente compilado.
  *
- * Mutations de produto/categoria já invalidam a query de preview (ver
- * use-venue-products.ts/use-venue-categories.ts/use-venue-menus.ts), então
- * o conteúdo atualiza sozinho depois de salvar, sem reload.
+ * 2026-08-13: era um `transform: scale()` direto (renderiza o MenuView em
+ * 390px de largura real, escala visualmente pra caber nos ~278px do bezel)
+ * — abordagem quebrada porque os breakpoints Tailwind (`md:`/`lg:`, ~40
+ * ocorrências dentro de MenuView) reagem à largura REAL da janela do
+ * navegador, não à largura visual pós-escala. Numa janela de desktop larga,
+ * isso disparava estilos de desktop (avatar maior, paddings maiores,
+ * max-width maior) dentro de uma área visual de ~278px, deixando tudo
+ * "espremido"/truncado — relatado pelo usuário com print comparando o
+ * cardápio ao vivo (celular real) vs o preview (visivelmente diferente,
+ * nome da org truncado, categorias mais apertadas). Um `<iframe>` tem sua
+ * PRÓPRIA janela de renderização com a largura que `width` define de
+ * verdade — os breakpoints passam a reagir a essa largura real, igual um
+ * celular de verdade, resolvendo o problema pela raiz em vez de tentar
+ * compensar visualmente.
+ *
+ * Funciona para cardápio DRAFT ou PUBLISHED — o preview não exige
+ * publicação (ver VenueMenuPublicService.getMenuPreview no backend). O
+ * iframe recarrega (`key`) sempre que orgId/menuId mudam; atualização após
+ * salvar um produto/categoria específico ainda depende de um reload manual
+ * do iframe (sem invalidação cross-document de React Query) — trade-off
+ * aceito pela correção de fidelidade visual, que é o problema relatado.
+ *
+ * Bezel em até ~390px de largura interna (era fixo em 300px/~278px útil):
+ * sem escala visual, o conteúdo renderiza no tamanho de fonte/padding real
+ * (px fixos, feitos pra celular de verdade) — um bezel menor deixaria tudo
+ * com mais quebra de linha que um celular real só por falta de espaço
+ * físico, não por bug. `w-full max-w-[412px]` (não um `w-[412px]` fixo)
+ * porque este mesmo componente é montado em 2 lugares com espaço diferente
+ * (ver cardapio/page.tsx): o painel `xl:` (≥1280px) tem sobra de espaço
+ * pro tamanho máximo; o Sheet mobile (`sm:max-w-sm`, ~352px de área útil
+ * com padding) precisa encolher, senão o bezel de 412px+22px de borda
+ * estouraria a largura do Sheet.
  */
 export function MenuPreviewPhone({ orgId, menuId }: { orgId: number | null; menuId: number | null }) {
-  const { data, isLoading } = useVenueMenuPreview(orgId, menuId);
+  if (orgId === null || menuId === null) return null;
 
   return (
-    <div className="relative mx-auto w-[300px] rounded-[48px] border-[11px] border-[#0c0c0f] bg-[#0c0c0f] shadow-[0_40px_70px_rgba(20,20,40,.22),0_12px_24px_rgba(20,20,40,.12)]">
+    <div className="relative mx-auto w-full max-w-[412px] rounded-[48px] border-[11px] border-[#0c0c0f] bg-[#0c0c0f] shadow-[0_40px_70px_rgba(20,20,40,.22),0_12px_24px_rgba(20,20,40,.12)]">
       <div className="pointer-events-none absolute left-1/2 top-0 z-20 h-[25px] w-[92px] -translate-x-1/2 rounded-b-[14px] bg-[#0c0c0f]" />
-      <div
-        className={`relative h-[612px] overflow-y-auto overflow-x-hidden rounded-[38px] bg-[#e9e9ec] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${PREVIEW_SCROLL_CLASS}`}
-      >
-        {isLoading ? (
-          <div className="space-y-3 p-4">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="h-16 animate-pulse rounded-xl bg-black/5" />
-            ))}
-          </div>
-        ) : !data || (data.menu.categories.length === 0 && data.menu.highlights.length === 0) ? (
-          <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
-            <UtensilsCrossed size={28} className="text-black/20" />
-            <p className="text-xs text-muted-foreground">
-              Adicione categorias e produtos para ver o preview do cardápio.
-            </p>
-          </div>
-        ) : (
-          <div style={{ width: FRAME_WIDTH, transform: `scale(${SCALE})`, transformOrigin: "top left" }}>
-            <MenuView data={data} scrollContainerSelector={`.${PREVIEW_SCROLL_CLASS}`} disableSticky />
-          </div>
-        )}
-      </div>
+      <iframe
+        key={`${orgId}-${menuId}`}
+        src={`/cardapio-preview/${orgId}/${menuId}`}
+        title="Preview do cardápio"
+        className="relative h-[750px] w-full rounded-[38px] border-0 bg-[#e9e9ec]"
+      />
     </div>
   );
 }
