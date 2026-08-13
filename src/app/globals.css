@@ -14,6 +14,28 @@ html, body {
   overscroll-behavior-y: none;
 }
 
+/* 2026-08-13: o `overscroll-behavior-y: none` acima no <html>/<body> NÃO
+   basta sozinho pra quem tem scroll próprio (ex.: <main class="fixed
+   inset-0 ... overflow-y-auto">, o "shell" de cardápio/avaliação/home
+   pública/institucional/login/register) — confirmado com print real
+   (Home pública do Venue, nokta.live/{orgSlug}) mostrando o mesmo vazamento
+   do header institucional durante pull-to-refresh mesmo com o CSS acima já
+   em produção. Nesses elementos, quem recebe o gesto de overscroll é o
+   PRÓPRIO elemento com `overflow-y-auto` (rola até o fim, o puxão extra
+   "vaza" pro documento por trás dele), não o <html>/<body> diretamente —
+   por isso precisa da mesma propriedade aqui também. Seletor genérico (não
+   uma classe própria em cada arquivo) pra cobrir automaticamente qualquer
+   shell full-bleed futuro sem depender de lembrar de aplicar a classe —
+   `[class*="fixed"][class*="inset-0"][class*="overflow-y-auto"]` mira
+   especificamente o padrão "shell de página inteira" (mesmas 3 classes
+   sempre juntas nesses wrappers, `<main>` ou `<div>` conforme a rota) sem
+   pegar overlays de modal (ex.: EventoPageClient.tsx) que usam `fixed
+   inset-0` sem `overflow-y-auto` próprio, nem outros scrollers internos
+   menores (dropdown, sheet) que nunca combinam as 3 classes juntas. */
+[class*="fixed"][class*="inset-0"][class*="overflow-y-auto"] {
+  overscroll-behavior-y: none;
+}
+
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
