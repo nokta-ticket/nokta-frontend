@@ -24,7 +24,7 @@ const CSP_DIRECTIVES = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
   "font-src 'self' data:",
-  "connect-src 'self' https://api.nokta.live https://api.noktatickets.com.br https://*.supabase.co https://api.pagar.me https://3ds-nx-js.stone.com.br https://cloudflareinsights.com http://localhost:3333",
+  "connect-src 'self' https://api.nokta.live https://api.noktatickets.com.br https://*.supabase.co https://api.pagar.me https://3ds-nx-js.stone.com.br https://cloudflareinsights.com https://viacep.com.br http://localhost:3333",
   "frame-src https:",
   "frame-ancestors 'none'",
   "object-src 'none'",
