@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { permanentRedirect } from "next/navigation";
 import { getApiBaseUrl, getPublicTicketsUrl } from "@/lib/surfaces";
 import { resolveThumbnailUrl, MEDIA_FALLBACK } from "@/lib/media";
 import type { EventDetails } from "@/interfaces/events";
@@ -70,26 +69,14 @@ export async function generateMetadata({
   };
 }
 
-export default async function EventoPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-
-  // Compatibilidade com links antigos (/evento/9): se o segmento da URL é
-  // um id numérico puro E o evento já tem slug, redireciona pra URL
-  // canônica com slug — nunca ao contrário (slug na URL nunca redireciona
-  // pra id) e nunca quando o evento não tem slug ainda (nenhum evento fica
-  // sem servir por causa disto). 308 (permanente): sinaliza pra crawlers/
-  // navegadores que a URL com id não é mais a canônica, sem quebrar quem
-  // ainda tem o link antigo salvo/compartilhado.
-  if (/^\d+$/.test(id)) {
-    const evento = await getEventForMetadata(id);
-    if (evento?.slug) {
-      permanentRedirect(`/evento/${evento.slug}`);
-    }
-  }
-
+// Compatibilidade com /evento/{id} (link antigo, id numérico) é resolvida
+// no middleware (src/middleware.ts, resolveEventoIdRedirect) — 308 real
+// ANTES de qualquer render, garantido em qualquer ambiente (curl,
+// crawlers, navegador). Não duplicar aqui: `permanentRedirect()` chamado
+// dentro deste componente foi tentado e confirmado (curl + next start
+// local, sem CDN no meio) como NÃO emitindo um 308 HTTP real na requisição
+// de documento — só troca a URL client-side via RSC, invisível pra quem
+// não executa JS.
+export default function EventoPage() {
   return <EventoPageClient />;
 }

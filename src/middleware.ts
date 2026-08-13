@@ -5,6 +5,7 @@ import {
 } from "next/server";
 import { UserPayload } from "./context/AuthContext";
 import {
+  getApiBaseUrl,
   getSurfaceConfig,
   isSurfaceEnforced,
   resolveSurfaceFromHost,
@@ -237,9 +238,51 @@ function withSurfaceHeaders(response: NextResponse, surface: "PLATFORM" | "MARKE
 // redirect de verdade), já provado imune ao bug de Location entre hosts.
 const BARE_MARKETING_HOSTNAME = "nokta.live";
 
-export function middleware(request: NextRequest) {
+// Compatibilidade com links antigos de evento por id (/evento/9,
+// /evento/9/checkout): resolvido aqui no middleware, não em generateMetadata/
+// no componente da página, porque `permanentRedirect()` chamado de dentro de
+// uma página do App Router (mesmo componente que exporta generateMetadata)
+// não emite um 308 HTTP real na requisição de documento — confirmado com
+// curl contra produção e contra `next start` local (sem CDN/Cloudflare no
+// meio): a troca de URL só acontece client-side via RSC, invisível pra
+// curl/crawlers que não seguem esse mecanismo. O middleware roda antes de
+// qualquer render e SEMPRE pode emitir NextResponse.redirect com status
+// real — é o único lugar confiável no Next.js pra isso.
+const EVENTO_BY_ID_RE = /^\/evento\/(\d+)((?:\/.*)?)$/;
+
+async function resolveEventoIdRedirect(
+  request: NextRequest,
+  path: string,
+  hostname: string,
+): Promise<NextResponse | null> {
+  const match = EVENTO_BY_ID_RE.exec(path);
+  if (!match) return null;
+
+  const [, id, rest] = match;
+  try {
+    const apiBaseUrl = getApiBaseUrl(hostname);
+    const res = await fetch(`${apiBaseUrl}/eventos/${id}`, { cache: "no-store" });
+    if (!res.ok) return null;
+    const evento = (await res.json()) as { slug?: string | null };
+    if (!evento.slug) return null;
+
+    const target = request.nextUrl.clone();
+    target.pathname = `/evento/${evento.slug}${rest}`;
+    return NextResponse.redirect(target, 308);
+  } catch {
+    // Nunca bloqueia a navegação por causa de falha no lookup — segue pra
+    // rota normal, que ainda resolve por id (getEventBySlugOrId aceita os
+    // dois), só sem o benefício da URL canônica desta vez.
+    return null;
+  }
+}
+
+export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const hostname = request.nextUrl.hostname;
+
+  const eventoRedirect = await resolveEventoIdRedirect(request, path, hostname);
+  if (eventoRedirect) return eventoRedirect;
 
   if (hostname.toLowerCase() === BARE_MARKETING_HOSTNAME) {
     return crossOriginRedirect(CANONICAL_SURFACE_URLS["MARKETING"], path, request.nextUrl.search);
