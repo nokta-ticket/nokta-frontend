@@ -19,7 +19,7 @@ function read(...segments: string[]) {
 }
 
 describe("checkout — código do promoter é um canal próprio, nunca o mecanismo de cupom", () => {
-  const CHECKOUT_SOURCE = read(APP_DIR, "(public-routes)", "eventos", "[id]", "checkout", "page.tsx");
+  const CHECKOUT_SOURCE = read(APP_DIR, "(public-routes)", "evento", "[id]", "checkout", "page.tsx");
 
   it("tem estado e input dedicados a promoterCode, distintos de cupomCodigo", () => {
     expect(CHECKOUT_SOURCE).toMatch(/const \[promoterCode, setPromoterCode\]/);
@@ -60,7 +60,7 @@ describe("checkout — código do promoter é um canal próprio, nunca o mecanis
 });
 
 describe("página do evento — tracking de link (?ref=) nunca redireciona nem vira loop", () => {
-  const EVENT_PAGE_SOURCE = read(APP_DIR, "(public-routes)", "eventos", "[id]", "page.tsx");
+  const EVENT_PAGE_SOURCE = read(APP_DIR, "(public-routes)", "evento", "[id]", "_components", "EventoPageClient.tsx");
 
   it("chama promoter-tracking/link e nunca deixa o erro estourar pra UI (fire-and-forget)", () => {
     const block = EVENT_PAGE_SOURCE.slice(

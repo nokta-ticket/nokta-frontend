@@ -146,7 +146,7 @@ export default function HeroSlider() {
           <div
             className="relative rounded-xl overflow-hidden cursor-pointer"
             style={{ height: SLIDE_H }}
-            onClick={() => router.push(`/eventos/${ev.slug ?? ev.id}`)}
+            onClick={() => router.push(`/evento/${ev.slug ?? ev.id}`)}
           >
             {src ? (
               <Image src={src} alt={ev.nome} fill className="object-cover" unoptimized />
@@ -222,7 +222,7 @@ export default function HeroSlider() {
                   // Movimento total pequeno em qualquer direção = tap.
                   if (dx <= 10 && dy <= 10) {
                     if (isActive) {
-                      router.push(`/eventos/${ev.slug ?? ev.id}`);
+                      router.push(`/evento/${ev.slug ?? ev.id}`);
                     } else {
                       // Tap num banner lateral: só centraliza.
                       mobileInstRef.current?.moveToIdx(i);
@@ -335,14 +335,14 @@ export default function HeroSlider() {
                   <CardContent className="flex flex-col gap-4 mt-4">
                     <Button
                       className="w-full text-white bg-gradient-to-r from-[#9944CC] to-[#3399FF] hover:opacity-90"
-                      onClick={() => router.push(`/eventos/${ev.slug ?? ev.id}`)}
+                      onClick={() => router.push(`/evento/${ev.slug ?? ev.id}`)}
                     >
                       Comprar Ingresso
                     </Button>
                     <Button
                       variant="outline"
                       className="w-full flex items-center justify-center gap-2"
-                      onClick={() => router.push(`/eventos/${ev.slug ?? ev.id}`)}
+                      onClick={() => router.push(`/evento/${ev.slug ?? ev.id}`)}
                     >
                       Mais Detalhes <ArrowRight size={16} />
                     </Button>

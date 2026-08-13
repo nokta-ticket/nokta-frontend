@@ -43,8 +43,8 @@ const publicRoutes = [
   { path: "/convites-promotor/[id]", whenAutenticated: "next" },
   { path: "/register", whenAutenticated: "redirect" },
   { path: "/eventos", whenAutenticated: "next" },
-  { path: "/eventos/[id]", whenAutenticated: "next" },
-  { path: "/eventos/[id]/checkout", whenAutenticated: "next" },
+  { path: "/evento/[id]", whenAutenticated: "next" },
+  { path: "/evento/[id]/checkout", whenAutenticated: "next" },
   { path: "/revenda", whenAutenticated: "next" },
   { path: "/revenda/anunciar", whenAutenticated: "next" },
   { path: "/para-produtores", whenAutenticated: "next" },
@@ -92,6 +92,7 @@ const protectedAdminRoutes = [
 const PLATFORM_ONLY_PREFIXES = ["/dashboard", "/produtor", "/admin", "/solicitar-produtor"];
 const TICKETS_ONLY_PREFIXES = [
   "/eventos",
+  "/evento",
   "/revenda",
   "/favoritos",
   "/meus-ingressos",

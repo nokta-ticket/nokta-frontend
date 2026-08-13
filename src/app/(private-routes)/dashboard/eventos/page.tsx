@@ -49,6 +49,7 @@ type Address = {
 
 type EventoAPI = {
   id: number;
+  slug?: string | null;
   nome: string;
   data: string;
   horario: string;
@@ -255,7 +256,7 @@ export default function EventosPage() {
                     </div>
 
                     {/* Visualizar — sempre disponível */}
-                    <Link href={`/eventos/${ev.id}`} target="_blank">
+                    <Link href={`/evento/${ev.slug ?? ev.id}`} target="_blank">
                       <Button variant="outline" className="mb-2 w-full border-violet-500 text-violet-600 hover:text-white hover:bg-violet-600">
                         Visualizar
                       </Button>

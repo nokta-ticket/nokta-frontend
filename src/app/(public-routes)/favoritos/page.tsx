@@ -250,7 +250,7 @@ export default function FavoritosPage() {
                   asChild
                   className="w-full border border-violet-500 bg-transparent text-violet-500 transition-colors hover:bg-violet-600 hover:text-white"
                 >
-                  <Link href={`/eventos/${event.eventoId}`}>Ver Ingressos</Link>
+                  <Link href={`/evento/${event.eventoId}`}>Ver Ingressos</Link>
                 </Button>
               </CardFooter>
             </Card>

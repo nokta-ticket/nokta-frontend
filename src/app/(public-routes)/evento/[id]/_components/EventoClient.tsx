@@ -279,7 +279,7 @@ export default function EventoClient({ evento }: { evento: EventDetails }) {
                   )}
                 </div>
                 <Separator />
-                <Link href={`/eventos/${evento.slug ?? evento.id}/checkout`} className="block">
+                <Link href={`/evento/${evento.slug ?? evento.id}/checkout`} className="block">
                   <Button className="w-full h-12 text-base font-semibold bg-violet-600 hover:bg-violet-700 gap-2 shadow">
                     <Ticket size={17} />Comprar Ingresso
                   </Button>
@@ -314,7 +314,7 @@ export default function EventoClient({ evento }: { evento: EventDetails }) {
           <p className="text-sm font-semibold truncate">{evento.nome}</p>
           <p className="text-xs text-muted-foreground">{formatDateShort(evento.data)} · {timeStr}h</p>
         </div>
-        <Link href={`/eventos/${evento.slug ?? evento.id}/checkout`}>
+        <Link href={`/evento/${evento.slug ?? evento.id}/checkout`}>
           <Button className="shrink-0 bg-violet-600 hover:bg-violet-700 gap-1.5">
             <Ticket size={15} />Comprar
           </Button>

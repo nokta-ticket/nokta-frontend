@@ -53,7 +53,7 @@ export default function HeaderPrivate() {
   const { role, signOut, user } = useAuth();
   const isProdutor = role === 'PRODUTOR';
   const isAdmin = role === 'ADMIN';
-  const isEventPage = /^\/eventos\/[^/]+$/.test(pathname) || /^\/meus-ingressos\/[^/]+$/.test(pathname) || /^\/revenda\/\d+$/.test(pathname);
+  const isEventPage = /^\/evento\/[^/]+$/.test(pathname) || /^\/meus-ingressos\/[^/]+$/.test(pathname) || /^\/revenda\/\d+$/.test(pathname);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);

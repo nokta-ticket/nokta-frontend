@@ -12,7 +12,7 @@ interface Props {
 
 export default function EventCardSmall({ event }: Props) {
   const cover = resolveThumbnailUrl(event.thumbnails[0], MEDIA_FALLBACK);
-  const href = `/eventos/${event.slug ?? event.id}`;
+  const href = `/evento/${event.slug ?? event.id}`;
 
   return (
     <Link href={href} className="flex-none w-[160px] cursor-pointer">

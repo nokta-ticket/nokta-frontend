@@ -157,7 +157,7 @@ export default function SearchOverlay({ open, onClose }: Props) {
                   return (
                     <button
                       key={ev.id}
-                      onClick={() => navigate(`/eventos/${ev.slug ?? ev.id}`)}
+                      onClick={() => navigate(`/evento/${ev.slug ?? ev.id}`)}
                       className="flex items-center gap-3 py-3 text-left w-full rounded-xl hover:bg-gray-50 transition-colors"
                     >
                       <div className="w-[72px] h-[56px] rounded-xl overflow-hidden bg-gradient-to-br from-violet-100 to-indigo-200 shrink-0 relative">
@@ -232,7 +232,7 @@ export default function SearchOverlay({ open, onClose }: Props) {
                     const src = resolveThumbnailUrl(ev.thumbnails?.[0], null);
                     const dataFmt = new Date(ev.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
                     return (
-                      <div key={ev.id} onClick={() => navigate(`/eventos/${ev.slug ?? ev.id}`)} className="flex-none w-[178px] snap-start cursor-pointer">
+                      <div key={ev.id} onClick={() => navigate(`/evento/${ev.slug ?? ev.id}`)} className="flex-none w-[178px] snap-start cursor-pointer">
                         <div className="w-full h-[118px] rounded-xl overflow-hidden bg-gradient-to-br from-violet-100 to-indigo-200 mb-2.5 relative">
                           {src && <Image src={src} alt={ev.nome} fill className="object-cover" unoptimized />}
                         </div>

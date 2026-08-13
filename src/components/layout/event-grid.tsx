@@ -133,7 +133,7 @@ function SectionCarousel({
 /* ─── sub-componente: item "Última chamada" ──────────────── */
 function LastCallItem({ event }: { event: EventoAPI }) {
   const cover = resolveThumbnailUrl(event.thumbnails[0], MEDIA_FALLBACK);
-  const href = `/eventos/${event.slug ?? event.id}`;
+  const href = `/evento/${event.slug ?? event.id}`;
 
   return (
     <Link

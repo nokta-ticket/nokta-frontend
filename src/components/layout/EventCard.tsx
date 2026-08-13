@@ -72,7 +72,7 @@ export default function EventCard({ event, toggleFavorite }: Props) {
           asChild
           className="w-full border border-violet-500 bg-transparent text-violet-500 transition-colors hover:bg-violet-600 hover:text-white"
         >
-          <Link href={`/eventos/${event.slug ?? event.id}`}>Ver Ingressos</Link>
+          <Link href={`/evento/${event.slug ?? event.id}`}>Ver Ingressos</Link>
         </Button>
       </CardFooter>
     </Card>

@@ -112,7 +112,7 @@ function calcInstallmentCents(
   return Math.floor(total / n);
 }
 
-export default function IngressoDetalhesPage() {
+export default function EventoPageClient() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const pathname = usePathname();
@@ -267,7 +267,7 @@ export default function IngressoDetalhesPage() {
   const dateStr = formatDate(evento.data);
   const timeStr = formatTime(evento.horario);
   const addr = evento.endereco;
-  const checkoutHref = `/eventos/${evento.slug ?? evento.id}/checkout`;
+  const checkoutHref = `/evento/${evento.slug ?? evento.id}/checkout`;
 
   const isEventPast = (() => {
     if (!evento.data) return false;
@@ -278,7 +278,7 @@ export default function IngressoDetalhesPage() {
   const isEncerrado = isEventPast || isCancelled;
 
   function buildCheckoutUrl() {
-    const base = `/eventos/${evento!.slug ?? evento!.id}/checkout`;
+    const base = `/evento/${evento!.slug ?? evento!.id}/checkout`;
     const selected = Object.entries(quantities).filter(([, qty]) => qty > 0);
     if (selected.length === 0) return base;
     const params = new URLSearchParams();
@@ -645,8 +645,9 @@ export default function IngressoDetalhesPage() {
           {/* ── SIDEBAR (1/3) ──────────────────────────────────── */}
           <div className="space-y-4">
 
-            {/* Card: Data e local */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            {/* Card: Data e local — oculto no mobile (redundante com a seção
+                INFO MOBILE logo abaixo do hero, que já mostra data/hora/local) */}
+            <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="flex items-center gap-4 px-5 py-4">
                 <div className="flex flex-col items-center shrink-0 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5 min-w-[54px]">
                   <span className="text-[9px] font-bold text-gray-400 tracking-widest leading-none uppercase">

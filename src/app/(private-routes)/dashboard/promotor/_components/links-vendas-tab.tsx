@@ -11,7 +11,7 @@ import { useMyPromoterEvents, useMyPromoterSales } from "../_hooks/use-my-promot
 import { toast } from "@/lib/toast";
 
 function publicEventUrl(publicToken: string, eventId: number) {
-  return `https://www.noktatickets.com.br/eventos/${eventId}?ref=${publicToken}`;
+  return `https://www.noktatickets.com.br/evento/${eventId}?ref=${publicToken}`;
 }
 
 export function LinksVendasTab() {

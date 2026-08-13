@@ -22,7 +22,7 @@ function statusTone(status: AssignmentStatus) {
 }
 
 function publicEventUrl(publicToken: string, eventId: number) {
-  return `https://www.noktatickets.com.br/eventos/${eventId}?ref=${publicToken}`;
+  return `https://www.noktatickets.com.br/evento/${eventId}?ref=${publicToken}`;
 }
 
 export function AssignmentsTab({ orgId, canManage }: { orgId: number; canManage: boolean }) {

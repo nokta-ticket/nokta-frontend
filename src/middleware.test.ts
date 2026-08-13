@@ -103,8 +103,14 @@ describe("middleware — Cache-Control por superfície (Fase 5.2/5.3, Etapa 5/18
   });
 
   it("checkout (rota exclusiva da bilheteria) nunca recebe cache público — fica no default seguro do Next, sem header explícito de cache público", async () => {
-    const res = middleware(buildRequest("https://www.noktatickets.com.br/eventos/abc/checkout"));
+    const res = middleware(buildRequest("https://www.noktatickets.com.br/evento/abc/checkout"));
     const cacheControl = res.headers.get("cache-control") ?? "";
     expect(cacheControl).not.toMatch(/public/);
+  });
+
+  it("detalhe de evento (singular) acessado no host institucional vai para a bilheteria, preservando path e query string", async () => {
+    const res = middleware(buildRequest("https://www.nokta.live/evento/abc?utm=teste"));
+    const html = await res.text();
+    expect(html).toContain("https://www.noktatickets.com.br/evento/abc?utm=teste");
   });
 });

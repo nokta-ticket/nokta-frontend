@@ -391,11 +391,11 @@ function CheckoutContent() {
         }
         // Expirado ou cancelado
         toast.error(pixUrl ? "Tempo do PIX expirado." : "Tempo de reserva expirado.");
-        router.push(`/eventos/${id}`);
+        router.push(`/evento/${id}`);
       })
       .catch(() => {
         toast.error("Reserva expirada.");
-        router.push(`/eventos/${id}`);
+        router.push(`/evento/${id}`);
       });
   }, [timerExpired, success]);
 
@@ -411,7 +411,7 @@ function CheckoutContent() {
         } else if (res.data.status === "failed") {
           clearInterval(interval);
           toast.error("Tempo de pagamento expirado. Tente novamente.");
-          router.push(`/eventos/${id}`);
+          router.push(`/evento/${id}`);
         }
       } catch {}
     }, 3000);
