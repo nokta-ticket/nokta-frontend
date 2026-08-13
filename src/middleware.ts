@@ -238,51 +238,56 @@ function withSurfaceHeaders(response: NextResponse, surface: "PLATFORM" | "MARKE
 // redirect de verdade), já provado imune ao bug de Location entre hosts.
 const BARE_MARKETING_HOSTNAME = "nokta.live";
 
-// Compatibilidade com links antigos de evento por id (/evento/9,
-// /evento/9/checkout): resolvido aqui no middleware, não em generateMetadata/
-// no componente da página, porque `permanentRedirect()` chamado de dentro de
-// uma página do App Router (mesmo componente que exporta generateMetadata)
-// não emite um 308 HTTP real na requisição de documento — confirmado com
-// curl contra produção e contra `next start` local (sem CDN/Cloudflare no
-// meio): a troca de URL só acontece client-side via RSC, invisível pra
-// curl/crawlers que não seguem esse mecanismo. O middleware roda antes de
-// qualquer render e SEMPRE pode emitir NextResponse.redirect com status
-// real — é o único lugar confiável no Next.js pra isso.
+// Compatibilidade com links antigos de evento — por id (/evento/9) OU por um
+// slug anterior a uma renomeação (/evento/nome-antigo, ver EventSlugHistory
+// no backend, 2026-08-13): resolvido aqui no middleware, não em
+// generateMetadata/no componente da página. Duas tentativas de resolver
+// isso dentro do componente da página foram testadas em produção e
+// confirmadas como NÃO emitindo um 3xx HTTP real — nem `permanentRedirect()`
+// incondicional (commit 6195cac) nem `redirect()` condicionado a um fetch
+// real (commit cb93f04): as duas só trocam a URL client-side via RSC,
+// invisível pra curl/crawlers/qualquer cliente sem JS. O middleware é o
+// único lugar deste projeto confirmado como funcional pra isso — roda antes
+// de qualquer render e sempre emite NextResponse.redirect com status real.
 //
-// Só casa id NUMÉRICO de propósito (2026-08-13): um slug antigo (nome do
-// evento mudou desde que o link foi compartilhado, ver EventSlugHistory no
-// backend) não tem como ser diferenciado do slug atual só pela URL — faria
-// o middleware consultar a API em TODO /evento/{slug}, mesmo já correto,
-// numa rota de alto tráfego. Slug antigo é resolvido em
-// (public-routes)/evento/[id]/page.tsx (Server Component), que já faz fetch
-// server-side pra generateMetadata e pode chamar redirect() do Next ali —
-// HTTP real também, só que sem custo extra no caminho comum (o fetch já
-// aconteceria de qualquer forma pra montar o OG).
-const EVENTO_BY_ID_RE = /^\/evento\/(\d+)((?:\/.*)?)$/;
+// Casa QUALQUER segmento (não só numérico): a API (getEventBySlugOrId) já
+// resolve id, slug atual OU slug histórico pro mesmo evento — o middleware
+// só precisa comparar o slugOrId da URL contra o slug atual devolvido e
+// redirecionar quando forem diferentes. Isso cobre id→slug e
+// slug-antigo→slug-novo com a mesma lógica, sem duas rotas de código.
+//
+// Custo aceito conscientemente (decisão do usuário, 2026-08-13): isso
+// consulta a API em TODA visita a /evento/{slug}, mesmo quando o slug já é
+// o atual — round-trip extra numa rota de alto tráfego. A alternativa (só
+// casar id numérico e resolver slug antigo na página) teria custo zero no
+// caminho comum, mas depende de um redirect real de dentro do componente da
+// página, que as duas tentativas acima provaram não funcionar neste
+// projeto/versão do Next.
+const EVENTO_SLUG_OR_ID_RE = /^\/evento\/([^/]+)((?:\/.*)?)$/;
 
 async function resolveEventoIdRedirect(
   request: NextRequest,
   path: string,
   hostname: string,
 ): Promise<NextResponse | null> {
-  const match = EVENTO_BY_ID_RE.exec(path);
+  const match = EVENTO_SLUG_OR_ID_RE.exec(path);
   if (!match) return null;
 
-  const [, id, rest] = match;
+  const [, slugOrId, rest] = match;
   try {
     const apiBaseUrl = getApiBaseUrl(hostname);
-    const res = await fetch(`${apiBaseUrl}/eventos/${id}`, { cache: "no-store" });
+    const res = await fetch(`${apiBaseUrl}/eventos/${slugOrId}`, { cache: "no-store" });
     if (!res.ok) return null;
     const evento = (await res.json()) as { slug?: string | null };
-    if (!evento.slug) return null;
+    if (!evento.slug || evento.slug === slugOrId) return null;
 
     const target = request.nextUrl.clone();
     target.pathname = `/evento/${evento.slug}${rest}`;
     return NextResponse.redirect(target, 308);
   } catch {
     // Nunca bloqueia a navegação por causa de falha no lookup — segue pra
-    // rota normal, que ainda resolve por id (getEventBySlugOrId aceita os
-    // dois), só sem o benefício da URL canônica desta vez.
+    // rota normal, que ainda resolve por id/slug (getEventBySlugOrId aceita
+    // os três), só sem o benefício da URL canônica desta vez.
     return null;
   }
 }

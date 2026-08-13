@@ -115,7 +115,7 @@ describe("middleware — Cache-Control por superfície (Fase 5.2/5.3, Etapa 5/18
   });
 });
 
-describe("middleware — compatibilidade de /evento/{id} com link antigo por id numérico", () => {
+describe("middleware — compatibilidade de /evento/{id-ou-slug-antigo} com link antigo (id numérico ou slug pré-renomeação)", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -151,11 +151,23 @@ describe("middleware — compatibilidade de /evento/{id} com link antigo por id 
     expect(res.headers.get("x-middleware-next")).toBe("1");
   });
 
-  it("URL já com slug (não numérica, atual ou antiga) nunca dispara o lookup por id nem redireciona — resolvido em page.tsx, não no middleware (ver comentário de EVENTO_BY_ID_RE)", async () => {
-    const fetchSpy = vi.fn();
+  it("URL já com o slug atual: consulta a API (não dá pra saber sem isso, já que slug antigo também não é numérico), mas nunca redireciona pra si mesma", async () => {
+    const fetchSpy = vi.fn(
+      async () => new Response(JSON.stringify({ slug: "noite-de-marca-maria" }), { status: 200 }),
+    );
     vi.stubGlobal("fetch", fetchSpy);
     const res = await middleware(buildRequest("https://www.noktatickets.com.br/evento/noite-de-marca-maria"));
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
     expect(res.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("slug antigo (nome do evento mudou desde que o link foi compartilhado): 308 real pro slug atual, preservando sufixo de path", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(JSON.stringify({ slug: "modo-baile-on" }), { status: 200 })),
+    );
+    const res = await middleware(buildRequest("https://www.noktatickets.com.br/evento/noite-de-marca-maria/checkout"));
+    expect(res.status).toBe(308);
+    expect(res.headers.get("location")).toBe("https://www.noktatickets.com.br/evento/modo-baile-on/checkout");
   });
 });

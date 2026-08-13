@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { getApiBaseUrl, getPublicTicketsUrl } from "@/lib/surfaces";
 import { resolveThumbnailUrl, MEDIA_FALLBACK } from "@/lib/media";
 import type { EventDetails } from "@/interfaces/events";
@@ -70,39 +69,17 @@ export async function generateMetadata({
   };
 }
 
-// Compatibilidade com /evento/{id} (link antigo, id numérico) é resolvida
-// no middleware (src/middleware.ts, resolveEventoIdRedirect) — 308 real
-// ANTES de qualquer render, garantido em qualquer ambiente (curl,
-// crawlers, navegador). O middleware casa só id numérico de propósito (ver
-// comentário de EVENTO_BY_ID_RE lá): consultar a API pra TODO slug faria
-// custo extra em toda visita, mesmo já correta.
-//
-// Slug antigo (nome do evento mudou desde que o link foi compartilhado, ver
-// EventSlugHistory no backend, 2026-08-13) é resolvido AQUI: getEventForMetadata
-// já busca o evento pra generateMetadata (Next memoiza o fetch idêntico
-// dentro da mesma requisição — não duplica a chamada), então comparar
-// `evento.slug` com o `id` da URL e chamar `redirect()` custa zero fetch
-// extra no caminho comum. Isso é seguro (emite 307 HTTP real, não só troca
-// client-side) porque roda num Server Component de verdade, ANTES de
-// montar `<EventoPageClient>` — diferente da tentativa anterior de
-// `permanentRedirect()` aqui, que rodava incondicionalmente e sem nenhum
-// dado buscado antes dela (mesmo assim, não emitia 308 real; ver commit
-// 6195cac). Nunca redireciona por id numérico aqui (evita competir com o
-// 308 do middleware) nem quando o slug já bate com a URL.
-export default async function EventoPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const { id } = await params;
-  const isNumericId = /^\d+$/.test(id);
-
-  if (!isNumericId) {
-    const evento = await getEventForMetadata(id);
-    if (evento?.slug && evento.slug !== id) {
-      redirect(`/evento/${evento.slug}`);
-    }
-  }
-
+// Compatibilidade com /evento/{id} (link antigo, id numérico) OU slug antigo
+// (evento renomeado, ver EventSlugHistory no backend) é resolvida no
+// middleware (src/middleware.ts, resolveEventoIdRedirect) — 308 real ANTES
+// de qualquer render, garantido em qualquer ambiente (curl, crawlers,
+// navegador). NÃO tentar resolver isso aqui de novo: duas tentativas already
+// confirmadas (curl + produção) como NÃO emitindo um 3xx HTTP real quando
+// chamadas de dentro deste componente — nem `permanentRedirect()` (commit
+// 6195cac, incondicional) nem `redirect()` condicionado a um fetch real
+// (commit cb93f04, revertido) — ambas só trocam a URL client-side via RSC,
+// invisível pra quem não executa JS. O middleware é o único lugar
+// confirmado como funcional para isso no Next.js 15.5.12 deste projeto.
+export default function EventoPage() {
   return <EventoPageClient />;
 }
