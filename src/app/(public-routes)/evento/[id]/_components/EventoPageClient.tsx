@@ -835,8 +835,14 @@ export default function EventoPageClient() {
                   </p>
                 </div>
 
-                {/* Mapa Leaflet + OpenStreetMap */}
-                <div className="relative cursor-pointer" onClick={() => setRouteOpen(true)}>
+                {/* Mapa Leaflet + OpenStreetMap — isolate cria um stacking
+                    context próprio: o leaflet.css usa z-index internos de
+                    até 1000 (panes, controles) sem nenhum isolamento
+                    próprio, então sem isto esses valores competiam
+                    diretamente com outros elementos posicionados da página
+                    (ex.: a barra fixa de compra, z-50) e venciam ao rolar
+                    até a seção do mapa. */}
+                <div className="relative isolate cursor-pointer" onClick={() => setRouteOpen(true)}>
                   <EventMap
                     address={`${addr.logradouro}, ${addr.numero}, ${addr.bairro ?? ''}, ${addr.localidade}, ${addr.uf}`}
                   />
