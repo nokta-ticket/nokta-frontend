@@ -10,6 +10,7 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { useEvento } from "@/context/EventoContext";
 import api from "@/lib/axios";
 import { cn } from "@/lib/utils";
+import { resolveMediaUrl } from "@/lib/media";
 
 const MAX_IMAGES = 3;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -167,7 +168,7 @@ export default function StepMedia({ prevTab }: Props) {
                 >
                   <AspectRatio ratio={16 / 9}>
                     <Image
-                      src={process.env.NEXT_PUBLIC_STORAGE_URL + src}
+                      src={resolveMediaUrl(src) ?? src}
                       alt={`Imagem ${i + 1}`}
                       fill
                       className="object-cover transition-transform duration-300 group-hover:scale-105"

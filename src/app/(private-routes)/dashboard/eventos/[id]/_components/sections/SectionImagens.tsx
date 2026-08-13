@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
 import { cn } from "@/lib/utils"
 import api from "@/lib/axios"
+import { resolveMediaUrl } from "@/lib/media"
 import { SectionProps } from "../types"
 
 const MAX_IMAGES   = 3
@@ -141,7 +142,7 @@ export default function SectionImagens({ event, onRefresh }: SectionProps) {
                 >
                   <AspectRatio ratio={16 / 9}>
                     <Image
-                      src={process.env.NEXT_PUBLIC_STORAGE_URL + src}
+                      src={resolveMediaUrl(src) ?? src}
                       alt={`Imagem ${i + 1}`}
                       fill
                       className="object-cover transition-transform duration-300 group-hover:scale-105"

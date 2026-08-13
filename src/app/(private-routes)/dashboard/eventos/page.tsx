@@ -19,6 +19,7 @@ import { useRequireWorkspace } from "../_components/require-workspace-provider";
 import api from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import { formatarDataCurta } from "@/lib/formatarData";
+import { resolveMediaUrl } from "@/lib/media";
 import { Paginate } from "@/interfaces/paginate";
 import { PageContainer } from "../_components/page/page-container";
 import { EmptyState } from "../_components/states/empty-state";
@@ -222,7 +223,7 @@ export default function EventosPage() {
                   <div className="w-full aspect-[16/9] relative bg-gray-100">
                     {ev.thumbnails[0]?.url ? (
                       <Image
-                        src={process.env.NEXT_PUBLIC_STORAGE_URL + ev.thumbnails[0].url}
+                        src={resolveMediaUrl(ev.thumbnails[0].url) ?? ev.thumbnails[0].url}
                         alt={ev.nome}
                         fill
                         sizes="100%"
