@@ -68,7 +68,7 @@ export function EventoEditorHeader({ event }: Props) {
           </div>
 
           <div className="shrink-0">
-            <Link href={`/evento/${event.id}`} target="_blank">
+            <Link href={`/evento/${event.slug ?? event.id}`} target="_blank">
               <Button
                 variant="outline"
                 size="sm"

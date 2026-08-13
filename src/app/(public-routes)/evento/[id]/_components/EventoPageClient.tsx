@@ -40,6 +40,7 @@ import api from "@/lib/axios";
 import { EventDetails } from "@/interfaces/events";
 import { AutoplayPlugin, cn } from "@/lib/utils";
 import { resolveThumbnailUrl } from "@/lib/media";
+import { getPublicTicketsUrl } from "@/lib/surfaces";
 import { promoterTrackingApi } from "@/services/promoters";
 
 function formatDate(raw: string) {
@@ -268,6 +269,11 @@ export default function EventoPageClient() {
   const timeStr = formatTime(evento.horario);
   const addr = evento.endereco;
   const checkoutHref = `/evento/${evento.slug ?? evento.id}/checkout`;
+  // Sempre o slug persistido no banco (nunca gerado no frontend a partir do
+  // nome) — e sempre a URL canônica absoluta, nunca window.location.href:
+  // quem chegou pela URL antiga com id (link velho, compartilhamento
+  // anterior) não deve propagar o id ao compartilhar de novo.
+  const canonicalEventUrl = getPublicTicketsUrl(`/evento/${evento.slug ?? evento.id}`);
 
   const isEventPast = (() => {
     if (!evento.data) return false;
@@ -296,9 +302,9 @@ export default function EventoPageClient() {
 
   function handleShare() {
     if (navigator.share) {
-      navigator.share({ title: evento!.nome, url: window.location.href });
+      navigator.share({ title: evento!.nome, url: canonicalEventUrl });
     } else {
-      navigator.clipboard?.writeText(window.location.href);
+      navigator.clipboard?.writeText(canonicalEventUrl);
       toast.success("Link copiado!");
     }
   }

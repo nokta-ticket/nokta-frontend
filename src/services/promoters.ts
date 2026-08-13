@@ -59,6 +59,7 @@ export interface EventPromoterAssignment {
 
 export interface PromoterOrganizationEvent {
   id: number;
+  slug?: string | null;
   nome: string;
   data: string;
   status: number;
@@ -209,7 +210,7 @@ export interface PromoterEventLink {
   commissionEnabled: boolean;
   startsAt: string | null;
   endsAt: string | null;
-  event: { id: number; nome: string; data: string };
+  event: { id: number; slug?: string | null; nome: string; data: string };
 }
 
 // ==================== API — PRODUTOR ====================

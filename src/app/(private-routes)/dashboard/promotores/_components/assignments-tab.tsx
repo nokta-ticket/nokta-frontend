@@ -21,8 +21,8 @@ function statusTone(status: AssignmentStatus) {
   return "neutral" as const;
 }
 
-function publicEventUrl(publicToken: string, eventId: number) {
-  return `https://www.noktatickets.com.br/evento/${eventId}?ref=${publicToken}`;
+function publicEventUrl(publicToken: string, slugOrId: string | number) {
+  return `https://www.noktatickets.com.br/evento/${slugOrId}?ref=${publicToken}`;
 }
 
 export function AssignmentsTab({ orgId, canManage }: { orgId: number; canManage: boolean }) {
@@ -44,7 +44,8 @@ export function AssignmentsTab({ orgId, canManage }: { orgId: number; canManage:
   };
 
   const copyLink = (publicToken: string, evId: number) => {
-    navigator.clipboard.writeText(publicEventUrl(publicToken, evId));
+    const slugOrId = events?.find((e) => e.id === evId)?.slug ?? evId;
+    navigator.clipboard.writeText(publicEventUrl(publicToken, slugOrId));
     toast.success("Link copiado.");
   };
 

@@ -10,8 +10,8 @@ import { COMMISSION_STATUS_LABEL, formatCents } from "@/services/promoters";
 import { useMyPromoterEvents, useMyPromoterSales } from "../_hooks/use-my-promoter";
 import { toast } from "@/lib/toast";
 
-function publicEventUrl(publicToken: string, eventId: number) {
-  return `https://www.noktatickets.com.br/evento/${eventId}?ref=${publicToken}`;
+function publicEventUrl(publicToken: string, slugOrId: string | number) {
+  return `https://www.noktatickets.com.br/evento/${slugOrId}?ref=${publicToken}`;
 }
 
 export function LinksVendasTab() {
@@ -52,7 +52,7 @@ export function LinksVendasTab() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={(e) => { e.stopPropagation(); copy(publicEventUrl(ev.publicToken as string, ev.eventId)); }}
+                    onClick={(e) => { e.stopPropagation(); copy(publicEventUrl(ev.publicToken as string, ev.event.slug ?? ev.eventId)); }}
                   >
                     <Copy size={14} /> Copiar link
                   </Button>

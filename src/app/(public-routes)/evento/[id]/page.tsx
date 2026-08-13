@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import { permanentRedirect } from "next/navigation";
 import { getApiBaseUrl, getPublicTicketsUrl } from "@/lib/surfaces";
-import { resolveThumbnailUrl } from "@/lib/media";
+import { resolveThumbnailUrl, MEDIA_FALLBACK } from "@/lib/media";
 import type { EventDetails } from "@/interfaces/events";
 import EventoPageClient from "./_components/EventoPageClient";
 
@@ -41,7 +42,10 @@ export async function generateMetadata({
   const title = evento.nome;
   const description =
     evento.descricao?.slice(0, 200) || `Ingressos para ${evento.nome} na Nokta Tickets.`;
-  const bannerUrl = resolveThumbnailUrl(evento.thumbnails?.[0], null);
+  // Banner real do evento se existir; senão a logo padrão da Nokta — nunca
+  // omite a imagem OG (crawlers de WhatsApp/Telegram/Facebook preferem
+  // sempre ter uma imagem no preview, mesmo genérica, a não ter nenhuma).
+  const bannerUrl = resolveThumbnailUrl(evento.thumbnails?.[0], null) ?? getPublicTicketsUrl(MEDIA_FALLBACK);
   const url = getPublicTicketsUrl(`/evento/${evento.slug ?? evento.id}`);
 
   return {
@@ -55,17 +59,37 @@ export async function generateMetadata({
       siteName: "Nokta Tickets",
       locale: "pt_BR",
       type: "website",
-      images: bannerUrl ? [{ url: bannerUrl, width: 1200, height: 630, alt: title }] : undefined,
+      images: [{ url: bannerUrl, width: 1200, height: 630, alt: title }],
     },
     twitter: {
-      card: bannerUrl ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       title,
       description,
-      images: bannerUrl ? [bannerUrl] : undefined,
+      images: [bannerUrl],
     },
   };
 }
 
-export default function EventoPage() {
+export default async function EventoPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+
+  // Compatibilidade com links antigos (/evento/9): se o segmento da URL é
+  // um id numérico puro E o evento já tem slug, redireciona pra URL
+  // canônica com slug — nunca ao contrário (slug na URL nunca redireciona
+  // pra id) e nunca quando o evento não tem slug ainda (nenhum evento fica
+  // sem servir por causa disto). 308 (permanente): sinaliza pra crawlers/
+  // navegadores que a URL com id não é mais a canônica, sem quebrar quem
+  // ainda tem o link antigo salvo/compartilhado.
+  if (/^\d+$/.test(id)) {
+    const evento = await getEventForMetadata(id);
+    if (evento?.slug) {
+      permanentRedirect(`/evento/${evento.slug}`);
+    }
+  }
+
   return <EventoPageClient />;
 }

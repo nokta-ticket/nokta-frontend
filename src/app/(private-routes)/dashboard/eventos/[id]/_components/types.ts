@@ -25,6 +25,7 @@ export interface IngressoLote {
 
 export interface EventoData {
   id: number
+  slug?: string | null
   nome: string
   descricao: string
   data: string
