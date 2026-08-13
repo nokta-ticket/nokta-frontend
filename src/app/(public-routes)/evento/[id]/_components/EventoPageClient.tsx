@@ -928,7 +928,11 @@ export default function EventoPageClient() {
 
       {/* ── Sticky bottom: cupom + botão comprar (mobile) ──────── */}
       {tickets.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white/95 backdrop-blur border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] px-4 pt-2.5 pb-4">
+        <div
+          data-fixed-bottom-purchase-bar=""
+          className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white/95 backdrop-blur border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] px-4 pt-2.5"
+          style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+        >
 
           {/* Total */}
           {totalSelecionado > 0 && (
@@ -1015,7 +1019,6 @@ export default function EventoPageClient() {
           </button>
         </div>
       )}
-      <div className="h-28 lg:hidden" />
 
       <Sheet open={parcelasSheet} onOpenChange={setParcelasSheet}>
         <SheetContent side="bottom" className="rounded-t-2xl max-h-[70vh] overflow-y-auto">

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Poppins, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import FooterConditional from "@/components/layout/footer-conditional";
+import FixedBottomBarSpacer from "@/components/layout/fixed-bottom-bar-spacer";
 import { Toaster } from "@/components/ui/toaster";
 import HeaderSwitcher from "@/lib/header-switcher";
 import { AuthProvider } from "@/context/AuthContext";
@@ -60,6 +61,7 @@ export default function RootLayout({
                 <HeaderSwitcher />
                 <main className="flex flex-1 flex-col">{children}</main>
                 <FooterConditional />
+                <FixedBottomBarSpacer />
               </div>
             )}
             <Toaster />
