@@ -248,6 +248,16 @@ const BARE_MARKETING_HOSTNAME = "nokta.live";
 // curl/crawlers que não seguem esse mecanismo. O middleware roda antes de
 // qualquer render e SEMPRE pode emitir NextResponse.redirect com status
 // real — é o único lugar confiável no Next.js pra isso.
+//
+// Só casa id NUMÉRICO de propósito (2026-08-13): um slug antigo (nome do
+// evento mudou desde que o link foi compartilhado, ver EventSlugHistory no
+// backend) não tem como ser diferenciado do slug atual só pela URL — faria
+// o middleware consultar a API em TODO /evento/{slug}, mesmo já correto,
+// numa rota de alto tráfego. Slug antigo é resolvido em
+// (public-routes)/evento/[id]/page.tsx (Server Component), que já faz fetch
+// server-side pra generateMetadata e pode chamar redirect() do Next ali —
+// HTTP real também, só que sem custo extra no caminho comum (o fetch já
+// aconteceria de qualquer forma pra montar o OG).
 const EVENTO_BY_ID_RE = /^\/evento\/(\d+)((?:\/.*)?)$/;
 
 async function resolveEventoIdRedirect(

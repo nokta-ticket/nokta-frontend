@@ -151,7 +151,7 @@ describe("middleware — compatibilidade de /evento/{id} com link antigo por id 
     expect(res.headers.get("x-middleware-next")).toBe("1");
   });
 
-  it("URL já com slug (não numérica) nunca dispara o lookup por id nem redireciona", async () => {
+  it("URL já com slug (não numérica, atual ou antiga) nunca dispara o lookup por id nem redireciona — resolvido em page.tsx, não no middleware (ver comentário de EVENTO_BY_ID_RE)", async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
     const res = await middleware(buildRequest("https://www.noktatickets.com.br/evento/noite-de-marca-maria"));
