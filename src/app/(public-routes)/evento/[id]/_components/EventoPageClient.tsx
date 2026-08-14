@@ -757,10 +757,14 @@ export default function EventoPageClient() {
               </div>
             )}
 
-            {/* Modal de políticas */}
+            {/* Modal de políticas — z-[60]: precisa ficar ACIMA da barra fixa
+                de compra (data-fixed-bottom-purchase-bar, z-50). Mesmo z-index
+                entre irmãos no DOM é desempatado pela ordem de declaração, e a
+                barra fixa vem depois — sem isso o modal renderiza por baixo
+                dela perto do rodapé. */}
             {policyModal && (
               <div
-                className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+                className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center"
                 onClick={() => setPolicyModal(null)}
               >
                 {/* overlay */}
@@ -877,9 +881,10 @@ export default function EventoPageClient() {
               </div>
             )}
 
-            {/* Modal de rotas */}
+            {/* Modal de rotas — z-[60], mesmo motivo do modal de políticas
+                acima: precisa ficar acima da barra fixa de compra (z-50). */}
             {routeOpen && addr && (
-              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={() => setRouteOpen(false)}>
+              <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center" onClick={() => setRouteOpen(false)}>
                 <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
                 <div
                   className="relative z-10 w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl px-5 pt-5 pb-8 sm:pb-6 mx-0 sm:mx-4"
