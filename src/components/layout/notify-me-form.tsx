@@ -46,7 +46,7 @@ export default function NotifyMeForm() {
     return (
       <form
         onSubmit={handleSubmit}
-        className="mt-8 flex h-[46px] w-full max-w-[302px] items-center gap-2 rounded-xl border border-[#D9C2F8] bg-white pl-4 pr-1.5 shadow-[0_8px_20px_-6px_rgba(124,58,237,0.12)]"
+        className="mx-auto mt-8 flex h-[46px] w-full max-w-[302px] items-center gap-2 rounded-xl border border-[#D9C2F8] bg-white pl-4 pr-1.5 shadow-[0_8px_20px_-6px_rgba(124,58,237,0.12)] sm:mx-0"
       >
         <input
           type="email"
