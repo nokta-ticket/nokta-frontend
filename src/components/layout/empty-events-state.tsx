@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { HelpCircle, ArrowRight } from "lucide-react";
 import { Bricolage_Grotesque, Caveat } from "next/font/google";
 import NotifyMeForm from "./notify-me-form";
@@ -30,9 +29,13 @@ const caveat = Caveat({
  * "Quero ser avisado quando tiver" (NotifyMeForm) abre um campo de e-mail
  * real, submetido pra POST /event-notify/subscribe (backend, sem auth) —
  * decisão explícita do usuário de não deixar só decorativo. "Conheça a
- * Nokta" vai pra /institucional (home institucional da nokta.live, pedido
- * explícito do usuário); "Acessar ajuda" fica só visual, já que Central de
- * Ajuda não existe como página em nenhum lugar do projeto (mesmo padrão de
+ * Nokta" é um <a> normal (nunca next/link) pra https://www.nokta.live —
+ * cross-domain de propósito: conteúdo de produtor vive no site
+ * institucional (nokta.live), nunca no de tickets (noktatickets.com.br/
+ * app.nokta.live), pedido explícito do usuário depois de uma 1ª tentativa
+ * apontar pra /institucional local, que ficaria no domínio errado.
+ * "Acessar ajuda" fica só visual, já que Central de Ajuda não existe como
+ * página em nenhum lugar do projeto (mesmo padrão de
  * OnboardingExtras em onboarding-extras.tsx).
  *
  * Ocupa o espaço entre header e footer (flex-1, ver comentário em
@@ -119,13 +122,13 @@ export default function EmptyEventsState() {
               <br />
               segurança e taxas justas.
             </p>
-            <Link
-              href="/institucional"
+            <a
+              href="https://www.nokta.live"
               className="group mt-4 inline-flex items-center gap-2 text-[13px] font-semibold text-[#7C3AED] underline decoration-1 underline-offset-4"
             >
               Conheça a Nokta
               <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-[3px]" strokeWidth={2.2} />
-            </Link>
+            </a>
           </div>
 
           <div className="relative mt-5 h-[150px] w-[185px] shrink-0 sm:absolute sm:right-[22px] sm:top-[14px] sm:mt-0">
