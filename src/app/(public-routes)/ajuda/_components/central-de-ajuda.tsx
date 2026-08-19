@@ -117,18 +117,24 @@ function Hero({ query, onQueryChange, onSelectResult }: HeroProps) {
 
   const showDropdown = focused && query.trim().length > 0;
 
-  // Fecha o dropdown ao clicar fora — clicar num resultado (mousedown antes
-  // do blur do input) precisa continuar funcionando, por isso o listener
-  // ignora cliques dentro do próprio container.
+  // Fecha o dropdown ao clicar fora. Usa "click" (não "pointerdown"/
+  // "touchstart") de propósito: o dropdown pode crescer além da altura do
+  // hero quando há muitos resultados, então rolar a PÁGINA (não o
+  // dropdown) pra ver o resto da lista é um gesto legítimo — um listener em
+  // pointerdown/touchstart dispara no instante em que o dedo toca a tela,
+  // antes de saber se é um toque ou o início de um arrasto/scroll, e
+  // fechava o dropdown no meio da rolagem (bug relatado: "rolo pra baixo...
+  // primeiro some"). "click" só dispara depois de um tap real sem
+  // deslocamento, nunca durante/ao fim de um scroll por touch.
   useEffect(() => {
     if (!showDropdown) return;
-    function handlePointerDown(e: PointerEvent) {
+    function handleClick(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setFocused(false);
       }
     }
-    document.addEventListener("pointerdown", handlePointerDown);
-    return () => document.removeEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
   }, [showDropdown]);
 
   return (
@@ -187,7 +193,7 @@ function Hero({ query, onQueryChange, onSelectResult }: HeroProps) {
                   Nenhuma dúvida encontrada para &quot;{query}&quot;. Tente outra palavra ou fale com a gente.
                 </p>
               ) : (
-                <ul className="max-h-[320px] overflow-y-auto py-2">
+                <ul className="max-h-[50vh] overflow-y-auto overscroll-contain py-2 sm:max-h-[320px]">
                   {results.map(({ item, i }) => (
                     <li key={item.q}>
                       <button
