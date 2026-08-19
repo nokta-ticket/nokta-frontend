@@ -223,9 +223,8 @@ function HelpIllustration() {
 
 /**
  * Preenche a área abaixo do card principal do onboarding, que ficava vazia
- * enquanto o usuário ainda não tem organização. Central de Ajuda ainda não
- * existe como página real — botão fica só visual por enquanto, mesmo
- * padrão já usado em "Ajuda" na sidebar.
+ * enquanto o usuário ainda não tem organização. "Acessar Central de Ajuda"
+ * abre /ajuda em nova guia.
  */
 export function OnboardingExtras() {
   return (
@@ -280,10 +279,15 @@ export function OnboardingExtras() {
         <p className="mb-5 mt-3 text-[12.5px] leading-[1.6] text-[#7C7A8A]">
           Nossa central de ajuda tem guias rápidos, vídeos e artigos para te ajudar em cada etapa.
         </p>
-        <span className="inline-flex w-fit cursor-default items-center gap-2 rounded-[11px] border border-[#E5DDF6] bg-white px-4 py-2.5 text-[12.5px] font-semibold text-[#6D28D9]/60">
+        <Link
+          href="/ajuda"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex w-fit items-center gap-2 rounded-[11px] border border-[#E5DDF6] bg-white px-4 py-2.5 text-[12.5px] font-semibold text-[#6D28D9] transition hover:bg-[#FCFBFE] hover:shadow-[0_6px_14px_rgba(80,40,160,0.12)]"
+        >
           <LifeBuoy size={14} />
           Acessar Central de Ajuda
-        </span>
+        </Link>
 
         <div className="mt-auto flex justify-center pt-3.5">
           <HelpIllustration />

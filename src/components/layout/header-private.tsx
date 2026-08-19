@@ -70,6 +70,11 @@ export default function HeaderPrivate() {
       window.location.href = href;
       return;
     }
+    // Central de Ajuda sempre abre em nova guia (mobile e desktop).
+    if (href === '/ajuda') {
+      window.open(href, '_blank', 'noopener,noreferrer');
+      return;
+    }
     if (pathname !== href) router.push(href);
   };
 
@@ -102,7 +107,7 @@ export default function HeaderPrivate() {
     ...(isProdutor
       ? [{ href: '/dashboard/eventos', label: 'Área do produtor',  icon: <Briefcase size={20} /> }]
       : [{ href: '/dashboard/onboarding', label: 'Seja produtor',   icon: <Briefcase size={20} /> }]),
-    { href: 'mailto:contato@noktatickets.com.br', label: 'Fale com suporte', icon: <MessageSquare size={20} /> },
+    { href: '/ajuda', label: 'Fale com suporte', icon: <MessageSquare size={20} /> },
     { href: '/termos',  label: 'Termos e políticas', icon: <Shield size={20} /> },
   ];
 

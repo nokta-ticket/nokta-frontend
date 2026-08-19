@@ -52,6 +52,7 @@ const publicRoutes = [
   { path: "/auth/callback", whenAutenticated: "next" },
   { path: "/privacidade", whenAutenticated: "next" },
   { path: "/termos", whenAutenticated: "next" },
+  { path: "/ajuda", whenAutenticated: "next" },
   { path: "/cardapio", whenAutenticated: "next" },
   { path: "/cardapio/[id]", whenAutenticated: "next" },
   { path: "/avaliacao", whenAutenticated: "next" },

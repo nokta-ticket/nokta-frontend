@@ -1,5 +1,6 @@
 import { HelpCircle, ArrowRight } from "lucide-react";
 import { Bricolage_Grotesque, Caveat } from "next/font/google";
+import Link from "next/link";
 import NotifyMeForm from "./notify-me-form";
 
 const bricolage = Bricolage_Grotesque({
@@ -34,9 +35,10 @@ const caveat = Caveat({
  * institucional (nokta.live), nunca no de tickets (noktatickets.com.br/
  * app.nokta.live), pedido explícito do usuário depois de uma 1ª tentativa
  * apontar pra /institucional local, que ficaria no domínio errado.
- * "Acessar ajuda" fica só visual, já que Central de Ajuda não existe como
- * página em nenhum lugar do projeto (mesmo padrão de
- * OnboardingExtras em onboarding-extras.tsx).
+ * "Acessar ajuda" abre /ajuda (Central de Ajuda real) em nova guia — antes
+ * ficava só visual porque a página não existia (mesmo padrão do texto
+ * antigo de OnboardingExtras em onboarding-extras.tsx, também desatualizado
+ * agora que /ajuda existe).
  *
  * Ocupa o espaço entre header e footer (flex-1, ver comentário em
  * EventGrid) e fica centralizado nele — o <main flex flex-1 flex-col> do
@@ -152,12 +154,14 @@ export default function EmptyEventsState() {
             na nossa Central de Ajuda.
           </p>
 
-          {/* Central de Ajuda ainda não existe como página real — botão fica
-              só visual por enquanto, mesmo padrão já usado em
-              onboarding-extras.tsx (OnboardingExtras). */}
-          <span className="mt-[22px] inline-block cursor-default rounded-[9px] border-[1.5px] border-[#D9C2F8] bg-white px-[22px] py-[9px] text-[12.5px] font-semibold text-[#7C3AED]/60">
+          <Link
+            href="/ajuda"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-[22px] inline-block rounded-[9px] border-[1.5px] border-[#D9C2F8] bg-white px-[22px] py-[9px] text-[12.5px] font-semibold text-[#7C3AED] transition-colors hover:border-[#7C3AED] hover:bg-[#FBF8FF]"
+          >
             Acessar ajuda
-          </span>
+          </Link>
         </div>
       </div>
     </section>

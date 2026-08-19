@@ -56,7 +56,7 @@ export default function Footer() {
           <div className="space-y-4">
             <h4 className="text-lg font-semibold uppercase text-black">SUPORTE</h4>
             <ul className="space-y-2 text-gray-700">
-              <li><a href="mailto:contato@noktatickets.com.br" className="hover:underline">Fale Conosco</a></li>
+              <li><Link href="/ajuda" target="_blank" rel="noopener noreferrer" className="hover:underline">Fale Conosco</Link></li>
               <li><Link href="/termos" className="hover:underline">Termos de Uso</Link></li>
               <li><Link href="/privacidade" className="hover:underline">Política de Privacidade</Link></li>
               <li><Link href="/politica-de-cancelamento" className="hover:underline">Cancelamento e Reembolso</Link></li>
