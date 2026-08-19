@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Bricolage_Grotesque } from "next/font/google";
 import {
@@ -47,15 +47,50 @@ const bricolage = Bricolage_Grotesque({
  *   do evento"), condicionado a ingresso não usado/transferido/revendido
  *   (politica-de-cancelamento/page.tsx, fonte de verdade textual já
  *   existente no projeto).
+ *
+ * Busca do hero (2026-08-19): antes era só visual (input sem onChange nem
+ * handler nenhum). Agora filtra as FAQ_ITEMS em tempo real (client-side —
+ * não é uma busca contra API, o conteúdo pesquisável da página inteira é a
+ * FAQ) e mostra um dropdown de resultados sob o próprio campo; clicar num
+ * resultado rola até a FAQ e abre aquele item, sem navegar. Fora do hero, a
+ * mesma query também filtra a lista de FAQ renderizada abaixo — as duas
+ * UIs (dropdown do hero + lista principal) compartilham o mesmo estado e o
+ * mesmo matcher (normalizeForSearch/matchesQuery), nunca duas lógicas de
+ * busca divergentes.
  */
 export default function CentralDeAjuda() {
+  const [query, setQuery] = useState("");
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const faqRef = useRef<HTMLDivElement>(null);
+
+  const filteredIndexes = useMemo(() => {
+    if (!query.trim()) return FAQ_ITEMS.map((_, i) => i);
+    return FAQ_ITEMS.map((_, i) => i).filter((i) => matchesQuery(FAQ_ITEMS[i], query));
+  }, [query]);
+
+  function handleSelectResult(index: number) {
+    setQuery("");
+    setOpenIndex(index);
+    // Espera o filtro (query "") re-renderizar a lista completa antes de
+    // rolar — senão o item pode não estar montado ainda no DOM.
+    requestAnimationFrame(() => {
+      faqRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
   return (
     <div className={`${bricolage.variable} bg-[#FAF9FC]`}>
-      <Hero />
+      <Hero query={query} onQueryChange={setQuery} onSelectResult={handleSelectResult} />
       <div className="mx-auto w-full max-w-[1268px] px-4 pb-6 sm:px-6">
         <div className="grid grid-cols-1 gap-8 pt-8 lg:grid-cols-[minmax(0,747fr)_minmax(0,487fr)] lg:items-start lg:gap-8">
           <div>
-            <Faq />
+            <Faq
+              ref={faqRef}
+              query={query}
+              filteredIndexes={filteredIndexes}
+              openIndex={openIndex}
+              onToggle={(i) => setOpenIndex((cur) => (cur === i ? null : i))}
+            />
             <PedidoFaixa />
           </div>
           <FaleConosco />
@@ -65,7 +100,37 @@ export default function CentralDeAjuda() {
   );
 }
 
-function Hero() {
+interface HeroProps {
+  query: string;
+  onQueryChange: (value: string) => void;
+  onSelectResult: (index: number) => void;
+}
+
+function Hero({ query, onQueryChange, onSelectResult }: HeroProps) {
+  const [focused, setFocused] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const results = useMemo(() => {
+    if (!query.trim()) return [];
+    return FAQ_ITEMS.map((item, i) => ({ item, i })).filter(({ item }) => matchesQuery(item, query));
+  }, [query]);
+
+  const showDropdown = focused && query.trim().length > 0;
+
+  // Fecha o dropdown ao clicar fora — clicar num resultado (mousedown antes
+  // do blur do input) precisa continuar funcionando, por isso o listener
+  // ignora cliques dentro do próprio container.
+  useEffect(() => {
+    if (!showDropdown) return;
+    function handlePointerDown(e: PointerEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setFocused(false);
+      }
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [showDropdown]);
+
   return (
     <header
       className="relative overflow-hidden"
@@ -94,16 +159,46 @@ function Hero() {
           Encontre respostas para as dúvidas mais comuns ou fale com a gente.
         </p>
 
-        <div className="relative mt-10 h-[52px] max-w-[600px]">
-          <Search size={18} className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-[#8B8598]" />
-          <input
-            type="text"
-            placeholder="Buscar por tópicos, dúvidas ou palavras-chave..."
-            // text-base (16px) sempre, mesmo em mobile — abaixo de 16px o
-            // Safari/iOS dá zoom automático na página inteira ao focar o
-            // input (mesmo motivo documentado em menu-view.tsx).
-            className="h-full w-full rounded-2xl border border-white/[0.13] bg-white/[0.045] pl-[50px] pr-5 text-base text-[#EDEAF5] outline-none placeholder:text-[#8B8598] transition-colors focus:border-[rgba(167,139,250,0.55)] focus:bg-white/[0.07]"
-          />
+        <div ref={containerRef} className="relative mt-10 max-w-[600px]">
+          <div className="relative h-[52px]">
+            <Search size={18} className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-[#8B8598]" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => onQueryChange(e.target.value)}
+              onFocus={() => setFocused(true)}
+              placeholder="Buscar por tópicos, dúvidas ou palavras-chave..."
+              // text-base (16px) sempre, mesmo em mobile — abaixo de 16px o
+              // Safari/iOS dá zoom automático na página inteira ao focar o
+              // input (mesmo motivo documentado em menu-view.tsx).
+              className="h-full w-full rounded-2xl border border-white/[0.13] bg-white/[0.045] pl-[50px] pr-5 text-base text-[#EDEAF5] outline-none placeholder:text-[#8B8598] transition-colors focus:border-[rgba(167,139,250,0.55)] focus:bg-white/[0.07]"
+            />
+          </div>
+
+          {showDropdown && (
+            <div className="absolute left-0 right-0 top-[60px] z-20 overflow-hidden rounded-2xl border border-white/10 bg-[#1A1130] shadow-[0_20px_44px_-14px_rgba(0,0,0,0.55)]">
+              {results.length === 0 ? (
+                <p className="px-5 py-4 text-sm text-[#9A94AC]">
+                  Nenhuma dúvida encontrada para &quot;{query}&quot;. Tente outra palavra ou fale com a gente.
+                </p>
+              ) : (
+                <ul className="max-h-[320px] overflow-y-auto py-2">
+                  {results.map(({ item, i }) => (
+                    <li key={item.q}>
+                      <button
+                        type="button"
+                        onClick={() => onSelectResult(i)}
+                        className="block w-full px-5 py-3 text-left transition-colors hover:bg-white/[0.06]"
+                      >
+                        <p className="text-sm font-medium text-white">{item.q}</p>
+                        <p className="mt-0.5 line-clamp-1 text-xs text-[#9A94AC]">{item.a}</p>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </header>
@@ -137,36 +232,67 @@ const FAQ_ITEMS = [
   },
 ];
 
-function Faq() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+function normalizeForSearch(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();
+}
 
+function matchesQuery(item: { q: string; a: string }, query: string): boolean {
+  const needle = normalizeForSearch(query.trim());
+  if (!needle) return true;
+  return normalizeForSearch(item.q).includes(needle) || normalizeForSearch(item.a).includes(needle);
+}
+
+interface FaqProps {
+  query: string;
+  filteredIndexes: number[];
+  openIndex: number | null;
+  onToggle: (index: number) => void;
+}
+
+const Faq = forwardRef<HTMLDivElement, FaqProps>(function Faq(
+  { query, filteredIndexes, openIndex, onToggle },
+  ref,
+) {
   return (
-    <div className="rounded-[14px] border border-[#EFEDF6] bg-white px-5 pb-[22px] pt-[34px] shadow-[0_1px_2px_rgba(26,22,48,0.03)] sm:px-7">
+    <div
+      ref={ref}
+      className="scroll-mt-6 rounded-[14px] border border-[#EFEDF6] bg-white px-5 pb-[22px] pt-[34px] shadow-[0_1px_2px_rgba(26,22,48,0.03)] sm:px-7"
+    >
       <h2 className="text-xl font-bold tracking-[-0.4px] text-[#1A1630]">Dúvidas frequentes</h2>
 
       <div className="mt-4">
-        {FAQ_ITEMS.map((item, i) => {
-          const open = openIndex === i;
-          return (
-            <div key={item.q} className="border-b border-[#F1EFF7] last:border-b-0">
-              <button
-                type="button"
-                onClick={() => setOpenIndex(open ? null : i)}
-                className="flex w-full items-center justify-between gap-4 py-3.5 text-left text-sm font-medium tracking-[-0.1px] text-[#241F3C]"
-                aria-expanded={open}
-              >
-                {item.q}
-                <ChevronDown
-                  size={16}
-                  className={`shrink-0 text-[#9B96AB] transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-                />
-              </button>
-              {open && (
-                <div className="pb-4 text-[13px] leading-[22px] text-[#8A8698]">{item.a}</div>
-              )}
-            </div>
-          );
-        })}
+        {filteredIndexes.length === 0 ? (
+          <p className="py-6 text-center text-sm text-[#8A8698]">
+            Nenhuma dúvida encontrada para &quot;{query}&quot;. Tente outra palavra ou fale com a gente ao lado.
+          </p>
+        ) : (
+          filteredIndexes.map((i) => {
+            const item = FAQ_ITEMS[i];
+            const open = openIndex === i;
+            return (
+              <div key={item.q} className="border-b border-[#F1EFF7] last:border-b-0">
+                <button
+                  type="button"
+                  onClick={() => onToggle(i)}
+                  className="flex w-full items-center justify-between gap-4 py-3.5 text-left text-sm font-medium tracking-[-0.1px] text-[#241F3C]"
+                  aria-expanded={open}
+                >
+                  {item.q}
+                  <ChevronDown
+                    size={16}
+                    className={`shrink-0 text-[#9B96AB] transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {open && (
+                  <div className="pb-4 text-[13px] leading-[22px] text-[#8A8698]">{item.a}</div>
+                )}
+              </div>
+            );
+          })
+        )}
       </div>
 
       <Link
@@ -180,7 +306,7 @@ function Faq() {
       </Link>
     </div>
   );
-}
+});
 
 function PedidoFaixa() {
   const { isAuthenticated, isAuthResolved } = useAuth();
