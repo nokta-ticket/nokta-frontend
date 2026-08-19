@@ -8,17 +8,13 @@ import {
   ChevronRight,
   HelpCircle,
   Search,
-  Ticket,
-  CalendarDays,
-  CreditCard,
-  UserCircle,
-  ShieldCheck,
   Send,
   Clock,
   Loader2,
 } from "lucide-react";
 import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
+import { useAuth } from "@/context/AuthContext";
 
 const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
@@ -27,11 +23,13 @@ const bricolage = Bricolage_Grotesque({
 });
 
 /**
- * Central de Ajuda (/ajuda) — layout portado fielmente do HTML de
- * referência enviado pelo usuário (2026-08-19). Substitui o link
- * "Acessar ajuda" (antes só visual, empty-events-state.tsx) e "Fale com
- * suporte" (antes mailto:, header-private.tsx/header-public.tsx/footer.tsx)
- * por uma página real, aberta em nova guia.
+ * Central de Ajuda (/ajuda) — layout portado do HTML de referência enviado
+ * pelo usuário (2026-08-19), sem a seção de 5 categorias (Ingressos/
+ * Eventos/Pagamento/Conta/Segurança) — removida a pedido do usuário no
+ * mesmo dia por ser "desnecessária"/não útil. Substitui o link "Acessar
+ * ajuda" (antes só visual, empty-events-state.tsx/onboarding-extras.tsx) e
+ * "Fale com suporte" (antes mailto:, header-private.tsx/header-public.tsx/
+ * footer.tsx) por uma página real, aberta em nova guia.
  *
  * FAQ revisada contra o comportamento real do backend (não contra o texto
  * do HTML de referência, que tinha itens desatualizados):
@@ -55,8 +53,7 @@ export default function CentralDeAjuda() {
     <div className={`${bricolage.variable} bg-[#FAF9FC]`}>
       <Hero />
       <div className="mx-auto w-full max-w-[1268px] px-4 pb-6 sm:px-6">
-        <Categorias />
-        <div className="grid grid-cols-1 gap-8 pt-6 lg:grid-cols-[minmax(0,747fr)_minmax(0,487fr)] lg:items-start lg:gap-8">
+        <div className="grid grid-cols-1 gap-8 pt-8 lg:grid-cols-[minmax(0,747fr)_minmax(0,487fr)] lg:items-start lg:gap-8">
           <div>
             <Faq />
             <PedidoFaixa />
@@ -102,60 +99,14 @@ function Hero() {
           <input
             type="text"
             placeholder="Buscar por tópicos, dúvidas ou palavras-chave..."
-            className="h-full w-full rounded-2xl border border-white/[0.13] bg-white/[0.045] pl-[50px] pr-5 text-[14.5px] text-[#EDEAF5] outline-none placeholder:text-[#8B8598] transition-colors focus:border-[rgba(167,139,250,0.55)] focus:bg-white/[0.07]"
+            // text-base (16px) sempre, mesmo em mobile — abaixo de 16px o
+            // Safari/iOS dá zoom automático na página inteira ao focar o
+            // input (mesmo motivo documentado em menu-view.tsx).
+            className="h-full w-full rounded-2xl border border-white/[0.13] bg-white/[0.045] pl-[50px] pr-5 text-base text-[#EDEAF5] outline-none placeholder:text-[#8B8598] transition-colors focus:border-[rgba(167,139,250,0.55)] focus:bg-white/[0.07]"
           />
         </div>
       </div>
     </header>
-  );
-}
-
-const CATEGORIAS = [
-  {
-    icon: Ticket,
-    title: "Ingressos",
-    desc: "Compra, tipos de ingresso, códigos e validação",
-  },
-  {
-    icon: CalendarDays,
-    title: "Eventos",
-    desc: "Sobre eventos, datas, locais e cancelamentos",
-  },
-  {
-    icon: CreditCard,
-    title: "Pagamento",
-    desc: "Formas de pagamento, PIX, cartão e estornos",
-  },
-  {
-    icon: UserCircle,
-    title: "Conta",
-    desc: "Cadastro, login e dados pessoais",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Segurança",
-    desc: "Privacidade, golpes e segurança",
-  },
-];
-
-function Categorias() {
-  return (
-    <section className="grid grid-cols-1 gap-[18px] pt-[27px] sm:grid-cols-2 xl:grid-cols-5">
-      {CATEGORIAS.map(({ icon: Icon, title, desc }) => (
-        <div
-          key={title}
-          className="relative flex h-[101px] items-start rounded-xl border border-[#EFEDF6] bg-white p-5 shadow-[0_1px_2px_rgba(26,22,48,0.03)] transition-all hover:-translate-y-px hover:border-[#DFD5F7] hover:shadow-[0_8px_20px_-10px_rgba(91,33,216,0.22)]"
-        >
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[11px] bg-[#F3ECFD]">
-            <Icon size={21} strokeWidth={1.7} className="text-[#7C3AED]" />
-          </span>
-          <span className="ml-[15px] pr-4">
-            <h3 className="text-sm font-semibold tracking-[-0.2px] text-[#1A1630]">{title}</h3>
-            <p className="mt-[5px] text-xs font-normal leading-[17px] text-[#8A8698]">{desc}</p>
-          </span>
-        </div>
-      ))}
-    </section>
   );
 }
 
@@ -232,6 +183,17 @@ function Faq() {
 }
 
 function PedidoFaixa() {
+  const { isAuthenticated, isAuthResolved } = useAuth();
+
+  // Deslogado: "Ver meus pedidos" tem que levar pro login (com redirect de
+  // volta pra /meus-ingressos), nunca deixar o next/link levar direto pra
+  // /meus-ingressos — essa rota sozinha, sem sessão, cai na home da Nokta
+  // Tickets em vez de pedir login (comportamento reportado como
+  // "equivocado" pelo usuário).
+  const href = !isAuthResolved || isAuthenticated
+    ? "/meus-ingressos"
+    : `/login?redirect=${encodeURIComponent("/meus-ingressos")}`;
+
   return (
     <div className="mt-[15px] flex flex-col items-start gap-4 rounded-xl border border-[#EFE7FC] bg-[#F5F0FE] p-[22px] sm:flex-row sm:items-center">
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#EBE0FC]">
@@ -244,7 +206,7 @@ function PedidoFaixa() {
         </p>
       </span>
       <Link
-        href="/meus-ingressos"
+        href={href}
         target="_blank"
         rel="noopener noreferrer"
         className="w-full shrink-0 rounded-[9px] border-[1.5px] border-[#D6C4F7] bg-white px-[18px] py-[11px] text-center text-[13px] font-semibold text-[#7C3AED] transition-colors hover:border-[#7C3AED] hover:bg-[#FBF8FF] sm:w-auto"
@@ -312,7 +274,9 @@ function FaleConosco() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="seu@email.com"
             disabled={submitting}
-            className="mt-2 h-10 w-full rounded-[9px] border border-[#E9E6F2] bg-white px-3.5 text-[13px] text-[#241F3C] outline-none transition-shadow placeholder:text-[#9B96AB] focus:border-[#7C3AED] focus:shadow-[0_0_0_3px_rgba(124,58,237,0.1)]"
+            // text-base (16px): abaixo disso o Safari/iOS dá zoom automático
+            // na página ao focar o campo (mesmo padrão de menu-view.tsx).
+            className="mt-2 h-11 w-full rounded-[9px] border border-[#E9E6F2] bg-white px-3.5 text-base text-[#241F3C] outline-none transition-shadow placeholder:text-[#9B96AB] focus:border-[#7C3AED] focus:shadow-[0_0_0_3px_rgba(124,58,237,0.1)]"
           />
         </div>
 
@@ -327,7 +291,8 @@ function FaleConosco() {
               value={assunto}
               onChange={(e) => setAssunto(e.target.value)}
               disabled={submitting}
-              className="h-10 w-full appearance-none rounded-[9px] border border-[#E9E6F2] bg-white px-3.5 pr-10 text-[13px] text-[#9B96AB] outline-none transition-shadow focus:border-[#7C3AED] focus:shadow-[0_0_0_3px_rgba(124,58,237,0.1)]"
+              // text-base (16px), mesmo motivo do input de e-mail acima.
+              className="h-11 w-full appearance-none rounded-[9px] border border-[#E9E6F2] bg-white px-3.5 pr-10 text-base text-[#9B96AB] outline-none transition-shadow focus:border-[#7C3AED] focus:shadow-[0_0_0_3px_rgba(124,58,237,0.1)]"
             >
               <option value="" disabled>Selecione um assunto</option>
               {ASSUNTOS.map((s) => (
@@ -351,7 +316,8 @@ function FaleConosco() {
               onChange={(e) => setMensagem(e.target.value)}
               disabled={submitting}
               placeholder="Descreva sua dúvida ou problema"
-              className="h-28 w-full resize-none rounded-[9px] border border-[#E9E6F2] bg-white p-3.5 pb-6 text-[13px] leading-5 text-[#241F3C] outline-none transition-shadow placeholder:text-[#9B96AB] focus:border-[#7C3AED] focus:shadow-[0_0_0_3px_rgba(124,58,237,0.1)]"
+              // text-base (16px), mesmo motivo do input de e-mail acima.
+              className="h-28 w-full resize-none rounded-[9px] border border-[#E9E6F2] bg-white p-3.5 pb-6 text-base leading-6 text-[#241F3C] outline-none transition-shadow placeholder:text-[#9B96AB] focus:border-[#7C3AED] focus:shadow-[0_0_0_3px_rgba(124,58,237,0.1)]"
             />
             <span className="pointer-events-none absolute bottom-2.5 right-3 text-[11px] text-[#A9A4B8]">
               {mensagem.length}/1000
