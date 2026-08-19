@@ -132,14 +132,19 @@ function Hero({ query, onQueryChange, onSelectResult }: HeroProps) {
   }, [showDropdown]);
 
   return (
+    // overflow-hidden fica só no header em si (contém o fundo/gradiente
+    // decorativo, que nunca precisa vazar) — nunca deve ser aplicado aqui
+    // com o dropdown de busca dentro, senão ele corta o dropdown quando
+    // este ultrapassa a altura do header (bug real: card "Dúvidas
+    // frequentes" aparecia por cima do dropdown recortado no mobile).
     <header
-      className="relative overflow-hidden"
+      className="relative"
       style={{
         background:
           "radial-gradient(560px 320px at 76% 34%, rgba(124,58,237,.45) 0%, rgba(124,58,237,0) 68%), radial-gradient(700px 420px at 52% 0%, rgba(88,44,180,.35) 0%, rgba(88,44,180,0) 70%), linear-gradient(160deg,#120A24 0%,#160C2C 42%,#0D0718 100%)",
       }}
     >
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-[rgba(6,3,13,0.55)] to-transparent" />
+      <div className="pointer-events-none absolute inset-0 overflow-hidden bg-gradient-to-b from-[rgba(6,3,13,0.55)] to-transparent" />
 
       <div className="relative z-10 mx-auto w-full max-w-[970px] px-4 pb-14 pt-14 sm:px-6 sm:pt-[56px]">
         <nav className="flex items-center gap-2 text-[13.5px] font-medium text-[#9A94AC]">
