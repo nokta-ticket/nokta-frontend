@@ -84,8 +84,8 @@ export default function Footer() {
           <div className="flex flex-col gap-1 text-[13px] text-gray-500">
             <p className="font-medium text-gray-700">Nokta Tecnologia LTDA</p>
             <p>CNPJ: 59.386.582/0001-39</p>
-            <a href="mailto:contato@noktatickets.com.br" className="text-[#9944CC] hover:underline">
-              contato@noktatickets.com.br
+            <a href="mailto:suporte@noktatickets.com.br" className="text-[#9944CC] hover:underline">
+              suporte@noktatickets.com.br
             </a>
           </div>
 
