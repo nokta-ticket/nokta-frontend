@@ -55,6 +55,17 @@ const previewFrameSecurityHeaders = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
 ];
 
+// Nokta Access (check-in/scanner de QR) — única exceção de câmera do site.
+// `@yudiel/react-qr-scanner` precisa de getUserMedia, bloqueado pela política
+// global camera=() (nenhuma origem, nem self). Escopado só às rotas que
+// usam a câmera; resto do site continua camera=().
+const accessCameraSecurityHeaders = [
+  { key: "Content-Security-Policy", value: CSP_DIRECTIVES },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(self), microphone=(), geolocation=()" },
+];
+
 const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
@@ -65,17 +76,36 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
-        // Path negativo (nunca casa /cardapio-preview/*) — garante que só
-        // UMA regra de CSP se aplica a cada rota, nunca as duas
-        // concatenadas (o Next não faz "last wins" entre regras diferentes
-        // que casam a mesma URL; comportamento de concatenar dois headers
-        // Content-Security-Policy é ambíguo e não é o que se quer aqui).
-        source: "/:path((?!cardapio-preview).*)",
+        // Path negativo (nunca casa /cardapio-preview/*, /dashboard/check-in/*
+        // ou /dashboard/access/*, INCLUINDO /dashboard/access-pairing/* —
+        // sem o limite de palavra `(?:/|$)`, "dashboard/access" também
+        // prefixaria "dashboard/access-pairing", deixando essa rota sem
+        // NENHUM dos dois conjuntos de headers) — garante que só UMA regra
+        // de headers se aplica a cada rota, nunca duas concatenadas (o Next
+        // não faz "last wins" entre regras diferentes que casam a mesma
+        // URL; concatenar dois Content-Security-Policy/Permissions-Policy é
+        // ambíguo e não é o que se quer aqui).
+        source: "/:path((?!cardapio-preview|dashboard/check-in(?:/|$)|dashboard/access(?:/|$)|dashboard/access-pairing(?:/|$)).*)",
         headers: securityHeaders,
       },
       {
         source: "/cardapio-preview/:path*",
         headers: previewFrameSecurityHeaders,
+      },
+      {
+        source: "/dashboard/check-in/:path*",
+        headers: accessCameraSecurityHeaders,
+      },
+      {
+        source: "/dashboard/access/:path*",
+        headers: accessCameraSecurityHeaders,
+      },
+      {
+        // access-pairing nunca usa câmera (pareamento por código digitado)
+        // — política padrão do site basta, só precisa de uma regra própria
+        // porque o path negativo acima a exclui deliberadamente.
+        source: "/dashboard/access-pairing/:path*",
+        headers: securityHeaders,
       },
     ];
   },

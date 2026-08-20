@@ -8,7 +8,7 @@ import {
   Settings,
   Tag,
   BarChart2,
-  QrCode,
+  ShieldCheck,
   Users,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
@@ -32,7 +32,7 @@ export const SECTIONS: SectionMeta[] = [
   { key: "cupons",        label: "Cupons",        icon: Tag },
   { key: "vendas",        label: "Vendas",        icon: BarChart2 },
   { key: "equipe",        label: "Equipe",         icon: Users },
-  { key: "checkin",       label: "Check-in",      icon: QrCode, disabled: true, comingSoon: true },
+  { key: "access",        label: "Nokta Access",  icon: ShieldCheck },
 ]
 
 export const DEFAULT_SECTION = "visao-geral"

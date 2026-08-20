@@ -15,6 +15,7 @@ import SectionConfiguracoes from "./sections/SectionConfiguracoes"
 import SectionCupons from "./sections/SectionCupons"
 import SectionVendas from "./sections/SectionVendas"
 import SectionEquipe from "./sections/SectionEquipe"
+import SectionAccess from "./sections/SectionAccess"
 
 const SECTION_COMPONENTS: Record<string, React.ComponentType<SectionProps>> = {
   "visao-geral":   SectionVisaoGeral,
@@ -27,6 +28,7 @@ const SECTION_COMPONENTS: Record<string, React.ComponentType<SectionProps>> = {
   "cupons":        SectionCupons,
   "vendas":        SectionVendas,
   "equipe":        SectionEquipe,
+  "access":        SectionAccess,
 }
 
 interface Props {

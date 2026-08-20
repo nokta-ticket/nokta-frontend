@@ -53,6 +53,11 @@ const publicRoutes = [
   { path: "/privacidade", whenAutenticated: "next" },
   { path: "/termos", whenAutenticated: "next" },
   { path: "/ajuda", whenAutenticated: "next" },
+  // Nokta Access — o dispositivo físico (scanner/Hub) que troca o código de
+  // pareamento nunca tem sessão de usuário. Pública de propósito, mas
+  // protegida pela própria natureza do código (6 dígitos, TTL de 10min,
+  // uso único — ver AccessDeviceService.redeemPairingCode no backend).
+  { path: "/dashboard/access-pairing", whenAutenticated: "next" },
   { path: "/cardapio", whenAutenticated: "next" },
   { path: "/cardapio/[id]", whenAutenticated: "next" },
   { path: "/avaliacao", whenAutenticated: "next" },
