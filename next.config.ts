@@ -101,11 +101,13 @@ const nextConfig: NextConfig = {
         headers: accessCameraSecurityHeaders,
       },
       {
-        // access-pairing nunca usa câmera (pareamento por código digitado)
-        // — política padrão do site basta, só precisa de uma regra própria
-        // porque o path negativo acima a exclui deliberadamente.
+        // access-pairing TAMBÉM usa câmera desde que a tela passou a aceitar
+        // QR (código de pareamento e QR "Conectar a este Hub", commit
+        // 3abb785) — mesma exceção camera=(self) do check-in. Já teve
+        // securityHeaders (camera=()) aqui, o que bloqueava o leitor de QR
+        // silenciosamente — não regredir.
         source: "/dashboard/access-pairing/:path*",
-        headers: securityHeaders,
+        headers: accessCameraSecurityHeaders,
       },
     ];
   },

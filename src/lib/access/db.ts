@@ -8,7 +8,7 @@ import { openDB, DBSchema, IDBPDatabase } from "idb";
  * múltiplos eventos preparados no mesmo aparelho.
  */
 
-export type CompactStatus = 1 | 2 | 3; // 1=válido, 2=já usado, 3=bloqueado
+export type CompactStatus = 1 | 2 | 3 | 4; // 1=válido, 2=já usado, 3=bloqueado, 4=em revenda
 
 export interface StoredSnapshot {
   eventId: number;

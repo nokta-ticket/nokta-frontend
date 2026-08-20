@@ -4,11 +4,14 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * Fase 5.1, Etapa 9 — links mortos do rodapé (e dos headers, que sofreram o
- * mesmo tipo de deriva: /ajuda e /suporte nunca existiram como página).
- * Estático de propósito: lê o código-fonte e confere cada href interno
- * contra a lista de rotas reais do App Router — pega regressão sem precisar
- * renderizar componente nem subir servidor.
+ * Fase 5.1, Etapa 9 — links mortos do rodapé e dos headers. Estático de
+ * propósito: lê o código-fonte e confere cada href interno contra a lista
+ * de rotas reais do App Router — pega regressão sem precisar renderizar
+ * componente nem subir servidor.
+ *
+ * Nota histórica: /ajuda e /suporte já foram links mortos (a versão antiga
+ * deste teste proibia os dois). Desde 2026-08-19 a Central de Ajuda
+ * (/ajuda) é uma rota real — só /suporte continua proibido.
  */
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -22,6 +25,8 @@ const KNOWN_REAL_ROUTES = new Set([
   "/revenda",
   "/termos",
   "/privacidade",
+  "/ajuda",
+  "/politica-de-cancelamento",
   "/perfil",
   "/meus-ingressos",
   "/favoritos",
@@ -49,16 +54,14 @@ describe("rodapé e headers — nenhum link interno morto (Etapa 9)", () => {
     assertNoDeadLinks(path.join(HERE, "footer.tsx"));
   });
 
-  it("header-public.tsx só usa rotas reais (sem /ajuda nem /suporte)", () => {
+  it("header-public.tsx só usa rotas reais (sem /suporte, que nunca existiu)", () => {
     const source = fs.readFileSync(path.join(HERE, "header-public.tsx"), "utf8");
-    expect(source).not.toContain("/ajuda");
     expect(source).not.toContain("'/suporte'");
     assertNoDeadLinks(path.join(HERE, "header-public.tsx"));
   });
 
-  it("header-private.tsx só usa rotas reais (sem /ajuda nem /suporte como rota interna)", () => {
+  it("header-private.tsx só usa rotas reais (sem /suporte como rota interna)", () => {
     const source = fs.readFileSync(path.join(HERE, "header-private.tsx"), "utf8");
-    expect(source).not.toContain("href: '/ajuda'");
     expect(source).not.toContain("href: '/suporte'");
   });
 

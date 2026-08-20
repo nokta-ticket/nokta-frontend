@@ -25,6 +25,8 @@ interface DeviceStatus {
   label: string;
   lastSeenAt: string | null;
   lastSyncAt: string | null;
+  /** Código de pareamento gerado, ainda não resgatado pelo dispositivo físico. */
+  pending: boolean;
   online: boolean;
 }
 
@@ -199,11 +201,22 @@ export default function SectionAccess({ event }: SectionProps) {
             {status.devices.map((d) => (
               <div key={d.id} className="flex items-center justify-between px-5 py-4">
                 <div className="flex items-center gap-3">
-                  {d.online ? <Wifi className="h-4 w-4 text-emerald-500" /> : <WifiOff className="h-4 w-4 text-gray-400" />}
+                  {d.pending ? (
+                    <QrCodeIcon className="h-4 w-4 text-amber-500" />
+                  ) : d.online ? (
+                    <Wifi className="h-4 w-4 text-emerald-500" />
+                  ) : (
+                    <WifiOff className="h-4 w-4 text-gray-400" />
+                  )}
                   <div>
                     <p className="font-medium text-sm">{d.label}</p>
                     <p className="text-xs text-muted-foreground">
-                      {d.kind === "HUB" ? "Access Hub" : "Scanner"} · {d.lastSyncAt ? `sincronizado ${new Date(d.lastSyncAt).toLocaleTimeString("pt-BR")}` : "nunca sincronizou"}
+                      {d.kind === "HUB" ? "Access Hub" : "Scanner"} ·{" "}
+                      {d.pending
+                        ? "aguardando pareamento (código ainda não usado)"
+                        : d.lastSyncAt
+                          ? `sincronizado ${new Date(d.lastSyncAt).toLocaleTimeString("pt-BR")}`
+                          : "nunca sincronizou"}
                     </p>
                   </div>
                 </div>

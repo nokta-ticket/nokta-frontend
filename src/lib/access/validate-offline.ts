@@ -43,6 +43,11 @@ export async function validateOffline(eventId: number, code: string): Promise<Of
     return { outcome: "REJECTED_BLOCKED", message: "Este ingresso está bloqueado." };
   }
 
+  if (status === 4) {
+    await logEntry(eventId, code, "REJECTED_IN_RESALE", scannedAt, idempotencyKey);
+    return { outcome: "REJECTED_IN_RESALE", message: "Este ingresso está anunciado para revenda." };
+  }
+
   if (status === 2) {
     await logEntry(eventId, code, "REJECTED_ALREADY_USED", scannedAt, idempotencyKey);
     return { outcome: "REJECTED_ALREADY_USED", message: "Este ingresso já foi utilizado." };

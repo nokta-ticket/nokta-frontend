@@ -58,6 +58,11 @@ const publicRoutes = [
   // protegida pela própria natureza do código (6 dígitos, TTL de 10min,
   // uso único — ver AccessDeviceService.redeemPairingCode no backend).
   { path: "/dashboard/access-pairing", whenAutenticated: "next" },
+  // O scanner de check-in em si também roda SEM sessão de usuário (o
+  // dispositivo pareado autentica via X-Device-Token nos endpoints /access/*;
+  // a validação online usa a sessão SE existir, senão cai pro fluxo offline).
+  // Operador logado continua usando a mesma tela normalmente.
+  { path: "/dashboard/check-in", whenAutenticated: "next" },
   { path: "/cardapio", whenAutenticated: "next" },
   { path: "/cardapio/[id]", whenAutenticated: "next" },
   { path: "/avaliacao", whenAutenticated: "next" },

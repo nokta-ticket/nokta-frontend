@@ -46,10 +46,10 @@ export async function downloadAndVerifySnapshot(config: DeviceConfig): Promise<S
     eventId: number;
     version: number;
     isFreezeFinal: boolean;
-    tickets: { c: string; s: 1 | 2 | 3; t: number }[];
+    tickets: { c: string; s: 1 | 2 | 3 | 4; t: number }[];
   };
 
-  const ticketIndex: Record<string, 1 | 2 | 3> = {};
+  const ticketIndex: Record<string, 1 | 2 | 3 | 4> = {};
   for (const t of file.tickets) ticketIndex[t.c] = t.s;
 
   const snapshot: StoredSnapshot = {

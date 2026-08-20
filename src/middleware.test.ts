@@ -91,6 +91,10 @@ describe("middleware — cruzamento entre as três superfícies", () => {
 });
 
 describe("middleware — Cache-Control por superfície (Fase 5.2/5.3, Etapa 5/18)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it("landing institucional: o Middleware faz rewrite puro pra /institucional, sem setar Cache-Control — a página resolve cache real sozinha via `export const revalidate` (Fase 5.3, Etapa 4; o Root Layout não usa mais API dinâmica, então o Next consegue honrar isso de verdade)", async () => {
     const res = await middleware(buildRequest("https://www.nokta.live/"));
     expect(res.headers.get("x-middleware-rewrite")).toContain("/institucional");
@@ -103,12 +107,17 @@ describe("middleware — Cache-Control por superfície (Fase 5.2/5.3, Etapa 5/18
   });
 
   it("checkout (rota exclusiva da bilheteria) nunca recebe cache público — fica no default seguro do Next, sem header explícito de cache público", async () => {
+    // /evento/* dispara a consulta de slug do middleware (resolveEventoIdRedirect);
+    // stub de 404 mantém o teste determinístico — sem stub ele fazia fetch REAL
+    // na API de produção e estourava o timeout de 5s em rede lenta (flake).
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("not found", { status: 404 })));
     const res = await middleware(buildRequest("https://www.noktatickets.com.br/evento/abc/checkout"));
     const cacheControl = res.headers.get("cache-control") ?? "";
     expect(cacheControl).not.toMatch(/public/);
   });
 
   it("detalhe de evento (singular) acessado no host institucional vai para a bilheteria, preservando path e query string", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("not found", { status: 404 })));
     const res = await middleware(buildRequest("https://www.nokta.live/evento/abc?utm=teste"));
     const html = await res.text();
     expect(html).toContain("https://www.noktatickets.com.br/evento/abc?utm=teste");

@@ -9,7 +9,10 @@
 export async function registerAccessServiceWorker(): Promise<void> {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
   try {
-    await navigator.serviceWorker.register("/access-sw.js", { scope: "/dashboard/check-in/" });
+    // SEM barra final: o match de escopo de SW é prefixo de string cru —
+    // "/dashboard/check-in/" NÃO cobre a própria página "/dashboard/check-in"
+    // (sem barra), que é exatamente a URL real desta tela.
+    await navigator.serviceWorker.register("/access-sw.js", { scope: "/dashboard/check-in" });
   } catch {
     // Falha de registro nunca deve quebrar a tela — o app funciona sem SW
     // (só perde o cache do app shell para reload 100% offline); a

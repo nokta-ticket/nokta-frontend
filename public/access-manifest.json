@@ -3,7 +3,7 @@
   "short_name": "Nokta Access",
   "description": "Scanner de check-in offline da Nokta.",
   "start_url": "/dashboard/check-in",
-  "scope": "/dashboard/check-in/",
+  "scope": "/dashboard/check-in",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#0a0a0a",
