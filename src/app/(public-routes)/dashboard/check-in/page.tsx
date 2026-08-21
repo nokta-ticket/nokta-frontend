@@ -52,9 +52,20 @@ export default function ValidarIngressoPage() {
   const [snapshotReady, setSnapshotReady] = useState(false);
   const [snapshotSyncing, setSnapshotSyncing] = useState(false);
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
+  // Sem app nativo nem beforeinstallprompt (iOS não dispara esse evento —
+  // só Android/Chrome), a única forma de o operador reabrir esta tela sem
+  // digitar a URL de novo é instalar via "Adicionar à Tela de Início". O
+  // aviso some sozinho assim que a página roda em standalone (já instalada).
+  const [showInstallHint, setShowInstallHint] = useState(false);
 
   useEffect(() => {
     registerAccessServiceWorker();
+  }, []);
+
+  useEffect(() => {
+    const isStandalone =
+      window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone === true;
+    setShowInstallHint(!isStandalone);
   }, []);
 
   useEffect(() => {
@@ -262,6 +273,14 @@ export default function ValidarIngressoPage() {
             Voltar ao painel
           </Link>
         </div>
+
+        {showInstallHint && (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+            Para reabrir esta tela rapidamente depois (sem digitar o link de novo), toque em{" "}
+            <strong>Compartilhar</strong> e depois em <strong>&quot;Adicionar à Tela de Início&quot;</strong>. Isso cria um
+            atalho que abre direto aqui.
+          </div>
+        )}
 
         <div className="flex items-center justify-between gap-3 text-sm">
           <div className={`flex items-center gap-1.5 ${isOnline ? "text-muted-foreground" : "text-amber-600"}`}>
