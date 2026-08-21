@@ -38,7 +38,15 @@ export async function downloadAndVerifySnapshot(config: DeviceConfig): Promise<S
   const hashBuffer = await crypto.subtle.digest("SHA-256", gzipped);
   const actualHash = Array.from(new Uint8Array(hashBuffer)).map((b) => b.toString(16).padStart(2, "0")).join("");
   if (actualHash !== contentHash) {
-    throw new Error("Hash do snapshot baixado não confere — download corrompido, tente novamente.");
+    // Diagnóstico temporário (2026-08-21): tamanho/magic-bytes do corpo
+    // recebido, mais os dois hashes, para diferenciar "algo na borda
+    // (Cloudflare/CDN) descomprimiu ou truncou a resposta" de "hash do
+    // servidor está errado por outro motivo".
+    const magicBytes = gzipped.length >= 2 ? `${gzipped[0].toString(16)} ${gzipped[1].toString(16)}` : "vazio";
+    const contentEncoding = res.headers.get("Content-Encoding") ?? "(ausente)";
+    throw new Error(
+      `Hash não confere — recebido=${actualHash.slice(0, 12)} esperado=${contentHash.slice(0, 12)} bytes=${gzipped.length} magic=${magicBytes} content-encoding=${contentEncoding}`,
+    );
   }
 
   const jsonText = await new Response(gzipped).arrayBuffer().then((buf) => decompressGzip(buf));
