@@ -141,6 +141,15 @@ export default function ValidarIngressoPage() {
     const config = await getDeviceConfig();
     if (!config) return false;
     const result = await validateOffline(config.eventId, code);
+    // Toast imediato (nunca só o card): o card fica abaixo da área da
+    // câmera, que no scanner por QR pode ficar fora da viewport visível até
+    // o usuário rolar a tela — sem o toast, "validou ou não?" ficava sem
+    // resposta perceptível na hora.
+    if (result.outcome === "ACCEPTED") {
+      toast.success(`Ingresso válido (offline) — ${result.message}`);
+    } else {
+      toast.error(`Ingresso não aceito (offline) — ${result.message}`);
+    }
     setScans((prev) => [{ codigo: code, outcome: result.outcome, mensagem: result.message, origem: "offline", synced: false }, ...prev]);
     setCodigo("");
     await refreshPendingCount(config.eventId);
@@ -176,7 +185,9 @@ export default function ValidarIngressoPage() {
 
         if (res.ok) {
           const data = await res.json().catch(() => ({}));
-          setScans((prev) => [{ codigo: code, outcome: "válido", mensagem: data.eventName ?? "Validado online", origem: "online", synced: true }, ...prev]);
+          const mensagem = data.eventName ?? "Validado online";
+          toast.success(`Ingresso válido — ${mensagem}`);
+          setScans((prev) => [{ codigo: code, outcome: "válido", mensagem, origem: "online", synced: true }, ...prev]);
           setCodigo("");
           return;
         }
@@ -215,6 +226,15 @@ export default function ValidarIngressoPage() {
   const handleToogleScan = () => {
     setIsScanning((prev) => !prev);
   };
+
+  function handleScanError(error: unknown) {
+    // Sem isso, permissão de câmera negada / sem câmera disponível falhava
+    // completamente em silêncio — a tela ficava com a área do scanner
+    // parada, sem nenhum indício do que deu errado.
+    setIsScanning(false);
+    const message = error instanceof Error ? error.message : "Não foi possível acessar a câmera.";
+    toast.error(`Câmera indisponível — ${message}`);
+  }
 
   async function scanResult(result: IDetectedBarcode[]) {
     if (result[0]) {
@@ -290,8 +310,14 @@ export default function ValidarIngressoPage() {
         </Button>
 
         {isScanning && (
-          <div className="w-xl mx-auto">
-            <Scanner sound={false} onScan={scanResult} />
+          // w-xl não é uma classe Tailwind válida (faltava o prefixo max-)
+          // — sem limite de largura nenhum, o <Scanner> (que ocupa 100% do
+          // pai) explodia além da tela no mobile, com scroll horizontal e
+          // vertical quebrados. max-w-sm + aspect-square trava a câmera num
+          // quadrado que sempre cabe na viewport, overflow-hidden evita
+          // qualquer vazamento do vídeo interno da lib.
+          <div className="mx-auto w-full max-w-sm aspect-square overflow-hidden rounded-lg">
+            <Scanner sound={false} onScan={scanResult} onError={handleScanError} />
           </div>
         )}
 
