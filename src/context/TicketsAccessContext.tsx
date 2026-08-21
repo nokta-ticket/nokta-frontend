@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ticketsAccessApi, type TicketsMeAccess, type TicketsRoleKey } from "@/services/promoters";
 import { useOrganizations } from "./OrganizationContext";
 
@@ -16,34 +17,24 @@ interface TicketsAccessContextType {
 
 const TicketsAccessContext = createContext<TicketsAccessContextType | undefined>(undefined);
 
+const ticketsAccessQueryKey = (orgId: number) => ["organizations", orgId, "tickets", "access"] as const;
+
 export function TicketsAccessProvider({ children }: { children: ReactNode }) {
   const { currentOrg } = useOrganizations();
-  const [access, setAccess] = useState<TicketsMeAccess | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [version, setVersion] = useState(0);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (!currentOrg) {
-      setAccess(null);
-      setLoading(false);
-      return;
-    }
-    let active = true;
-    setLoading(true);
-    (async () => {
-      try {
-        const res = await ticketsAccessApi.getAccess(currentOrg.id);
-        if (active) setAccess(res);
-      } catch {
-        if (active) setAccess(null);
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [currentOrg, version]);
+  // Achado de performance mobile (2026-08-21): ver comentário equivalente
+  // em OrganizationContext.tsx — cacheado via useQuery em vez de
+  // useState/useEffect cru, pra não refazer esta chamada em toda
+  // navegação do dashboard.
+  const query = useQuery({
+    queryKey: ticketsAccessQueryKey(currentOrg?.id ?? -1),
+    queryFn: () => ticketsAccessApi.getAccess(currentOrg!.id),
+    enabled: currentOrg !== null,
+  });
+
+  const access = currentOrg ? (query.data ?? null) : null;
+  const loading = currentOrg !== null && query.isLoading;
 
   const ticketsModule = access?.modules.tickets ?? null;
   const permissions = new Set(ticketsModule?.permissions ?? []);
@@ -55,7 +46,11 @@ export function TicketsAccessProvider({ children }: { children: ReactNode }) {
         loading,
         ticketsRole: ticketsModule?.role ?? null,
         can: (permission: string) => permissions.has(permission),
-        refetch: () => setVersion((v) => v + 1),
+        refetch: () => {
+          if (currentOrg) {
+            void queryClient.invalidateQueries({ queryKey: ticketsAccessQueryKey(currentOrg.id) });
+          }
+        },
       }}
     >
       {children}

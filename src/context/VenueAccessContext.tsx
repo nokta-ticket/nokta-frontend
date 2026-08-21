@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/axios";
 import { useOrganizations } from "./OrganizationContext";
 import type { VenueMeAccess, VenueRoleKey } from "@/services/venue-team";
@@ -19,35 +20,27 @@ interface VenueAccessContextType {
 
 const VenueAccessContext = createContext<VenueAccessContextType | undefined>(undefined);
 
+const venueAccessQueryKey = (orgId: number) => ["organizations", orgId, "me", "access"] as const;
+
 export function VenueAccessProvider({ children }: { children: ReactNode }) {
   const { currentOrg } = useOrganizations();
-  const [access, setAccess] = useState<VenueMeAccess | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [version, setVersion] = useState(0);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (!currentOrg) {
-      setAccess(null);
-      setLoading(false);
-      return;
-    }
-    let active = true;
-    setLoading(true);
-    (async () => {
-      try {
-        const res = await api.get<VenueMeAccess>(`/organizations/${currentOrg.id}/me/access`);
-        if (active) setAccess(res.data);
-      } catch {
-        if (active) setAccess(null);
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentOrg, version]);
+  // Achado de performance mobile (2026-08-21): ver comentário equivalente
+  // em OrganizationContext.tsx — cacheado via useQuery em vez de
+  // useState/useEffect cru, pra não refazer esta chamada em toda
+  // navegação do dashboard.
+  const query = useQuery({
+    queryKey: venueAccessQueryKey(currentOrg?.id ?? -1),
+    queryFn: async () => {
+      const res = await api.get<VenueMeAccess>(`/organizations/${currentOrg!.id}/me/access`);
+      return res.data;
+    },
+    enabled: currentOrg !== null,
+  });
+
+  const access = currentOrg ? (query.data ?? null) : null;
+  const loading = currentOrg !== null && query.isLoading;
 
   const venueModule = access?.modules.venue ?? null;
   const permissions = new Set([...(venueModule?.permissions ?? []), ...(access?.organizationPermissions ?? [])]);
@@ -60,7 +53,11 @@ export function VenueAccessProvider({ children }: { children: ReactNode }) {
         venueRole: venueModule?.role ?? null,
         defaultRoute: venueModule?.defaultRoute ?? null,
         can: (permission: string) => permissions.has(permission),
-        refetch: () => setVersion((v) => v + 1),
+        refetch: () => {
+          if (currentOrg) {
+            void queryClient.invalidateQueries({ queryKey: venueAccessQueryKey(currentOrg.id) });
+          }
+        },
       }}
     >
       {children}

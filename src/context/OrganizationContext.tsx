@@ -1,12 +1,7 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/axios";
 
 export interface Organization {
@@ -43,70 +38,67 @@ const OrganizationContext = createContext<OrganizationContextType | undefined>(
   undefined,
 );
 
+const organizationsQueryKey = ["me", "organizations"] as const;
+const modulesQueryKey = (orgId: number) => ["organizations", orgId, "modules"] as const;
+
 export function OrganizationProvider({ children }: { children: ReactNode }) {
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [currentOrg, setCurrentOrg] = useState<Organization | null>(null);
-  const [modules, setModules] = useState<OrgModule[]>([]);
-  const [loadingOrgs, setLoadingOrgs] = useState(true);
-  // Id da org para a qual `modules` (acima) já reflete uma resposta real da
-  // API (ou null, se currentOrg é null) — nunca "true/false" solto. Comparar
-  // contra currentOrg?.id na hora de derivar loadingModules (abaixo, fora de
-  // qualquer efeito) fecha a janela de um render em que loadingOrgs já virou
-  // false e currentOrg já existe, mas o efeito de módulos ainda não rodou:
-  // nesse render intermediário modules ainda seria [] com um loadingModules
-  // baseado em useState ficaria false (default), e InicioDispatcher
-  // (dashboard/inicio/page.tsx) lia isso como "org sem nenhum módulo ativo",
-  // redirecionando pra /dashboard/onboarding SEMPRE (não só às vezes — é
-  // ordem de commit/efeito do React, não race de rede) mesmo pra quem já
-  // tinha concluído o onboarding.
-  const [modulesResolvedForOrgId, setModulesResolvedForOrgId] = useState<number | null>(null);
-  const loadingModules = currentOrg !== null && modulesResolvedForOrgId !== currentOrg.id;
-
-  const fetchOrganizations = async () => {
-    try {
+  const queryClient = useQueryClient();
+  // Achado de performance mobile (2026-08-21): OrganizationContext,
+  // VenueAccessContext e TicketsAccessContext refaziam suas chamadas de API
+  // do zero (useState/useEffect cru, sem cache) toda vez que o dashboard
+  // montava — em 4G, com ~200-400ms de latência por requisição, a cascata
+  // (/me/organizations → depois, em paralelo, /organizations/:id/modules +
+  // /me/access + tickets access) ficava bem visível a cada navegação.
+  // Migrado para useQuery (DashboardQueryProvider já existia no layout, mas
+  // nenhum destes 3 contexts o usava) — staleTime de 60s faz revisitar uma
+  // aba já carregada aparecer na hora, com revalidação silenciosa atrás.
+  const organizationsQuery = useQuery({
+    queryKey: organizationsQueryKey,
+    queryFn: async () => {
       const res = await api.get<Organization[]>("/me/organizations");
-      setOrganizations(res.data ?? []);
-      setCurrentOrg((prev) => res.data?.find((o) => o.id === prev?.id) ?? res.data?.[0] ?? null);
-    } catch {
-      setOrganizations([]);
-    } finally {
-      setLoadingOrgs(false);
-    }
-  };
+      return res.data ?? [];
+    },
+  });
 
-  // Carrega as organizations do usuário logado.
-  useEffect(() => {
-    fetchOrganizations();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const organizations = organizationsQuery.data ?? [];
+  const loadingOrgs = organizationsQuery.isLoading;
 
-  // Carrega os módulos da org atual — refaz sempre que troca de org.
-  useEffect(() => {
-    if (!currentOrg) {
-      setModules([]);
-      return;
-    }
-    let active = true;
-    (async () => {
-      try {
-        const res = await api.get<{ organizationId: number; modules: OrgModule[] }>(
-          `/organizations/${currentOrg.id}/modules`,
-        );
-        if (active) setModules(res.data?.modules ?? []);
-      } catch {
-        if (active) setModules([]);
-      } finally {
-        if (active) setModulesResolvedForOrgId(currentOrg.id);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [currentOrg]);
+  // currentOrg é estado local (não deriva puramente do cache): o usuário
+  // pode trocar de organização manualmente (selectOrg), e isso precisa
+  // sobreviver a uma revalidação silenciosa de organizationsQuery em
+  // segundo plano. Sincroniza só quando ainda não há seleção, ou quando a
+  // seleção atual sumiu da lista (organização removida/perdeu acesso).
+  const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
+  const currentOrg =
+    organizations.find((o) => o.id === selectedOrgId) ??
+    organizations[0] ??
+    null;
+
+  const modulesQuery = useQuery({
+    queryKey: modulesQueryKey(currentOrg?.id ?? -1),
+    queryFn: async () => {
+      const res = await api.get<{ organizationId: number; modules: OrgModule[] }>(
+        `/organizations/${currentOrg!.id}/modules`,
+      );
+      return res.data?.modules ?? [];
+    },
+    enabled: currentOrg !== null,
+  });
+
+  const modules = modulesQuery.data ?? [];
+  // Mesma garantia que já existia (ver comit b27d8d2, InicioDispatcher —
+  // race condition): loadingModules nunca é um boolean solto desconectado
+  // de QUAL organização ele descreve. Com useQuery isso vem de graça — a
+  // queryKey muda com currentOrg.id, então trocar de org SEMPRE volta pra
+  // isLoading=true daquela chave nova antes de expor dado da anterior.
+  const loadingModules = currentOrg !== null && modulesQuery.isLoading;
 
   const selectOrg = (id: number) => {
-    const found = organizations.find((o) => o.id === id);
-    if (found) setCurrentOrg(found);
+    if (organizations.some((o) => o.id === id)) setSelectedOrgId(id);
+  };
+
+  const refreshOrganizations = async () => {
+    await queryClient.invalidateQueries({ queryKey: organizationsQueryKey });
   };
 
   const activeModuleKeys = modules
@@ -123,7 +115,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         loadingOrgs,
         loadingModules,
         selectOrg,
-        refreshOrganizations: fetchOrganizations,
+        refreshOrganizations,
       }}
     >
       {children}
