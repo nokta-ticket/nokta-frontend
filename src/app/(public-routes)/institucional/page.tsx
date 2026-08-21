@@ -172,7 +172,13 @@ export default function InstitucionalPage() {
               <a href="#cta" className="hover:text-[#7c3aed] transition-colors">PLATAFORMA</a>
             </nav>
             <div className="flex items-center gap-2.5 sm:gap-5">
-              <a href={entrarUrl} className="hidden text-[13px] font-[family-name:var(--lp-font-mono)] hover:text-[#7c3aed] transition-colors sm:inline">
+              {/* Bug de responsividade (2026-08-21): "Entrar" tinha `hidden
+                  ... sm:inline`, então sumia abaixo de 640px — no mobile o
+                  único link de login real ficava só no rodapé, exigindo
+                  rolar a LP inteira. Sem menu hambúrguer nesta página, o
+                  jeito certo é manter "Entrar" sempre visível ao lado de
+                  "Começar agora", não escondê-lo. */}
+              <a href={entrarUrl} className="text-[13px] font-[family-name:var(--lp-font-mono)] hover:text-[#7c3aed] transition-colors">
                 Entrar
               </a>
               <a
