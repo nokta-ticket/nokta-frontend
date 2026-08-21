@@ -9,8 +9,8 @@ import { IDetectedBarcode, Scanner } from "@yudiel/react-qr-scanner";
 import { QrCode, CheckCircle2, XCircle, WifiOff, RefreshCw, ArrowLeft } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/surfaces";
 import { validateOffline } from "@/lib/access/validate-offline";
-import { getDeviceConfig, getPendingCheckins, CheckinOutcome } from "@/lib/access/db";
-import { syncPendingCheckins } from "@/lib/access/sync";
+import { getDeviceConfig, getPendingCheckins, getSnapshot, CheckinOutcome } from "@/lib/access/db";
+import { syncPendingCheckins, downloadAndVerifySnapshot } from "@/lib/access/sync";
 import { registerAccessServiceWorker } from "@/lib/access/register-sw";
 
 type ScanEntry = {
@@ -45,6 +45,12 @@ export default function ValidarIngressoPage() {
   const [pendingCount, setPendingCount] = useState(0);
   const [isOnline, setIsOnline] = useState(true);
   const [deviceEventId, setDeviceEventId] = useState<number | null>(null);
+  // Achado da auditoria de conectividade Hub 2026-08-20: downloadAndVerifySnapshot
+  // existia em sync.ts mas nunca era chamado em nenhuma tela — sem isso, o
+  // modo offline nunca funciona de verdade (validateOffline sempre recebe
+  // getSnapshot()===undefined), mesmo com um único celular sem Hub nenhum.
+  const [snapshotReady, setSnapshotReady] = useState(false);
+  const [snapshotSyncing, setSnapshotSyncing] = useState(false);
 
   useEffect(() => {
     registerAccessServiceWorker();
@@ -71,6 +77,41 @@ export default function ValidarIngressoPage() {
     if (!deviceEventId) return;
     refreshPendingCount(deviceEventId);
   }, [deviceEventId]);
+
+  // Baixa o snapshot assim que o dispositivo estiver pareado e a página
+  // souber o evento — é o download em si que falta pra qualquer coisa
+  // offline funcionar. Roda de novo sempre que a conexão volta (evento
+  // "online" do navegador), pra pegar snapshot atualizado antes do próximo
+  // corte de rede. Falha (sem internet ainda, servidor fora) é silenciosa
+  // e não trava a tela — o app segue com o snapshot antigo do IndexedDB,
+  // se houver.
+  useEffect(() => {
+    if (!deviceEventId) return;
+    getSnapshot(deviceEventId).then((existing) => setSnapshotReady(!!existing));
+    void trySnapshotDownload(deviceEventId);
+  }, [deviceEventId]);
+
+  useEffect(() => {
+    if (!deviceEventId || !isOnline) return;
+    void trySnapshotDownload(deviceEventId);
+  }, [isOnline, deviceEventId]);
+
+  async function trySnapshotDownload(eventId: number) {
+    const config = await getDeviceConfig();
+    if (!config) return;
+    setSnapshotSyncing(true);
+    try {
+      await downloadAndVerifySnapshot(config);
+      setSnapshotReady(true);
+    } catch {
+      // Sem internet ainda, ou snapshot não preparado no backend
+      // ("Preparar operação offline" não foi clicado) — silencioso, tenta
+      // de novo na próxima janela online. Se já existir um snapshot salvo
+      // de uma sincronização anterior, snapshotReady continua true.
+    } finally {
+      setSnapshotSyncing(false);
+    }
+  }
 
   async function refreshPendingCount(eventId: number) {
     const pending = await getPendingCheckins(eventId);
@@ -202,6 +243,11 @@ export default function ValidarIngressoPage() {
             {!isOnline && <WifiOff className="w-4 h-4" />}
             {isOnline ? "Conectado" : "Sem internet — validando offline"}
           </div>
+          {!snapshotReady && (
+            <span className="text-xs text-amber-600">
+              {snapshotSyncing ? "Baixando snapshot offline…" : "Snapshot offline não preparado"}
+            </span>
+          )}
           {pendingCount > 0 && (
             <button
               type="button"
