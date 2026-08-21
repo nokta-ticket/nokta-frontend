@@ -8,7 +8,6 @@ import {
   Settings,
   Tag,
   BarChart2,
-  ShieldCheck,
   Users,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
@@ -21,6 +20,14 @@ export interface SectionMeta {
   comingSoon?: boolean
 }
 
+// "access" (Nokta Access, check-in offline) desativado a pedido do usuário
+// em 2026-08-21: o modelo exige um roteador Wi-Fi físico dedicado no local
+// do evento pra conectar os celulares ao Hub sem internet — infraestrutura
+// considerada gambiarra demais frente a alternativas mais simples (ex.
+// Starlink garantindo internet ao cliente). Módulo mantido no código
+// (nunca apagado, ver EventFreezeModule que ainda depende de
+// AccessSnapshotService/AccessOperationalLogService), só a aba sumiu da
+// UI. Ver comentário equivalente em nokta-api/.../access.module.ts.
 export const SECTIONS: SectionMeta[] = [
   { key: "visao-geral",   label: "Visão Geral",   icon: LayoutDashboard },
   { key: "informacoes",   label: "Informações",   icon: Info },
@@ -32,7 +39,6 @@ export const SECTIONS: SectionMeta[] = [
   { key: "cupons",        label: "Cupons",        icon: Tag },
   { key: "vendas",        label: "Vendas",        icon: BarChart2 },
   { key: "equipe",        label: "Equipe",         icon: Users },
-  { key: "access",        label: "Nokta Access",  icon: ShieldCheck },
 ]
 
 export const DEFAULT_SECTION = "visao-geral"

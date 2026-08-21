@@ -28,6 +28,10 @@ const SECTION_COMPONENTS: Record<string, React.ComponentType<SectionProps>> = {
   "cupons":        SectionCupons,
   "vendas":        SectionVendas,
   "equipe":        SectionEquipe,
+  // "access" (Nokta Access) removido de SECTIONS (ver section-registry.ts)
+  // — mapeamento mantido de propósito, só sem link nenhum apontando pra cá
+  // (?tab=access ainda technically renderiza se alguém digitar a URL, mas
+  // é inacessível na prática sem nenhum botão/aba visível).
   "access":        SectionAccess,
 }
 

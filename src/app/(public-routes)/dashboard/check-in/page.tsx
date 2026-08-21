@@ -1,172 +1,35 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/lib/toast";
 import { IDetectedBarcode, Scanner } from "@yudiel/react-qr-scanner";
-import { QrCode, CheckCircle2, XCircle, WifiOff, RefreshCw, ArrowLeft } from "lucide-react";
+import { QrCode, CheckCircle2, XCircle, ArrowLeft } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/surfaces";
-import { validateOffline } from "@/lib/access/validate-offline";
-import { getDeviceConfig, getPendingCheckins, getSnapshot, CheckinOutcome } from "@/lib/access/db";
-import { syncPendingCheckins, downloadAndVerifySnapshot } from "@/lib/access/sync";
-import { registerAccessServiceWorker } from "@/lib/access/register-sw";
 
 type ScanEntry = {
   codigo: string;
-  outcome: CheckinOutcome | "válido" | "inválido"; // "válido"/"inválido" cobre o caminho online legado
+  outcome: "válido" | "inválido";
   mensagem: string;
-  origem: "online" | "offline";
-  synced: boolean;
 };
 
-const ONLINE_TIMEOUT_MS = 3000;
-
-function outcomeIsPositive(outcome: ScanEntry["outcome"]): boolean {
-  return outcome === "válido" || outcome === "ACCEPTED";
-}
-
 /**
- * Tela do scanner de check-in — vive em (public-routes) DE PROPÓSITO: o
- * dispositivo físico pareado (via /dashboard/access-pairing) nunca tem
- * sessão de usuário, então esta página não pode depender do layout do
- * dashboard (OrganizationProvider etc. chamam a API autenticada via axios,
- * cujo interceptor de 401 redireciona pro login). A validação ONLINE usa
- * `fetch` direto com a sessão SE ela existir (operador logado); sem sessão
- * (401/403), cai pro fluxo offline do dispositivo pareado — nunca desloga
- * nem redireciona.
+ * Tela de check-in — valida ingressos contra a API (POST /tickets/validar)
+ * usando a sessão do operador logado. Fica em (public-routes) porque
+ * historicamente também servia um fluxo offline sem sessão (Nokta Access,
+ * desativado em 2026-08-21 — exigia roteador Wi-Fi físico dedicado no
+ * local do evento, infraestrutura considerada gambiarra demais frente a
+ * alternativas mais simples em avaliação). O código do modo offline/Hub
+ * (src/lib/access/*, nokta-access-hub/) foi mantido no repositório, só
+ * removido desta tela.
  */
 export default function ValidarIngressoPage() {
   const [codigo, setCodigo] = useState("");
   const [scans, setScans] = useState<ScanEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [isOnline, setIsOnline] = useState(true);
-  const [deviceEventId, setDeviceEventId] = useState<number | null>(null);
-  // Achado da auditoria de conectividade Hub 2026-08-20: downloadAndVerifySnapshot
-  // existia em sync.ts mas nunca era chamado em nenhuma tela — sem isso, o
-  // modo offline nunca funciona de verdade (validateOffline sempre recebe
-  // getSnapshot()===undefined), mesmo com um único celular sem Hub nenhum.
-  const [snapshotReady, setSnapshotReady] = useState(false);
-  const [snapshotSyncing, setSnapshotSyncing] = useState(false);
-  const [snapshotError, setSnapshotError] = useState<string | null>(null);
-  // Sem app nativo nem beforeinstallprompt (iOS não dispara esse evento —
-  // só Android/Chrome), a única forma de o operador reabrir esta tela sem
-  // digitar a URL de novo é instalar via "Adicionar à Tela de Início". O
-  // aviso some sozinho assim que a página roda em standalone (já instalada).
-  const [showInstallHint, setShowInstallHint] = useState(false);
-
-  useEffect(() => {
-    registerAccessServiceWorker();
-  }, []);
-
-  useEffect(() => {
-    const isStandalone =
-      window.matchMedia("(display-mode: standalone)").matches || (window.navigator as any).standalone === true;
-    setShowInstallHint(!isStandalone);
-  }, []);
-
-  useEffect(() => {
-    const update = () => setIsOnline(navigator.onLine);
-    update();
-    window.addEventListener("online", update);
-    window.addEventListener("offline", update);
-    return () => {
-      window.removeEventListener("online", update);
-      window.removeEventListener("offline", update);
-    };
-  }, []);
-
-  useEffect(() => {
-    getDeviceConfig().then((config) => {
-      if (config) setDeviceEventId(config.eventId);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!deviceEventId) return;
-    refreshPendingCount(deviceEventId);
-  }, [deviceEventId]);
-
-  // Baixa o snapshot assim que o dispositivo estiver pareado e a página
-  // souber o evento — é o download em si que falta pra qualquer coisa
-  // offline funcionar. Roda de novo sempre que a conexão volta (evento
-  // "online" do navegador), pra pegar snapshot atualizado antes do próximo
-  // corte de rede. Falha (sem internet ainda, servidor fora) é silenciosa
-  // e não trava a tela — o app segue com o snapshot antigo do IndexedDB,
-  // se houver.
-  useEffect(() => {
-    if (!deviceEventId) return;
-    getSnapshot(deviceEventId).then((existing) => setSnapshotReady(!!existing));
-    void trySnapshotDownload(deviceEventId);
-  }, [deviceEventId]);
-
-  useEffect(() => {
-    if (!deviceEventId || !isOnline) return;
-    void trySnapshotDownload(deviceEventId);
-  }, [isOnline, deviceEventId]);
-
-  async function trySnapshotDownload(eventId: number) {
-    const config = await getDeviceConfig();
-    if (!config) return;
-    setSnapshotSyncing(true);
-    try {
-      await downloadAndVerifySnapshot(config);
-      setSnapshotReady(true);
-      setSnapshotError(null);
-    } catch (err) {
-      // Sem internet ainda, ou snapshot não preparado no backend
-      // ("Preparar operação offline" não foi clicado) — tenta de nervo na
-      // próxima janela online. Se já existir um snapshot salvo de uma
-      // sincronização anterior, snapshotReady continua true. A mensagem é
-      // exposta na tela (diagnóstico temporário) porque iOS Safari não tem
-      // console remoto acessível sem Mac.
-      setSnapshotError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSnapshotSyncing(false);
-    }
-  }
-
-  async function refreshPendingCount(eventId: number) {
-    const pending = await getPendingCheckins(eventId);
-    setPendingCount(pending.length);
-  }
-
-  async function trySync() {
-    if (!deviceEventId) return;
-    try {
-      const { sent, conflicts } = await syncPendingCheckins(deviceEventId);
-      if (sent > 0) {
-        toast.success(`${sent} check-in(s) sincronizado(s)${conflicts > 0 ? ` — ${conflicts} conflito(s) detectado(s)` : ""}.`);
-        await refreshPendingCount(deviceEventId);
-      }
-    } catch {
-      // Sem internet ainda — silencioso, tenta de novo na próxima
-      // oportunidade (próxima validação, ou o próximo clique manual).
-    }
-  }
-
-  async function validarOffline(code: string): Promise<boolean> {
-    const config = await getDeviceConfig();
-    if (!config) return false;
-    const result = await validateOffline(config.eventId, code);
-    // Toast imediato (nunca só o card): o card fica abaixo da área da
-    // câmera, que no scanner por QR pode ficar fora da viewport visível até
-    // o usuário rolar a tela — sem o toast, "validou ou não?" ficava sem
-    // resposta perceptível na hora.
-    if (result.outcome === "ACCEPTED") {
-      toast.success(`Ingresso válido (offline) — ${result.message}`);
-    } else {
-      toast.error(`Ingresso não aceito (offline) — ${result.message}`);
-    }
-    setScans((prev) => [{ codigo: code, outcome: result.outcome, mensagem: result.message, origem: "offline", synced: false }, ...prev]);
-    setCodigo("");
-    await refreshPendingCount(config.eventId);
-    void trySync(); // tenta sincronizar em background, sem bloquear a próxima leitura
-    return true;
-  }
 
   const validarIngresso = async (code: string) => {
     if (!code.trim()) {
@@ -176,59 +39,29 @@ export default function ValidarIngressoPage() {
 
     setLoading(true);
     try {
-      // Caminho feliz: tenta online primeiro, com timeout curto. `fetch`
-      // direto (nunca o axios `api`): o interceptor global de 401 do axios
-      // redireciona pro login, o que destruiria a tela num dispositivo
-      // pareado sem sessão. Aqui, 401/403 significa "sem sessão de usuário"
-      // e cai pro fluxo offline do dispositivo; só erro de NEGÓCIO com
-      // sessão válida (400 etc.) é tratado como rejeição online normal.
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), ONLINE_TIMEOUT_MS);
-      try {
-        const res = await fetch(`${getApiBaseUrl()}/tickets/validar`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ code }),
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
+      const res = await fetch(`${getApiBaseUrl()}/tickets/validar`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ code }),
+      });
 
-        if (res.ok) {
-          const data = await res.json().catch(() => ({}));
-          const mensagem = data.eventName ?? "Validado online";
-          toast.success(`Ingresso válido — ${mensagem}`);
-          setScans((prev) => [{ codigo: code, outcome: "válido", mensagem, origem: "online", synced: true }, ...prev]);
-          setCodigo("");
-          return;
-        }
-
-        if (res.status === 401 || res.status === 403) {
-          // Sem sessão de usuário (ou sem permissão de sessão) — dispositivo
-          // pareado valida offline; sem pareamento, não há o que fazer.
-          const handled = await validarOffline(code);
-          if (!handled) {
-            toast.error("Sem sessão e nenhum dispositivo pareado — faça login ou pareie este dispositivo em /dashboard/access-pairing.");
-          }
-          return;
-        }
-
-        // Erro de NEGÓCIO (o backend respondeu) — não é caso de fallback offline.
-        const body = await res.json().catch(() => ({}));
-        const mensagem = body?.message ?? "Ingresso inválido.";
-        toast.error(mensagem);
-        setScans((prev) => [{ codigo: code, outcome: "inválido", mensagem, origem: "online", synced: true }, ...prev]);
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const mensagem = data.eventName ?? "Validado";
+        toast.success(`Ingresso válido — ${mensagem}`);
+        setScans((prev) => [{ codigo: code, outcome: "válido", mensagem }, ...prev]);
         setCodigo("");
         return;
-      } catch {
-        clearTimeout(timeoutId);
-        // Sem resposta do servidor (rede caiu, timeout) — cai para offline.
       }
 
-      const handled = await validarOffline(code);
-      if (!handled) {
-        toast.error("Sem conexão e nenhum dispositivo offline pareado — não é possível validar agora.");
-      }
+      const body = await res.json().catch(() => ({}));
+      const mensagem = body?.message ?? "Ingresso inválido.";
+      toast.error(mensagem);
+      setScans((prev) => [{ codigo: code, outcome: "inválido", mensagem }, ...prev]);
+      setCodigo("");
+    } catch {
+      toast.error("Sem conexão com o servidor — tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -259,9 +92,6 @@ export default function ValidarIngressoPage() {
     // Shell próprio (mesmo padrão fixed inset-0 do dashboard) — cobre o
     // header/footer públicos do RootLayout sem depender do layout privado.
     <main className="fixed inset-0 overflow-y-auto bg-[#faf9fd] text-foreground">
-      {/* Next hoisted este <link> para o <head> automaticamente — escopado
-          só a esta página, nunca vira link global do site. */}
-      <link rel="manifest" href="/access-manifest.json" />
       <div className="mx-auto w-full max-w-2xl space-y-6 p-4 lg:p-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
@@ -272,39 +102,6 @@ export default function ValidarIngressoPage() {
             <ArrowLeft className="h-4 w-4" />
             Voltar ao painel
           </Link>
-        </div>
-
-        {showInstallHint && (
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
-            Para reabrir esta tela rapidamente depois (sem digitar o link de novo), toque em{" "}
-            <strong>Compartilhar</strong> e depois em <strong>&quot;Adicionar à Tela de Início&quot;</strong>. Isso cria um
-            atalho que abre direto aqui.
-          </div>
-        )}
-
-        <div className="flex items-center justify-between gap-3 text-sm">
-          <div className={`flex items-center gap-1.5 ${isOnline ? "text-muted-foreground" : "text-amber-600"}`}>
-            {!isOnline && <WifiOff className="w-4 h-4" />}
-            {isOnline ? "Conectado" : "Sem internet — validando offline"}
-          </div>
-          {!snapshotReady && (
-            <span className="text-xs text-amber-600">
-              {snapshotSyncing ? "Baixando snapshot offline…" : "Snapshot offline não preparado"}
-              {snapshotError && !snapshotSyncing && (
-                <span className="block text-[10px] text-red-600">Erro: {snapshotError}</span>
-              )}
-            </span>
-          )}
-          {pendingCount > 0 && (
-            <button
-              type="button"
-              onClick={trySync}
-              className="flex items-center gap-1.5 text-amber-600 hover:underline"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              {pendingCount} pendente(s) de sincronização
-            </button>
-          )}
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
@@ -329,12 +126,6 @@ export default function ValidarIngressoPage() {
         </Button>
 
         {isScanning && (
-          // w-xl não é uma classe Tailwind válida (faltava o prefixo max-)
-          // — sem limite de largura nenhum, o <Scanner> (que ocupa 100% do
-          // pai) explodia além da tela no mobile, com scroll horizontal e
-          // vertical quebrados. max-w-sm + aspect-square trava a câmera num
-          // quadrado que sempre cabe na viewport, overflow-hidden evita
-          // qualquer vazamento do vídeo interno da lib.
           <div className="mx-auto w-full max-w-sm aspect-square overflow-hidden rounded-lg">
             <Scanner sound={false} onScan={scanResult} onError={handleScanError} />
           </div>
@@ -342,7 +133,7 @@ export default function ValidarIngressoPage() {
 
         <div className="space-y-3">
           {scans.map((scan, idx) => {
-            const ok = outcomeIsPositive(scan.outcome);
+            const ok = scan.outcome === "válido";
             return (
               <div
                 key={`${scan.codigo}-${idx}`}
@@ -353,11 +144,6 @@ export default function ValidarIngressoPage() {
                 <div className="flex items-center gap-2 text-xl font-semibold">
                   {ok ? <CheckCircle2 className="w-6 h-6" /> : <XCircle className="w-6 h-6" />}
                   {ok ? "Ingresso Válido" : "Ingresso Inválido"}
-                  {scan.origem === "offline" && (
-                    <span className="ml-auto text-xs font-normal px-2 py-0.5 rounded-full bg-white/60 border">
-                      {scan.synced ? "sincronizado" : "offline · pendente"}
-                    </span>
-                  )}
                 </div>
                 <div className="mt-3 space-y-1 text-sm">
                   <p>
