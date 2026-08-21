@@ -51,6 +51,7 @@ export default function ValidarIngressoPage() {
   // getSnapshot()===undefined), mesmo com um único celular sem Hub nenhum.
   const [snapshotReady, setSnapshotReady] = useState(false);
   const [snapshotSyncing, setSnapshotSyncing] = useState(false);
+  const [snapshotError, setSnapshotError] = useState<string | null>(null);
 
   useEffect(() => {
     registerAccessServiceWorker();
@@ -103,11 +104,15 @@ export default function ValidarIngressoPage() {
     try {
       await downloadAndVerifySnapshot(config);
       setSnapshotReady(true);
-    } catch {
+      setSnapshotError(null);
+    } catch (err) {
       // Sem internet ainda, ou snapshot não preparado no backend
-      // ("Preparar operação offline" não foi clicado) — silencioso, tenta
-      // de novo na próxima janela online. Se já existir um snapshot salvo
-      // de uma sincronização anterior, snapshotReady continua true.
+      // ("Preparar operação offline" não foi clicado) — tenta de nervo na
+      // próxima janela online. Se já existir um snapshot salvo de uma
+      // sincronização anterior, snapshotReady continua true. A mensagem é
+      // exposta na tela (diagnóstico temporário) porque iOS Safari não tem
+      // console remoto acessível sem Mac.
+      setSnapshotError(err instanceof Error ? err.message : String(err));
     } finally {
       setSnapshotSyncing(false);
     }
@@ -246,6 +251,9 @@ export default function ValidarIngressoPage() {
           {!snapshotReady && (
             <span className="text-xs text-amber-600">
               {snapshotSyncing ? "Baixando snapshot offline…" : "Snapshot offline não preparado"}
+              {snapshotError && !snapshotSyncing && (
+                <span className="block text-[10px] text-red-600">Erro: {snapshotError}</span>
+              )}
             </span>
           )}
           {pendingCount > 0 && (
