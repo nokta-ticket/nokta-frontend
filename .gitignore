@@ -38,6 +38,11 @@ yarn-error.log*
 
 # impeccable (ephemeral state/config, ver docs do pacote)
 .impeccable/
+.github/hooks/
+.github/skills/
+
+# claude code (config local, nunca deve ser versionado)
+.claude/
 
 # typescript
 *.tsbuildinfo
