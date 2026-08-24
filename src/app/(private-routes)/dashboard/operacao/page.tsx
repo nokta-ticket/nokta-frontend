@@ -26,11 +26,12 @@ import { MesasTab } from "./_components/mesas-tab";
 import { ComandasTab } from "./_components/comandas-tab";
 import { PedidosTab } from "./_components/pedidos-tab";
 import { CaixaTab } from "./_components/caixa-tab";
+import { TerminaisTab } from "./_components/terminais-tab";
 import { CreateTabDialog } from "./_components/create-tab-dialog";
 import { TabDetailSheet } from "./_components/tab-detail-sheet";
 import { OrderBuilderSheet } from "./_components/order-builder-sheet";
 
-type TabKey = "mesas" | "comandas" | "pedidos" | "caixa";
+type TabKey = "mesas" | "comandas" | "pedidos" | "caixa" | "terminais";
 
 function CashStatusPill({ orgId, locationId }: { orgId: number; locationId: number }) {
   const { data: registers } = useVenueCashRegisters(orgId, locationId);
@@ -61,6 +62,7 @@ const TAB_PERMISSIONS: Record<TabKey, string[]> = {
   comandas: ["venue.operation.tabs.view"],
   pedidos: ["venue.operation.orders.view", "venue.operation.preparation.view"],
   caixa: ["venue.operation.cash.manage"],
+  terminais: ["venue.operation.devices.manage"],
 };
 
 const ALL_TABS: { key: TabKey; label: string }[] = [
@@ -68,6 +70,7 @@ const ALL_TABS: { key: TabKey; label: string }[] = [
   { key: "comandas", label: "Comandas" },
   { key: "pedidos", label: "Pedidos" },
   { key: "caixa", label: "Caixa" },
+  { key: "terminais", label: "Terminais" },
 ];
 
 function VenueOperacaoPageContent() {
@@ -223,6 +226,11 @@ function VenueOperacaoPageContent() {
         {visibleTabs.some((t) => t.key === "caixa") ? (
           <TabsContent value="caixa">
             <CaixaTab orgId={orgId} locationId={selectedLocationId} />
+          </TabsContent>
+        ) : null}
+        {visibleTabs.some((t) => t.key === "terminais") ? (
+          <TabsContent value="terminais">
+            <TerminaisTab orgId={orgId} locationId={selectedLocationId} />
           </TabsContent>
         ) : null}
       </Tabs>

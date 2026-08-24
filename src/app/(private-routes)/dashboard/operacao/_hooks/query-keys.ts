@@ -4,6 +4,7 @@ export const opKeys = {
   areas: (orgId: number, locationId: number) => ["op", orgId, "areas", locationId] as const,
   tables: (orgId: number, locationId: number) => ["op", orgId, "tables", locationId] as const,
   cashRegisters: (orgId: number, locationId: number) => ["op", orgId, "cashRegisters", locationId] as const,
+  devices: (orgId: number, locationId: number) => ["op", orgId, "devices", locationId] as const,
   cashSessions: (orgId: number, locationId: number) => ["op", orgId, "cashSessions", locationId] as const,
   cashSession: (orgId: number, sessionId: number) => ["op", orgId, "cashSession", sessionId] as const,
   tabs: (orgId: number, locationId: number, filters: Record<string, unknown>) =>

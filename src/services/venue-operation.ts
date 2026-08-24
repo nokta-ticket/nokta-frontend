@@ -83,6 +83,20 @@ export interface VenueCashRegister {
   openSession: VenueCashRegisterOpenSessionInfo | null;
 }
 
+export interface VenueDevice {
+  id: number;
+  organizationId: number;
+  locationId: number;
+  label: string;
+  pairedByUserId: number | null;
+  deviceToken: string | null;
+  pairingCode: string | null;
+  pairingCodeExpiresAt: string | null;
+  lastSeenAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
 export interface VenueCashMovement {
   id: number;
   organizationId: number;
@@ -296,6 +310,16 @@ export interface CreateVenueCashRegisterPayload {
 }
 export type UpdateVenueCashRegisterPayload = Partial<CreateVenueCashRegisterPayload>;
 
+export interface CreateVenueDevicePairingCodePayload {
+  locationId: number;
+  label: string;
+}
+export interface VenueDevicePairingCodeResponse {
+  id: number;
+  pairingCode: string;
+  expiresAt: string;
+}
+
 export interface OpenCashSessionPayload {
   openingAmountCents: number;
   notes?: string;
@@ -431,6 +455,16 @@ export const venueOperationApi = {
       .then((r) => r.data),
   updateCashRegister: (orgId: number, registerId: number, payload: UpdateVenueCashRegisterPayload) =>
     api.patch<VenueCashRegister>(`${base(orgId)}/cash-registers/${registerId}`, payload).then((r) => r.data),
+
+  // ---- Terminais (pareamento do app POS) ----
+  listDevices: (orgId: number, locationId: number) =>
+    api.get<VenueDevice[]>(`${base(orgId)}/devices`, { params: { locationId } }).then((r) => r.data),
+  createDevicePairingCode: (orgId: number, payload: CreateVenueDevicePairingCodePayload) =>
+    api
+      .post<VenueDevicePairingCodeResponse>(`${base(orgId)}/devices/pairing-code`, payload)
+      .then((r) => r.data),
+  revokeDevice: (orgId: number, deviceId: number) =>
+    api.delete<void>(`${base(orgId)}/devices/${deviceId}`).then((r) => r.data),
 
   // ---- Sessões de caixa ----
   listCashSessions: (orgId: number, locationId: number) =>
