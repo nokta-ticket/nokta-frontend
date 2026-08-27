@@ -11,7 +11,9 @@ export function useVenueDevices(orgId: number | null, locationId: number | null)
     enabled: orgId !== null && locationId !== null,
     // Terminal físico pode cair a qualquer momento sem avisar o backend —
     // sem revalidar, "Online"/"Desconectado" só atualizaria ao reabrir a aba.
-    refetchInterval: 30_000,
+    // 10s (não 30s) para acompanhar de perto a janela de 60s de
+    // ONLINE_THRESHOLD_MS em terminais-tab.tsx — as duas mudam juntas.
+    refetchInterval: 10_000,
   });
 }
 

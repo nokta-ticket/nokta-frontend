@@ -28,10 +28,15 @@ function formatRemaining(ms: number): string {
 }
 
 // Terminal pareado (token válido) mas sem nenhuma requisição autenticada há
-// mais de 10min é tratado como "Desconectado" na UI, não "Não pareado" — o
+// mais de 60s é tratado como "Desconectado" na UI, não "Não pareado" — o
 // token continua válido, então volta a "Conectado" sozinho no próximo
-// heartbeat, sem precisar reparear.
-const ONLINE_THRESHOLD_MS = 10 * 60 * 1000;
+// heartbeat, sem precisar reparear. 60s (não 10min, valor original) porque
+// o mecanismo é polling passivo — o app só manda sinal de vida quando faz
+// alguma chamada de rede por outro motivo, nunca um heartbeat ativo em
+// background — então não existe "tempo real" de verdade sem isso; 60s é o
+// equilíbrio escolhido entre reagir rápido a app fechado e não piscar
+// "Desconectado" à toa numa pausa curta de rede/tela parada.
+const ONLINE_THRESHOLD_MS = 60 * 1000;
 
 function PairingCodeDialog({
   result,
@@ -231,7 +236,7 @@ export function TerminaisTab({ orgId, locationId }: { orgId: number; locationId:
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 30_000);
+    const interval = setInterval(() => setNow(Date.now()), 10_000);
     return () => clearInterval(interval);
   }, []);
 
