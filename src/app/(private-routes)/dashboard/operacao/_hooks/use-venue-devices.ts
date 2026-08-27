@@ -14,6 +14,11 @@ export function useVenueDevices(orgId: number | null, locationId: number | null)
     // 10s (não 30s) para acompanhar de perto a janela de 60s de
     // ONLINE_THRESHOLD_MS em terminais-tab.tsx — as duas mudam juntas.
     refetchInterval: 10_000,
+    // Por padrão o React Query pausa refetchInterval com a aba em segundo
+    // plano (throttle de document.visibilityState) — um painel operacional
+    // que o gerente deixa aberto numa tela secundária enquanto faz outra
+    // coisa não pode ficar "congelado" até ele voltar o foco manualmente.
+    refetchIntervalInBackground: true,
   });
 }
 
