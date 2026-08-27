@@ -28,10 +28,9 @@ function formatRemaining(ms: number): string {
 }
 
 // Terminal pareado (token válido) mas sem nenhuma requisição autenticada há
-// mais de 10min é tratado como desconectado na UI — o token continua válido
-// (o app volta a aparecer "Online" sozinho no próximo heartbeat, sem precisar
-// reparear); só a revogação automática por 15 dias de inatividade
-// (VenueDeviceExpirationService, backend) invalida o token de verdade.
+// mais de 10min é tratado como "Desconectado" na UI, não "Não pareado" — o
+// token continua válido, então volta a "Conectado" sozinho no próximo
+// heartbeat, sem precisar reparear.
 const ONLINE_THRESHOLD_MS = 10 * 60 * 1000;
 
 function PairingCodeDialog({
@@ -115,34 +114,57 @@ function NewDeviceDialog({
   );
 }
 
+// Três estados possíveis (mesmo modelo mental de uma maquininha Cielo):
+// - "online": token válido + heartbeat recente — pronto pra uso agora.
+// - "offline": token ainda válido (vínculo intacto), só sem heartbeat
+//   recente — volta a "online" sozinho no próximo request autenticado,
+//   nunca precisa reparear.
+// - "unpaired": vínculo perdido de verdade (revogado manual ou pela
+//   expiração automática de 15 dias, VenueDeviceExpirationService; ou o
+//   código de pareamento expirou sem nunca ter sido resgatado) — só aqui
+//   faz sentido "Gerar novo código" reaproveitando o mesmo registro.
+type DeviceStatus = "online" | "offline" | "unpaired" | "pending";
+
+function resolveStatus(device: VenueDevice, now: number): DeviceStatus {
+  if (device.revokedAt) return "unpaired";
+  if (device.deviceToken !== null) {
+    const lastSeenMs = device.lastSeenAt ? new Date(device.lastSeenAt).getTime() : null;
+    return lastSeenMs !== null && now - lastSeenMs < ONLINE_THRESHOLD_MS ? "online" : "offline";
+  }
+  const pendingExpired =
+    !device.pairingCodeExpiresAt || new Date(device.pairingCodeExpiresAt).getTime() < now;
+  return pendingExpired ? "unpaired" : "pending";
+}
+
 function DeviceRow({
   device,
   now,
   onRevoke,
   onShowCode,
+  onRegenerateCode,
+  regenerating,
 }: {
   device: VenueDevice;
   now: number;
   onRevoke: () => void;
   onShowCode: () => void;
+  onRegenerateCode: () => void;
+  regenerating: boolean;
 }) {
+  const status = resolveStatus(device, now);
   const paired = device.deviceToken !== null;
-  const pendingExpired =
-    !paired && (!device.pairingCodeExpiresAt || new Date(device.pairingCodeExpiresAt).getTime() < Date.now());
-  const lastSeenMs = device.lastSeenAt ? new Date(device.lastSeenAt).getTime() : null;
-  const online = paired && lastSeenMs !== null && now - lastSeenMs < ONLINE_THRESHOLD_MS;
 
   return (
     <div className="flex items-center justify-between rounded-xl border border-black/10 bg-white p-4">
       <div>
         <p className="font-semibold text-gray-900">{device.label}</p>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-          {online ? (
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">Online</span>
-          ) : paired ? (
-            <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600">Desconectado</span>
-          ) : pendingExpired ? (
-            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">Código expirado</span>
+          {status === "online" ? (
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">Conectado</span>
+          ) : status === "offline" ? (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">Desconectado</span>
+          ) : status === "unpaired" ? (
+            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">Não pareado</span>
           ) : (
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">Aguardando pareamento</span>
           )}
@@ -154,11 +176,8 @@ function DeviceRow({
             // Pareado mas nunca fez nenhuma requisição autenticada desde
             // então — sinal de que o app pode ter sido reinstalado/trocado
             // logo depois do pareamento, ou nunca chegou a ser usado de
-            // verdade. Revogado automaticamente após 15 dias assim (ver
-            // VenueDeviceExpirationService, backend).
-            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-600">
-              Nunca usado desde o pareamento
-            </span>
+            // verdade.
+            <span className="text-xs text-black/50">Nunca usado desde o pareamento</span>
           ) : null}
         </div>
         <p className="mt-1 text-xs text-black/40">
@@ -166,14 +185,21 @@ function DeviceRow({
         </p>
       </div>
       <div className="flex items-center gap-2">
-        {!paired && !pendingExpired ? (
+        {status === "pending" ? (
           <Button size="sm" variant="outline" onClick={onShowCode}>
             Ver código
           </Button>
         ) : null}
-        <Button size="sm" variant="outline" className="text-red-600" onClick={onRevoke}>
-          Revogar
-        </Button>
+        {status === "unpaired" ? (
+          <Button size="sm" variant="outline" onClick={onRegenerateCode} disabled={regenerating}>
+            {regenerating ? "Gerando…" : "Gerar novo código"}
+          </Button>
+        ) : null}
+        {status !== "unpaired" ? (
+          <Button size="sm" variant="outline" className="text-red-600" onClick={onRevoke}>
+            Revogar
+          </Button>
+        ) : null}
       </div>
     </div>
   );
@@ -181,7 +207,7 @@ function DeviceRow({
 
 export function TerminaisTab({ orgId, locationId }: { orgId: number; locationId: number }) {
   const { data: devices, isLoading } = useVenueDevices(orgId, locationId);
-  const { createPairingCode, revoke } = useVenueDeviceMutations(orgId, locationId);
+  const { createPairingCode, revoke, regeneratePairingCode } = useVenueDeviceMutations(orgId, locationId);
   const [formOpen, setFormOpen] = useState(false);
   const [pairingResult, setPairingResult] = useState<VenueDevicePairingCodeResponse | null>(null);
   const [revokeDeviceId, setRevokeDeviceId] = useState<number | null>(null);
@@ -227,6 +253,14 @@ export function TerminaisTab({ orgId, locationId }: { orgId: number; locationId:
                   expiresAt: device.pairingCodeExpiresAt,
                 });
               }}
+              onRegenerateCode={() =>
+                regeneratePairingCode.mutate(device.id, {
+                  onSuccess: (result) => setPairingResult(result),
+                  onError: (err) =>
+                    toast.error(getErrorMessage(err, "Não foi possível gerar um novo código de pareamento.")),
+                })
+              }
+              regenerating={regeneratePairingCode.isPending && regeneratePairingCode.variables === device.id}
             />
           ))}
         </div>

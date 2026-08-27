@@ -30,5 +30,10 @@ export function useVenueDeviceMutations(orgId: number, locationId: number) {
     onSuccess: invalidate,
   });
 
-  return { createPairingCode, revoke };
+  const regeneratePairingCode = useMutation({
+    mutationFn: (deviceId: number) => venueOperationApi.regenerateDevicePairingCode(orgId, deviceId),
+    onSuccess: invalidate,
+  });
+
+  return { createPairingCode, revoke, regeneratePairingCode };
 }
