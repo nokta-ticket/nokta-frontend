@@ -125,7 +125,7 @@ function DeviceRow({
     <div className="flex items-center justify-between rounded-xl border border-black/10 bg-white p-4">
       <div>
         <p className="font-semibold text-gray-900">{device.label}</p>
-        <div className="mt-1 flex items-center gap-2">
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
           {paired ? (
             <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">Pareado</span>
           ) : pendingExpired ? (
@@ -133,12 +133,24 @@ function DeviceRow({
           ) : (
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">Aguardando pareamento</span>
           )}
-          {device.lastSeenAt ? (
+          {paired && device.lastSeenAt ? (
             <span className="text-xs text-black/50">
               Visto por último em {new Date(device.lastSeenAt).toLocaleString("pt-BR")}
             </span>
+          ) : paired ? (
+            // Pareado mas nunca fez nenhuma requisição autenticada desde
+            // então — sinal de que o app pode ter sido reinstalado/trocado
+            // logo depois do pareamento, ou nunca chegou a ser usado de
+            // verdade. Revogado automaticamente após 15 dias assim (ver
+            // VenueDeviceExpirationService, backend).
+            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-600">
+              Nunca usado desde o pareamento
+            </span>
           ) : null}
         </div>
+        <p className="mt-1 text-xs text-black/40">
+          Pareado em {new Date(device.createdAt).toLocaleDateString("pt-BR")}
+        </p>
       </div>
       <div className="flex items-center gap-2">
         {!paired && !pendingExpired ? (
