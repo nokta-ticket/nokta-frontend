@@ -121,13 +121,20 @@ function NewDeviceDialog({
 
 // Três estados possíveis (mesmo modelo mental de uma maquininha Cielo):
 // - "online": token válido + heartbeat recente — pronto pra uso agora.
-// - "offline": token ainda válido (vínculo intacto), só sem heartbeat
-//   recente — volta a "online" sozinho no próximo request autenticado,
-//   nunca precisa reparear.
-// - "unpaired": vínculo perdido de verdade (revogado manual ou pela
-//   expiração automática de 15 dias, VenueDeviceExpirationService; ou o
-//   código de pareamento expirou sem nunca ter sido resgatado) — só aqui
-//   faz sentido "Gerar novo código" reaproveitando o mesmo registro.
+// - "offline": token ainda válido no banco, só sem heartbeat recente. Dois
+//   casos reais por trás do mesmo status, indistinguíveis pelo servidor:
+//   (1) app fechado/sem rede temporariamente — volta a "online" sozinho no
+//   próximo heartbeat, sem precisar reparear; (2) o app perdeu o token de
+//   vez (reinstalado, dados limpos) e nunca mais vai mandar heartbeat — fica
+//   "offline" para sempre, já que não existe nenhum jeito de o servidor
+//   saber que o app morreu (o processo simplesmente some, sem aviso).
+//   Por isso "Gerar novo código" também fica disponível aqui, não só em
+//   "unpaired": o gerente que sabe que reinstalou o app não devia precisar
+//   esperar revogação manual/automática pra reconectar o mesmo registro.
+// - "unpaired": vínculo perdido de verdade e confirmado pelo servidor
+//   (revogado manual ou pela expiração automática de 15 dias,
+//   VenueDeviceExpirationService; ou o código de pareamento expirou sem
+//   nunca ter sido resgatado).
 type DeviceStatus = "online" | "offline" | "unpaired" | "pending";
 
 // serverNowMs vem SEMPRE do backend (VenueDevicesResponse.serverNow), nunca
@@ -203,7 +210,7 @@ function DeviceRow({
             Ver código
           </Button>
         ) : null}
-        {status === "unpaired" ? (
+        {status === "unpaired" || status === "offline" ? (
           <Button size="sm" variant="outline" onClick={onRegenerateCode} disabled={regenerating}>
             {regenerating ? "Gerando…" : "Gerar novo código"}
           </Button>
