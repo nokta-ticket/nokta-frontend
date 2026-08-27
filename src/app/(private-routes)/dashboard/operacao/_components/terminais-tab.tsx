@@ -130,20 +130,26 @@ function NewDeviceDialog({
 //   faz sentido "Gerar novo código" reaproveitando o mesmo registro.
 type DeviceStatus = "online" | "offline" | "unpaired" | "pending";
 
-function resolveStatus(device: VenueDevice, now: number): DeviceStatus {
+// serverNowMs vem SEMPRE do backend (VenueDevicesResponse.serverNow), nunca
+// de Date.now() do navegador — comparar o relógio do servidor (onde
+// lastSeenAt foi gravado) com o relógio local do PC do produtor é clock
+// drift na certa: qualquer segundos/minutos de diferença entre as duas
+// máquinas já derruba "Conectado" para "Desconectado" mesmo com heartbeat
+// recém-chegado (bug real reportado pelo usuário, 2026-08-27).
+function resolveStatus(device: VenueDevice, serverNowMs: number): DeviceStatus {
   if (device.revokedAt) return "unpaired";
   if (device.deviceToken !== null) {
     const lastSeenMs = device.lastSeenAt ? new Date(device.lastSeenAt).getTime() : null;
-    return lastSeenMs !== null && now - lastSeenMs < ONLINE_THRESHOLD_MS ? "online" : "offline";
+    return lastSeenMs !== null && serverNowMs - lastSeenMs < ONLINE_THRESHOLD_MS ? "online" : "offline";
   }
   const pendingExpired =
-    !device.pairingCodeExpiresAt || new Date(device.pairingCodeExpiresAt).getTime() < now;
+    !device.pairingCodeExpiresAt || new Date(device.pairingCodeExpiresAt).getTime() < serverNowMs;
   return pendingExpired ? "unpaired" : "pending";
 }
 
 function DeviceRow({
   device,
-  now,
+  serverNowMs,
   onRevoke,
   onShowCode,
   onRegenerateCode,
@@ -151,14 +157,14 @@ function DeviceRow({
   regenerating,
 }: {
   device: VenueDevice;
-  now: number;
+  serverNowMs: number;
   onRevoke: () => void;
   onShowCode: () => void;
   onRegenerateCode: () => void;
   onDelete: () => void;
   regenerating: boolean;
 }) {
-  const status = resolveStatus(device, now);
+  const status = resolveStatus(device, serverNowMs);
   const paired = device.deviceToken !== null;
 
   return (
@@ -224,7 +230,7 @@ function DeviceRow({
 }
 
 export function TerminaisTab({ orgId, locationId }: { orgId: number; locationId: number }) {
-  const { data: devices, isLoading } = useVenueDevices(orgId, locationId);
+  const { data, isLoading } = useVenueDevices(orgId, locationId);
   const { createPairingCode, revoke, regeneratePairingCode, deleteDevice } = useVenueDeviceMutations(
     orgId,
     locationId,
@@ -233,14 +239,13 @@ export function TerminaisTab({ orgId, locationId }: { orgId: number; locationId:
   const [pairingResult, setPairingResult] = useState<VenueDevicePairingCodeResponse | null>(null);
   const [revokeDeviceId, setRevokeDeviceId] = useState<number | null>(null);
   const [deleteDeviceId, setDeleteDeviceId] = useState<number | null>(null);
-  const [now, setNow] = useState(() => Date.now());
 
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 10_000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const list = devices ?? [];
+  const list = data?.devices ?? [];
+  // Fallback só para o instante antes do primeiro fetch resolver (isLoading
+  // cobre esse caso com skeleton, então este valor nunca chega a ser usado
+  // de verdade em resolveStatus) — nunca usado como substituto de serverNow
+  // depois que os dados chegam.
+  const serverNowMs = data ? new Date(data.serverNow).getTime() : Date.now();
 
   if (isLoading) return <TableSkeleton />;
 
@@ -265,7 +270,7 @@ export function TerminaisTab({ orgId, locationId }: { orgId: number; locationId:
             <DeviceRow
               key={device.id}
               device={device}
-              now={now}
+              serverNowMs={serverNowMs}
               onRevoke={() => setRevokeDeviceId(device.id)}
               onShowCode={() => {
                 if (!device.pairingCode || !device.pairingCodeExpiresAt) return;

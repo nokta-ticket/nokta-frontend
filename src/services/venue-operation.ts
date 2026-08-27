@@ -97,6 +97,17 @@ export interface VenueDevice {
   createdAt: string;
 }
 
+/**
+ * `serverNow` acompanha a lista de propósito: o cálculo de Conectado/
+ * Desconectado precisa de uma referência de "agora" que não dependa do
+ * relógio do navegador (clock drift entre o PC do produtor e o servidor
+ * gera falso "Desconectado" mesmo com heartbeat recém-chegado).
+ */
+export interface VenueDevicesResponse {
+  devices: VenueDevice[];
+  serverNow: string;
+}
+
 export interface VenueCashMovement {
   id: number;
   organizationId: number;
@@ -458,7 +469,7 @@ export const venueOperationApi = {
 
   // ---- Terminais (pareamento do app POS) ----
   listDevices: (orgId: number, locationId: number) =>
-    api.get<VenueDevice[]>(`${base(orgId)}/devices`, { params: { locationId } }).then((r) => r.data),
+    api.get<VenueDevicesResponse>(`${base(orgId)}/devices`, { params: { locationId } }).then((r) => r.data),
   createDevicePairingCode: (orgId: number, payload: CreateVenueDevicePairingCodePayload) =>
     api
       .post<VenueDevicePairingCodeResponse>(`${base(orgId)}/devices/pairing-code`, payload)
