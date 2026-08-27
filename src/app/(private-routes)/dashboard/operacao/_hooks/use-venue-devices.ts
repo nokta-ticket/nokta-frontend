@@ -9,6 +9,9 @@ export function useVenueDevices(orgId: number | null, locationId: number | null)
     queryKey: opKeys.devices(orgId ?? -1, locationId ?? -1),
     queryFn: () => venueOperationApi.listDevices(orgId as number, locationId as number),
     enabled: orgId !== null && locationId !== null,
+    // Terminal físico pode cair a qualquer momento sem avisar o backend —
+    // sem revalidar, "Online"/"Desconectado" só atualizaria ao reabrir a aba.
+    refetchInterval: 30_000,
   });
 }
 

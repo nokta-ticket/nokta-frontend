@@ -27,6 +27,13 @@ function formatRemaining(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
+// Terminal pareado (token válido) mas sem nenhuma requisição autenticada há
+// mais de 10min é tratado como desconectado na UI — o token continua válido
+// (o app volta a aparecer "Online" sozinho no próximo heartbeat, sem precisar
+// reparear); só a revogação automática por 15 dias de inatividade
+// (VenueDeviceExpirationService, backend) invalida o token de verdade.
+const ONLINE_THRESHOLD_MS = 10 * 60 * 1000;
+
 function PairingCodeDialog({
   result,
   onOpenChange,
@@ -110,24 +117,30 @@ function NewDeviceDialog({
 
 function DeviceRow({
   device,
+  now,
   onRevoke,
   onShowCode,
 }: {
   device: VenueDevice;
+  now: number;
   onRevoke: () => void;
   onShowCode: () => void;
 }) {
   const paired = device.deviceToken !== null;
   const pendingExpired =
     !paired && (!device.pairingCodeExpiresAt || new Date(device.pairingCodeExpiresAt).getTime() < Date.now());
+  const lastSeenMs = device.lastSeenAt ? new Date(device.lastSeenAt).getTime() : null;
+  const online = paired && lastSeenMs !== null && now - lastSeenMs < ONLINE_THRESHOLD_MS;
 
   return (
     <div className="flex items-center justify-between rounded-xl border border-black/10 bg-white p-4">
       <div>
         <p className="font-semibold text-gray-900">{device.label}</p>
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-          {paired ? (
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">Pareado</span>
+          {online ? (
+            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">Online</span>
+          ) : paired ? (
+            <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600">Desconectado</span>
           ) : pendingExpired ? (
             <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">Código expirado</span>
           ) : (
@@ -172,6 +185,12 @@ export function TerminaisTab({ orgId, locationId }: { orgId: number; locationId:
   const [formOpen, setFormOpen] = useState(false);
   const [pairingResult, setPairingResult] = useState<VenueDevicePairingCodeResponse | null>(null);
   const [revokeDeviceId, setRevokeDeviceId] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(interval);
+  }, []);
 
   const list = devices ?? [];
 
@@ -198,6 +217,7 @@ export function TerminaisTab({ orgId, locationId }: { orgId: number; locationId:
             <DeviceRow
               key={device.id}
               device={device}
+              now={now}
               onRevoke={() => setRevokeDeviceId(device.id)}
               onShowCode={() => {
                 if (!device.pairingCode || !device.pairingCodeExpiresAt) return;
