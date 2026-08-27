@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -142,6 +142,7 @@ function DeviceRow({
   onRevoke,
   onShowCode,
   onRegenerateCode,
+  onDelete,
   regenerating,
 }: {
   device: VenueDevice;
@@ -149,6 +150,7 @@ function DeviceRow({
   onRevoke: () => void;
   onShowCode: () => void;
   onRegenerateCode: () => void;
+  onDelete: () => void;
   regenerating: boolean;
 }) {
   const status = resolveStatus(device, now);
@@ -195,6 +197,17 @@ function DeviceRow({
             {regenerating ? "Gerando…" : "Gerar novo código"}
           </Button>
         ) : null}
+        {status === "unpaired" ? (
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-red-600"
+            onClick={onDelete}
+            aria-label="Excluir terminal"
+          >
+            <Trash2 size={16} />
+          </Button>
+        ) : null}
         {status !== "unpaired" ? (
           <Button size="sm" variant="outline" className="text-red-600" onClick={onRevoke}>
             Revogar
@@ -207,10 +220,14 @@ function DeviceRow({
 
 export function TerminaisTab({ orgId, locationId }: { orgId: number; locationId: number }) {
   const { data: devices, isLoading } = useVenueDevices(orgId, locationId);
-  const { createPairingCode, revoke, regeneratePairingCode } = useVenueDeviceMutations(orgId, locationId);
+  const { createPairingCode, revoke, regeneratePairingCode, deleteDevice } = useVenueDeviceMutations(
+    orgId,
+    locationId,
+  );
   const [formOpen, setFormOpen] = useState(false);
   const [pairingResult, setPairingResult] = useState<VenueDevicePairingCodeResponse | null>(null);
   const [revokeDeviceId, setRevokeDeviceId] = useState<number | null>(null);
+  const [deleteDeviceId, setDeleteDeviceId] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -260,6 +277,7 @@ export function TerminaisTab({ orgId, locationId }: { orgId: number; locationId:
                     toast.error(getErrorMessage(err, "Não foi possível gerar um novo código de pareamento.")),
                 })
               }
+              onDelete={() => setDeleteDeviceId(device.id)}
               regenerating={regeneratePairingCode.isPending && regeneratePairingCode.variables === device.id}
             />
           ))}
@@ -298,6 +316,22 @@ export function TerminaisTab({ orgId, locationId }: { orgId: number; locationId:
           revoke.mutate(revokeDeviceId, {
             onSuccess: () => { toast.success("Terminal revogado."); setRevokeDeviceId(null); },
             onError: (err) => toast.error(getErrorMessage(err, "Não foi possível revogar o terminal.")),
+          });
+        }}
+      />
+
+      <ConfirmDialog
+        open={deleteDeviceId !== null}
+        onOpenChange={(v) => !v && setDeleteDeviceId(null)}
+        title="Excluir terminal"
+        description="Remove este terminal definitivamente da lista. Essa ação não pode ser desfeita — se precisar dele de novo, crie um terminal novo."
+        confirmLabel="Excluir"
+        loading={deleteDevice.isPending}
+        onConfirm={() => {
+          if (deleteDeviceId === null) return;
+          deleteDevice.mutate(deleteDeviceId, {
+            onSuccess: () => { toast.success("Terminal excluído."); setDeleteDeviceId(null); },
+            onError: (err) => toast.error(getErrorMessage(err, "Não foi possível excluir o terminal.")),
           });
         }}
       />

@@ -35,5 +35,10 @@ export function useVenueDeviceMutations(orgId: number, locationId: number) {
     onSuccess: invalidate,
   });
 
-  return { createPairingCode, revoke, regeneratePairingCode };
+  const deleteDevice = useMutation({
+    mutationFn: (deviceId: number) => venueOperationApi.deleteDevice(orgId, deviceId),
+    onSuccess: invalidate,
+  });
+
+  return { createPairingCode, revoke, regeneratePairingCode, deleteDevice };
 }

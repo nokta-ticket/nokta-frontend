@@ -469,6 +469,8 @@ export const venueOperationApi = {
     api
       .post<VenueDevicePairingCodeResponse>(`${base(orgId)}/devices/${deviceId}/pairing-code`)
       .then((r) => r.data),
+  deleteDevice: (orgId: number, deviceId: number) =>
+    api.delete<void>(`${base(orgId)}/devices/${deviceId}/permanently`).then((r) => r.data),
 
   // ---- Sessões de caixa ----
   listCashSessions: (orgId: number, locationId: number) =>
