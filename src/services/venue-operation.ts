@@ -4,7 +4,14 @@ import api from "@/lib/axios";
 // Espelham exatamente as respostas do VenueOperationModule (nokta-api).
 
 export type VenueTabType = "TABLE" | "INDIVIDUAL" | "COUNTER";
-export type VenueTabStatus = "OPEN" | "CLOSED" | "CANCELED";
+/**
+ * OPEN -> CLOSING -> PAYMENT_IN_PROGRESS -> CLOSED é o caminho de "fechar a
+ * conta antes de cobrar" (opcional — cobrar direto de OPEN sem passar por
+ * CLOSING continua funcionando e fecha sozinho ao zerar o saldo). CLOSING/
+ * PAYMENT_IN_PROGRESS bloqueiam edição de consumo no backend, mas a comanda
+ * continua contando como "em atendimento" (mesa ocupada).
+ */
+export type VenueTabStatus = "OPEN" | "CLOSING" | "PAYMENT_IN_PROGRESS" | "CLOSED" | "CANCELED";
 export type VenueOrderStatus = "DRAFT" | "SENT" | "IN_PREPARATION" | "READY" | "DELIVERED" | "CANCELED";
 export type VenueOrderItemStatus = VenueOrderStatus;
 export type OrderItemSettableStatus = "IN_PREPARATION" | "READY" | "DELIVERED";
@@ -12,6 +19,15 @@ export type VenueCashSessionStatus = "OPEN" | "CLOSED";
 export type VenueCashMovementType = "SUPPLY" | "WITHDRAWAL" | "EXPENSE" | "ADJUSTMENT";
 export type VenuePaymentMethod = "CASH" | "PIX" | "DEBIT_CARD" | "CREDIT_CARD" | "VOUCHER" | "OTHER";
 export type VenuePaymentStatus = "CONFIRMED" | "CANCELED";
+/**
+ * Estado da DEVOLUÇÃO DE DINHEIRO de um pagamento cuja venda foi cancelada
+ * após fechada — nunca confundir com VenuePaymentStatus. PENDING_MANUAL =
+ * venda cancelada no Nokta, dinheiro ainda não devolvido de verdade (ação
+ * manual do operador na adquirente/maquininha/caixa, fora do sistema).
+ * COMPLETED = alguém confirmou que o estorno de fato aconteceu. Sem
+ * integração de estorno automático de gateway — a transição é sempre manual.
+ */
+export type VenuePaymentRefundStatus = "PENDING_MANUAL" | "COMPLETED";
 
 export interface VenueLocation {
   id: number;
@@ -229,6 +245,10 @@ export interface VenueTab {
   paidCents: number;
   remainingCents: number;
   version: number;
+  /** Cancelamento de venda JÁ FECHADA (distinto de canceledAt/cancelReason acima, que é pré-fechamento — a comanda nunca chegou a ser cobrada). */
+  postCloseCanceledAt: string | null;
+  postCloseCanceledByUserId: number | null;
+  postCloseCancelReason: string | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
@@ -258,6 +278,11 @@ export interface VenuePayment {
   cancelReason: string | null;
   confirmedAt: string;
   canceledAt: string | null;
+  /** Só relevante quando a venda foi cancelada depois de fechada — ver VenueTab.postCloseCanceledAt. Nunca setado no cancelamento pré-fechamento comum. */
+  refundStatus: VenuePaymentRefundStatus | null;
+  refundConfirmedAt: string | null;
+  refundConfirmedByUserId: number | null;
+  refundNotes: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -367,6 +392,14 @@ export interface SetTabServiceChargePayload {
 }
 export interface CancelTabPayload {
   reason: string;
+}
+/** Cancelamento de venda JÁ FECHADA — reason obrigatório, mesmo padrão de CancelTabPayload. */
+export interface CancelClosedTabPayload {
+  reason: string;
+}
+/** Notas opcionais ao confirmar que o estorno manual de fato aconteceu. */
+export interface ConfirmPaymentRefundPayload {
+  notes?: string;
 }
 export interface TransferTabTablePayload {
   tableId: number;
@@ -522,6 +555,24 @@ export const venueOperationApi = {
     api.post<VenueTab>(`${base(orgId)}/tabs/${tabId}/cancel`, payload).then((r) => r.data),
   closeTab: (orgId: number, tabId: number) =>
     api.post<VenueTab>(`${base(orgId)}/tabs/${tabId}/close`).then((r) => r.data),
+  /** Início do fechamento explícito ("pedir a conta") — OPEN -> CLOSING. Opcional: closeTab direto de OPEN continua funcionando. */
+  requestCloseTab: (orgId: number, tabId: number) =>
+    api.post<VenueTab>(`${base(orgId)}/tabs/${tabId}/request-close`).then((r) => r.data),
+  /** Desfaz requestCloseTab() — CLOSING -> OPEN. Só antes de qualquer pagamento confirmado. */
+  cancelCloseTab: (orgId: number, tabId: number) =>
+    api.post<VenueTab>(`${base(orgId)}/tabs/${tabId}/cancel-close`).then((r) => r.data),
+  /**
+   * Cancela uma venda JÁ FECHADA. Só REGISTRA o cancelamento (auditoria) e
+   * marca cada pagamento confirmado como refundStatus=PENDING_MANUAL — nunca
+   * devolve dinheiro de verdade (sem integração de gateway). A devolução em
+   * si é confirmada à parte via confirmPaymentRefund, depois de acontecer
+   * manualmente na adquirente/maquininha/caixa.
+   */
+  cancelClosedTab: (orgId: number, tabId: number, payload: CancelClosedTabPayload) =>
+    api.post<VenueTab>(`${base(orgId)}/tabs/${tabId}/cancel-closed`, payload).then((r) => r.data),
+  /** Confirma que o estorno de um pagamento (venda cancelada após fechada) de fato aconteceu — ação sempre manual. */
+  confirmPaymentRefund: (orgId: number, paymentId: number, payload: ConfirmPaymentRefundPayload) =>
+    api.post<VenuePayment>(`${base(orgId)}/payments/${paymentId}/confirm-refund`, payload).then((r) => r.data),
 
   // ---- Pedidos ----
   listOrders: (orgId: number, tabId: number) =>
@@ -578,6 +629,8 @@ export const VENUE_TAB_TYPE_LABEL: Record<VenueTabType, string> = {
 
 export const VENUE_TAB_STATUS_LABEL: Record<VenueTabStatus, string> = {
   OPEN: "Aberta",
+  CLOSING: "Fechando a conta",
+  PAYMENT_IN_PROGRESS: "Recebendo pagamento",
   CLOSED: "Fechada",
   CANCELED: "Cancelada",
 };

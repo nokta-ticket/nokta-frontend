@@ -3,7 +3,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   venueOperationApi,
+  type CancelClosedTabPayload,
   type CancelTabPayload,
+  type ConfirmPaymentRefundPayload,
   type CreateVenueTabPayload,
   type SetTabDiscountPayload,
   type SetTabServiceChargePayload,
@@ -101,5 +103,50 @@ export function useVenueTabMutations(orgId: number, locationId: number) {
     },
   });
 
-  return { create, update, transferTable, setDiscount, setServiceCharge, cancel, close };
+  const requestClose = useMutation({
+    mutationFn: (tabId: number) => venueOperationApi.requestCloseTab(orgId, tabId),
+    onSuccess: (_d, tabId) => {
+      invalidateTab(tabId);
+      invalidateList();
+      invalidateTables();
+    },
+  });
+
+  const cancelClose = useMutation({
+    mutationFn: (tabId: number) => venueOperationApi.cancelCloseTab(orgId, tabId),
+    onSuccess: (_d, tabId) => {
+      invalidateTab(tabId);
+      invalidateList();
+      invalidateTables();
+    },
+  });
+
+  const cancelClosedTab = useMutation({
+    mutationFn: ({ tabId, payload }: { tabId: number; payload: CancelClosedTabPayload }) =>
+      venueOperationApi.cancelClosedTab(orgId, tabId, payload),
+    onSuccess: (_d, vars) => {
+      invalidateTab(vars.tabId);
+      invalidateList();
+    },
+  });
+
+  const confirmPaymentRefund = useMutation({
+    mutationFn: ({ paymentId, payload }: { paymentId: number; payload: ConfirmPaymentRefundPayload; tabId: number }) =>
+      venueOperationApi.confirmPaymentRefund(orgId, paymentId, payload),
+    onSuccess: (_d, vars) => invalidateTab(vars.tabId),
+  });
+
+  return {
+    create,
+    update,
+    transferTable,
+    setDiscount,
+    setServiceCharge,
+    cancel,
+    close,
+    requestClose,
+    cancelClose,
+    cancelClosedTab,
+    confirmPaymentRefund,
+  };
 }

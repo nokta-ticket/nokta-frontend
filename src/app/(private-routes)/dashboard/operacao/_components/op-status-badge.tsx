@@ -9,6 +9,8 @@ import {
 
 const TAB_STATUS_CLASS: Record<VenueTabStatus, string> = {
   OPEN: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  CLOSING: "bg-amber-100 text-amber-700 border-amber-200",
+  PAYMENT_IN_PROGRESS: "bg-amber-100 text-amber-700 border-amber-200",
   CLOSED: "bg-gray-100 text-gray-600 border-gray-200",
   CANCELED: "bg-red-100 text-red-600 border-red-200",
 };
