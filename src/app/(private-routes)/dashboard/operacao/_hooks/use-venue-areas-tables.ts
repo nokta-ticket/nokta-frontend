@@ -28,6 +28,15 @@ export function useVenueTables(orgId: number | null, locationId: number | null) 
   });
 }
 
+/** Histórico de atendimentos de UMA mesa física — sem polling (tela de consulta, não painel ao vivo). */
+export function useVenueTableSessions(orgId: number | null, tableId: number | null) {
+  return useQuery({
+    queryKey: opKeys.tableSessions(orgId ?? -1, tableId ?? -1),
+    queryFn: () => venueOperationApi.listTableSessions(orgId as number, tableId as number),
+    enabled: orgId !== null && tableId !== null,
+  });
+}
+
 export function useVenueAreaMutations(orgId: number, locationId: number) {
   const qc = useQueryClient();
   const invalidate = () => qc.invalidateQueries({ queryKey: opKeys.areas(orgId, locationId) });

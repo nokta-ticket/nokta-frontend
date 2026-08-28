@@ -82,6 +82,27 @@ export interface VenueTable {
   openTab: VenueTableOpenTabInfo | null;
 }
 
+/**
+ * Um item do histórico de atendimentos de UMA mesa física (GET
+ * tables/:tableId/sessions) — resumo leve, nunca o detalhe completo
+ * (itens/pagamentos, que continua vindo de getTab). A mesma mesa pode ter
+ * vários desses ao longo do dia; cada um é uma VenueTab distinta, com seu
+ * próprio id — nunca misturar os totais entre atendimentos diferentes.
+ */
+export interface VenueTableSession {
+  id: number;
+  publicCode: string;
+  status: VenueTabStatus;
+  customerName: string | null;
+  openedAt: string;
+  closedAt: string | null;
+  canceledAt: string | null;
+  totalCents: number;
+  paidCents: number;
+  remainingCents: number;
+  postCloseCanceledAt: string | null;
+}
+
 export interface VenueCashRegisterOpenSessionInfo {
   id: number;
   openedAt: string;
@@ -489,6 +510,9 @@ export const venueOperationApi = {
     api
       .patch<VenueTable[]>(`${base(orgId)}/locations/${locationId}/tables/reorder`, { items })
       .then((r) => r.data),
+  /** Histórico de atendimentos desta mesa física — "o que aconteceu com a Mesa 24 hoje". */
+  listTableSessions: (orgId: number, tableId: number) =>
+    api.get<VenueTableSession[]>(`${base(orgId)}/tables/${tableId}/sessions`).then((r) => r.data),
 
   // ---- Caixas ----
   listCashRegisters: (orgId: number, locationId: number) =>

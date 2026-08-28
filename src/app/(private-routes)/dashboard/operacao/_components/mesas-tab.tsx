@@ -25,6 +25,7 @@ import { centsToBRL } from "@/services/venue-menu";
 import type { VenueTable } from "@/services/venue-operation";
 import { useVenueAreaMutations, useVenueAreas, useVenueTableMutations, useVenueTables } from "../_hooks/use-venue-areas-tables";
 import { CreateTabDialog } from "./create-tab-dialog";
+import { TableSessionsSheet } from "./table-sessions-sheet";
 import { EmptyState } from "../../_components/states/empty-state";
 import { TableSkeleton } from "../../_components/states/loading-state";
 import { ErrorState } from "../../_components/states/error-state";
@@ -155,6 +156,7 @@ export function MesasTab({
   const [areaFormOpen, setAreaFormOpen] = useState(false);
   const [tableFormOpen, setTableFormOpen] = useState(false);
   const [openingTableId, setOpeningTableId] = useState<number | null>(null);
+  const [historyTable, setHistoryTable] = useState<VenueTable | null>(null);
 
   const areaList = areas ?? [];
   const tableList = tables ?? [];
@@ -218,6 +220,7 @@ export function MesasTab({
                     onOpen={() => setOpeningTableId(table.id)}
                     onViewTab={() => table.openTab && onOpenTabDetail(table.openTab.id)}
                     onAddOrder={() => table.openTab && onAddOrder(table.openTab.id)}
+                    onViewHistory={() => setHistoryTable(table)}
                   />
                 ))}
               </div>
@@ -262,6 +265,16 @@ export function MesasTab({
           onCreated={(tab) => { setOpeningTableId(null); onOpenTabDetail(tab.id); }}
         />
       ) : null}
+      {historyTable !== null ? (
+        <TableSessionsSheet
+          orgId={orgId}
+          tableId={historyTable.id}
+          tableName={historyTable.nome}
+          open={historyTable !== null}
+          onOpenChange={(v) => !v && setHistoryTable(null)}
+          onOpenSession={(tabId) => { setHistoryTable(null); onOpenTabDetail(tabId); }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -271,11 +284,13 @@ function TableCard({
   onOpen,
   onViewTab,
   onAddOrder,
+  onViewHistory,
 }: {
   table: VenueTable;
   onOpen: () => void;
   onViewTab: () => void;
   onAddOrder: () => void;
+  onViewHistory: () => void;
 }) {
   const occupied = table.openTab !== null;
 
@@ -317,6 +332,9 @@ function TableCard({
             </Button>
           </>
         )}
+        <Button size="sm" variant="ghost" onClick={onViewHistory}>
+          Histórico
+        </Button>
       </div>
     </div>
   );
