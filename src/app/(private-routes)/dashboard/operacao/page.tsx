@@ -11,44 +11,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrganizations } from "@/context/OrganizationContext";
-import { useVenueAccess } from "@/context/VenueAccessContext";
 import { useRequireWorkspace } from "../_components/require-workspace-provider";
 import { PageContainer } from "../_components/page/page-container";
 import { PageHeader } from "../_components/page/page-header";
 import { EmptyState } from "../_components/states/empty-state";
 import { BlockSkeleton } from "../_components/states/loading-state";
 import { useVenueLocations } from "./_hooks/use-venue-locations";
-import { useVenueCashRegisters } from "./_hooks/use-venue-cash";
 import { OnboardingLocation } from "./_components/onboarding-location";
-import { MesasTab } from "./_components/mesas-tab";
-import { ComandasTab } from "./_components/comandas-tab";
-import { PedidosTab } from "./_components/pedidos-tab";
-import { CaixaTab } from "./_components/caixa-tab";
-import { TerminaisTab } from "./_components/terminais-tab";
-import { CreateTabDialog } from "./_components/create-tab-dialog";
+import { OperacaoUnificadaView } from "./_components/operacao-unificada-view";
 import { TabDetailSheet } from "./_components/tab-detail-sheet";
-import { OrderBuilderSheet } from "./_components/order-builder-sheet";
 
-type TabKey = "mesas" | "comandas" | "pedidos" | "caixa" | "terminais";
-
-function CashStatusPill({ orgId, locationId }: { orgId: number; locationId: number }) {
-  const { data: registers } = useVenueCashRegisters(orgId, locationId);
-  const anyOpen = (registers ?? []).some((r) => r.openSession !== null);
-  if (!registers || registers.length === 0) return null;
-  return (
-    <span
-      className={`hidden items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium sm:flex ${
-        anyOpen ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"
-      }`}
-    >
-      <span className={`h-1.5 w-1.5 rounded-full ${anyOpen ? "bg-emerald-500" : "bg-gray-400"}`} />
-      {anyOpen ? "Caixa aberto" : "Caixa fechado"}
-    </span>
-  );
-}
-
+/**
+ * Operação virou uma única tela unificada (mesa + comanda + balcão, abertos
+ * e encerrados hoje) — antes era um conjunto de abas (Mesas/Comandas/
+ * Pedidos/Caixa/Terminais). Pedidos, Caixa e Terminais saíram daqui e viraram
+ * páginas próprias com item dedicado no menu lateral (ver
+ * dashboard/operacao/pedidos, /caixa, /terminais e unified-sidebar.tsx).
+ */
 export default function VenueOperacaoPage() {
   return (
     <Suspense fallback={<PageContainer><BlockSkeleton className="h-96" /></PageContainer>}>
@@ -57,37 +37,12 @@ export default function VenueOperacaoPage() {
   );
 }
 
-const TAB_PERMISSIONS: Record<TabKey, string[]> = {
-  mesas: ["venue.operation.tables.view"],
-  comandas: ["venue.operation.tabs.view"],
-  pedidos: ["venue.operation.orders.view", "venue.operation.preparation.view"],
-  caixa: ["venue.operation.cash.manage"],
-  terminais: ["venue.operation.devices.manage"],
-};
-
-const ALL_TABS: { key: TabKey; label: string }[] = [
-  { key: "mesas", label: "Mesas" },
-  { key: "comandas", label: "Comandas" },
-  { key: "pedidos", label: "Pedidos" },
-  { key: "caixa", label: "Caixa" },
-  { key: "terminais", label: "Terminais" },
-];
-
 function VenueOperacaoPageContent() {
   const { currentOrg, loadingOrgs, loadingModules } = useOrganizations();
-  const { can } = useVenueAccess();
   const { guard } = useRequireWorkspace();
-  const visibleTabs = ALL_TABS.filter((t) => TAB_PERMISSIONS[t.key].some((p) => can(p)));
   const searchParams = useSearchParams();
-  const [tab, setTab] = useState<TabKey>(() => {
-    const fromParam = searchParams.get("tab") as TabKey | null;
-    if (fromParam && visibleTabs.some((t) => t.key === fromParam)) return fromParam;
-    return visibleTabs[0]?.key ?? "mesas";
-  });
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
-  const [createTabOpen, setCreateTabOpen] = useState(false);
   const [detailTabId, setDetailTabId] = useState<number | null>(null);
-  const [orderBuilderTabId, setOrderBuilderTabId] = useState<number | null>(null);
 
   const orgId = currentOrg?.id ?? null;
 
@@ -109,17 +64,14 @@ function VenueOperacaoPageContent() {
   // Deep link vindo de Reservas/Fila ("dar entrada" abre direto o detalhe da comanda criada).
   useEffect(() => {
     const paramTabId = Number(searchParams.get("tabId"));
-    if (paramTabId) {
-      setDetailTabId(paramTabId);
-      setTab("mesas");
-    }
+    if (paramTabId) setDetailTabId(paramTabId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loadingOrgs || loadingModules) {
     return (
       <PageContainer>
-        <PageHeader title="Operação" description="Gerencie mesas, comandas, pedidos e o caixa do estabelecimento." />
+        <PageHeader title="Operação" description="Acompanhe mesas, comandas e vendas de balcão do estabelecimento." />
         <BlockSkeleton className="h-96" />
       </PageContainer>
     );
@@ -130,7 +82,7 @@ function VenueOperacaoPageContent() {
       <PageContainer>
         <PageHeader
           title="Operação"
-          description="Gerencie mesas, comandas, pedidos e o caixa do estabelecimento."
+          description="Acompanhe mesas, comandas e vendas de balcão do estabelecimento."
           actions={
             <Button onClick={() => guard(() => {})}>
               <Plus size={16} /> Nova comanda
@@ -150,7 +102,7 @@ function VenueOperacaoPageContent() {
   if (locations && locations.length === 0) {
     return (
       <PageContainer>
-        <PageHeader title="Operação" description="Gerencie mesas, comandas, pedidos e o caixa do estabelecimento." />
+        <PageHeader title="Operação" description="Acompanhe mesas, comandas e vendas de balcão do estabelecimento." />
         <OnboardingLocation orgId={orgId} />
       </PageContainer>
     );
@@ -159,7 +111,7 @@ function VenueOperacaoPageContent() {
   if (!selectedLocationId) {
     return (
       <PageContainer>
-        <PageHeader title="Operação" description="Gerencie mesas, comandas, pedidos e o caixa do estabelecimento." />
+        <PageHeader title="Operação" description="Acompanhe mesas, comandas e vendas de balcão do estabelecimento." />
         <BlockSkeleton className="h-96" />
       </PageContainer>
     );
@@ -167,81 +119,22 @@ function VenueOperacaoPageContent() {
 
   return (
     <PageContainer>
-      <PageHeader
-        title="Operação"
-        description="Gerencie mesas, comandas, pedidos e o caixa do estabelecimento."
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            {locations && locations.length > 1 ? (
-              <Select value={String(selectedLocationId)} onValueChange={(v) => setSelectedLocationId(Number(v))}>
-                <SelectTrigger className="w-48"><SelectValue placeholder="Unidade" /></SelectTrigger>
-                <SelectContent>
-                  {locations.map((loc) => (
-                    <SelectItem key={loc.id} value={String(loc.id)}>
-                      {loc.nome} {loc.isMain ? "· Principal" : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : null}
-            <CashStatusPill orgId={orgId} locationId={selectedLocationId} />
-            {can("venue.operation.tabs.open") ? (
-              <Button onClick={() => setCreateTabOpen(true)}>
-                <Plus size={16} /> Nova comanda
-              </Button>
-            ) : null}
-          </div>
-        }
-      />
-
-      <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
-        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          <TabsList className="w-max min-w-full sm:w-fit">
-            {visibleTabs.map((t) => (
-              <TabsTrigger key={t.key} value={t.key}>{t.label}</TabsTrigger>
-            ))}
-          </TabsList>
+      {locations && locations.length > 1 ? (
+        <div className="flex justify-end">
+          <Select value={String(selectedLocationId)} onValueChange={(v) => setSelectedLocationId(Number(v))}>
+            <SelectTrigger className="w-48"><SelectValue placeholder="Unidade" /></SelectTrigger>
+            <SelectContent>
+              {locations.map((loc) => (
+                <SelectItem key={loc.id} value={String(loc.id)}>
+                  {loc.nome} {loc.isMain ? "· Principal" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+      ) : null}
 
-        {visibleTabs.some((t) => t.key === "mesas") ? (
-          <TabsContent value="mesas">
-            <MesasTab
-              orgId={orgId}
-              locationId={selectedLocationId}
-              onOpenTabDetail={setDetailTabId}
-              onAddOrder={setOrderBuilderTabId}
-            />
-          </TabsContent>
-        ) : null}
-        {visibleTabs.some((t) => t.key === "comandas") ? (
-          <TabsContent value="comandas">
-            <ComandasTab orgId={orgId} locationId={selectedLocationId} onOpenTabDetail={setDetailTabId} />
-          </TabsContent>
-        ) : null}
-        {visibleTabs.some((t) => t.key === "pedidos") ? (
-          <TabsContent value="pedidos">
-            <PedidosTab orgId={orgId} locationId={selectedLocationId} />
-          </TabsContent>
-        ) : null}
-        {visibleTabs.some((t) => t.key === "caixa") ? (
-          <TabsContent value="caixa">
-            <CaixaTab orgId={orgId} locationId={selectedLocationId} />
-          </TabsContent>
-        ) : null}
-        {visibleTabs.some((t) => t.key === "terminais") ? (
-          <TabsContent value="terminais">
-            <TerminaisTab orgId={orgId} locationId={selectedLocationId} />
-          </TabsContent>
-        ) : null}
-      </Tabs>
-
-      <CreateTabDialog
-        orgId={orgId}
-        locationId={selectedLocationId}
-        open={createTabOpen}
-        onOpenChange={setCreateTabOpen}
-        onCreated={(t) => setDetailTabId(t.id)}
-      />
+      <OperacaoUnificadaView orgId={orgId} locationId={selectedLocationId} onOpenTabDetail={setDetailTabId} />
 
       {detailTabId !== null ? (
         <TabDetailSheet
@@ -250,15 +143,6 @@ function VenueOperacaoPageContent() {
           tabId={detailTabId}
           open={detailTabId !== null}
           onOpenChange={(v) => !v && setDetailTabId(null)}
-        />
-      ) : null}
-
-      {orderBuilderTabId !== null ? (
-        <OrderBuilderSheet
-          orgId={orgId}
-          tabId={orderBuilderTabId}
-          open={orderBuilderTabId !== null}
-          onOpenChange={(v) => !v && setOrderBuilderTabId(null)}
         />
       ) : null}
     </PageContainer>

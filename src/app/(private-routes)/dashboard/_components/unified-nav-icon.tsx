@@ -1,4 +1,4 @@
-import { BarChart3, Boxes, CalendarDays, Clock, DollarSign, Home, LayoutGrid, Settings, Star, UtensilsCrossed, Users, type LucideIcon } from "lucide-react";
+import { BarChart3, Boxes, CalendarDays, Clock, DollarSign, Home, LayoutGrid, Settings, Star, Tablet, UtensilsCrossed, Users, type LucideIcon } from "lucide-react";
 import type { IconKey } from "../_lib/navigation-presentation";
 
 const ICONS: Record<IconKey, LucideIcon> = {
@@ -13,6 +13,7 @@ const ICONS: Record<IconKey, LucideIcon> = {
   users: Users,
   settings: Settings,
   star: Star,
+  tablet: Tablet,
 };
 
 export function UnifiedNavIcon({ iconKey, size = 16, className }: { iconKey: IconKey; size?: number; className?: string }) {

@@ -67,14 +67,21 @@ const EXCLUDED_KEYS = new Set(["LOCATIONS"]);
  *   Pedidos e Caixa respectivamente.
  * - Produtos/Adicionais são abas de Cardápio; Compras/Fornecedores são
  *   abas de Estoque.
+ * - Mesas e Comandas deixaram de ser abas separadas — a página de Operação
+ *   virou uma única tela unificada (mesa + comanda + balcão, abertos e
+ *   encerrados) para resolver comandas de balcão "sumindo" do dashboard
+ *   (fecham sozinhas assim que quitadas, então nunca apareciam na aba
+ *   "Comandas", que filtrava por status=OPEN por padrão). TABLES/TABS
+ *   apontam para a mesma rota raiz agora; o dedupe por rota em
+ *   `buildUnifiedNavigation` garante um único item de menu.
  */
 const ROUTE_OVERRIDE_BY_KEY: Partial<Record<string, string>> = {
   TICKETING: "/dashboard/eventos",
   TICKET_TYPES: "/dashboard/eventos",
   LOTS: "/dashboard/eventos",
   WAITLIST: "/dashboard/reservas?tab=fila",
-  TABLES: "/dashboard/operacao/mesas",
-  TABS: "/dashboard/operacao/comandas",
+  TABLES: "/dashboard/operacao",
+  TABS: "/dashboard/operacao",
   ORDERS: "/dashboard/operacao/pedidos",
   PREPARATION: "/dashboard/operacao/pedidos",
   CASH_REGISTER: "/dashboard/operacao/caixa",
@@ -83,6 +90,17 @@ const ROUTE_OVERRIDE_BY_KEY: Partial<Record<string, string>> = {
   MODIFIERS: "/dashboard/cardapio",
   PURCHASES: "/dashboard/estoque",
   SUPPLIERS: "/dashboard/estoque",
+};
+
+/**
+ * TABLES/TABS convergem para a mesma rota (/dashboard/operacao, ver acima) —
+ * o dedupe mantém só o primeiro item que bateu naquela rota, cujo `label`
+ * viria do backend como "Mesas" (ordem do catálogo). Sobrescrito para
+ * "Operação", já que a tela agora cobre mesa+comanda+balcão juntos.
+ */
+const LABEL_OVERRIDE_BY_KEY: Partial<Record<string, string>> = {
+  TABLES: "Operação",
+  TABS: "Operação",
 };
 
 export type IconKey =
@@ -96,7 +114,8 @@ export type IconKey =
   | "chart"
   | "users"
   | "settings"
-  | "star";
+  | "star"
+  | "tablet";
 
 const ICON_BY_KEY: Partial<Record<string, IconKey>> = {
   PLATFORM_HOME: "home",
@@ -180,8 +199,9 @@ export function buildUnifiedNavigation(items: NavigationItem[]): UnifiedNavGroup
     seenRoutes.add(route);
 
     const iconKey = ICON_BY_KEY[item.key] ?? ICON_BY_GROUP[item.group];
+    const label = LABEL_OVERRIDE_BY_KEY[item.key] ?? item.label;
     const list = byGroup.get(displayGroup) ?? [];
-    list.push({ key: item.key, label: item.label, route, iconKey, secondary: SECONDARY_KEYS.has(item.key) });
+    list.push({ key: item.key, label, route, iconKey, secondary: SECONDARY_KEYS.has(item.key) });
     byGroup.set(displayGroup, list);
   }
 
@@ -219,12 +239,12 @@ const FULL_CATALOG_PREVIEW: NavigationItem[] = [
   { key: "WAITLIST", label: "Fila de espera", route: "/dashboard/reservas?tab=fila", group: "RELATIONSHIP" },
   { key: "GUEST_LISTS", label: "Convidados", route: "/dashboard/convidados", group: "RELATIONSHIP" },
   { key: "REVIEWS", label: "Avaliações", route: "/dashboard/avaliacoes", group: "RELATIONSHIP" },
-  { key: "TABLES", label: "Mesas", route: "/dashboard/operacao?tab=mesas", group: "OPERATION" },
-  { key: "TABS", label: "Comandas", route: "/dashboard/operacao?tab=comandas", group: "OPERATION" },
-  { key: "ORDERS", label: "Pedidos", route: "/dashboard/operacao?tab=pedidos", group: "OPERATION" },
-  { key: "PREPARATION", label: "Preparo", route: "/dashboard/operacao?tab=preparo", group: "OPERATION" },
-  { key: "CASH_REGISTER", label: "Caixa", route: "/dashboard/operacao?tab=caixa", group: "OPERATION" },
-  { key: "VENUE_PAYMENTS", label: "Pagamentos", route: "/dashboard/operacao?tab=pagamentos", group: "OPERATION" },
+  { key: "TABLES", label: "Operação", route: "/dashboard/operacao", group: "OPERATION" },
+  { key: "TABS", label: "Operação", route: "/dashboard/operacao", group: "OPERATION" },
+  { key: "ORDERS", label: "Pedidos", route: "/dashboard/operacao/pedidos", group: "OPERATION" },
+  { key: "PREPARATION", label: "Preparo", route: "/dashboard/operacao/pedidos", group: "OPERATION" },
+  { key: "CASH_REGISTER", label: "Caixa", route: "/dashboard/operacao/caixa", group: "OPERATION" },
+  { key: "VENUE_PAYMENTS", label: "Pagamentos", route: "/dashboard/operacao/caixa", group: "OPERATION" },
   { key: "MENUS", label: "Cardápios", route: "/dashboard/cardapio", group: "PRODUCTS" },
   { key: "PRODUCTS", label: "Produtos", route: "/dashboard/cardapio?tab=produtos", group: "PRODUCTS" },
   { key: "MODIFIERS", label: "Adicionais", route: "/dashboard/cardapio?tab=adicionais", group: "PRODUCTS" },

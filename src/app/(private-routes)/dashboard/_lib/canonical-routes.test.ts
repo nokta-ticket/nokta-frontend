@@ -14,6 +14,14 @@ const DASHBOARD_DIR = path.join(__dirname, "..");
  */
 const CANONICAL_OWNS_CONTENT = ["eventos", "reservas", "operacao", "cardapio", "estoque", "financeiro", "insights", "inicio"];
 
+/**
+ * Operação virou uma única tela unificada (mesa+comanda+balcão) — Mesas e
+ * Comandas deixaram de ser abas/rotas próprias e viram redirects finos para
+ * a rota canônica. Pedidos, Caixa e Terminais, ao contrário, SAÍRAM de
+ * Operação e viraram páginas com conteúdo próprio (item dedicado no menu,
+ * ver navigation-presentation.ts) — por isso não entram mais nesta lista de
+ * "sempre redirect".
+ */
 const LEGACY_REDIRECT_PAGES: { file: string; expectedPrefix: string }[] = [
   { file: "venue/inicio/page.tsx", expectedPrefix: "/dashboard/inicio" },
   { file: "tickets/inicio/page.tsx", expectedPrefix: "/dashboard/inicio" },
@@ -29,8 +37,6 @@ const LEGACY_REDIRECT_PAGES: { file: string; expectedPrefix: string }[] = [
   { file: "fila-espera/page.tsx", expectedPrefix: "/dashboard/reservas" },
   { file: "operacao/mesas/page.tsx", expectedPrefix: "/dashboard/operacao" },
   { file: "operacao/comandas/page.tsx", expectedPrefix: "/dashboard/operacao" },
-  { file: "operacao/pedidos/page.tsx", expectedPrefix: "/dashboard/operacao" },
-  { file: "operacao/caixa/page.tsx", expectedPrefix: "/dashboard/operacao" },
 ];
 
 describe("rotas canônicas possuem a implementação de verdade (não redirecionam para rota antiga)", () => {

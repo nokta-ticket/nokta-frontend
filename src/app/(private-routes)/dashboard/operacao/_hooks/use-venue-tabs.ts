@@ -18,6 +18,8 @@ interface TabFilters {
   status?: string;
   type?: string;
   search?: string;
+  closedAtFrom?: string;
+  closedAtTo?: string;
 }
 
 /** Lista de comandas — polling só enquanto a aba está montada (comandas abertas mudam com frequência). */

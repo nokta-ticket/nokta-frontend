@@ -4,11 +4,22 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { CircleHelp, Compass, Megaphone } from "lucide-react";
 import { useOrganizations } from "@/context/OrganizationContext";
+import { useVenueAccess } from "@/context/VenueAccessContext";
 import { usePlatformNavigation } from "../_hooks/use-platform";
 import { buildFullCatalogPreview, buildUnifiedNavigation, type UnifiedNavGroup } from "../_lib/navigation-presentation";
 import { UnifiedNavIcon } from "./unified-nav-icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useMyPromoterProfile } from "../promotor/_hooks/use-my-promoter";
+
+/**
+ * Terminais nunca teve uma capability própria no catálogo de navegação do
+ * backend (só era liberado por permissão local dentro da antiga aba de
+ * Operação) — por isso não vem de `buildUnifiedNavigation`, é injetado aqui
+ * como item fixo no grupo Operação, condicionado à permissão granular
+ * `venue.operation.devices.manage`. Estrutura/lógica da tela (TerminaisTab)
+ * continua a mesma; só a localização no menu mudou.
+ */
+const TERMINAIS_ROUTE = "/dashboard/operacao/terminais";
 
 function NavGroupList({ groups, pathname }: { groups: UnifiedNavGroup[]; pathname: string }) {
   return (
@@ -75,6 +86,7 @@ export function UnifiedSidebar() {
   // "promoter nunca é automaticamente OrganizationMember"). Troca de papel
   // produtor/promoter sem fricção: só mais um item na mesma sidebar.
   const { data: myPromoterProfile } = useMyPromoterProfile();
+  const { can: canVenue } = useVenueAccess();
 
   // Só a organização (dono/produtor/equipe) espera `navigation` — um
   // promoter sem nenhuma organização própria (ver comentário acima) nunca
@@ -83,6 +95,18 @@ export function UnifiedSidebar() {
   const hasAnyCapability = (navigation?.items.length ?? 0) > 0;
   const previewMode = isOnboarding || (!orgNavLoading && !hasAnyCapability);
   const groups = previewMode ? buildFullCatalogPreview() : navigation ? buildUnifiedNavigation(navigation.items) : [];
+
+  // Terminais só existe como item de menu quando o grupo Operação já
+  // apareceu (capacidade de Venue ativa) e o usuário tem a permissão
+  // granular — nunca aparece em preview (onboarding/sem capacidade), já que
+  // ali "Operação" é só uma prévia sem organização real por trás.
+  const groupsWithTerminais = previewMode
+    ? groups
+    : groups.map((g) =>
+        g.group === "OPERACAO" && canVenue("venue.operation.devices.manage")
+          ? { ...g, items: [...g.items, { key: "TERMINAIS", label: "Terminais", route: TERMINAIS_ROUTE, iconKey: "tablet" as const, secondary: false }] }
+          : g,
+      );
 
   return (
     <nav className="flex flex-1 flex-col gap-5 overflow-y-auto text-sm">
@@ -93,7 +117,7 @@ export function UnifiedSidebar() {
           ))}
         </div>
       ) : (
-        <NavGroupList groups={groups} pathname={pathname} />
+        <NavGroupList groups={groupsWithTerminais} pathname={pathname} />
       )}
 
       {!isOnboarding && myPromoterProfile ? (

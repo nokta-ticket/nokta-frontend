@@ -558,7 +558,7 @@ export const venueOperationApi = {
   listTabs: (
     orgId: number,
     locationId: number,
-    filters: { status?: string; type?: string; search?: string } = {},
+    filters: { status?: string; type?: string; search?: string; closedAtFrom?: string; closedAtTo?: string } = {},
   ) =>
     api
       .get<VenueTabListItem[]>(`${base(orgId)}/locations/${locationId}/tabs`, { params: filters })

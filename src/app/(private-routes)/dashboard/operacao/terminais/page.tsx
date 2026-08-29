@@ -16,10 +16,17 @@ import { EmptyState } from "../../_components/states/empty-state";
 import { BlockSkeleton } from "../../_components/states/loading-state";
 import { useVenueLocations } from "../_hooks/use-venue-locations";
 import { OnboardingLocation } from "../_components/onboarding-location";
-import { CaixaTab } from "../_components/caixa-tab";
+import { TerminaisTab } from "../_components/terminais-tab";
 
-/** Página própria (antes era uma aba dentro de Operação) — item dedicado no menu lateral, ver navigation-presentation.ts (CASH_REGISTER/VENUE_PAYMENTS). */
-export default function OperacaoCaixaPage() {
+/**
+ * Página própria (antes era uma aba dentro de Operação) — item dedicado no
+ * menu lateral, ver unified-sidebar.tsx (EXTRA_NAV_ITEMS). Terminais nunca
+ * teve uma capability de navegação própria no catálogo do backend (só era
+ * liberado por permissão local dentro de Operação); a estrutura/lógica
+ * interna (TerminaisTab) continua exatamente a mesma — só a localização no
+ * menu mudou.
+ */
+export default function OperacaoTerminaisPage() {
   const { currentOrg, loadingOrgs, loadingModules } = useOrganizations();
   const searchParams = useSearchParams();
   const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
@@ -40,12 +47,12 @@ export default function OperacaoCaixaPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locations, selectedLocationId]);
 
-  const description = "Abra e feche o caixa, registre suprimentos e retiradas.";
+  const description = "Pareie e gerencie os terminais (POS) usados no estabelecimento.";
 
   if (loadingOrgs || loadingModules) {
     return (
       <PageContainer>
-        <PageHeader title="Caixa" description={description} />
+        <PageHeader title="Terminais" description={description} />
         <BlockSkeleton className="h-96" />
       </PageContainer>
     );
@@ -54,8 +61,8 @@ export default function OperacaoCaixaPage() {
   if (!orgId) {
     return (
       <PageContainer>
-        <PageHeader title="Caixa" description={description} />
-        <EmptyState title="Nenhuma organização selecionada" description="Selecione uma organização para ver o caixa." />
+        <PageHeader title="Terminais" description={description} />
+        <EmptyState title="Nenhuma organização selecionada" description="Selecione uma organização para ver os terminais." />
       </PageContainer>
     );
   }
@@ -63,7 +70,7 @@ export default function OperacaoCaixaPage() {
   if (locations && locations.length === 0) {
     return (
       <PageContainer>
-        <PageHeader title="Caixa" description={description} />
+        <PageHeader title="Terminais" description={description} />
         <OnboardingLocation orgId={orgId} />
       </PageContainer>
     );
@@ -72,7 +79,7 @@ export default function OperacaoCaixaPage() {
   if (!selectedLocationId) {
     return (
       <PageContainer>
-        <PageHeader title="Caixa" description={description} />
+        <PageHeader title="Terminais" description={description} />
         <BlockSkeleton className="h-96" />
       </PageContainer>
     );
@@ -81,7 +88,7 @@ export default function OperacaoCaixaPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="Caixa"
+        title="Terminais"
         description={description}
         actions={
           locations && locations.length > 1 ? (
@@ -98,7 +105,7 @@ export default function OperacaoCaixaPage() {
           ) : undefined
         }
       />
-      <CaixaTab orgId={orgId} locationId={selectedLocationId} />
+      <TerminaisTab orgId={orgId} locationId={selectedLocationId} />
     </PageContainer>
   );
 }
