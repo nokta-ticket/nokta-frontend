@@ -159,7 +159,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // 429 (rate limit), network errors, 5xx etc. should NOT log the user out.
       const status = err?.response?.status;
       if (status === 401) {
+        // Redireciona aqui mesmo, sem esperar outra query (ex.: /me/organizations,
+        // com retry:1 do React Query) bater 401 primeiro e acionar o interceptor do
+        // axios — loadUser() é a chamada mais rápida/dedicada pra detectar sessão
+        // inválida, então é quem deve decidir o redirect assim que souber.
+        const staffRoles = ["SUPER_ADMIN", "ADMIN", "SUPPORT"];
+        const loginPath = staffRoles.includes(roleRef.current ?? "") ? "/admin/login" : "/login";
         signOut();
+        if (typeof window !== "undefined" && !window.location.pathname.includes("/login")) {
+          window.location.href = loginPath;
+        }
       }
       // All other errors: silently ignore — user stays logged in.
     }

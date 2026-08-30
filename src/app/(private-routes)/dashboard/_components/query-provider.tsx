@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import axios from "axios";
 
 /**
  * Camada de cache do dashboard (stale-while-revalidate).
@@ -22,7 +23,13 @@ export function DashboardQueryProvider({ children }: { children: ReactNode }) {
             gcTime: 5 * 60_000,
             // Revalida ao voltar o foco (silencioso, sem skeleton).
             refetchOnWindowFocus: true,
-            retry: 1,
+            // 401 é estado de autenticação, não erro transitório — tentar de
+            // novo só atrasa o redirect que o AuthContext/interceptor do axios
+            // já vão disparar. Demais erros (rede, 5xx) continuam com 1 retry.
+            retry: (failureCount, error) => {
+              if (axios.isAxiosError(error) && error.response?.status === 401) return false;
+              return failureCount < 1;
+            },
           },
         },
       }),
