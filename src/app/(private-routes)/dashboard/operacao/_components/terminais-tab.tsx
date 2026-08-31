@@ -40,9 +40,11 @@ const ONLINE_THRESHOLD_MS = 60 * 1000;
 
 function PairingCodeDialog({
   result,
+  devices,
   onOpenChange,
 }: {
   result: VenueDevicePairingCodeResponse | null;
+  devices: VenueDevice[];
   onOpenChange: (v: boolean) => void;
 }) {
   const [now, setNow] = useState(() => Date.now());
@@ -52,6 +54,16 @@ function PairingCodeDialog({
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
   }, [result]);
+
+  // Já pareado (token gravado) enquanto o diálogo ainda está aberto: o
+  // código já foi confirmado no app, então fecha sozinho — sem isso, o
+  // gerente que esquece a caixa aberta vê o timer se esgotar até "código
+  // expirado, gere um novo" mesmo o pareamento já tendo funcionado.
+  useEffect(() => {
+    if (!result) return;
+    const device = devices.find((d) => d.id === result.id);
+    if (device?.deviceToken) onOpenChange(false);
+  }, [result, devices, onOpenChange]);
 
   const expiresAt = result ? new Date(result.expiresAt).getTime() : 0;
   const remainingMs = expiresAt - now;
@@ -319,7 +331,7 @@ export function TerminaisTab({ orgId, locationId }: { orgId: number; locationId:
         }
       />
 
-      <PairingCodeDialog result={pairingResult} onOpenChange={(v) => !v && setPairingResult(null)} />
+      <PairingCodeDialog result={pairingResult} devices={list} onOpenChange={(v) => !v && setPairingResult(null)} />
 
       <ConfirmDialog
         open={revokeDeviceId !== null}
