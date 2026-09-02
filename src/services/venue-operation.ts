@@ -43,6 +43,11 @@ export interface VenueLocation {
   defaultReservationDurationMinutes: number;
   reservationMinAdvanceMinutes: number;
   reservationLateToleranceMinutes: number | null;
+  // Código do estabelecimento (EC/merchantCode) desta unidade na Cielo —
+  // identifica QUEM recebe o dinheiro daquela venda. Não é uma credencial
+  // (Client-ID/Access Token são globais da Nokta, painel Adquirentes do
+  // SUPER_ADMIN) — é só o identificador do estabelecimento.
+  cieloMerchantCode: string | null;
   archivedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -482,6 +487,10 @@ export const venueOperationApi = {
     api.post<VenueLocation>(`${base(orgId)}/locations/${locationId}/set-main`).then((r) => r.data),
   archiveLocation: (orgId: number, locationId: number) =>
     api.post<VenueLocation>(`${base(orgId)}/locations/${locationId}/archive`).then((r) => r.data),
+  setCieloMerchantCode: (orgId: number, locationId: number, cieloMerchantCode: string) =>
+    api
+      .post<VenueLocation>(`${base(orgId)}/locations/${locationId}/cielo-merchant-code`, { cieloMerchantCode })
+      .then((r) => r.data),
 
   // ---- Áreas ----
   listAreas: (orgId: number, locationId: number) =>

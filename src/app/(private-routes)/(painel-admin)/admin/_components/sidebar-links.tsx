@@ -2,6 +2,7 @@ import {
   BarChart2,
   ClipboardCheck,
   CreditCard,
+  KeyRound,
   Landmark,
   LayoutList,
   ScrollText,
@@ -68,6 +69,11 @@ export const sidebarLinks: SidebarLink[] = [
     label: "Taxas do Gateway",
     icon: <CreditCard size={16} />,
     href: "/admin/taxas-gateway",
+  },
+  {
+    label: "Adquirentes",
+    icon: <KeyRound size={16} />,
+    href: "/admin/adquirentes",
   },
   {
     label: "Segurança",

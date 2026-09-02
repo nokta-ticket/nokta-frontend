@@ -46,5 +46,11 @@ export function useVenueLocationMutations(orgId: number) {
     onSuccess: invalidate,
   });
 
-  return { create, update, setMain, archive };
+  const setCieloMerchantCode = useMutation({
+    mutationFn: ({ locationId, cieloMerchantCode }: { locationId: number; cieloMerchantCode: string }) =>
+      venueOperationApi.setCieloMerchantCode(orgId, locationId, cieloMerchantCode),
+    onSuccess: invalidate,
+  });
+
+  return { create, update, setMain, archive, setCieloMerchantCode };
 }

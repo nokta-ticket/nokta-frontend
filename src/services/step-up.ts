@@ -9,7 +9,8 @@ export type StepUpAction =
   | "LEGAL_FINANCIAL_CORRECTION"
   | "FINANCIAL_PERMISSION_CHANGE"
   | "LEGAL_DOCUMENT_CHANGE"
-  | "RECIPIENT_BLOCK_TOGGLE";
+  | "RECIPIENT_BLOCK_TOGGLE"
+  | "PAYMENT_ACQUIRER_CREDENTIALS_UPDATE";
 
 export interface StepUpChallengeResult {
   grantId: string;

@@ -30,8 +30,9 @@ const EMPTY: CreateVenueLocationPayload = {
 
 /** Sempre reseta o form ao abrir (nunca mantém dados do registro anterior) e fecha ao salvar com sucesso. */
 export function LocationFormDialog({ orgId, location, open, onOpenChange }: Props) {
-  const { create, update } = useVenueLocationMutations(orgId);
+  const { create, update, setCieloMerchantCode } = useVenueLocationMutations(orgId);
   const [form, setForm] = useState<CreateVenueLocationPayload>(EMPTY);
+  const [merchantCode, setMerchantCode] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -46,8 +47,10 @@ export function LocationFormDialog({ orgId, location, open, onOpenChange }: Prop
         reservationMinAdvanceMinutes: location.reservationMinAdvanceMinutes,
         reservationLateToleranceMinutes: location.reservationLateToleranceMinutes ?? undefined,
       });
+      setMerchantCode(location.cieloMerchantCode ?? "");
     } else {
       setForm(EMPTY);
+      setMerchantCode("");
     }
   }, [open, location]);
 
@@ -141,6 +144,39 @@ export function LocationFormDialog({ orgId, location, open, onOpenChange }: Prop
               />
             </div>
           </div>
+
+          {location ? (
+            <div className="space-y-1.5 border-t pt-4">
+              <Label>Código do estabelecimento na Cielo (EC)</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={merchantCode}
+                  onChange={(e) => setMerchantCode(e.target.value)}
+                  placeholder="Ex.: 1006993336"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={setCieloMerchantCode.isPending || !merchantCode.trim()}
+                  onClick={() =>
+                    setCieloMerchantCode.mutate(
+                      { locationId: location.id, cieloMerchantCode: merchantCode.trim() },
+                      {
+                        onSuccess: () => toast.success("Código do estabelecimento salvo."),
+                        onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar o código.")),
+                      },
+                    )
+                  }
+                >
+                  {setCieloMerchantCode.isPending ? "Salvando…" : "Salvar código"}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Identifica esta unidade como recebedora nas cobranças via terminal Cielo (app Nokta POS). Não é uma
+                senha — é só o número do estabelecimento cadastrado na sua conta Cielo.
+              </p>
+            </div>
+          ) : null}
         </div>
 
         <DialogFooter>
