@@ -100,6 +100,9 @@ export default function TabDadosGerais({ user, onRefresh }: TabDadosGeraisProps)
   const [sessionOpen, setSessionOpen] = useState(false);
   const [sessionLoading, setSessionLoading] = useState(false);
 
+  const [statusOpen, setStatusOpen] = useState(false);
+  const [statusLoading, setStatusLoading] = useState(false);
+
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirmEmail, setDeleteConfirmEmail] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -161,6 +164,34 @@ export default function TabDadosGerais({ user, onRefresh }: TabDadosGeraisProps)
       toast.error(getErrorMessage(err, "Não foi possível alterar o bloqueio."));
     } finally {
       setBlockLoading(false);
+    }
+  }
+
+  /**
+   * Ativa/desativa a conta (`PATCH /admin/usuarios/:id/status`).
+   *
+   * O endpoint sempre existiu no backend (AdminService.updateUserStatus, com
+   * auditoria via logAdminAction) mas nunca teve UI — o painel só EXIBIA
+   * "Ativo/Inativo" sem permitir mudar. Sem isto, uma conta que não recebeu
+   * o código de confirmação (WhatsApp indisponível, número empresarial que
+   * não recebe, operadora bloqueando) ficava presa em `ativo: false` para
+   * sempre, e a única saída era escrever no banco à mão — exatamente o que
+   * um painel administrativo existe para evitar.
+   *
+   * Distinto de bloquear: bloqueio é punitivo (`bloqueado`, com motivo);
+   * status é o "a conta terminou o cadastro?" que o login exige.
+   */
+  async function handleToggleStatus() {
+    setStatusLoading(true);
+    try {
+      await api.patch(`/admin/usuarios/${user.id}/status`, { ativo: !user.ativo });
+      toast.success(user.ativo ? "Conta desativada" : "Conta ativada");
+      setStatusOpen(false);
+      onRefresh();
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Não foi possível alterar o status da conta."));
+    } finally {
+      setStatusLoading(false);
     }
   }
 
@@ -327,6 +358,18 @@ export default function TabDadosGerais({ user, onRefresh }: TabDadosGeraisProps)
         <div className="flex flex-col gap-3 sm:flex-row">
           <Button
             variant="outline"
+            onClick={() => setStatusOpen(true)}
+            className={user.ativo
+              ? "border-amber-600 text-amber-600 hover:bg-amber-50"
+              : "border-emerald-600 text-emerald-600 hover:bg-emerald-50"
+            }
+          >
+            {user.ativo ? <X className="mr-2 h-4 w-4" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+            {user.ativo ? "Desativar conta" : "Ativar conta"}
+          </Button>
+
+          <Button
+            variant="outline"
             onClick={() => { setBlockReason(""); setBlockOpen(true); }}
             className={user.bloqueado
               ? "border-emerald-600 text-emerald-600 hover:bg-emerald-50"
@@ -358,6 +401,30 @@ export default function TabDadosGerais({ user, onRefresh }: TabDadosGeraisProps)
           )}
         </div>
       )}
+
+      {/* Dialog ativar/desativar conta */}
+      <Dialog open={statusOpen} onOpenChange={setStatusOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{user.ativo ? "Desativar conta" : "Ativar conta"}</DialogTitle>
+            <DialogDescription>
+              {user.ativo
+                ? "O usuário não conseguirá mais fazer login até a conta ser ativada de novo."
+                : "A conta passará a permitir login normalmente — use quando o cadastro foi feito mas a confirmação por WhatsApp não pôde ser concluída. A ação fica registrada na auditoria."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStatusOpen(false)}>Cancelar</Button>
+            <Button
+              onClick={() => void handleToggleStatus()}
+              disabled={statusLoading}
+              className={user.ativo ? "bg-amber-600 text-white hover:bg-amber-700" : "bg-emerald-600 text-white hover:bg-emerald-700"}
+            >
+              {statusLoading ? "Processando..." : user.ativo ? "Confirmar desativação" : "Confirmar ativação"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialog bloqueio */}
       <Dialog open={blockOpen} onOpenChange={setBlockOpen}>
