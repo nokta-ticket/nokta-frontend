@@ -372,6 +372,7 @@ export function RegisterForm() {
   const [senha,           setSenha]          = useState("");
 
   const [emailSuggestion, setEmailSuggestion] = useState<string | null>(null);
+  const [emailTaken,      setEmailTaken]      = useState(false);
   const [touched, setTouched] = useState({ nome: false, email: false, telefone: false, senha: false });
 
   const phoneResend = useResendCooldown();
@@ -425,6 +426,12 @@ export function RegisterForm() {
       });
       if (!res.ok) {
         const data = await res.json();
+        // Conta ativa com este e-mail: mostra o aviso fixo com os links de
+        // login/recuperação em vez de um toast que some.
+        if (data.code === "EMAIL_ALREADY_REGISTERED") {
+          setEmailTaken(true);
+          return;
+        }
         throw new Error(data.message || "Erro ao criar conta");
       }
       setStep("otp");
@@ -654,13 +661,26 @@ export function RegisterForm() {
               type="email"
               placeholder="E-mail"
               value={email}
-              onChange={(e) => { setEmail(e.target.value); setEmailSuggestion(null); }}
+              onChange={(e) => { setEmail(e.target.value); setEmailSuggestion(null); setEmailTaken(false); }}
               onBlur={handleEmailBlur}
               autoComplete="email"
               className={`${inputBase} pl-[38px] pr-4 ${errors.email ? "border-red-300 focus:border-red-400 focus:ring-red-400/10" : ""}`}
             />
           </div>
           {errors.email && <p className="text-[11.5px] text-red-500 pl-1">{errors.email}</p>}
+          {emailTaken && !errors.email && (
+            <p className="text-[11.5px] text-red-500 pl-1">
+              Este e-mail já tem uma conta.{" "}
+              <Link href={`/login${buildLoginQuery(ctx, redirectTo)}`} className="font-semibold underline">
+                Fazer login
+              </Link>{" "}
+              ou{" "}
+              <Link href="/recuperar-senha" className="font-semibold underline">
+                recuperar senha
+              </Link>
+              .
+            </p>
+          )}
           {emailSuggestion && !errors.email && (
             <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-[12px]">
               <span className="text-amber-700">
