@@ -59,10 +59,28 @@ function applyMask(value: string, mask: string): string {
   return out
 }
 
-function formatPhone(value: string, country: Country): string {
+// O autofill do celular (autoComplete="tel") costuma inserir o número já com
+// o código do país ("+55 11 99999-8888"), mas o código do país fica fora do
+// campo (dialCode). Sem remover esse prefixo, a máscara BR pegava os 11
+// primeiros dígitos ("55119999988") e o número enviado virava outro número
+// válido (+5555119999988, DDD 55) — escapando da checagem de telefone
+// duplicado no cadastro e mandando o código de WhatsApp pra um desconhecido.
+function stripCountryPrefix(digits: string, country: Country): string {
   const mask = MASKS[country]
-  if (!mask) return value.replace(/\D/g, '').slice(0, 15)
-  return applyMask(value, mask)
+  const maxLocalDigits = mask ? (mask.match(/#/g) ?? []).length : 15
+  const callingCode = getCountryCallingCode(country)
+  let d = digits
+  if (d.length > maxLocalDigits && d.startsWith(callingCode)) d = d.slice(callingCode.length)
+  // Prefixo de discagem nacional ("0 11 ...") — DDD brasileiro nunca começa com 0.
+  if (country === 'BR') d = d.replace(/^0+/, '')
+  return d
+}
+
+export function formatPhone(value: string, country: Country): string {
+  const digits = stripCountryPrefix(value.replace(/\D/g, ''), country)
+  const mask = MASKS[country]
+  if (!mask) return digits.slice(0, 15)
+  return applyMask(digits, mask)
 }
 
 function getPlaceholder(country: Country): string {

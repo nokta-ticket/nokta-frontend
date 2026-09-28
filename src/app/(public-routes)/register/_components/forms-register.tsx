@@ -634,7 +634,7 @@ export function RegisterForm() {
               type="text"
               placeholder="Nome completo"
               value={nome}
-              onChange={(e) => setNome(e.target.value)}
+              onChange={(e) => setNome(e.target.value.toUpperCase())}
               onBlur={() => setTouched((t) => ({ ...t, nome: true }))}
               autoComplete="name"
               className={`${inputBase} pl-[38px] pr-4 ${errors.nome ? "border-red-300 focus:border-red-400 focus:ring-red-400/10" : ""}`}
