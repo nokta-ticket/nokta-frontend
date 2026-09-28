@@ -9,6 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import api from "@/lib/axios";
 import { PhoneInput, validatePhone } from "@/components/ui/phone-input";
 import { getCountryCallingCode, type Country } from "react-phone-number-input";
+import { toNameCase } from "@/lib/name-case";
 import { isSafeInternalRedirect } from "@/lib/safe-redirect";
 import { currentSurfaceStateToken, getApiBaseUrl } from "@/lib/surfaces";
 import { useSurface } from "@/lib/use-surface";
@@ -57,8 +58,10 @@ function getDeviceFingerprint(): string {
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
+// O campo exibe o nome em maiúsculas só visualmente (CSS); o valor salvo passa
+// por toNameCase — é assim que aparece no perfil, e-mails e menu.
 function splitName(full: string): { nome: string; sobrenome: string } {
-  const parts = full.trim().split(/\s+/);
+  const parts = toNameCase(full).split(/\s+/);
   if (parts.length === 1) return { nome: parts[0], sobrenome: parts[0] };
   return { nome: parts[0], sobrenome: parts.slice(1).join(" ") };
 }
@@ -634,10 +637,10 @@ export function RegisterForm() {
               type="text"
               placeholder="Nome completo"
               value={nome}
-              onChange={(e) => setNome(e.target.value.toUpperCase())}
+              onChange={(e) => setNome(e.target.value)}
               onBlur={() => setTouched((t) => ({ ...t, nome: true }))}
               autoComplete="name"
-              className={`${inputBase} pl-[38px] pr-4 ${errors.nome ? "border-red-300 focus:border-red-400 focus:ring-red-400/10" : ""}`}
+              className={`${inputBase} pl-[38px] pr-4 uppercase placeholder:normal-case ${errors.nome ? "border-red-300 focus:border-red-400 focus:ring-red-400/10" : ""}`}
             />
           </div>
           {errors.nome && <p className="text-[11.5px] text-red-500 pl-1">{errors.nome}</p>}
