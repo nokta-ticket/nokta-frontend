@@ -81,6 +81,7 @@ export function LoginForm() {
 
   const [modalOpen,        setModalOpen]        = useState(false)
   const [emailConfirmacao, setEmailConfirmacao] = useState('')
+  const [phoneConfirmacao, setPhoneConfirmacao] = useState<string | undefined>(undefined)
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -98,52 +99,25 @@ export function LoginForm() {
 
       if (!res.ok) {
         const msg: string = Array.isArray(data.message) ? data.message.join(' ') : (data.message || '')
-        if (msg.toLowerCase().includes('confirmada') || msg.toLowerCase().includes('confirmar')) {
+        // Conta sem telefone não tem pra onde mandar código — abrir o modal
+        // de verificação aqui deixaria a pessoa esperando algo impossível.
+        if (data.code === 'ACCOUNT_NOT_CONFIRMED_NO_PHONE') {
+          throw new Error(msg)
+        }
+        // Senha certa, conta não confirmada: o backend já reenviou o código
+        // pro WhatsApp da conta — abre a verificação direto.
+        if (data.code === 'ACCOUNT_NOT_CONFIRMED' || msg.toLowerCase().includes('confirmada')) {
           setEmailConfirmacao(email)
+          setPhoneConfirmacao(data.phone)
           setModalOpen(true)
-        } else {
-          throw new Error(msg || 'Credenciais inválidas')
+          if (data.code === 'ACCOUNT_NOT_CONFIRMED') toast.success(msg)
+          return
         }
-        return
+        throw new Error(msg || 'Credenciais inválidas')
       }
 
-      const { user } = data
-      if (!user) throw new Error('Não foi possível concluir o login.')
-
-      signIn(user)
-      toast.success('Login realizado com sucesso!')
-
-      if (isSafeInternalRedirect(redirectTo)) {
-        router.push(redirectTo)
-      } else if (ctx === 'produtor') {
-        // Antes caía sempre em /dashboard/onboarding, que por sua vez
-        // redirecionava pra /dashboard/inicio se detectasse
-        // alreadyConfigured — funcionava (nenhuma tela chegava a
-        // renderizar), mas a URL passava visivelmente por
-        // /dashboard/onboarding antes do destino final, e o histórico do
-        // navegador ganhava uma entrada a mais. Decide aqui, antes de
-        // navegar: se toda organização do usuário já tem onboarding
-        // concluído (mesmo campo que dashboard/onboarding/page.tsx usa,
-        // vindo de GET /me/organizations), vai direto pro painel. Só passa
-        // por onboarding quando realmente falta algo — sem organização
-        // nenhuma (needsWorkspaceOnly) ou onboarding incompleto — casos em
-        // que a própria página decide entre essas duas telas.
-        try {
-          const orgsRes = await fetch(`${API_URL}/me/organizations`, { credentials: 'include' })
-          const orgs: Array<{ onboardingCompleted: boolean }> = orgsRes.ok ? await orgsRes.json() : []
-          const onboardingDone = orgs.length > 0 && orgs.every((o) => o.onboardingCompleted)
-          router.push(onboardingDone ? '/dashboard/inicio' : '/dashboard/onboarding')
-        } catch {
-          router.push('/dashboard/onboarding')
-        }
-      } else {
-        // Navegação forçada (não router.push): "/" decide a rota conforme
-        // autenticação no middleware (app.nokta.live) — o cache de rota do
-        // Next no client pode servir uma resposta anterior (anônima) e
-        // nunca sair do /login. Só um request de verdade garante que o
-        // middleware reavalie com o cookie que acabou de ser gravado.
-        window.location.href = '/'
-      }
+      if (!data.user) throw new Error('Não foi possível concluir o login.')
+      await finishLogin(data.user)
     } catch (err: any) {
       toast.error(err.message || 'Erro ao fazer login')
     } finally {
@@ -151,9 +125,52 @@ export function LoginForm() {
     }
   }
 
-  const handleConfirmSuccess = () => {
+  // Comum ao login normal e à confirmação da conta pelo modal (que já
+  // autentica via cookie em confirmar-telefone).
+  const finishLogin = async (user: any) => {
+    signIn(user)
+    toast.success('Login realizado com sucesso!')
+
+    if (isSafeInternalRedirect(redirectTo)) {
+      router.push(redirectTo)
+    } else if (ctx === 'produtor') {
+      // Antes caía sempre em /dashboard/onboarding, que por sua vez
+      // redirecionava pra /dashboard/inicio se detectasse
+      // alreadyConfigured — funcionava (nenhuma tela chegava a
+      // renderizar), mas a URL passava visivelmente por
+      // /dashboard/onboarding antes do destino final, e o histórico do
+      // navegador ganhava uma entrada a mais. Decide aqui, antes de
+      // navegar: se toda organização do usuário já tem onboarding
+      // concluído (mesmo campo que dashboard/onboarding/page.tsx usa,
+      // vindo de GET /me/organizations), vai direto pro painel. Só passa
+      // por onboarding quando realmente falta algo — sem organização
+      // nenhuma (needsWorkspaceOnly) ou onboarding incompleto — casos em
+      // que a própria página decide entre essas duas telas.
+      try {
+        const orgsRes = await fetch(`${API_URL}/me/organizations`, { credentials: 'include' })
+        const orgs: Array<{ onboardingCompleted: boolean }> = orgsRes.ok ? await orgsRes.json() : []
+        const onboardingDone = orgs.length > 0 && orgs.every((o) => o.onboardingCompleted)
+        router.push(onboardingDone ? '/dashboard/inicio' : '/dashboard/onboarding')
+      } catch {
+        router.push('/dashboard/onboarding')
+      }
+    } else {
+      // Navegação forçada (não router.push): "/" decide a rota conforme
+      // autenticação no middleware (app.nokta.live) — o cache de rota do
+      // Next no client pode servir uma resposta anterior (anônima) e
+      // nunca sair do /login. Só um request de verdade garante que o
+      // middleware reavalie com o cookie que acabou de ser gravado.
+      window.location.href = '/'
+    }
+  }
+
+  const handleConfirmSuccess = async (user: any) => {
     setModalOpen(false)
-    toast.success('Conta confirmada! Faça login novamente.')
+    if (user) {
+      await finishLogin(user)
+    } else {
+      toast.success('Conta confirmada! Faça login novamente.')
+    }
   }
 
   return (
@@ -235,6 +252,7 @@ export function LoginForm() {
       <ConfirmEmailModal
         open={modalOpen}
         email={emailConfirmacao}
+        phone={phoneConfirmacao}
         onClose={() => setModalOpen(false)}
         onConfirm={handleConfirmSuccess}
       />

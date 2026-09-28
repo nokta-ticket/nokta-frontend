@@ -78,10 +78,13 @@ interface ConfirmEmailModalProps {
   open: boolean
   onClose: () => void
   email: string
-  onConfirm: () => void
+  /** Telefone da conta (vem do 403 ACCOUNT_NOT_CONFIRMED do login) — só pro rate limit de tentativas. */
+  phone?: string
+  /** Recebe o usuário já autenticado: confirmar-telefone grava o cookie de sessão. */
+  onConfirm: (user: any) => void
 }
 
-export function ConfirmEmailModal({ open, onClose, email, onConfirm }: ConfirmEmailModalProps) {
+export function ConfirmEmailModal({ open, onClose, email, phone, onConfirm }: ConfirmEmailModalProps) {
   const [loading, setLoading] = useState(false)
 
   // Resend cooldown
@@ -127,10 +130,15 @@ export function ConfirmEmailModal({ open, onClose, email, onConfirm }: ConfirmEm
       const res = await fetch(`${API_URL}/auth/confirmar-telefone`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: code }),
+        body: JSON.stringify(phone ? { token: code, phone } : { token: code }),
+        // Sem isso o navegador descarta o Set-Cookie de sessão (API em outra
+        // origem) — era por isso que depois de confirmar pedia "faça login
+        // novamente", mesmo o backend já tendo autenticado.
+        credentials: 'include',
       })
       if (!res.ok) throw new Error('Código inválido')
-      onConfirm()
+      const data = await res.json()
+      onConfirm(data.user)
     } catch {
       toast.error('Código inválido. Tente novamente.')
     } finally {
