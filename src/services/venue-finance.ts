@@ -4,7 +4,7 @@ import api from "@/lib/axios";
 // Espelham exatamente as respostas do VenueFinanceModule (nokta-api).
 
 export type VenueFinanceBasis = "CASH" | "ACCRUAL";
-export type VenueFinanceQuickPeriod = "TODAY" | "YESTERDAY" | "LAST_7_DAYS" | "THIS_MONTH" | "LAST_MONTH";
+export type VenueFinanceQuickPeriod = "TODAY" | "YESTERDAY" | "LAST_7_DAYS" | "LAST_30_DAYS" | "THIS_MONTH" | "LAST_MONTH";
 export type VenueFinancialCategoryType = "EXPENSE" | "OTHER_INCOME";
 export type VenuePayableStatus = "PENDING" | "PARTIALLY_PAID" | "PAID" | "OVERDUE" | "CANCELED";
 export type VenueFinancialPaymentMethod = "CASH" | "PIX" | "BANK_TRANSFER" | "DEBIT_CARD" | "CREDIT_CARD" | "BOLETO" | "OTHER";
@@ -478,6 +478,7 @@ export const VENUE_FINANCE_QUICK_PERIOD_LABEL: Record<VenueFinanceQuickPeriod, s
   TODAY: "Hoje",
   YESTERDAY: "Ontem",
   LAST_7_DAYS: "Últimos 7 dias",
+  LAST_30_DAYS: "Últimos 30 dias",
   THIS_MONTH: "Este mês",
   LAST_MONTH: "Mês anterior",
 };

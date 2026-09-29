@@ -37,6 +37,7 @@ import { useVenueLocations } from "../../operacao/_hooks/use-venue-locations";
 import { OnboardingLocation } from "../../operacao/_components/onboarding-location";
 import { useVenueFinanceTimeline } from "../../financeiro/_venue/_hooks/use-venue-finance-overview";
 import { useVenueHome } from "./_hooks/use-venue-home";
+import { periodLabel, periodToFinanceParams, usePeriod } from "@/context/PeriodContext";
 
 const SHORTCUT_CONFIG: Record<string, { label: string; description: string; href: string }> = {
   new_reservation: { label: "Nova Reserva", description: "Criar uma nova reserva", href: "/dashboard/reservas" },
@@ -104,7 +105,10 @@ export function VenueInicioPageContent() {
   const { data: home, isLoading: loadingHome, isError: homeError } = useVenueHome(!redirecting ? orgId : null, locationId);
 
   const canViewFinance = can("venue.finance.view");
-  const finance = useVenueFinanceTimeline(canViewFinance ? orgId : null, locationId, { quickPeriod: "LAST_7_DAYS" });
+  // Gráfico e faturamento do Panorama seguem o filtro de período do header;
+  // o card de meta continua comparando este mês com o anterior.
+  const { period } = usePeriod();
+  const finance = useVenueFinanceTimeline(canViewFinance ? orgId : null, locationId, periodToFinanceParams(period));
   const financeThisMonth = useVenueFinanceTimeline(canViewFinance ? orgId : null, locationId, { quickPeriod: "THIS_MONTH" });
   const financeLastMonth = useVenueFinanceTimeline(canViewFinance ? orgId : null, locationId, { quickPeriod: "LAST_MONTH" });
 
@@ -166,6 +170,7 @@ export function VenueInicioPageContent() {
 
   const shortcuts = home.shortcuts.map((key) => SHORTCUT_CONFIG[key]).filter(Boolean);
   const showRestrictedNotice = home.onboarding.restricted && !home.onboarding.readyToOperate;
+  const periodCents = (finance.data ?? []).reduce((sum, p) => sum + p.revenueCents, 0);
   const thisMonthCents = (financeThisMonth.data ?? []).reduce((sum, p) => sum + p.revenueCents, 0);
   const lastMonthCents = (financeLastMonth.data ?? []).reduce((sum, p) => sum + p.revenueCents, 0);
 
@@ -251,7 +256,14 @@ export function VenueInicioPageContent() {
             </button>
           </div>
 
-          {home.financeSummary ? (
+          {canViewFinance ? (
+            <div className="mb-5">
+              <p className="mb-2 text-[13.5px] text-white/60">Faturamento · {periodLabel(period)}</p>
+              <p className={`font-poppins text-[28px] font-bold tracking-tight ${hideValues ? "blur-md" : ""}`}>
+                {finance.isLoading ? "—" : formatCentsBRL(periodCents)}
+              </p>
+            </div>
+          ) : home.financeSummary ? (
             <div className="mb-5">
               <p className="mb-2 text-[13.5px] text-white/60">Faturamento do dia</p>
               <p className={`font-poppins text-[28px] font-bold tracking-tight ${hideValues ? "blur-md" : ""}`}>
@@ -275,6 +287,7 @@ export function VenueInicioPageContent() {
           <FinanceTimelineChart
             data={finance.data}
             isLoading={finance.isLoading}
+            description={`Faturamento e resultado · ${periodLabel(period)}`}
             className="rounded-[22px] shadow-[0_1px_2px_rgba(28,24,48,0.05),0_2px_6px_rgba(28,24,48,0.04)]"
           />
         ) : null}

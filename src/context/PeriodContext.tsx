@@ -1,17 +1,13 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 export type PeriodKey = "today" | "7d" | "30d" | "custom";
 
 export interface PeriodRange {
+  /** "YYYY-MM-DD" */
   from: string | null;
+  /** "YYYY-MM-DD" */
   to: string | null;
 }
 
@@ -23,49 +19,34 @@ export interface PeriodState {
 interface PeriodContextType {
   period: PeriodState;
   setPeriod: (p: PeriodState) => void;
-  /**
-   * Enquanto o backend não aceitar range de datas, o filtro fica DESABILITADO.
-   * A infra (estado + persistência) já existe; a UI apenas exibe "em breve".
-   */
-  enabled: boolean;
 }
 
-const DEFAULT_PERIOD: PeriodState = {
-  key: "30d",
-  range: { from: null, to: null },
-};
+/**
+ * Filtro de período global do dashboard (header). Sempre abre em "Hoje" —
+ * decisão explícita do usuário; a escolha vale enquanto a pessoa navega entre
+ * as telas (o provider vive no layout do dashboard), mas não é persistida: um
+ * F5 ou nova visita volta pra "Hoje".
+ */
+const DEFAULT_PERIOD: PeriodState = { key: "today", range: { from: null, to: null } };
 
-const STORAGE_KEY = "nokta:dashboard:period";
+// Versão anterior persistia em localStorage com "30d" como padrão; limpa pra
+// não deixar lixo no navegador de quem já tinha aberto o dashboard.
+const LEGACY_STORAGE_KEY = "nokta:dashboard:period";
 
 const PeriodContext = createContext<PeriodContextType | undefined>(undefined);
 
 export function PeriodProvider({ children }: { children: ReactNode }) {
-  const [period, setPeriodState] = useState<PeriodState>(DEFAULT_PERIOD);
+  const [period, setPeriod] = useState<PeriodState>(DEFAULT_PERIOD);
 
-  // Hidrata do localStorage (persiste entre reloads).
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setPeriodState(JSON.parse(raw));
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
     } catch {
       /* ignore */
     }
   }, []);
 
-  const setPeriod = (p: PeriodState) => {
-    setPeriodState(p);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
-    } catch {
-      /* ignore */
-    }
-  };
-
-  return (
-    <PeriodContext.Provider value={{ period, setPeriod, enabled: false }}>
-      {children}
-    </PeriodContext.Provider>
-  );
+  return <PeriodContext.Provider value={{ period, setPeriod }}>{children}</PeriodContext.Provider>;
 }
 
 export const usePeriod = () => {
@@ -73,3 +54,34 @@ export const usePeriod = () => {
   if (!ctx) throw new Error("usePeriod must be used within a PeriodProvider");
   return ctx;
 };
+
+/** Parâmetros dos timelines financeiros (Tickets e Venue aceitam o mesmo formato). */
+export type PeriodFinanceParams =
+  | { quickPeriod: "TODAY" | "LAST_7_DAYS" | "LAST_30_DAYS" }
+  | { startDate: string; endDate: string };
+
+export function periodToFinanceParams(period: PeriodState): PeriodFinanceParams {
+  if (period.key === "custom" && period.range.from && period.range.to) {
+    return { startDate: period.range.from, endDate: period.range.to };
+  }
+  if (period.key === "7d") return { quickPeriod: "LAST_7_DAYS" };
+  if (period.key === "30d") return { quickPeriod: "LAST_30_DAYS" };
+  return { quickPeriod: "TODAY" };
+}
+
+function formatDayMonth(dateStr: string): string {
+  const [, m, d] = dateStr.split("-");
+  return `${d}/${m}`;
+}
+
+/** Rótulo curto do período selecionado ("Hoje", "Últimos 7 dias", "03/09 a 10/09"). */
+export function periodLabel(period: PeriodState): string {
+  if (period.key === "custom" && period.range.from && period.range.to) {
+    return period.range.from === period.range.to
+      ? formatDayMonth(period.range.from)
+      : `${formatDayMonth(period.range.from)} a ${formatDayMonth(period.range.to)}`;
+  }
+  if (period.key === "7d") return "Últimos 7 dias";
+  if (period.key === "30d") return "Últimos 30 dias";
+  return "Hoje";
+}

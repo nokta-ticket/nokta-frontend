@@ -1,16 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useOrganizations } from "@/context/OrganizationContext";
-import { usePeriod, type PeriodKey } from "@/context/PeriodContext";
+import { periodLabel, usePeriod, type PeriodKey } from "@/context/PeriodContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { resolveMediaUrl } from "@/lib/media";
 import { useVenuePublicProfile } from "../cardapio/_hooks/use-venue-public-profile";
 
@@ -27,8 +29,8 @@ import { useVenuePublicProfile } from "../cardapio/_hooks/use-venue-public-profi
  * módulos da organização recém-criada.
  *
  * IA, notificações e indique e ganhe são só visuais (nenhuma das três existe
- * no backend ainda). O período reflete o PeriodContext, mas continua
- * desabilitado até o backend suportar filtro por data ("em breve").
+ * no backend ainda). O período grava no PeriodContext (padrão "Hoje") e é
+ * consumido pelas telas via periodToFinanceParams — hoje, a Início.
  */
 
 const PERIOD_OPTIONS: { key: PeriodKey; label: string }[] = [
@@ -37,34 +39,104 @@ const PERIOD_OPTIONS: { key: PeriodKey; label: string }[] = [
   { key: "30d", label: "30 dias" },
 ];
 
-function Divider() {
-  return <span className="h-6 w-px shrink-0 bg-[#e3e0ec]" aria-hidden="true" />;
+// A própria barra é o item flex (w-px/h-6 só valem em elemento de bloco — um
+// <span> de linha dentro de outro wrapper perdia a largura e sumia).
+function Divider({ className = "block" }: { className?: string }) {
+  return <span className={`h-6 w-px shrink-0 bg-[#e3e0ec] ${className}`} aria-hidden="true" />;
+}
+
+const PERIOD_BUTTON_CLASS =
+  "flex h-[30px] items-center gap-1.5 rounded-[7px] border-0 bg-transparent px-3 text-[12.5px] text-[#6b6878] aria-pressed:bg-[#f1eff6] aria-pressed:font-medium aria-pressed:text-[#1c1a24]";
+
+/** "YYYY-MM-DD" de hoje no fuso de São Paulo (mesmo fuso do backend). */
+function todayInSaoPaulo(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+}
+
+function CustomPeriodButton() {
+  const { period, setPeriod } = usePeriod();
+  const [open, setOpen] = useState(false);
+  const today = todayInSaoPaulo();
+  const [from, setFrom] = useState(period.range.from ?? today);
+  const [to, setTo] = useState(period.range.to ?? today);
+  const valid = Boolean(from && to && from <= to && to <= today);
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        if (next) {
+          setFrom(period.range.from ?? today);
+          setTo(period.range.to ?? today);
+        }
+        setOpen(next);
+      }}
+    >
+      <PopoverTrigger asChild>
+        <button type="button" aria-pressed={period.key === "custom"} className={PERIOD_BUTTON_CLASS}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
+            <path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
+          </svg>
+          {period.key === "custom" ? periodLabel(period) : "Personalizado"}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-64 space-y-3 p-4">
+        <p className="text-sm font-semibold text-[#1c1a24]">Período personalizado</p>
+        <label className="block space-y-1 text-xs text-[#6b6878]">
+          De
+          <input
+            type="date"
+            value={from}
+            max={to || today}
+            onChange={(e) => setFrom(e.target.value)}
+            className="h-9 w-full rounded-lg border border-[#ebe8f2] px-2 text-base text-[#1c1a24] outline-none focus:border-[#7c3aed] sm:text-sm"
+          />
+        </label>
+        <label className="block space-y-1 text-xs text-[#6b6878]">
+          Até
+          <input
+            type="date"
+            value={to}
+            min={from || undefined}
+            max={today}
+            onChange={(e) => setTo(e.target.value)}
+            className="h-9 w-full rounded-lg border border-[#ebe8f2] px-2 text-base text-[#1c1a24] outline-none focus:border-[#7c3aed] sm:text-sm"
+          />
+        </label>
+        <button
+          type="button"
+          disabled={!valid}
+          onClick={() => {
+            setPeriod({ key: "custom", range: { from, to } });
+            setOpen(false);
+          }}
+          className="h-9 w-full rounded-lg bg-[#7c3aed] text-sm font-medium text-white hover:bg-[#6d28d9] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Aplicar
+        </button>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 function PeriodFilter() {
-  const { period } = usePeriod();
-  const buttonClass =
-    "flex h-[30px] items-center gap-1.5 rounded-[7px] border-0 bg-transparent px-3 text-[12.5px] text-[#6b6878] disabled:cursor-default aria-pressed:bg-[#f1eff6] aria-pressed:font-medium aria-pressed:text-[#1c1a24]";
+  const { period, setPeriod } = usePeriod();
 
   return (
-    <div
-      role="group"
-      aria-label="Período"
-      title="Filtro por período — em breve"
-      className="flex gap-0.5 rounded-[10px] border border-[#ebe8f2] bg-white p-[3px]"
-    >
+    <div role="group" aria-label="Período" className="flex gap-0.5 rounded-[10px] border border-[#ebe8f2] bg-white p-[3px]">
       {PERIOD_OPTIONS.map((o) => (
-        <button key={o.key} type="button" disabled aria-pressed={period.key === o.key} className={buttonClass}>
+        <button
+          key={o.key}
+          type="button"
+          aria-pressed={period.key === o.key}
+          onClick={() => setPeriod({ key: o.key, range: { from: null, to: null } })}
+          className={PERIOD_BUTTON_CLASS}
+        >
           {o.label}
         </button>
       ))}
-      <button type="button" disabled aria-pressed={period.key === "custom"} className={buttonClass}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
-          <path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
-        </svg>
-        Personalizado
-      </button>
+      <CustomPeriodButton />
     </div>
   );
 }
@@ -155,9 +227,7 @@ export function Topbar() {
             <div className="hidden xl:block">
               <PeriodFilter />
             </div>
-            <span className="hidden xl:block">
-              <Divider />
-            </span>
+            <Divider className="hidden xl:block" />
           </>
         )}
 
@@ -172,9 +242,7 @@ export function Topbar() {
           </svg>
         </button>
 
-        <span className="hidden md:block">
-          <Divider />
-        </span>
+        <Divider className="hidden md:block" />
 
         <button
           type="button"

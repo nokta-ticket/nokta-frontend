@@ -28,6 +28,7 @@ import { FinanceTimelineChart } from "../../_components/finance-timeline-chart";
 import { GoalProgressCard } from "../../_components/goal-progress-card";
 import { useDismissRecommendation, usePlatformHome, usePlatformNavigation, useRecommendations } from "../../_hooks/use-platform";
 import { useTicketsFinanceTimeline } from "../_hooks/use-tickets-finance";
+import { periodLabel, periodToFinanceParams, usePeriod } from "@/context/PeriodContext";
 import { RecommendationsPanel } from "../../explorar/_components/recommendations-panel";
 import { LegalFinancialPendingBanner } from "../../_components/legal-financial-pending-banner";
 import { HomeChecklist } from "./home-checklist";
@@ -56,7 +57,10 @@ export function InicioContent() {
   const [dismissingKey, setDismissingKey] = useState<string | null>(null);
   const [hideValues, setHideValues] = useState(false);
 
-  const finance = useTicketsFinanceTimeline(orgId, { quickPeriod: "LAST_7_DAYS" });
+  // Gráfico e faturamento do Panorama seguem o filtro de período do header;
+  // o card de meta continua comparando este mês com o anterior.
+  const { period } = usePeriod();
+  const finance = useTicketsFinanceTimeline(orgId, periodToFinanceParams(period));
   const financeThisMonth = useTicketsFinanceTimeline(orgId, { quickPeriod: "THIS_MONTH" });
   const financeLastMonth = useTicketsFinanceTimeline(orgId, { quickPeriod: "LAST_MONTH" });
 
@@ -99,6 +103,7 @@ export function InicioContent() {
   const pendingChecklistGroups = checklist.filter((g) => g.items.some((i) => !i.done));
   const financeForbidden = isAxiosError(finance.error) && finance.error.response?.status === 403;
   const showFinanceCard = !financeForbidden;
+  const periodCents = (finance.data ?? []).reduce((sum, p) => sum + p.revenueCents, 0);
   const thisMonthCents = (financeThisMonth.data ?? []).reduce((sum, p) => sum + p.revenueCents, 0);
   const lastMonthCents = (financeLastMonth.data ?? []).reduce((sum, p) => sum + p.revenueCents, 0);
 
@@ -168,9 +173,9 @@ export function InicioContent() {
             </div>
 
             <div className="mb-5">
-              <p className="mb-2 text-[13.5px] text-white/60">Faturamento do mês</p>
+              <p className="mb-2 text-[13.5px] text-white/60">Faturamento · {periodLabel(period)}</p>
               <p className={`font-poppins text-[28px] font-bold tracking-tight ${hideValues ? "blur-md" : ""}`}>
-                {financeThisMonth.isLoading ? "—" : formatCentsBRL(thisMonthCents)}
+                {finance.isLoading ? "—" : formatCentsBRL(periodCents)}
               </p>
             </div>
 
@@ -192,6 +197,7 @@ export function InicioContent() {
           <FinanceTimelineChart
             data={finance.data}
             isLoading={finance.isLoading}
+            description={`Faturamento e resultado · ${periodLabel(period)}`}
             className="rounded-[22px] shadow-[0_1px_2px_rgba(28,24,48,0.05),0_2px_6px_rgba(28,24,48,0.04)]"
           />
         ) : null}

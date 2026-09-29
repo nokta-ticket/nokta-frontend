@@ -1,6 +1,6 @@
 import api from "@/lib/axios";
 
-export type TicketsFinanceQuickPeriod = "TODAY" | "YESTERDAY" | "LAST_7_DAYS" | "THIS_MONTH" | "LAST_MONTH";
+export type TicketsFinanceQuickPeriod = "TODAY" | "YESTERDAY" | "LAST_7_DAYS" | "LAST_30_DAYS" | "THIS_MONTH" | "LAST_MONTH";
 
 export interface TicketsFinanceTimelinePoint {
   date: string;
