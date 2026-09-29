@@ -71,7 +71,7 @@ function VenueOperacaoPageContent() {
   if (loadingOrgs || loadingModules) {
     return (
       <PageContainer>
-        <PageHeader title="Operação" description="Acompanhe mesas, comandas e vendas de balcão do estabelecimento." />
+        <PageHeader title="Mesas e comandas" description="Acompanhe mesas, comandas e vendas de balcão do estabelecimento." />
         <BlockSkeleton className="h-96" />
       </PageContainer>
     );
@@ -81,7 +81,7 @@ function VenueOperacaoPageContent() {
     return (
       <PageContainer>
         <PageHeader
-          title="Operação"
+          title="Mesas e comandas"
           description="Acompanhe mesas, comandas e vendas de balcão do estabelecimento."
           actions={
             <Button onClick={() => guard(() => {})}>
@@ -102,7 +102,7 @@ function VenueOperacaoPageContent() {
   if (locations && locations.length === 0) {
     return (
       <PageContainer>
-        <PageHeader title="Operação" description="Acompanhe mesas, comandas e vendas de balcão do estabelecimento." />
+        <PageHeader title="Mesas e comandas" description="Acompanhe mesas, comandas e vendas de balcão do estabelecimento." />
         <OnboardingLocation orgId={orgId} />
       </PageContainer>
     );
@@ -111,7 +111,7 @@ function VenueOperacaoPageContent() {
   if (!selectedLocationId) {
     return (
       <PageContainer>
-        <PageHeader title="Operação" description="Acompanhe mesas, comandas e vendas de balcão do estabelecimento." />
+        <PageHeader title="Mesas e comandas" description="Acompanhe mesas, comandas e vendas de balcão do estabelecimento." />
         <BlockSkeleton className="h-96" />
       </PageContainer>
     );

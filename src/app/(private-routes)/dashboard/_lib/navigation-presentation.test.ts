@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildUnifiedNavigation, DISPLAY_GROUP_ORDER } from "./navigation-presentation";
+import { buildFullCatalogPreview, buildUnifiedNavigation, DISPLAY_GROUP_ORDER } from "./navigation-presentation";
 import type { NavigationItem } from "@/services/platform";
 
 function item(overrides: Partial<NavigationItem>): NavigationItem {
@@ -82,5 +82,41 @@ describe("buildUnifiedNavigation", () => {
     const groups = buildUnifiedNavigation(items);
     expect(groups.map((g) => g.group)).toEqual(DISPLAY_GROUP_ORDER.filter((g) => groups.some((x) => x.group === g)));
     expect(groups.map((g) => g.group)).toEqual(["INICIO", "EVENTOS", "GESTAO"]);
+  });
+});
+
+// Nome do item = nome da página que ele abre, nunca da capacidade que "chegou
+// primeiro" no dedupe por rota — senão o mesmo destino aparecia com nomes
+// diferentes conforme o que cada organização tinha ativo.
+describe("nomenclatura da sidebar", () => {
+  const labelsOf = (items: NavigationItem[]) =>
+    buildUnifiedNavigation(items).flatMap((g) => g.items.map((i) => i.label));
+
+  it("Pagamentos sem Caixa ainda aparece como Caixa", () => {
+    expect(labelsOf([item({ key: "VENUE_PAYMENTS", label: "Pagamentos", route: "/dashboard/operacao?tab=pagamentos", group: "OPERATION" })])).toEqual(["Caixa"]);
+  });
+
+  it("Produtos/Adicionais sem Cardápios aparecem como Cardápio", () => {
+    expect(labelsOf([item({ key: "PRODUCTS", label: "Produtos", route: "/dashboard/cardapio?tab=produtos", group: "PRODUCTS" })])).toEqual(["Cardápio"]);
+  });
+
+  it("Fornecedores sem Estoque aparece como Estoque", () => {
+    expect(labelsOf([item({ key: "SUPPLIERS", label: "Fornecedores", route: "/dashboard/estoque?tab=fornecedores", group: "PRODUCTS" })])).toEqual(["Estoque"]);
+  });
+
+  it("Mesas/Comandas aparecem como Mesas e comandas, sem repetir o nome da seção Operação", () => {
+    expect(labelsOf([item({ key: "TABS", label: "Comandas", route: "/dashboard/operacao?tab=comandas", group: "OPERATION" })])).toEqual(["Mesas e comandas"]);
+  });
+
+  it("sidebar completa: nomes e ordem finais", () => {
+    const layout = buildFullCatalogPreview().map((g) => [g.groupLabel, g.items.map((i) => i.label)]);
+    expect(layout).toEqual([
+      ["Início", ["Início"]],
+      ["Eventos", ["Eventos", "Check-in", "Promotores"]],
+      ["Relacionamento", ["Reservas", "Fila de espera", "Convidados", "Avaliações"]],
+      ["Operação", ["Mesas e comandas", "Pedidos", "Caixa"]],
+      ["Produtos", ["Cardápio", "Estoque"]],
+      ["Gestão", ["Financeiro", "Insights", "Exportações", "Equipe", "Configurações"]],
+    ]);
   });
 });

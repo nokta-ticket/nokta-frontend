@@ -21,7 +21,7 @@ export default function MeuPainelPromoterPage() {
   if (isLoading) {
     return (
       <PageContainer>
-        <PageHeader title="Meu painel de promoter" description="Suas vendas, links, códigos e comissões." />
+        <PageHeader title="Meu painel de promotor" description="Suas vendas, links, códigos e comissões." />
         <BlockSkeleton className="h-96" />
       </PageContainer>
     );
@@ -30,7 +30,7 @@ export default function MeuPainelPromoterPage() {
   if (!profile) {
     return (
       <PageContainer>
-        <PageHeader title="Meu painel de promoter" description="Suas vendas, links, códigos e comissões." />
+        <PageHeader title="Meu painel de promotor" description="Suas vendas, links, códigos e comissões." />
         <EmptyState
           title="Você ainda não é promoter"
           description="Quando aceitar um convite de promoter de alguma organização, seu painel aparece aqui."
@@ -41,7 +41,7 @@ export default function MeuPainelPromoterPage() {
 
   return (
     <PageContainer>
-      <PageHeader title="Meu painel de promoter" description={`Olá, ${profile.displayName ?? "promoter"} — suas vendas, links, códigos e comissões.`} />
+      <PageHeader title="Meu painel de promotor" description={`Olá, ${profile.displayName ?? "promotor"} — suas vendas, links, códigos e comissões.`} />
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
         <TabsList>

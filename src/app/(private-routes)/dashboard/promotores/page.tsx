@@ -27,7 +27,7 @@ export default function PromotoresPage() {
   if (loadingOrgs || loadingAccess) {
     return (
       <PageContainer>
-        <PageHeader title="Promoters" description="Gerencie promoters, links, códigos, comissões e acertos." />
+        <PageHeader title="Promotores" description="Gerencie promotores, links, códigos, comissões e acertos." />
         <BlockSkeleton className="h-96" />
       </PageContainer>
     );
@@ -36,7 +36,7 @@ export default function PromotoresPage() {
   if (!currentOrg) {
     return (
       <PageContainer>
-        <PageHeader title="Promoters" description="Gerencie promoters, links, códigos, comissões e acertos." />
+        <PageHeader title="Promotores" description="Gerencie promotores, links, códigos, comissões e acertos." />
         <EmptyState title="Nenhuma organização selecionada" description="Selecione uma organização para ver os promoters." />
       </PageContainer>
     );
@@ -45,7 +45,7 @@ export default function PromotoresPage() {
   if (!can("tickets.promoters.view")) {
     return (
       <PageContainer>
-        <PageHeader title="Promoters" description="Gerencie promoters, links, códigos, comissões e acertos." />
+        <PageHeader title="Promotores" description="Gerencie promotores, links, códigos, comissões e acertos." />
         <EmptyState title="Sem acesso" description="Você não tem permissão para ver os promoters desta organização." />
       </PageContainer>
     );
@@ -56,8 +56,8 @@ export default function PromotoresPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="Promoters"
-        description="Gerencie promoters, links, códigos, comissões e acertos."
+        title="Promotores"
+        description="Gerencie promotores, links, códigos, comissões e acertos."
         actions={
           canManage ? (
             <Button onClick={() => setInviteOpen(true)}>

@@ -26,7 +26,10 @@ function NavGroupList({ groups, pathname }: { groups: UnifiedNavGroup[]; pathnam
     <>
       {groups.map((group) => (
         <div key={group.group}>
-          <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-black/35">{group.groupLabel}</p>
+          {/* Seção com um único item de mesmo nome (Início) não repete o título. */}
+          {group.items.length === 1 && group.items[0].label === group.groupLabel ? null : (
+            <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-black/35">{group.groupLabel}</p>
+          )}
           <div className="flex flex-col gap-0.5">
             {group.items.map((item) => {
               const isActive = pathname === item.route || pathname.startsWith(item.route.split("?")[0] + "/");
@@ -122,7 +125,7 @@ export function UnifiedSidebar() {
 
       {!isOnboarding && myPromoterProfile ? (
         <div>
-          <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-black/35">Promoter</p>
+          <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-black/35">Promotor</p>
           <Link
             href="/dashboard/promotor"
             className={`flex items-center gap-3 rounded-xl px-3 py-2 text-[14.5px] font-medium transition-colors ${
@@ -130,7 +133,7 @@ export function UnifiedSidebar() {
             }`}
           >
             <Megaphone size={16} className={pathname.startsWith("/dashboard/promotor") ? "text-violet-600" : "text-black/40"} />
-            Meu painel de promoter
+            Meu painel de promotor
           </Link>
         </div>
       ) : null}

@@ -93,15 +93,53 @@ const ROUTE_OVERRIDE_BY_KEY: Partial<Record<string, string>> = {
 };
 
 /**
- * TABLES/TABS convergem para a mesma rota (/dashboard/operacao, ver acima) —
- * o dedupe mantém só o primeiro item que bateu naquela rota, cujo `label`
- * viria do backend como "Mesas" (ordem do catálogo). Sobrescrito para
- * "Operação", já que a tela agora cobre mesa+comanda+balcão juntos.
+ * Nome do item de menu = nome da PÁGINA que ele abre, nunca da capacidade.
+ * Várias capacidades caem na mesma rota (ver ROUTE_OVERRIDE_BY_KEY) e o
+ * dedupe mantém a primeira que chegou — sem este mapa, o nome variava por
+ * organização conforme o que estava ativo (quem tinha Pagamentos sem Caixa
+ * via um item "Pagamentos" abrindo a página do Caixa; Produtos sem
+ * Cardápios via "Produtos" abrindo o Cardápio). Cada nome aqui é igual ao
+ * título da própria página.
  */
-const LABEL_OVERRIDE_BY_KEY: Partial<Record<string, string>> = {
-  TABLES: "Operação",
-  TABS: "Operação",
+const LABEL_BY_ROUTE: Partial<Record<string, string>> = {
+  "/dashboard/eventos": "Eventos",
+  "/dashboard/operacao": "Mesas e comandas",
+  "/dashboard/operacao/pedidos": "Pedidos",
+  "/dashboard/operacao/caixa": "Caixa",
+  "/dashboard/cardapio": "Cardápio",
+  "/dashboard/estoque": "Estoque",
 };
+
+/**
+ * Ordem fixa dos itens dentro de cada seção (antes dependia da ordem em que o
+ * backend devolvia as capacidades — Equipe/Configurações, que são CORE,
+ * vinham antes de Financeiro). Rota fora da lista vai para o fim, estável.
+ */
+const ROUTE_ORDER = [
+  "/dashboard/inicio",
+  "/dashboard/eventos",
+  "/dashboard/check-in",
+  "/dashboard/promotores",
+  "/dashboard/reservas",
+  "/dashboard/reservas?tab=fila",
+  "/dashboard/convidados",
+  "/dashboard/avaliacoes",
+  "/dashboard/operacao",
+  "/dashboard/operacao/pedidos",
+  "/dashboard/operacao/caixa",
+  "/dashboard/cardapio",
+  "/dashboard/estoque",
+  "/dashboard/financeiro",
+  "/dashboard/insights",
+  "/dashboard/configuracoes/exportacoes",
+  "/dashboard/equipe",
+  "/dashboard/configuracoes",
+];
+
+function routeRank(route: string): number {
+  const index = ROUTE_ORDER.indexOf(route);
+  return index === -1 ? ROUTE_ORDER.length : index;
+}
 
 export type IconKey =
   | "home"
@@ -199,14 +237,14 @@ export function buildUnifiedNavigation(items: NavigationItem[]): UnifiedNavGroup
     seenRoutes.add(route);
 
     const iconKey = ICON_BY_KEY[item.key] ?? ICON_BY_GROUP[item.group];
-    const label = LABEL_OVERRIDE_BY_KEY[item.key] ?? item.label;
+    const label = LABEL_BY_ROUTE[route] ?? item.label;
     const list = byGroup.get(displayGroup) ?? [];
     list.push({ key: item.key, label, route, iconKey, secondary: SECONDARY_KEYS.has(item.key) });
     byGroup.set(displayGroup, list);
   }
 
   return DISPLAY_GROUP_ORDER.filter((g) => byGroup.has(g)).map((group) => {
-    const items = byGroup.get(group)!;
+    const items = [...byGroup.get(group)!].sort((a, b) => routeRank(a.route) - routeRank(b.route));
     // Itens primários antes dos secundários — ordem estável dentro de cada bloco.
     const primary = items.filter((i) => !i.secondary);
     const secondary = items.filter((i) => i.secondary);
@@ -239,8 +277,8 @@ const FULL_CATALOG_PREVIEW: NavigationItem[] = [
   { key: "WAITLIST", label: "Fila de espera", route: "/dashboard/reservas?tab=fila", group: "RELATIONSHIP" },
   { key: "GUEST_LISTS", label: "Convidados", route: "/dashboard/convidados", group: "RELATIONSHIP" },
   { key: "REVIEWS", label: "Avaliações", route: "/dashboard/avaliacoes", group: "RELATIONSHIP" },
-  { key: "TABLES", label: "Operação", route: "/dashboard/operacao", group: "OPERATION" },
-  { key: "TABS", label: "Operação", route: "/dashboard/operacao", group: "OPERATION" },
+  { key: "TABLES", label: "Mesas", route: "/dashboard/operacao", group: "OPERATION" },
+  { key: "TABS", label: "Comandas", route: "/dashboard/operacao", group: "OPERATION" },
   { key: "ORDERS", label: "Pedidos", route: "/dashboard/operacao/pedidos", group: "OPERATION" },
   { key: "PREPARATION", label: "Preparo", route: "/dashboard/operacao/pedidos", group: "OPERATION" },
   { key: "CASH_REGISTER", label: "Caixa", route: "/dashboard/operacao/caixa", group: "OPERATION" },
