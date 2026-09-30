@@ -136,7 +136,9 @@ export function IaConexoesTab({ orgId }: { orgId: number }) {
 
   const tokens = tokensQuery.data?.tokens ?? [];
   const capabilities = tokensQuery.data?.capabilities ?? [];
-  const url = `${getApiBaseUrl()}/mcp?token=${created?.token ?? "SEU_TOKEN_AQUI"}`;
+  // O token vai no cabeçalho Authorization, nunca na URL: URL com segredo fica em log e histórico.
+  const url = `${getApiBaseUrl()}/mcp`;
+  const token = created?.token ?? "SEU_TOKEN_AQUI";
   const canCreate = name.trim().length >= 2 && !createMutation.isPending;
 
   return (
@@ -238,7 +240,7 @@ export function IaConexoesTab({ orgId }: { orgId: number }) {
                 <code className="min-w-0 flex-1 truncate font-mono text-xs">{created.token}</code>
                 <CopyButton value={created.token} label="Copiar token" />
               </div>
-              <p className="text-xs text-amber-900/80">A URL no passo 2 já está preenchida com ele.</p>
+              <p className="text-xs text-amber-900/80">O passo 2 já mostra o cabeçalho preenchido com ele.</p>
             </div>
           )}
 
@@ -275,13 +277,13 @@ export function IaConexoesTab({ orgId }: { orgId: number }) {
             ))}
           </div>
 
-          <ClientInstructions client={client} url={url} />
+          <ClientInstructions client={client} url={url} token={token} />
 
-          <p className="text-xs text-muted-foreground">Essa URL é a sua chave — trate como senha e não compartilhe.</p>
+          <p className="text-xs text-muted-foreground">O token é a sua chave — trate como senha e não compartilhe. Por isso ele vai no cabeçalho, e não na URL.</p>
           {!created && (
             <p className="flex items-center gap-1.5 text-xs font-medium text-amber-700">
               <TriangleAlert className="size-3.5" />
-              Gere um token acima para que ele apareça já preenchido nas instruções.
+              Gere um token acima para que ele apareça já preenchido no cabeçalho.
             </p>
           )}
           <p className="text-xs leading-relaxed text-muted-foreground">
@@ -359,12 +361,22 @@ function UrlBox({ value }: { value: string }) {
   );
 }
 
-function ClientInstructions({ client, url }: { client: ClientKey; url: string }) {
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="space-y-1">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <UrlBox value={value} />
+    </div>
+  );
+}
+
+function ClientInstructions({ client, url, token }: { client: ClientKey; url: string; token: string }) {
+  const header = `Bearer ${token}`;
   if (client === "code") {
     return (
       <>
-        <p className="text-sm">No terminal, rode o comando abaixo (ele já inclui o token):</p>
-        <UrlBox value={`claude mcp add --transport http nokta "${url}"`} />
+        <p className="text-sm">No terminal, rode o comando abaixo (o token vai no cabeçalho, já preenchido):</p>
+        <UrlBox value={`claude mcp add --transport http nokta ${url} --header "Authorization: ${header}"`} />
       </>
     );
   }
@@ -372,20 +384,37 @@ function ClientInstructions({ client, url }: { client: ClientKey; url: string })
     return (
       <>
         <p className="text-sm">
-          Em <strong>Configurações → Aplicativos e conectores</strong>, ative o <strong>modo desenvolvedor</strong> e crie um conector com a URL abaixo, sem
-          autenticação (ela já inclui o token):
+          Em <strong>Configurações → Aplicativos e conectores</strong>, ative o <strong>modo desenvolvedor</strong> e crie um conector com a URL abaixo. Se houver
+          opção de cabeçalho, adicione o <strong>Authorization</strong>:
         </p>
-        <UrlBox value={url} />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="URL do servidor" value={url} />
+          <Field label="Cabeçalho Authorization" value={header} />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Se o ChatGPT não oferecer cabeçalho, use a URL com o token: <span className="break-all font-mono">{`${url}?token=${token}`}</span>
+        </p>
       </>
     );
   }
   return (
     <>
-      <p className="text-sm">
-        Em <strong>Configurações → Conectores → Adicionar conector personalizado</strong>
-        {client === "desktop" ? " (os conectores da sua conta aparecem no app automaticamente)" : ""}, cole a URL abaixo (ela já inclui o token):
-      </p>
-      <UrlBox value={url} />
+      <ol className="list-decimal space-y-1 pl-5 text-sm">
+        <li>
+          Em <strong>Configurações → Conectores → Adicionar conector personalizado</strong>
+          {client === "desktop" ? " (os conectores da sua conta aparecem no app automaticamente)" : ""}, dê o nome <strong>Nokta</strong> e cole a URL.
+        </li>
+        <li>
+          Em <strong>Autenticação</strong>, escolha <strong>Sem login</strong>.
+        </li>
+        <li>
+          Em <strong>Cabeçalhos de requisição → Adicionar cabeçalho</strong>, use o nome <strong>Authorization</strong> e o valor abaixo.
+        </li>
+      </ol>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="URL do servidor" value={url} />
+        <Field label="Cabeçalho: Authorization" value={header} />
+      </div>
     </>
   );
 }
