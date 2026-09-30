@@ -11,7 +11,6 @@ import {
   ChefHat,
   ChevronRight,
   CircleCheck,
-  ClipboardCheck,
   ClipboardList,
   Clock3,
   Eye,
@@ -19,9 +18,11 @@ import {
   PackageMinus,
   PackagePlus,
   PackageX,
+  Receipt,
   ReceiptText,
   UserPlus,
   Users2,
+  UsersRound,
   Wallet,
   type LucideIcon,
 } from "lucide-react";
@@ -35,11 +36,13 @@ import { PageContainer } from "../../_components/page/page-container";
 import { BlockSkeleton } from "../../_components/states/loading-state";
 import { EmptyState } from "../../_components/states/empty-state";
 import { FinanceTimelineChart } from "../../_components/finance-timeline-chart";
-import { MonthRevenueCard } from "../../_components/month-revenue-card";
+import { formatMonthDelta } from "../../_components/month-revenue-card";
 import { useVenueLocations } from "../../operacao/_hooks/use-venue-locations";
 import { OnboardingLocation } from "../../operacao/_components/onboarding-location";
 import { useVenueFinanceTimeline } from "../../financeiro/_venue/_hooks/use-venue-finance-overview";
+import { useVenueInsightsOverview } from "../../insights/_venue/_hooks/use-venue-insights";
 import { useVenueHome } from "./_hooks/use-venue-home";
+import { SalesByHourCard, TopProductsCard } from "./_components/home-insights";
 import { summarizePresence } from "./_lib/reservation-presence";
 
 const SHORTCUT_CONFIG: Record<string, { label: string; href: string; icon: LucideIcon }> = {
@@ -60,6 +63,7 @@ const SURFACE = "rounded-[20px] border border-[#ebe8f2] bg-white";
 const PRESSABLE =
   "transition-[transform,background-color,border-color,color] duration-150 ease-out active:scale-[0.97] motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600";
 const ATTN_TEXT = "text-[#9b1c35]";
+const GUESTS_MIN_COVERAGE = 0.8;
 
 function moneyClass(hidden: boolean) {
   return cn("font-poppins tabular-nums transition-[filter] duration-200", hidden && "blur-md select-none");
@@ -172,6 +176,13 @@ export function VenueInicioPageContent() {
   const finance = useVenueFinanceTimeline(financeOrgId, locationId, periodParams);
   const financeThisMonth = useVenueFinanceTimeline(financeOrgId, locationId, { quickPeriod: "THIS_MONTH" });
   const financeLastMonth = useVenueFinanceTimeline(financeOrgId, locationId, { quickPeriod: "LAST_MONTH" });
+  // Ticket médio, pessoas atendidas, mais vendidos e vendas por horário: um único endpoint do Insights.
+  const canViewInsights = can("venue.insights.view");
+  const insights = useVenueInsightsOverview(canViewInsights && locationId !== null ? orgId : null, {
+    locationId: locationId ?? undefined,
+    ...periodParams,
+    comparison: "PREVIOUS_PERIOD",
+  });
 
   if (loadingAccess || redirecting || loadingOrgs || loadingLocations) {
     return <HomeSkeleton />;
@@ -258,17 +269,20 @@ export function VenueInicioPageContent() {
   const shownReservations = reservations?.actionable.slice(0, 3) ?? [];
   const moreWaiting = reservations ? reservations.actionable.length - shownReservations.length : 0;
 
-  const panoramaTiles = [
-    home.openTabsCount !== null
-      ? { key: "open", icon: ClipboardList, value: home.openTabsCount, label: "Comandas abertas" }
-      : null,
-    home.closedTabsTodayCount != null
-      ? { key: "closed", icon: ClipboardCheck, value: home.closedTabsTodayCount, label: "Comandas fechadas hoje" }
-      : null,
-  ].filter((t): t is NonNullable<typeof t> => t !== null);
+  const monthDelta = formatMonthDelta(thisMonthCents, lastMonthCents);
+  const insightsCards = insights.data?.cards;
+  const ticket = insightsCards?.averageTicketCents;
+  const guests = insightsCards?.guestsServed;
+  // Pessoas atendidas depende do garçom informar quantas pessoas há na comanda; com
+  // pouco preenchimento o número mente, então só aparece com >= 80% de cobertura.
+  const showGuests = guests !== undefined && (guests.coverage === null || guests.coverage >= GUESTS_MIN_COVERAGE);
 
   const hasOperation =
-    home.cashSessions !== null || home.ordersInPreparationCount !== null || home.ordersReadyCount !== null || home.waitlistCount !== null;
+    home.openTabsCount !== null ||
+    home.cashSessions !== null ||
+    home.ordersInPreparationCount !== null ||
+    home.ordersReadyCount !== null ||
+    home.waitlistCount !== null;
   const firstRowCount = 1 + (hasOperation ? 1 : 0) + (reservations ? 1 : 0);
   const firstRowCols =
     firstRowCount === 3
@@ -379,6 +393,25 @@ export function VenueInicioPageContent() {
               <p className={cn(money, "mt-1.5 text-[30px] font-bold leading-none tracking-tight")}>
                 {finance.isLoading ? "…" : formatCentsBRL(periodCents)}
               </p>
+              {/* "Este mês" era um card inteiro para três informações; virou esta linha. */}
+              {!financeThisMonth.isLoading && !financeLastMonth.isLoading ? (
+                <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-white/65">
+                  Este mês <b className={cn(money, "font-semibold text-white")}>{formatCentsBRL(thisMonthCents)}</b>
+                  {monthDelta ? (
+                    <>
+                      <span
+                        className={cn(
+                          "rounded-md px-1.5 py-0.5 font-poppins text-[12px] font-semibold tabular-nums",
+                          thisMonthCents >= lastMonthCents ? "bg-emerald-400/15 text-emerald-300" : "bg-rose-400/15 text-rose-300",
+                        )}
+                      >
+                        {monthDelta}
+                      </span>
+                      <span className="text-white/50">vs. mês anterior</span>
+                    </>
+                  ) : null}
+                </p>
+              ) : null}
             </div>
           ) : home.financeSummary ? (
             <div className="mt-5">
@@ -387,15 +420,29 @@ export function VenueInicioPageContent() {
             </div>
           ) : null}
 
-          {panoramaTiles.length > 0 ? (
-            <div className={cn("mt-auto grid gap-2.5 pt-6", panoramaTiles.length === 1 ? "grid-cols-1" : "grid-cols-2")}>
-              {panoramaTiles.map(({ key, icon: Icon, value, label }) => (
-                <Link key={key} href="/dashboard/operacao" className={cn("rounded-[14px] bg-white/[0.06] px-4 py-3.5 hover:bg-white/[0.09]", PRESSABLE)}>
-                  <Icon size={18} strokeWidth={1.8} className="text-violet-300" />
-                  <p className={cn("mt-3 font-poppins text-xl font-bold tabular-nums", value === 0 && "text-white/50")}>{value}</p>
-                  <p className="mt-0.5 text-xs text-white/65">{label}</p>
+          {ticket ? (
+            <div className={cn("mt-auto grid gap-2.5 pt-6", showGuests ? "grid-cols-2" : "grid-cols-1")}>
+              <Link href="/dashboard/insights" className={cn("rounded-[14px] bg-white/[0.06] px-4 py-3.5 hover:bg-white/[0.09]", PRESSABLE)}>
+                <Receipt size={18} strokeWidth={1.8} className="text-violet-300" />
+                <p className={cn(money, "mt-3 text-xl font-bold", ticket.current === 0 && "text-white/50")}>{formatCentsBRL(ticket.current)}</p>
+                <p className="mt-0.5 text-xs text-white/65">
+                  Ticket médio
+                  {ticket.percentDiff !== null && ticket.current > 0 ? (
+                    <span className={ticket.percentDiff >= 0 ? "text-emerald-300" : "text-rose-300"}>
+                      {" · "}
+                      {ticket.percentDiff >= 0 ? "+" : "−"}
+                      {Math.abs(Math.round(ticket.percentDiff))}%
+                    </span>
+                  ) : null}
+                </p>
+              </Link>
+              {showGuests && guests ? (
+                <Link href="/dashboard/insights" className={cn("rounded-[14px] bg-white/[0.06] px-4 py-3.5 hover:bg-white/[0.09]", PRESSABLE)}>
+                  <UsersRound size={18} strokeWidth={1.8} className="text-violet-300" />
+                  <p className={cn("mt-3 font-poppins text-xl font-bold tabular-nums", guests.current === 0 && "text-white/50")}>{guests.current}</p>
+                  <p className="mt-0.5 text-xs text-white/65">Pessoas atendidas</p>
                 </Link>
-              ))}
+              ) : null}
             </div>
           ) : null}
         </section>
@@ -405,9 +452,9 @@ export function VenueInicioPageContent() {
             <h2 id="home-operation" className="mb-2 px-3 text-[17px] font-semibold text-gray-900">
               Agora na operação
             </h2>
-            {home.cashSessions !== null ? (
-              <OperationRow href="/dashboard/operacao/caixa" icon={Wallet} label="Caixa">
-                <span className={cn("text-sm font-semibold", cashOpen ? "text-emerald-700" : "text-black/45")}>{cashOpen ? "Aberto" : "Fechado"}</span>
+            {home.openTabsCount !== null ? (
+              <OperationRow href="/dashboard/operacao" icon={ClipboardList} label="Comandas abertas">
+                <CountValue value={home.openTabsCount} />
               </OperationRow>
             ) : null}
             {home.ordersInPreparationCount !== null ? (
@@ -423,6 +470,11 @@ export function VenueInicioPageContent() {
             {home.waitlistCount !== null ? (
               <OperationRow href="/dashboard/reservas?tab=fila" icon={Users2} label="Clientes na fila">
                 <CountValue value={home.waitlistCount} />
+              </OperationRow>
+            ) : null}
+            {home.cashSessions !== null ? (
+              <OperationRow href="/dashboard/operacao/caixa" icon={Wallet} label="Caixa">
+                <span className={cn("text-sm font-semibold", cashOpen ? "text-emerald-700" : "text-black/45")}>{cashOpen ? "Aberto" : "Fechado"}</span>
               </OperationRow>
             ) : null}
           </section>
@@ -514,26 +566,36 @@ export function VenueInicioPageContent() {
         ) : null}
       </div>
 
-      {/* Linha 2 — o dinheiro */}
-      {canViewFinance ? (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,0.95fr)]">
-          <FinanceTimelineChart
-            data={finance.data}
-            isLoading={finance.isLoading}
-            // Resultado líquido = resultCents do timeline (faturamento − custo dos produtos − despesas pagas); o cálculo final ainda será definido.
-            description={`Faturamento e resultado líquido · ${periodLabel(period)}`}
-            resultLabel="Resultado líquido"
-            zeroDates={home.date ? periodDates(period, home.date) : undefined}
-            hideValues={hideValues}
-            className="rounded-[20px] border-[#ebe8f2] shadow-none"
-          />
-          <MonthRevenueCard
-            currentCents={thisMonthCents}
-            previousCents={lastMonthCents}
-            isLoading={financeThisMonth.isLoading || financeLastMonth.isLoading}
-            hideValues={hideValues}
-          />
+      {/* Linha 2 — tendência e o que vende */}
+      {canViewFinance || canViewInsights ? (
+        <div className={cn("grid grid-cols-1 gap-4", canViewFinance && canViewInsights && "xl:grid-cols-[minmax(0,2fr)_minmax(0,0.95fr)]")}>
+          {canViewFinance ? (
+            <FinanceTimelineChart
+              data={finance.data}
+              isLoading={finance.isLoading}
+              // Resultado líquido = resultCents do timeline (faturamento − custo dos produtos − despesas pagas); o cálculo final ainda será definido.
+              description={`Faturamento e resultado líquido por dia · ${periodLabel(period)}`}
+              resultLabel="Resultado líquido"
+              zeroDates={home.date ? periodDates(period, home.date) : undefined}
+              hideValues={hideValues}
+              className="rounded-[20px] border-[#ebe8f2] shadow-none"
+            />
+          ) : null}
+          {canViewInsights ? (
+            <TopProductsCard products={insights.data?.topProducts} isLoading={insights.isLoading} periodText={periodLabel(period)} hideValues={hideValues} />
+          ) : null}
         </div>
+      ) : null}
+
+      {/* Linha 3 — em que hora a casa vende */}
+      {canViewInsights ? (
+        <SalesByHourCard
+          entries={insights.data?.salesByHour}
+          isLoading={insights.isLoading}
+          periodText={periodLabel(period)}
+          multiDay={period.key !== "today" && !(period.key === "custom" && period.range.from === period.range.to)}
+          hideValues={hideValues}
+        />
       ) : null}
     </PageContainer>
   );
