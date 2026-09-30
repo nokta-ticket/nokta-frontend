@@ -263,7 +263,7 @@ export function VenueInicioPageContent() {
     home.openTabsCount !== null
       ? { key: "open", icon: ClipboardList, value: home.openTabsCount, label: "Comandas abertas" }
       : null,
-    home.closedTabsTodayCount !== null
+    home.closedTabsTodayCount != null
       ? { key: "closed", icon: ClipboardCheck, value: home.closedTabsTodayCount, label: "Comandas fechadas hoje" }
       : null,
   ].filter((t): t is NonNullable<typeof t> => t !== null);
