@@ -17,8 +17,9 @@ import { ReservasTab } from "./reservas-tab";
 import { HorariosTab } from "./horarios-tab";
 import { SegurancaTab } from "./seguranca-tab";
 import { DadosJuridicosFinanceirosTab } from "./dados-juridicos-financeiros-tab";
+import { IaConexoesTab } from "./ia-conexoes-tab";
 
-const TABS = ["organizacao", "perfil", "juridico-financeiro", "venue", "unidades", "operacao", "reservas", "horarios", "seguranca"] as const;
+const TABS = ["organizacao", "perfil", "juridico-financeiro", "venue", "unidades", "operacao", "reservas", "horarios", "ia", "seguranca"] as const;
 type TabKey = (typeof TABS)[number];
 
 const TAB_LABEL: Record<TabKey, string> = {
@@ -30,6 +31,7 @@ const TAB_LABEL: Record<TabKey, string> = {
   operacao: "Operação",
   reservas: "Reservas",
   horarios: "Horários",
+  ia: "IA e conexões",
   seguranca: "Segurança e acesso",
 };
 
@@ -118,6 +120,9 @@ export function ConfiguracoesContent() {
         </TabsContent>
         <TabsContent value="horarios">
           <HorariosTab orgId={currentOrg.id} canManage={canManage} />
+        </TabsContent>
+        <TabsContent value="ia">
+          <IaConexoesTab orgId={currentOrg.id} />
         </TabsContent>
         <TabsContent value="seguranca">
           <SegurancaTab />
