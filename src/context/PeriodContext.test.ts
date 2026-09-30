@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { periodLabel, periodToFinanceParams, type PeriodState } from "./PeriodContext";
+import { periodDates, periodLabel, periodToFinanceParams, type PeriodState } from "./PeriodContext";
 
 const p = (key: PeriodState["key"], from: string | null = null, to: string | null = null): PeriodState => ({
   key,
@@ -35,5 +35,28 @@ describe("periodLabel", () => {
   it("intervalo personalizado em dd/mm", () => {
     expect(periodLabel(p("custom", "2026-09-01", "2026-09-10"))).toBe("01/09 a 10/09");
     expect(periodLabel(p("custom", "2026-09-05", "2026-09-05"))).toBe("05/09");
+  });
+});
+
+describe("periodDates", () => {
+  it("hoje é um dia só", () => {
+    expect(periodDates(p("today"), "2026-09-30")).toEqual(["2026-09-30"]);
+  });
+
+  it("7 e 30 dias incluem hoje", () => {
+    const seven = periodDates(p("7d"), "2026-09-30");
+    expect(seven).toHaveLength(7);
+    expect(seven[0]).toBe("2026-09-24");
+    expect(seven[6]).toBe("2026-09-30");
+    expect(periodDates(p("30d"), "2026-09-30")).toHaveLength(30);
+  });
+
+  it("personalizado atravessa a virada do mês", () => {
+    expect(periodDates(p("custom", "2026-08-30", "2026-09-02"), "2026-09-30")).toEqual([
+      "2026-08-30",
+      "2026-08-31",
+      "2026-09-01",
+      "2026-09-02",
+    ]);
   });
 });

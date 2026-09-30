@@ -85,3 +85,31 @@ export function periodLabel(period: PeriodState): string {
   if (period.key === "30d") return "Últimos 30 dias";
   return "Hoje";
 }
+
+/** Soma `days` a uma data "YYYY-MM-DD" sem passar por fuso (aritmética de calendário). */
+function shiftDateStr(dateStr: string, days: number): string {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Todos os dias ("YYYY-MM-DD") cobertos pelo período, em ordem — usado para
+ * desenhar o gráfico zerado (linha reta) quando o período não tem vendas.
+ * `today` é o dia corrente no fuso da operação (São Paulo).
+ */
+export function periodDates(period: PeriodState, today: string): string[] {
+  let from = today;
+  let to = today;
+  if (period.key === "custom" && period.range.from && period.range.to) {
+    from = period.range.from;
+    to = period.range.to;
+  } else if (period.key === "7d") {
+    from = shiftDateStr(today, -6);
+  } else if (period.key === "30d") {
+    from = shiftDateStr(today, -29);
+  }
+  const days: string[] = [];
+  for (let d = from; d <= to && days.length < 400; d = shiftDateStr(d, 1)) days.push(d);
+  return days;
+}

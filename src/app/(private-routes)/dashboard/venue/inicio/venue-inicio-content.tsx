@@ -1,59 +1,105 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  DollarSign,
-  ClipboardList,
+  BellRing,
   CalendarClock,
-  Clock3,
-  Wallet,
-  LayoutGrid,
-  Users2,
+  CalendarPlus,
+  CalendarX2,
   ChefHat,
-  CheckCircle2,
-  PackageX,
-  AlertTriangle,
-  ArrowUpRight,
-  Boxes,
-  UtensilsCrossed,
-  Users,
+  ChevronRight,
+  CircleCheck,
+  ClipboardCheck,
+  ClipboardList,
+  Clock3,
   Eye,
   EyeOff,
-  Plus,
+  PackageMinus,
+  PackagePlus,
+  PackageX,
+  ReceiptText,
+  UserPlus,
+  Users2,
+  Wallet,
+  type LucideIcon,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { useOrganizations } from "@/context/OrganizationContext";
 import { useVenueAccess } from "@/context/VenueAccessContext";
+import { periodDates, periodLabel, periodToFinanceParams, usePeriod } from "@/context/PeriodContext";
 import { formatCentsBRL } from "@/services/venue-finance";
+import { cn } from "@/lib/utils";
 import { PageContainer } from "../../_components/page/page-container";
 import { BlockSkeleton } from "../../_components/states/loading-state";
 import { EmptyState } from "../../_components/states/empty-state";
 import { FinanceTimelineChart } from "../../_components/finance-timeline-chart";
-import { GoalProgressCard } from "../../_components/goal-progress-card";
+import { MonthRevenueCard } from "../../_components/month-revenue-card";
 import { useVenueLocations } from "../../operacao/_hooks/use-venue-locations";
 import { OnboardingLocation } from "../../operacao/_components/onboarding-location";
-import { useVenueFinanceTimeline } from "../../financeiro/_venue/_hooks/use-venue-finance-overview";
+import { useVenueFinanceOverview, useVenueFinanceTimeline } from "../../financeiro/_venue/_hooks/use-venue-finance-overview";
 import { useVenueHome } from "./_hooks/use-venue-home";
-import { periodLabel, periodToFinanceParams, usePeriod } from "@/context/PeriodContext";
+import { summarizePresence } from "./_lib/reservation-presence";
 
-const SHORTCUT_CONFIG: Record<string, { label: string; description: string; href: string }> = {
-  new_reservation: { label: "Nova Reserva", description: "Criar uma nova reserva", href: "/dashboard/reservas" },
-  open_tab: { label: "Abrir Comanda", description: "Abrir comanda para mesa", href: "/dashboard/operacao?tab=mesas" },
-  new_order: { label: "Novo Pedido", description: "Registrar um novo pedido", href: "/dashboard/operacao?tab=pedidos" },
-  open_cash: { label: "Abrir Caixa", description: "Abrir o caixa da unidade", href: "/dashboard/operacao?tab=caixa" },
-  register_purchase: { label: "Registrar Compra", description: "Nova compra de estoque", href: "/dashboard/estoque" },
-  invite_team: { label: "Convidar Equipe", description: "Adicionar membro à equipe", href: "/dashboard/equipe" },
+const SHORTCUT_CONFIG: Record<string, { label: string; href: string; icon: LucideIcon }> = {
+  new_reservation: { label: "Nova reserva", href: "/dashboard/reservas", icon: CalendarPlus },
+  open_tab: { label: "Abrir comanda", href: "/dashboard/operacao?tab=mesas", icon: ClipboardList },
+  new_order: { label: "Novo pedido", href: "/dashboard/operacao?tab=pedidos", icon: ReceiptText },
+  open_cash: { label: "Abrir caixa", href: "/dashboard/operacao?tab=caixa", icon: Wallet },
+  register_purchase: { label: "Registrar compra", href: "/dashboard/estoque", icon: PackagePlus },
+  invite_team: { label: "Convidar equipe", href: "/dashboard/equipe", icon: UserPlus },
 };
 
-const BUSINESS_OVERVIEW = [
-  { key: "MENU", label: "Cardápio", metric: "Itens ativos", icon: UtensilsCrossed, href: "/dashboard/cardapio", cta: "Gerenciar cardápio" },
-  { key: "STOCK", label: "Estoque", metric: "Itens com estoque baixo", icon: Boxes, href: "/dashboard/estoque", cta: "Ver estoque" },
-  { key: "FINANCE", label: "Financeiro", metric: "Contas a receber", icon: DollarSign, href: "/dashboard/financeiro", cta: "Ver financeiro" },
-  { key: "TEAM", label: "Equipe", metric: "Membros da equipe", icon: Users, href: "/dashboard/equipe", cta: "Ver equipe" },
-];
+/**
+ * Linguagem da Início: só o Panorama tem profundidade; o resto é plano com
+ * borda. Vermelho contido (vinho) só para o que exige ação. Pressionáveis
+ * respondem ao toque sem animação de entrada — a tela é aberta o dia todo.
+ */
+const SURFACE = "rounded-[20px] border border-[#ebe8f2] bg-white";
+const PRESSABLE =
+  "transition-[transform,background-color,border-color,color] duration-150 ease-out active:scale-[0.97] motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600";
+const ATTN_TEXT = "text-[#9b1c35]";
+
+function moneyClass(hidden: boolean) {
+  return cn("font-poppins tabular-nums transition-[filter] duration-200", hidden && "blur-md select-none");
+}
+
+function OperationRow({ href, icon: Icon, label, children }: { href: string; icon: LucideIcon; label: string; children: ReactNode }) {
+  return (
+    <Link href={href} className={cn("group flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-[#f7f5fb]", PRESSABLE)}>
+      <Icon size={16} strokeWidth={1.8} className="shrink-0 text-violet-500" />
+      <span className="text-[14.5px] font-medium text-gray-900">{label}</span>
+      <span className="ml-auto">{children}</span>
+      <ChevronRight
+        size={16}
+        strokeWidth={1.8}
+        className="shrink-0 text-black/25 transition-[transform,color] duration-150 ease-out group-hover:translate-x-0.5 group-hover:text-violet-600"
+      />
+    </Link>
+  );
+}
+
+function CountValue({ value }: { value: number }) {
+  return <span className={cn("font-poppins text-[15px] font-bold tabular-nums", value === 0 ? "text-black/35" : "text-gray-900")}>{value}</span>;
+}
+
+function HomeSkeleton() {
+  return (
+    <PageContainer>
+      <BlockSkeleton className="h-9 w-2/3" />
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <BlockSkeleton className="h-72 rounded-[20px]" />
+        <BlockSkeleton className="h-72 rounded-[20px]" />
+        <BlockSkeleton className="h-72 rounded-[20px]" />
+      </div>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[2fr_0.95fr]">
+        <BlockSkeleton className="h-64 rounded-[20px]" />
+        <BlockSkeleton className="h-64 rounded-[20px]" />
+      </div>
+    </PageContainer>
+  );
+}
 
 /**
  * Rota inicial padrão do Venue. WAITER, KITCHEN_BAR e STOCK continuam sendo
@@ -61,6 +107,9 @@ const BUSINESS_OVERVIEW = [
  * sugerida pelo backend em `defaultRoute`); OWNER, MANAGER, RECEPTION e
  * CASHIER ficam aqui e veem um painel real, recortado pelo que cada um pode
  * ver (`/organizations/:id/venue/home`, já filtrado por permissão).
+ *
+ * Organizada pelo turno, não por módulo: primeiro o que está acontecendo
+ * agora (Panorama, operação, reservas), depois o dinheiro (gráfico e mês).
  *
  * Este componente vive fora de page.tsx de propósito: é reaproveitado por
  * /dashboard/inicio (a Início unificada — ver dashboard/inicio/page.tsx) e
@@ -89,6 +138,13 @@ export function VenueInicioPageContent() {
   const activeLocations = locations?.filter((l) => l.active) ?? [];
   const [locationId, setLocationId] = useState<number | null>(null);
   const [hideValues, setHideValues] = useState(false);
+  // Relógio da tolerância de "não compareceu" — avança sozinho, sem depender de refetch.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   // Troca de organização — sem isso o locationId da org anterior ficava
   // "preso" e nunca era recalculado, causando o mesmo 404 ao trocar de org.
@@ -102,22 +158,24 @@ export function VenueInicioPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeLocations.length, locationId]);
 
-  const { data: home, isLoading: loadingHome, isError: homeError } = useVenueHome(!redirecting ? orgId : null, locationId);
+  const { data: home, isLoading: loadingHome, isError: homeError, refetch: refetchHome } = useVenueHome(
+    !redirecting ? orgId : null,
+    locationId,
+  );
 
   const canViewFinance = can("venue.finance.view");
-  // Gráfico e faturamento do Panorama seguem o filtro de período do header;
-  // o card de meta continua comparando este mês com o anterior.
+  // Faturamento, resultado e gráfico seguem o filtro de período do header;
+  // o card do mês compara sempre este mês com o anterior inteiro.
   const { period } = usePeriod();
-  const finance = useVenueFinanceTimeline(canViewFinance ? orgId : null, locationId, periodToFinanceParams(period));
-  const financeThisMonth = useVenueFinanceTimeline(canViewFinance ? orgId : null, locationId, { quickPeriod: "THIS_MONTH" });
-  const financeLastMonth = useVenueFinanceTimeline(canViewFinance ? orgId : null, locationId, { quickPeriod: "LAST_MONTH" });
+  const periodParams = periodToFinanceParams(period);
+  const financeOrgId = canViewFinance ? orgId : null;
+  const finance = useVenueFinanceTimeline(financeOrgId, locationId, periodParams);
+  const overview = useVenueFinanceOverview(financeOrgId, locationId, periodParams);
+  const financeThisMonth = useVenueFinanceTimeline(financeOrgId, locationId, { quickPeriod: "THIS_MONTH" });
+  const financeLastMonth = useVenueFinanceTimeline(financeOrgId, locationId, { quickPeriod: "LAST_MONTH" });
 
   if (loadingAccess || redirecting || loadingOrgs || loadingLocations) {
-    return (
-      <PageContainer>
-        <BlockSkeleton className="h-96" />
-      </PageContainer>
-    );
+    return <HomeSkeleton />;
   }
 
   if (!orgId) {
@@ -142,17 +200,15 @@ export function VenueInicioPageContent() {
         <EmptyState
           title="Não foi possível carregar a Início"
           description="Tente novamente em instantes. Se o problema continuar, avise o suporte."
+          actionLabel="Tentar de novo"
+          onAction={() => refetchHome()}
         />
       </PageContainer>
     );
   }
 
   if (loadingHome || !home) {
-    return (
-      <PageContainer>
-        <BlockSkeleton className="h-96" />
-      </PageContainer>
-    );
+    return <HomeSkeleton />;
   }
 
   // A lista de unidades acima inclui arquivadas; a Início só considera unidades
@@ -168,54 +224,59 @@ export function VenueInicioPageContent() {
     );
   }
 
-  const shortcuts = home.shortcuts.map((key) => SHORTCUT_CONFIG[key]).filter(Boolean);
+  const cashOpen = (home.cashSessions?.length ?? 0) > 0;
+  // "Abrir caixa" não faz sentido com o caixa já aberto.
+  const shortcuts = home.shortcuts
+    .filter((key) => !(key === "open_cash" && cashOpen))
+    .map((key) => SHORTCUT_CONFIG[key])
+    .filter(Boolean);
   const showRestrictedNotice = home.onboarding.restricted && !home.onboarding.readyToOperate;
   const periodCents = (finance.data ?? []).reduce((sum, p) => sum + p.revenueCents, 0);
   const thisMonthCents = (financeThisMonth.data ?? []).reduce((sum, p) => sum + p.revenueCents, 0);
   const lastMonthCents = (financeLastMonth.data ?? []).reduce((sum, p) => sum + p.revenueCents, 0);
+  const money = moneyClass(hideValues);
+
+  const alerts = [
+    (home.outOfStockCount ?? 0) > 0
+      ? { key: "outOfStock", label: "sem estoque", value: home.outOfStockCount ?? 0, icon: PackageX, href: "/dashboard/estoque" }
+      : null,
+    (home.lowStockCount ?? 0) > 0
+      ? { key: "lowStock", label: "com estoque baixo", value: home.lowStockCount ?? 0, icon: PackageMinus, href: "/dashboard/estoque" }
+      : null,
+    (home.overduePayablesCount ?? 0) > 0
+      ? { key: "overdue", label: home.overduePayablesCount === 1 ? "conta vencida" : "contas vencidas", value: home.overduePayablesCount ?? 0, icon: CalendarX2, href: "/dashboard/financeiro" }
+      : null,
+    (home.cashDiscrepancyCount ?? 0) > 0
+      ? { key: "cash", label: home.cashDiscrepancyCount === 1 ? "divergência de caixa hoje" : "divergências de caixa hoje", value: home.cashDiscrepancyCount ?? 0, icon: Clock3, href: "/dashboard/operacao/caixa" }
+      : null,
+  ].filter((a): a is NonNullable<typeof a> => a !== null);
+  // Só afirma "nada precisa de atenção" para quem enxerga ao menos uma das fontes de alerta.
+  const seesAnyAlertSource = [home.outOfStockCount, home.lowStockCount, home.overduePayablesCount, home.cashDiscrepancyCount].some(
+    (v) => v !== null,
+  );
+
+  const reservations = home.todaysReservations !== null ? summarizePresence(home.todaysReservations, nowMs) : null;
+  const shownReservations = reservations?.actionable.slice(0, 3) ?? [];
+  const moreWaiting = reservations ? reservations.actionable.length - shownReservations.length : 0;
 
   const panoramaTiles = [
     home.openTabsCount !== null
-      ? { key: "openTabs", icon: <ClipboardList size={20} strokeWidth={1.8} />, value: home.openTabsCount, label: "Comandas abertas" }
+      ? { key: "open", icon: ClipboardList, value: home.openTabsCount, label: "Comandas abertas" }
       : null,
-    home.tables !== null
-      ? {
-          key: "tables",
-          icon: <LayoutGrid size={20} strokeWidth={1.8} />,
-          value: `${home.tables.occupied}/${home.tables.total}`,
-          label: "Mesas ativas",
-        }
-      : null,
-    home.todaysReservations !== null
-      ? {
-          key: "reservations",
-          icon: <CalendarClock size={20} strokeWidth={1.8} />,
-          value: home.todaysReservations.length,
-          label: "Reservas de hoje",
-        }
+    home.closedTabsTodayCount !== null
+      ? { key: "closed", icon: ClipboardCheck, value: home.closedTabsTodayCount, label: "Comandas fechadas hoje" }
       : null,
   ].filter((t): t is NonNullable<typeof t> => t !== null);
 
-  const alertTiles = [
-    (home.outOfStockCount ?? 0) > 0
-      ? { key: "outOfStock", label: "Sem estoque", value: home.outOfStockCount, icon: <PackageX size={16} />, tone: "danger" as const }
-      : null,
-    (home.lowStockCount ?? 0) > 0
-      ? { key: "lowStock", label: "Estoque baixo", value: home.lowStockCount, icon: <AlertTriangle size={16} />, tone: "warning" as const }
-      : null,
-    (home.overduePayablesCount ?? 0) > 0
-      ? { key: "overduePayables", label: "Contas vencidas", value: home.overduePayablesCount, icon: <Clock3 size={16} />, tone: "danger" as const }
-      : null,
-    (home.cashDiscrepancyCount ?? 0) > 0
-      ? {
-          key: "cashDiscrepancy",
-          label: "Divergências de caixa hoje",
-          value: home.cashDiscrepancyCount,
-          icon: <AlertTriangle size={16} />,
-          tone: "warning" as const,
-        }
-      : null,
-  ].filter((t): t is NonNullable<typeof t> => t !== null);
+  const hasOperation =
+    home.cashSessions !== null || home.ordersInPreparationCount !== null || home.ordersReadyCount !== null || home.waitlistCount !== null;
+  const firstRowCount = 1 + (hasOperation ? 1 : 0) + (reservations ? 1 : 0);
+  const firstRowCols =
+    firstRowCount === 3
+      ? "xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.95fr)]"
+      : firstRowCount === 2
+        ? "xl:grid-cols-2"
+        : "xl:grid-cols-1";
 
   return (
     <PageContainer>
@@ -242,229 +303,248 @@ export function VenueInicioPageContent() {
         </div>
       ) : null}
 
-      {/* Row 1 — Panorama Geral | Desempenho Financeiro | Progresso do Mês */}
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_1.12fr_0.66fr]">
-        <section className="flex flex-col rounded-[22px] bg-gradient-to-br from-[#1d1834] via-[#191530] to-[#141020] p-6 text-white shadow-[0_10px_30px_rgba(28,24,48,0.25)]">
-          <div className="mb-5 flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Panorama Geral</h3>
-            <button
-              onClick={() => setHideValues((v) => !v)}
-              className="flex items-center gap-1.5 text-[13px] font-medium text-white/50 transition-colors hover:text-white/80"
-            >
-              {hideValues ? <Eye size={16} /> : <EyeOff size={16} />}
-              {hideValues ? "Mostrar valores" : "Ocultar valores"}
-            </button>
+      {/* Ações + estado de atenção */}
+      <div className="flex flex-col gap-4">
+        {shortcuts.length > 0 || (seesAnyAlertSource && alerts.length === 0) ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {shortcuts.length > 0 ? (
+              <nav aria-label="Ações rápidas" className="flex flex-wrap items-center gap-2">
+                {shortcuts.map(({ label, href, icon: Icon }) => (
+                  <Link
+                    key={label}
+                    href={href}
+                    className={cn(
+                      "group flex h-9 items-center gap-2 rounded-[10px] border border-[#e6e2ef] bg-white px-3.5 text-[13.5px] font-medium text-gray-900 hover:border-[#d9cdf6] hover:bg-[#faf8ff]",
+                      PRESSABLE,
+                    )}
+                  >
+                    <Icon size={16} strokeWidth={1.8} className="text-violet-600 transition-colors group-hover:text-violet-700" />
+                    {label}
+                  </Link>
+                ))}
+              </nav>
+            ) : (
+              <span />
+            )}
+            {seesAnyAlertSource && alerts.length === 0 ? (
+              <p role="status" className="flex items-center gap-2 text-[13.5px] text-black/60">
+                <CircleCheck size={16} strokeWidth={1.8} className="text-emerald-700" />
+                Nada precisa de atenção agora
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {alerts.length > 0 ? (
+          <div role="status" className="flex flex-wrap items-center gap-x-1.5 gap-y-2 rounded-[14px] border border-[#f0d7dc] bg-[#fcf5f6] px-3 py-2 text-sm">
+            <span className={cn("mr-2 flex items-center gap-2 pl-1 font-semibold", ATTN_TEXT)}>
+              <span className="h-2 w-2 rounded-full bg-[#cf3b55] shadow-[0_0_0_3px_rgba(207,59,85,0.14)]" aria-hidden="true" />
+              Precisa de atenção
+            </span>
+            {alerts.map(({ key, label, value, icon: Icon, href }) => (
+              <Link key={key} href={href} className={cn("flex h-8 items-center gap-1.5 rounded-lg px-2.5 font-medium hover:bg-[#f8e7ea]", ATTN_TEXT, PRESSABLE)}>
+                <Icon size={16} strokeWidth={1.8} />
+                <b className="font-poppins tabular-nums">{value}</b> {label}
+              </Link>
+            ))}
+          </div>
+        ) : null}
+      </div>
+
+      {/* Linha 1 — o turno agora */}
+      <div className={cn("grid grid-cols-1 gap-4 md:grid-cols-2", firstRowCols)}>
+        <section
+          aria-labelledby="home-panorama"
+          className="flex flex-col rounded-[20px] bg-gradient-to-br from-[#1d1834] via-[#191530] to-[#141020] p-6 text-white shadow-[0_10px_30px_rgba(28,24,48,0.22)]"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <h2 id="home-panorama" className="text-[17px] font-semibold">
+              Panorama Geral
+            </h2>
+            {canViewFinance || home.financeSummary ? (
+              <button
+                type="button"
+                aria-pressed={hideValues}
+                onClick={() => setHideValues((v) => !v)}
+                className={cn("flex items-center gap-1.5 rounded-md text-[13px] font-medium text-white/60 hover:text-white/90", PRESSABLE)}
+              >
+                {hideValues ? <Eye size={16} strokeWidth={1.8} /> : <EyeOff size={16} strokeWidth={1.8} />}
+                {hideValues ? "Mostrar valores" : "Ocultar valores"}
+              </button>
+            ) : null}
           </div>
 
           {canViewFinance ? (
-            <div className="mb-5">
-              <p className="mb-2 text-[13.5px] text-white/60">Faturamento · {periodLabel(period)}</p>
-              <p className={`font-poppins text-[28px] font-bold tracking-tight ${hideValues ? "blur-md" : ""}`}>
-                {finance.isLoading ? "—" : formatCentsBRL(periodCents)}
-              </p>
+            <div className="mt-5 flex flex-wrap items-end gap-x-8 gap-y-4">
+              <div>
+                <p className="text-[13.5px] text-white/65">Faturamento · {periodLabel(period)}</p>
+                <p className={cn(money, "mt-1.5 text-[30px] font-bold leading-none tracking-tight")}>
+                  {finance.isLoading ? "…" : formatCentsBRL(periodCents)}
+                </p>
+              </div>
+              <div>
+                {/* Por enquanto usa o "Resultado operacional estimado" do Financeiro; o cálculo final ainda será definido. */}
+                <p className="text-[13.5px] text-white/65">Resultado líquido</p>
+                <p className={cn(money, "mt-1.5 text-xl font-bold leading-none")}>
+                  {overview.isLoading || !overview.data ? "…" : formatCentsBRL(overview.data.operationalResultCents)}
+                </p>
+              </div>
             </div>
           ) : home.financeSummary ? (
-            <div className="mb-5">
-              <p className="mb-2 text-[13.5px] text-white/60">Faturamento do dia</p>
-              <p className={`font-poppins text-[28px] font-bold tracking-tight ${hideValues ? "blur-md" : ""}`}>
-                {formatCentsBRL(home.financeSummary.totalCents)}
-              </p>
+            <div className="mt-5">
+              <p className="text-[13.5px] text-white/65">Faturamento do dia</p>
+              <p className={cn(money, "mt-1.5 text-[30px] font-bold leading-none tracking-tight")}>{formatCentsBRL(home.financeSummary.totalCents)}</p>
             </div>
           ) : null}
 
-          <div className={`mt-auto grid gap-3 ${panoramaTiles.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
-            {panoramaTiles.map((tile) => (
-              <div key={tile.key} className="rounded-2xl bg-white/[0.06] p-4">
-                <div className="mb-3.5 text-violet-300">{tile.icon}</div>
-                <p className={`font-poppins text-xl font-bold ${hideValues ? "blur-md" : ""}`}>{tile.value}</p>
-                <p className="mt-0.5 text-xs text-white/50">{tile.label}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {canViewFinance ? (
-          <FinanceTimelineChart
-            data={finance.data}
-            isLoading={finance.isLoading}
-            description={`Faturamento e resultado · ${periodLabel(period)}`}
-            className="rounded-[22px] shadow-[0_1px_2px_rgba(28,24,48,0.05),0_2px_6px_rgba(28,24,48,0.04)]"
-          />
-        ) : null}
-
-        {canViewFinance ? (
-          <GoalProgressCard
-            currentCents={thisMonthCents}
-            previousCents={lastMonthCents}
-            isLoading={financeThisMonth.isLoading || financeLastMonth.isLoading}
-          />
-        ) : null}
-      </div>
-
-      {/* Row 2 — Indicadores do Dia | Ações Rápidas */}
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_2.55fr]">
-        <div className="rounded-[22px] border border-black/10 bg-white p-5 shadow-[0_1px_2px_rgba(28,24,48,0.05),0_2px_6px_rgba(28,24,48,0.04)]">
-          <p className="mb-2 text-[17px] font-semibold text-gray-900">Indicadores do Dia</p>
-          <div className="divide-y divide-black/5">
-            {home.cashSessions !== null ? (
-              <div className="flex items-center gap-3 py-3">
-                <Wallet size={16} className="shrink-0 text-violet-500" />
-                <span className="text-[14.5px] font-medium text-gray-900">Caixa</span>
-                <span className="ml-auto text-sm font-semibold">
-                  {home.cashSessions.length > 0 ? <span className="text-emerald-600">Aberto</span> : <span className="text-black/40">Fechado</span>}
-                </span>
-              </div>
-            ) : null}
-            {home.waitlistCount !== null ? (
-              <div className="flex items-center gap-3 py-3">
-                <Users2 size={16} className="shrink-0 text-violet-500" />
-                <span className="text-[14.5px] font-medium text-gray-900">Clientes na fila</span>
-                <span className="ml-auto text-sm font-semibold">{home.waitlistCount}</span>
-              </div>
-            ) : null}
-            {home.ordersInPreparationCount !== null ? (
-              <div className="flex items-center gap-3 py-3">
-                <ChefHat size={16} className="shrink-0 text-violet-500" />
-                <span className="text-[14.5px] font-medium text-gray-900">Pedidos em preparo</span>
-                <span className="ml-auto text-sm font-semibold">{home.ordersInPreparationCount}</span>
-              </div>
-            ) : null}
-            {home.ordersReadyCount !== null ? (
-              <div className="flex items-center gap-3 py-3">
-                <CheckCircle2 size={16} className="shrink-0 text-violet-500" />
-                <span className="text-[14.5px] font-medium text-gray-900">Pedidos prontos</span>
-                <span className="ml-auto text-sm font-semibold">{home.ordersReadyCount}</span>
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-        <div>
-          <h2 className="mb-4 font-poppins text-[19px] font-semibold tracking-tight text-foreground">Ações Rápidas</h2>
-          {shortcuts.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-              {shortcuts.map((s) => (
-                <Link
-                  key={s.href}
-                  href={s.href}
-                  className="group relative flex min-h-[158px] flex-col rounded-2xl bg-white p-[18px] shadow-[0_1px_2px_rgba(28,24,48,0.05),0_2px_6px_rgba(28,24,48,0.04)] transition-shadow hover:shadow-md"
-                >
-                  <div className="mb-4 flex h-[42px] w-[42px] items-center justify-center rounded-xl bg-violet-100 text-violet-600">
-                    <Plus size={20} strokeWidth={1.8} />
-                  </div>
-                  <h4 className="text-[15px] font-semibold text-gray-900">{s.label}</h4>
-                  <p className="mt-1 text-[12.5px] leading-tight text-black/50">{s.description}</p>
-                  <span className="absolute bottom-3.5 right-3.5 flex h-[26px] w-[26px] items-center justify-center rounded-full bg-violet-100 text-violet-600 transition-transform group-hover:translate-x-0.5">
-                    <ArrowUpRight size={14} strokeWidth={2.2} />
-                  </span>
+          {panoramaTiles.length > 0 ? (
+            <div className={cn("mt-auto grid gap-2.5 pt-6", panoramaTiles.length === 1 ? "grid-cols-1" : "grid-cols-2")}>
+              {panoramaTiles.map(({ key, icon: Icon, value, label }) => (
+                <Link key={key} href="/dashboard/operacao" className={cn("rounded-[14px] bg-white/[0.06] px-4 py-3.5 hover:bg-white/[0.09]", PRESSABLE)}>
+                  <Icon size={18} strokeWidth={1.8} className="text-violet-300" />
+                  <p className={cn("mt-3 font-poppins text-xl font-bold tabular-nums", value === 0 && "text-white/50")}>{value}</p>
+                  <p className="mt-0.5 text-xs text-white/65">{label}</p>
                 </Link>
               ))}
             </div>
-          ) : (
-            <p className="text-sm text-black/50">Nenhuma ação rápida disponível para o seu papel agora.</p>
-          )}
-        </div>
-      </div>
+          ) : null}
+        </section>
 
-      {alertTiles.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {alertTiles.map((tile) => (
-            <div
-              key={tile.key}
-              className={`rounded-xl border p-4 ${tile.tone === "danger" ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50"}`}
-            >
-              <div className={`mb-2 flex items-center gap-2 text-sm font-medium ${tile.tone === "danger" ? "text-red-700" : "text-amber-700"}`}>
-                {tile.icon}
-                {tile.label}
-              </div>
-              <p className="text-2xl font-semibold text-gray-900">{tile.value}</p>
-            </div>
-          ))}
-        </div>
-      ) : null}
+        {hasOperation ? (
+          <section aria-labelledby="home-operation" className={cn(SURFACE, "flex flex-col px-3 pb-3 pt-6")}>
+            <h2 id="home-operation" className="mb-2 px-3 text-[17px] font-semibold text-gray-900">
+              Agora na operação
+            </h2>
+            {home.cashSessions !== null ? (
+              <OperationRow href="/dashboard/operacao/caixa" icon={Wallet} label="Caixa">
+                <span className={cn("text-sm font-semibold", cashOpen ? "text-emerald-700" : "text-black/45")}>{cashOpen ? "Aberto" : "Fechado"}</span>
+              </OperationRow>
+            ) : null}
+            {home.ordersInPreparationCount !== null ? (
+              <OperationRow href="/dashboard/operacao/pedidos" icon={ChefHat} label="Itens em preparo">
+                <CountValue value={home.ordersInPreparationCount} />
+              </OperationRow>
+            ) : null}
+            {home.ordersReadyCount !== null ? (
+              <OperationRow href="/dashboard/operacao/pedidos" icon={BellRing} label="Itens prontos para entregar">
+                <CountValue value={home.ordersReadyCount} />
+              </OperationRow>
+            ) : null}
+            {home.waitlistCount !== null ? (
+              <OperationRow href="/dashboard/reservas?tab=fila" icon={Users2} label="Clientes na fila">
+                <CountValue value={home.waitlistCount} />
+              </OperationRow>
+            ) : null}
+          </section>
+        ) : null}
 
-      {home.todaysReservations && home.todaysReservations.length > 0 ? (
-        <div className="rounded-2xl border bg-white p-4 shadow-[0_1px_2px_rgba(28,24,48,0.05)]">
-          <p className="mb-3 text-sm font-semibold text-black/70">Próximas reservas</p>
-          <div className="space-y-2">
-            {home.todaysReservations.slice(0, 8).map((r) => (
-              <div key={r.id} className="flex items-center justify-between text-sm">
-                <span className="text-black/80">
-                  {r.customerName} · {r.partySize} pessoas
-                </span>
-                <div className="flex items-center gap-2">
-                  <span className="text-black/50">
-                    {new Date(r.startAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                  <Badge variant="outline">{r.status}</Badge>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {/* Visão Geral do Negócio */}
-      <div>
-        <h2 className="mb-4 font-poppins text-[19px] font-semibold tracking-tight text-foreground">Visão Geral do Negócio</h2>
-        <div className="grid grid-cols-1 gap-[18px] sm:grid-cols-2 lg:grid-cols-4">
-          <div className="flex flex-col rounded-[22px] bg-white p-5 shadow-[0_1px_2px_rgba(28,24,48,0.05),0_2px_6px_rgba(28,24,48,0.04)]">
-            <div className="mb-[18px] flex items-center gap-2.5">
-              <span className="flex h-[38px] w-[38px] items-center justify-center rounded-[11px] bg-violet-100 text-violet-600">
-                <LayoutGrid size={19} strokeWidth={1.8} />
-              </span>
-              <h4 className="text-[16px] font-semibold text-gray-900">Operação</h4>
-            </div>
-            <p className="mb-1.5 text-[13px] text-black/60">Mesas ocupadas</p>
-            {home.tables !== null ? (
-              <>
-                <p className="font-poppins text-[28px] font-bold leading-none tracking-tight text-foreground">
-                  {home.tables.occupied} <span className="text-lg font-semibold text-black/40">/{home.tables.total}</span>
-                </p>
-                <div className="relative mt-3.5 h-[7px] overflow-hidden rounded-full bg-violet-50">
-                  <div
-                    className="h-full rounded-full bg-violet-600"
-                    style={{ width: `${home.tables.total > 0 ? Math.round((home.tables.occupied / home.tables.total) * 100) : 0}%` }}
-                  />
-                </div>
-              </>
-            ) : (
-              <div className="mb-4 mt-4" />
-            )}
-            <Link
-              href="/dashboard/operacao"
-              className="mt-4 flex h-[42px] items-center justify-center rounded-xl border border-black/10 bg-white text-[13.5px] font-semibold text-violet-600 transition-colors hover:bg-violet-50"
-            >
-              Ver mesas
-            </Link>
-          </div>
-
-          {BUSINESS_OVERVIEW.map(({ key, label, metric, icon: Icon, href, cta }) => (
-            <div key={key} className="flex flex-col rounded-[22px] bg-white p-5 shadow-[0_1px_2px_rgba(28,24,48,0.05),0_2px_6px_rgba(28,24,48,0.04)]">
-              <div className="mb-[18px] flex items-center gap-2.5">
-                <span className="flex h-[38px] w-[38px] items-center justify-center rounded-[11px] bg-violet-100 text-violet-600">
-                  <Icon size={19} strokeWidth={1.8} />
-                </span>
-                <h4 className="text-[16px] font-semibold text-gray-900">{label}</h4>
-              </div>
-              <p className="mb-1.5 text-[13px] text-black/60">{metric}</p>
-              {key === "STOCK" ? (
-                <p className="font-poppins text-[28px] font-bold leading-none tracking-tight text-foreground">
-                  {(home.lowStockCount ?? 0) + (home.outOfStockCount ?? 0)}
-                </p>
-              ) : (
-                <div className="mb-4 mt-4" />
-              )}
-              <Link
-                href={href}
-                className="mt-auto flex h-[42px] items-center justify-center rounded-xl border border-black/10 bg-white text-[13.5px] font-semibold text-violet-600 transition-colors hover:bg-violet-50"
-              >
-                {cta}
+        {reservations ? (
+          <section aria-labelledby="home-reservations" className={cn(SURFACE, "flex flex-col px-3 pb-3 pt-6")}>
+            <div className="mb-3 flex items-baseline justify-between gap-3 px-3">
+              <h2 id="home-reservations" className="text-[17px] font-semibold text-gray-900">
+                Reservas de hoje <span className="ml-1 font-poppins text-[15px] tabular-nums text-black/35">{reservations.total}</span>
+              </h2>
+              <Link href="/dashboard/reservas" className={cn("rounded-md text-[13px] font-semibold text-violet-700 hover:text-violet-800", PRESSABLE)}>
+                Ver todas
               </Link>
             </div>
-          ))}
-        </div>
+
+            {reservations.total === 0 ? (
+              <div className="flex flex-1 flex-col items-center justify-center pb-3 text-center">
+                <CalendarClock size={22} strokeWidth={1.8} className="text-black/30" />
+                <p className="mt-2.5 text-[13.5px] text-black/60">Nenhuma reserva para hoje.</p>
+              </div>
+            ) : (
+              <>
+                <dl className="mx-3 grid grid-cols-3 divide-x divide-black/[0.06] rounded-[14px] bg-[#f7f5fb] py-2.5 text-center">
+                  <div>
+                    <dd className="font-poppins text-lg font-bold tabular-nums">{reservations.arrived}</dd>
+                    <dt className="text-xs text-black/60">Chegaram</dt>
+                  </div>
+                  <div>
+                    <dd className="font-poppins text-lg font-bold tabular-nums">{reservations.waiting}</dd>
+                    <dt className="text-xs text-black/60">A chegar</dt>
+                  </div>
+                  <div>
+                    <dd className={cn("font-poppins text-lg font-bold tabular-nums", reservations.noShow > 0 && ATTN_TEXT)}>{reservations.noShow}</dd>
+                    <dt className="text-xs text-black/60">Não vieram</dt>
+                  </div>
+                </dl>
+
+                {shownReservations.length > 0 ? (
+                  <ul className="mt-2 flex flex-col">
+                    {shownReservations.map((r) => {
+                      const noShow = r.presence === "NO_SHOW";
+                      return (
+                        <li key={r.id}>
+                          <Link href="/dashboard/reservas" className={cn("flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-[#f7f5fb]", PRESSABLE)}>
+                            <span
+                              className={cn(
+                                "w-11 font-poppins text-[13.5px] font-semibold tabular-nums",
+                                noShow && "text-black/45 line-through decoration-black/25",
+                              )}
+                            >
+                              {new Date(r.startAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-[14px] font-medium text-gray-900">{r.customerName}</span>
+                              <span className="text-xs text-black/55">
+                                {r.partySize} {r.partySize === 1 ? "pessoa" : "pessoas"}
+                              </span>
+                            </span>
+                            {noShow ? (
+                              <span className={cn("rounded-md bg-[#fcf5f6] px-2 py-0.5 text-xs font-semibold shadow-[inset_0_0_0_1px_#f0d7dc]", ATTN_TEXT)}>
+                                Não compareceu
+                              </span>
+                            ) : (
+                              <span className="rounded-md bg-black/[0.05] px-2 py-0.5 text-xs font-semibold text-black/65">Aguardando</span>
+                            )}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="px-3 pt-3 text-[13.5px] text-black/60">Todos que reservaram já chegaram.</p>
+                )}
+
+                {moreWaiting > 0 || reservations.canceled > 0 ? (
+                  <p className="px-3 pt-1 text-[12.5px] text-black/55">
+                    {[
+                      moreWaiting > 0 ? `e mais ${moreWaiting} na lista` : null,
+                      reservations.canceled > 0 ? `${reservations.canceled} ${reservations.canceled === 1 ? "cancelada" : "canceladas"}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                ) : null}
+              </>
+            )}
+          </section>
+        ) : null}
       </div>
+
+      {/* Linha 2 — o dinheiro */}
+      {canViewFinance ? (
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,0.95fr)]">
+          <FinanceTimelineChart
+            data={finance.data}
+            isLoading={finance.isLoading}
+            title="Faturamento por dia"
+            description={periodLabel(period)}
+            showResult={false}
+            zeroDates={home.date ? periodDates(period, home.date) : undefined}
+            hideValues={hideValues}
+            className="rounded-[20px] border-[#ebe8f2] shadow-none"
+          />
+          <MonthRevenueCard
+            currentCents={thisMonthCents}
+            previousCents={lastMonthCents}
+            isLoading={financeThisMonth.isLoading || financeLastMonth.isLoading}
+            hideValues={hideValues}
+          />
+        </div>
+      ) : null}
     </PageContainer>
   );
 }

@@ -23,7 +23,10 @@ export interface VenueHomeResponse {
   date: string | null;
   tables: { total: number; occupied: number } | null;
   openTabsCount: number | null;
+  /** Comandas fechadas no dia (mesmo dia/fuso da unidade). */
+  closedTabsTodayCount: number | null;
   cashSessions: VenueHomeCashSession[] | null;
+  /** Reservas do dia em todos os status (chegou, aguardando, cancelada, não compareceu). */
   todaysReservations: VenueHomeReservation[] | null;
   waitlistCount: number | null;
   ordersInPreparationCount: number | null;

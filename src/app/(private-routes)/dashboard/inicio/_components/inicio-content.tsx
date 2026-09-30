@@ -25,7 +25,7 @@ import { EmptyState } from "../../_components/states/empty-state";
 import { ErrorState } from "../../_components/states/error-state";
 import { BlockSkeleton } from "../../_components/states/loading-state";
 import { FinanceTimelineChart } from "../../_components/finance-timeline-chart";
-import { GoalProgressCard } from "../../_components/goal-progress-card";
+import { MonthRevenueCard } from "../../_components/month-revenue-card";
 import { useDismissRecommendation, usePlatformHome, usePlatformNavigation, useRecommendations } from "../../_hooks/use-platform";
 import { useTicketsFinanceTimeline } from "../_hooks/use-tickets-finance";
 import { periodLabel, periodToFinanceParams, usePeriod } from "@/context/PeriodContext";
@@ -203,10 +203,12 @@ export function InicioContent() {
         ) : null}
 
         {showFinanceCard ? (
-          <GoalProgressCard
+          <MonthRevenueCard
             currentCents={thisMonthCents}
             previousCents={lastMonthCents}
             isLoading={financeThisMonth.isLoading || financeLastMonth.isLoading}
+            hideValues={hideValues}
+            className="rounded-[22px]"
           />
         ) : null}
       </div>
