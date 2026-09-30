@@ -15,6 +15,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { resolveMediaUrl } from "@/lib/media";
 import { useVenuePublicProfile } from "../cardapio/_hooks/use-venue-public-profile";
+import { AssistantSheet } from "./assistant/assistant-panel";
 
 /**
  * Topbar do dashboard: "Pergunte à IA" à esquerda; período, notificações,
@@ -28,8 +29,8 @@ import { useVenuePublicProfile } from "../cardapio/_hooks/use-venue-public-profi
  * workspace aparecia no meio do wizard, no passo em que o usuário escolhe os
  * módulos da organização recém-criada.
  *
- * IA, notificações e indique e ganhe são só visuais (nenhuma das três existe
- * no backend ainda). O período grava no PeriodContext (padrão "Hoje") e é
+ * "Pergunte à IA" abre o Assistente Nokta (painel lateral). Notificações e
+ * indique e ganhe são só visuais (não existem no backend ainda). O período grava no PeriodContext (padrão "Hoje") e é
  * consumido pelas telas via periodToFinanceParams — hoje, a Início.
  */
 
@@ -197,6 +198,7 @@ export function Topbar() {
   const isOnboarding = pathname.startsWith("/dashboard/onboarding");
 
   const showGreeting = isOnboarding || (isAuthResolved && !loadingOrgs && !currentOrg);
+  const [assistantOpen, setAssistantOpen] = useState(false);
 
   return (
     <header className="flex h-16 items-center justify-between gap-6 border-b border-[#ebe8f2] bg-[#fbfaff] px-4 text-[#1c1a24] lg:px-6">
@@ -206,20 +208,21 @@ export function Topbar() {
           <p className="mt-0.5 text-xs text-[#898b98]">Bem-vindo à Nokta</p>
         </div>
       ) : (
-        <label className="flex h-[38px] w-[440px] min-w-0 max-w-full cursor-text items-center gap-2 rounded-[10px] border border-[#e2d6fb] bg-white px-3 text-[#7c3aed] shadow-[0_0_0_3px_#f5f0ff] focus-within:border-[#7c3aed]">
+        // Abre o Assistente Nokta (ver assistant-panel.tsx). É um botão, não um campo:
+        // a conversa só existe depois que o usuário conecta a IA dele.
+        <button
+          type="button"
+          onClick={() => setAssistantOpen(true)}
+          className="flex h-[38px] w-[440px] min-w-0 max-w-full items-center gap-2 rounded-[10px] border border-[#e2d6fb] bg-white px-3 text-left text-[#7c3aed] shadow-[0_0_0_3px_#f5f0ff] transition-[border-color,transform] duration-150 ease-out hover:border-[#c9b4f5] active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 motion-reduce:active:scale-100"
+        >
           <svg className="shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
             <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" />
           </svg>
-          {/* text-base no mobile: abaixo de 16px o Safari/iOS dá zoom ao focar o campo. */}
-          <input
-            type="text"
-            aria-label="Pergunte à IA"
-            placeholder="Pergunte à IA: quanto vendi hoje? qual prato mais saiu?"
-            className="min-w-0 flex-1 border-0 bg-transparent text-base text-[#1c1a24] outline-none sm:text-[13px]"
-          />
-        </label>
+          <span className="min-w-0 flex-1 truncate text-[13px] text-[#8a8796]">Pergunte à IA: quanto vendi hoje? qual prato mais saiu?</span>
+        </button>
       )}
+      <AssistantSheet open={assistantOpen} onOpenChange={setAssistantOpen} />
 
       <div className="flex shrink-0 items-center gap-4">
         {!showGreeting && (

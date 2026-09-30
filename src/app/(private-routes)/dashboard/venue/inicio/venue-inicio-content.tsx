@@ -43,6 +43,7 @@ import { useVenueFinanceTimeline } from "../../financeiro/_venue/_hooks/use-venu
 import { useVenueInsightsOverview } from "../../insights/_venue/_hooks/use-venue-insights";
 import { useVenueHome } from "./_hooks/use-venue-home";
 import { SalesByHourCard, TopProductsCard } from "./_components/home-insights";
+import { AssistantDockedPanel } from "../../_components/assistant/assistant-panel";
 import { summarizePresence } from "./_lib/reservation-presence";
 
 const SHORTCUT_CONFIG: Record<string, { label: string; href: string; icon: LucideIcon }> = {
@@ -292,6 +293,8 @@ export function VenueInicioPageContent() {
         : "xl:grid-cols-1";
 
   return (
+    // Telas largas (>= 1920px): Assistente Nokta fixo à direita; abaixo disso, só pelo "Pergunte à IA" do topo.
+    <div className="min-[1920px]:grid min-[1920px]:grid-cols-[minmax(0,1fr)_380px] min-[1920px]:items-start min-[1920px]:gap-6">
     <PageContainer>
       {activeLocations.length > 1 ? (
         <div className="flex justify-end">
@@ -598,5 +601,7 @@ export function VenueInicioPageContent() {
         />
       ) : null}
     </PageContainer>
+    <AssistantDockedPanel className="sticky top-0 hidden h-[calc(100dvh-8rem)] min-[1920px]:flex" />
+    </div>
   );
 }
