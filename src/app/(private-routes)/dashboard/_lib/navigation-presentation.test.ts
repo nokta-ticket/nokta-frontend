@@ -61,16 +61,15 @@ describe("buildUnifiedNavigation", () => {
     ]);
   });
 
-  it("Promotores é secundário e vem depois de Eventos no mesmo grupo, mesmo entrando primeiro do backend", () => {
+  it("Promotores é item normal de Eventos, no mesmo nível de Check-in (sem recuo)", () => {
     const items: NavigationItem[] = [
       item({ key: "PROMOTERS", label: "Promotores", route: "/dashboard/promotores", group: "EVENTS" }),
+      item({ key: "CHECK_IN", label: "Check-in", route: "/dashboard/check-in", group: "EVENTS" }),
       item({ key: "EVENTS", label: "Eventos", route: "/dashboard/eventos", group: "EVENTS" }),
     ];
-    const groups = buildUnifiedNavigation(items);
-    const eventosGroup = groups.find((g) => g.group === "EVENTOS")!;
-    expect(eventosGroup.items.map((i) => i.key)).toEqual(["EVENTS", "PROMOTERS"]);
-    expect(eventosGroup.items.find((i) => i.key === "EVENTS")?.secondary).toBe(false);
-    expect(eventosGroup.items.find((i) => i.key === "PROMOTERS")?.secondary).toBe(true);
+    const eventosGroup = buildUnifiedNavigation(items).find((g) => g.group === "EVENTOS")!;
+    expect(eventosGroup.items.map((i) => i.key)).toEqual(["EVENTS", "CHECK_IN", "PROMOTERS"]);
+    expect(eventosGroup.items.every((i) => !("secondary" in i))).toBe(true);
   });
 
   it("preserva a ordem de exibição dos grupos independente da ordem de entrada", () => {

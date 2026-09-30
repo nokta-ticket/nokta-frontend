@@ -181,23 +181,11 @@ const ICON_BY_GROUP: Record<CapabilityGroup, IconKey> = {
   MANAGEMENT: "dollar",
 };
 
-/**
- * Itens que são função secundária de outra capacidade no mesmo grupo visual
- * — hoje só Promotores em relação a Eventos (auditoria da unificação de
- * Tickets: Promotores é uma funcionalidade interna de Tickets, não um
- * produto irmão de Eventos, mas herdava o mesmo peso visual por estar no
- * mesmo DisplayGroup). Puramente de apresentação: renderizado com recuo e
- * texto mais discreto em `UnifiedSidebar`, mesmo componente `Link`, sem
- * nova arquitetura de navegação aninhada.
- */
-const SECONDARY_KEYS = new Set(["PROMOTERS"]);
-
 export interface UnifiedNavItem {
   key: string;
   label: string;
   route: string;
   iconKey: IconKey;
-  secondary: boolean;
 }
 
 export interface UnifiedNavGroup {
@@ -239,19 +227,15 @@ export function buildUnifiedNavigation(items: NavigationItem[]): UnifiedNavGroup
     const iconKey = ICON_BY_KEY[item.key] ?? ICON_BY_GROUP[item.group];
     const label = LABEL_BY_ROUTE[route] ?? item.label;
     const list = byGroup.get(displayGroup) ?? [];
-    list.push({ key: item.key, label, route, iconKey, secondary: SECONDARY_KEYS.has(item.key) });
+    list.push({ key: item.key, label, route, iconKey });
     byGroup.set(displayGroup, list);
   }
 
   return DISPLAY_GROUP_ORDER.filter((g) => byGroup.has(g)).map((group) => {
-    const items = [...byGroup.get(group)!].sort((a, b) => routeRank(a.route) - routeRank(b.route));
-    // Itens primários antes dos secundários — ordem estável dentro de cada bloco.
-    const primary = items.filter((i) => !i.secondary);
-    const secondary = items.filter((i) => i.secondary);
     return {
       group,
       groupLabel: DISPLAY_GROUP_LABEL[group],
-      items: [...primary, ...secondary],
+      items: [...byGroup.get(group)!].sort((a, b) => routeRank(a.route) - routeRank(b.route)),
     };
   });
 }

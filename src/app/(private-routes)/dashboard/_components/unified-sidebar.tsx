@@ -37,9 +37,7 @@ function NavGroupList({ groups, pathname }: { groups: UnifiedNavGroup[]; pathnam
                 <Link
                   key={item.key}
                   href={item.route}
-                  className={`flex items-center gap-3 rounded-xl py-2 text-[14.5px] font-medium transition-colors ${
-                    item.secondary ? "ml-4 px-3 text-xs" : "px-3"
-                  } ${isActive ? "bg-violet-100 text-violet-600" : "text-black/65 hover:bg-black/[0.04] hover:text-foreground"}`}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2 text-[14.5px] font-medium transition-colors ${isActive ? "bg-violet-100 text-violet-600" : "text-black/65 hover:bg-black/[0.04] hover:text-foreground"}`}
                 >
                   <UnifiedNavIcon iconKey={item.iconKey} className={isActive ? "text-violet-600" : "text-black/40"} />
                   {item.label}
@@ -107,7 +105,7 @@ export function UnifiedSidebar() {
     ? groups
     : groups.map((g) =>
         g.group === "OPERACAO" && canVenue("venue.operation.devices.manage")
-          ? { ...g, items: [...g.items, { key: "TERMINAIS", label: "Terminais", route: TERMINAIS_ROUTE, iconKey: "tablet" as const, secondary: false }] }
+          ? { ...g, items: [...g.items, { key: "TERMINAIS", label: "Terminais", route: TERMINAIS_ROUTE, iconKey: "tablet" as const }] }
           : g,
       );
 
