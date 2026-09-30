@@ -13,10 +13,12 @@ export interface FinanceTimelinePoint {
   resultCents: number;
 }
 
-const timelineConfig: ChartConfig = {
-  revenueCents: { label: "Faturamento", color: "var(--primary)" },
-  resultCents: { label: "Resultado", color: "var(--color-chart-3)" },
-};
+function timelineConfig(resultLabel: string): ChartConfig {
+  return {
+    revenueCents: { label: "Faturamento", color: "var(--primary)" },
+    resultCents: { label: resultLabel, color: "var(--color-chart-3)" },
+  };
+}
 
 const HIDDEN_VALUE = "R$ •••";
 
@@ -44,6 +46,7 @@ export function FinanceTimelineChart({
   description = "Faturamento e resultado nos últimos 7 dias",
   className,
   showResult = true,
+  resultLabel = "Resultado",
   zeroDates,
   hideValues = false,
 }: {
@@ -52,8 +55,10 @@ export function FinanceTimelineChart({
   title?: string;
   description?: string;
   className?: string;
-  /** Linha tracejada de "Resultado". A Início mostra só o faturamento. */
+  /** Linha tracejada de resultado. */
   showResult?: boolean;
+  /** Nome da linha tracejada na legenda e no tooltip. */
+  resultLabel?: string;
   /** Dias do período: com eles, período sem vendas vira linha reta no zero. */
   zeroDates?: string[];
   /** "Ocultar valores": esconde os valores em dinheiro do eixo e do tooltip. */
@@ -62,6 +67,7 @@ export function FinanceTimelineChart({
   const isEmpty = !data || data.length === 0;
   const points = isEmpty && zeroDates && zeroDates.length > 0 ? zeroSeries(zeroDates) : data;
   const formatMoney = (v: number) => (hideValues ? HIDDEN_VALUE : formatCentsBRL(v));
+  const config = timelineConfig(resultLabel);
 
   return (
     <ChartCard title={title} description={description} className={className}>
@@ -70,7 +76,7 @@ export function FinanceTimelineChart({
       ) : !points || points.length === 0 ? (
         <EmptyState title="Sem dados no período" description="Vendas e resultado aparecerão aqui conforme o movimento do período." />
       ) : (
-        <ChartContainer config={timelineConfig} className="max-h-72 w-full">
+        <ChartContainer config={config} className="max-h-72 w-full">
           <AreaChart data={points} margin={{ left: 12, right: 12 }}>
             <defs>
               <linearGradient id="financeRevenueFill" x1="0" y1="0" x2="0" y2="1">
@@ -100,7 +106,7 @@ export function FinanceTimelineChart({
                   labelFormatter={(v) => formatDayMonth(String(v).replace("​", ""))}
                   formatter={(value, name) => (
                     <span className="flex w-full justify-between gap-4">
-                      <span className="text-muted-foreground">{timelineConfig[String(name)]?.label ?? name}</span>
+                      <span className="text-muted-foreground">{config[String(name)]?.label ?? name}</span>
                       <span className="font-mono font-medium tabular-nums">{formatMoney(Number(value))}</span>
                     </span>
                   )}

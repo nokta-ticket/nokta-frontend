@@ -38,7 +38,7 @@ import { FinanceTimelineChart } from "../../_components/finance-timeline-chart";
 import { MonthRevenueCard } from "../../_components/month-revenue-card";
 import { useVenueLocations } from "../../operacao/_hooks/use-venue-locations";
 import { OnboardingLocation } from "../../operacao/_components/onboarding-location";
-import { useVenueFinanceOverview, useVenueFinanceTimeline } from "../../financeiro/_venue/_hooks/use-venue-finance-overview";
+import { useVenueFinanceTimeline } from "../../financeiro/_venue/_hooks/use-venue-finance-overview";
 import { useVenueHome } from "./_hooks/use-venue-home";
 import { summarizePresence } from "./_lib/reservation-presence";
 
@@ -164,13 +164,12 @@ export function VenueInicioPageContent() {
   );
 
   const canViewFinance = can("venue.finance.view");
-  // Faturamento, resultado e gráfico seguem o filtro de período do header;
+  // Faturamento e gráfico seguem o filtro de período do header;
   // o card do mês compara sempre este mês com o anterior inteiro.
   const { period } = usePeriod();
   const periodParams = periodToFinanceParams(period);
   const financeOrgId = canViewFinance ? orgId : null;
   const finance = useVenueFinanceTimeline(financeOrgId, locationId, periodParams);
-  const overview = useVenueFinanceOverview(financeOrgId, locationId, periodParams);
   const financeThisMonth = useVenueFinanceTimeline(financeOrgId, locationId, { quickPeriod: "THIS_MONTH" });
   const financeLastMonth = useVenueFinanceTimeline(financeOrgId, locationId, { quickPeriod: "LAST_MONTH" });
 
@@ -375,20 +374,11 @@ export function VenueInicioPageContent() {
           </div>
 
           {canViewFinance ? (
-            <div className="mt-5 flex flex-wrap items-end gap-x-8 gap-y-4">
-              <div>
-                <p className="text-[13.5px] text-white/65">Faturamento · {periodLabel(period)}</p>
-                <p className={cn(money, "mt-1.5 text-[30px] font-bold leading-none tracking-tight")}>
-                  {finance.isLoading ? "…" : formatCentsBRL(periodCents)}
-                </p>
-              </div>
-              <div>
-                {/* Por enquanto usa o "Resultado operacional estimado" do Financeiro; o cálculo final ainda será definido. */}
-                <p className="text-[13.5px] text-white/65">Resultado líquido</p>
-                <p className={cn(money, "mt-1.5 text-xl font-bold leading-none")}>
-                  {overview.isLoading || !overview.data ? "…" : formatCentsBRL(overview.data.operationalResultCents)}
-                </p>
-              </div>
+            <div className="mt-5">
+              <p className="text-[13.5px] text-white/65">Faturamento · {periodLabel(period)}</p>
+              <p className={cn(money, "mt-1.5 text-[30px] font-bold leading-none tracking-tight")}>
+                {finance.isLoading ? "…" : formatCentsBRL(periodCents)}
+              </p>
             </div>
           ) : home.financeSummary ? (
             <div className="mt-5">
@@ -530,9 +520,9 @@ export function VenueInicioPageContent() {
           <FinanceTimelineChart
             data={finance.data}
             isLoading={finance.isLoading}
-            title="Faturamento por dia"
-            description={periodLabel(period)}
-            showResult={false}
+            // Resultado líquido = resultCents do timeline (faturamento − custo dos produtos − despesas pagas); o cálculo final ainda será definido.
+            description={`Faturamento e resultado líquido · ${periodLabel(period)}`}
+            resultLabel="Resultado líquido"
             zeroDates={home.date ? periodDates(period, home.date) : undefined}
             hideValues={hideValues}
             className="rounded-[20px] border-[#ebe8f2] shadow-none"
