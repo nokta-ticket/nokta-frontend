@@ -18,7 +18,7 @@ import { resolveMediaUrl } from "@/lib/media";
 import { useVenuePublicProfile } from "../cardapio/_hooks/use-venue-public-profile";
 
 /**
- * Topbar do dashboard: "Nokta no Claude" à esquerda; período, notificações,
+ * Topbar do dashboard: "Conecte o dashboard da {empresa} ao Claude" à esquerda; período, notificações,
  * indique e ganhe e workspace à direita. O menu do usuário (perfil/sair) não
  * fica mais aqui — está na sidebar (UserMenu variant="sidebar"), inclusive na
  * gaveta do mobile.
@@ -29,7 +29,7 @@ import { useVenuePublicProfile } from "../cardapio/_hooks/use-venue-public-profi
  * workspace aparecia no meio do wizard, no passo em que o usuário escolhe os
  * módulos da organização recém-criada.
  *
- * "Nokta no Claude" leva para Configurações → IA e conexões (conector MCP). Notificações e
+ * "Conectar" leva para Configurações → IA e conexões (conector MCP). Notificações e
  * indique e ganhe são só visuais (não existem no backend ainda). O período grava no PeriodContext (padrão "Hoje") e é
  * consumido pelas telas via periodToFinanceParams — hoje, a Início.
  */
@@ -209,16 +209,18 @@ export function Topbar() {
       ) : (
         // Não há chat dentro da Nokta: a conversa acontece no Claude do usuário,
         // pelo conector configurado em Configurações → IA e conexões.
-        <Link
-          href="/dashboard/configuracoes?tab=ia"
-          className="flex h-[38px] min-w-0 items-center gap-2 rounded-[10px] border border-[#e2d6fb] bg-white px-3 text-[13px] font-medium text-[#1c1a24] transition-[border-color,background-color,transform] duration-150 ease-out hover:border-[#c9b4f5] hover:bg-[#faf8ff] active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 motion-reduce:active:scale-100"
-        >
-          <svg className="shrink-0 text-[#7c3aed]" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
-            <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" />
-          </svg>
-          <span className="truncate">Nokta no Claude</span>
-        </Link>
+        <div className="flex min-w-0 items-center gap-3">
+          <p className="hidden min-w-0 truncate text-[13.5px] text-[#5b5868] md:block">
+            Conecte o dashboard da <span className="font-semibold text-[#1c1a24]">{currentOrg?.nome ?? "sua empresa"}</span> ao Claude
+          </p>
+          <Link
+            href="/dashboard/configuracoes?tab=ia"
+            className="flex h-[34px] shrink-0 items-center rounded-[10px] bg-[#1c1a24] px-3.5 text-[13px] font-semibold text-white transition-[background-color,transform] duration-150 ease-out hover:bg-black active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 motion-reduce:active:scale-100"
+          >
+            <span className="md:hidden">Conectar ao Claude</span>
+            <span className="hidden md:inline">Conectar</span>
+          </Link>
+        </div>
       )}
 
       <div className="flex shrink-0 items-center gap-4">

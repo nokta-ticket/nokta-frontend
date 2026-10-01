@@ -21,7 +21,6 @@ import { useOrganizations } from "@/context/OrganizationContext";
 import { formatarDataCurta } from "@/lib/formatarData";
 import { formatCentsBRL } from "@/services/venue-finance";
 import { PageContainer } from "../../_components/page/page-container";
-import { ClaudeConnectorNotice } from "../../_components/claude-connector-notice";
 import { EmptyState } from "../../_components/states/empty-state";
 import { ErrorState } from "../../_components/states/error-state";
 import { BlockSkeleton } from "../../_components/states/loading-state";
@@ -151,8 +150,6 @@ export function InicioContent() {
           <p className="mt-1.5 text-[15px] text-muted-foreground">Aqui está o panorama do seu negócio hoje.</p>
         </div>
       </div>
-
-      <ClaudeConnectorNotice />
 
       <LegalFinancialPendingBanner orgId={orgId} />
 

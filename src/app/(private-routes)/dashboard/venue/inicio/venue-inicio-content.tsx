@@ -43,7 +43,6 @@ import { useVenueFinanceTimeline } from "../../financeiro/_venue/_hooks/use-venu
 import { useVenueInsightsOverview } from "../../insights/_venue/_hooks/use-venue-insights";
 import { useVenueHome } from "./_hooks/use-venue-home";
 import { SalesByHourCard, TopProductsCard } from "./_components/home-insights";
-import { ClaudeConnectorNotice } from "../../_components/claude-connector-notice";
 import { summarizePresence } from "./_lib/reservation-presence";
 
 const SHORTCUT_CONFIG: Record<string, { label: string; href: string; icon: LucideIcon }> = {
@@ -364,7 +363,6 @@ export function VenueInicioPageContent() {
           </div>
         ) : null}
 
-        <ClaudeConnectorNotice />
       </div>
 
       {/* Linha 1 — o turno agora */}
