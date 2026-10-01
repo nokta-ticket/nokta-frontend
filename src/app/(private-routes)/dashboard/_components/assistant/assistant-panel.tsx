@@ -1,15 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import Link from "next/link";
 import {
   ArrowUp,
+  ArrowRight,
   ChartLine,
   Check,
   Compass,
-  ExternalLink,
-  KeyRound,
-  MessageCircle,
   MoreHorizontal,
   RotateCw,
   Search,
@@ -28,10 +26,11 @@ import { useAssistant, type AssistantEntry } from "./assistant-context";
 /**
  * Assistente Nokta — interface de comando da Nokta pela IA do próprio usuário.
  *
- * Três estados, sempre a partir do backend (nada simulado):
- * 1. Desconectado: apresenta o que dá para fazer e oferece conectar.
- * 2. Conectando: o usuário cola a chave de API da conta dele (validada no backend).
- * 3. Conectado: conversa operacional — cada resposta mostra o que foi consultado
+ * Dois estados, sempre a partir do backend (nada simulado):
+ * 1. Sem IA no workspace: apresenta o que dá para fazer e leva o proprietário/
+ *    gerente para Configurações → IA e conexões (onde a chave é conectada);
+ *    os demais membros são orientados a pedir ao administrador.
+ * 2. Conectado: conversa operacional — cada resposta mostra o que foi consultado
  *    e as telas abertas; "Me leve para Eventos" navega de verdade.
  *
  * Consultar, analisar e navegar funcionam; "Executar" (criar/editar/excluir)
@@ -53,7 +52,7 @@ const PRESSABLE =
 /* ---------------------------------- Cabeçalho --------------------------------- */
 
 function AssistantHeader() {
-  const { status, newConversation, disconnect, entries } = useAssistant();
+  const { status, newConversation, entries } = useAssistant();
   const connection = status?.connection ?? null;
 
   return (
@@ -82,9 +81,6 @@ function AssistantHeader() {
             <DropdownMenuItem disabled={entries.length === 0} onSelect={() => newConversation()}>
               Nova conversa
             </DropdownMenuItem>
-            <DropdownMenuItem className="text-[#9b1c35] focus:text-[#9b1c35]" onSelect={() => void disconnect()}>
-              Desconectar {PROVIDER_LABEL[connection.provider]} (…{connection.keyHint})
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ) : null}
@@ -94,27 +90,15 @@ function AssistantHeader() {
 
 /* --------------------------------- Desconectado -------------------------------- */
 
-function AssistantSetup({ onChoose }: { onChoose: (provider: AssistantProviderKey) => void }) {
-  const { status } = useAssistant();
-  const [note, setNote] = useState<string | null>(null);
-
-  function choose(provider: AssistantProviderKey) {
-    if (status && !status.available) {
-      setNote("O Assistente ainda está sendo habilitado na Nokta. Assim que estiver pronto, a conexão fica disponível aqui.");
-      return;
-    }
-    if (status && !status.providers[provider]) {
-      setNote(`A conexão com o ${PROVIDER_LABEL[provider]} chega em breve. Por enquanto, conecte o Claude.`);
-      return;
-    }
-    onChoose(provider);
-  }
+function AssistantSetup() {
+  const { status, notifyNavigated } = useAssistant();
+  const canManage = !!status?.canManage;
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto px-5 py-6">
-      <h3 className="text-[17px] font-semibold text-gray-900">Conecte sua IA à Nokta</h3>
+      <h3 className="text-[17px] font-semibold text-gray-900">Converse com a Nokta</h3>
       <p className="mt-1.5 text-[13.5px] leading-relaxed text-black/60">
-        Use Claude ou ChatGPT para consultar dados, navegar pela Nokta e realizar operações usando linguagem natural.
+        Pergunte em linguagem natural sobre vendas, estoque, reservas e financeiro, ou peça para abrir uma tela.
       </p>
 
       <ul className="mt-6 flex flex-col gap-3.5">
@@ -141,113 +125,25 @@ function AssistantSetup({ onChoose }: { onChoose: (provider: AssistantProviderKe
       </ul>
 
       <div className="mt-auto flex flex-col gap-2 pt-8">
-        <button
-          type="button"
-          onClick={() => choose("ANTHROPIC")}
-          className={cn("flex h-11 items-center justify-center gap-2 rounded-[12px] bg-[#1c1a24] text-[14px] font-semibold text-white hover:bg-black", PRESSABLE)}
-        >
-          <Sparkles size={16} strokeWidth={1.8} />
-          Conectar Claude
-        </button>
-        <button
-          type="button"
-          onClick={() => choose("OPENAI")}
-          className={cn(
-            "flex h-11 items-center justify-center gap-2 rounded-[12px] border border-[#e6e2ef] bg-white text-[14px] font-semibold text-gray-900 hover:border-[#d9cdf6] hover:bg-[#faf8ff]",
-            PRESSABLE,
-          )}
-        >
-          <MessageCircle size={16} strokeWidth={1.8} />
-          Conectar ChatGPT
-        </button>
-        {note ? (
-          <p role="status" className="rounded-[12px] bg-violet-50 px-3 py-2.5 text-[13px] leading-snug text-violet-900">
-            {note}
+        {canManage ? (
+          <>
+            <Link
+              href="/dashboard/configuracoes?tab=ia"
+              onClick={notifyNavigated}
+              className={cn("flex h-11 items-center justify-center gap-2 rounded-[12px] bg-[#1c1a24] text-[14px] font-semibold text-white hover:bg-black", PRESSABLE)}
+            >
+              Conectar uma IA
+              <ArrowRight size={16} strokeWidth={1.8} />
+            </Link>
+            <p className="pt-1 text-center text-xs text-black/50">Você conecta uma vez e a equipe toda usa, cada um com as próprias permissões.</p>
+          </>
+        ) : (
+          <p className="rounded-[12px] bg-violet-50 px-3 py-2.5 text-[13px] leading-snug text-violet-900">
+            O workspace ainda não conectou uma IA. Peça ao proprietário ou a um gerente para conectar em Configurações → IA e conexões.
           </p>
-        ) : null}
-        <p className="pt-1 text-center text-xs text-black/50">A IA opera com as permissões da sua conta na Nokta.</p>
+        )}
       </div>
     </div>
-  );
-}
-
-/* ---------------------------------- Conectando --------------------------------- */
-
-function AssistantConnectForm({ provider, onCancel }: { provider: AssistantProviderKey; onCancel: () => void }) {
-  const { connect, connecting } = useAssistant();
-  const [apiKey, setApiKey] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-    try {
-      await connect(provider, apiKey);
-    } catch (err) {
-      setError((err as { message?: string }).message ?? "Não foi possível conectar.");
-    }
-  }
-
-  return (
-    <form onSubmit={submit} className="flex flex-1 flex-col overflow-y-auto px-5 py-6">
-      <span className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-violet-100 text-violet-600" aria-hidden="true">
-        <KeyRound size={18} strokeWidth={1.8} />
-      </span>
-      <h3 className="mt-4 text-[17px] font-semibold text-gray-900">Conectar {PROVIDER_LABEL[provider]}</h3>
-      <p className="mt-1.5 text-[13.5px] leading-relaxed text-black/60">
-        Cole uma chave de API da sua conta {PROVIDER_LABEL[provider]}. O uso da IA é cobrado na sua conta, e a chave fica guardada cifrada na
-        Nokta.
-      </p>
-      <a
-        href="https://console.anthropic.com/settings/keys"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-2 inline-flex items-center gap-1 self-start text-[13px] font-semibold text-violet-700 hover:text-violet-800"
-      >
-        Criar uma chave no console da Anthropic <ExternalLink size={13} strokeWidth={1.8} />
-      </a>
-
-      <label className="mt-6 block text-[13px] font-medium text-black/70" htmlFor="assistant-api-key">
-        Chave de API
-      </label>
-      <input
-        id="assistant-api-key"
-        type="password"
-        autoComplete="off"
-        spellCheck={false}
-        value={apiKey}
-        onChange={(e) => setApiKey(e.target.value)}
-        placeholder="sk-ant-…"
-        className="mt-1.5 h-11 w-full rounded-[12px] border border-[#e2d6fb] bg-white px-3 font-mono text-base text-gray-900 outline-none placeholder:text-black/35 focus:border-violet-500 focus:shadow-[0_0_0_3px_#f5f0ff] sm:text-[13.5px]"
-      />
-      {error ? (
-        <p role="alert" className="mt-2 flex items-start gap-1.5 text-[13px] text-[#9b1c35]">
-          <TriangleAlert size={15} strokeWidth={1.8} className="mt-px shrink-0" />
-          {error}
-        </p>
-      ) : null}
-
-      <div className="mt-auto flex flex-col gap-2 pt-8">
-        <button
-          type="submit"
-          disabled={connecting || apiKey.trim().length < 10}
-          className={cn(
-            "flex h-11 items-center justify-center gap-2 rounded-[12px] bg-[#1c1a24] text-[14px] font-semibold text-white hover:bg-black disabled:cursor-not-allowed disabled:opacity-50",
-            PRESSABLE,
-          )}
-        >
-          {connecting ? "Verificando a chave…" : `Conectar ${PROVIDER_LABEL[provider]}`}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className={cn("flex h-10 items-center justify-center rounded-[12px] text-[13.5px] font-medium text-black/60 hover:text-black/85", PRESSABLE)}
-        >
-          Voltar
-        </button>
-        <p className="pt-1 text-center text-xs text-black/50">A IA opera com as permissões da sua conta na Nokta.</p>
-      </div>
-    </form>
   );
 }
 
@@ -411,7 +307,7 @@ function AssistantConversation() {
           </button>
         </div>
         <p className="px-1 pt-2 text-center text-[11.5px] text-black/45">
-          {status?.connection ? `Usando o ${PROVIDER_LABEL[status.connection.provider]} com as permissões da sua conta.` : null}
+          {status?.connection ? `Usando o ${PROVIDER_LABEL[status.connection.provider]} do workspace, com as suas permissões.` : null}
         </p>
       </div>
     </>
@@ -422,12 +318,7 @@ function AssistantConversation() {
 
 function AssistantBody() {
   const { status, loadingStatus } = useAssistant();
-  const [connectingProvider, setConnectingProvider] = useState<AssistantProviderKey | null>(null);
   const connected = !!status?.connection;
-
-  useEffect(() => {
-    if (connected) setConnectingProvider(null);
-  }, [connected]);
 
   if (loadingStatus) {
     return (
@@ -439,8 +330,7 @@ function AssistantBody() {
     );
   }
   if (connected) return <AssistantConversation />;
-  if (connectingProvider) return <AssistantConnectForm provider={connectingProvider} onCancel={() => setConnectingProvider(null)} />;
-  return <AssistantSetup onChoose={setConnectingProvider} />;
+  return <AssistantSetup />;
 }
 
 /** Painel fixo (Início em telas largas). */

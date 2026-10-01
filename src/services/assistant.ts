@@ -7,7 +7,10 @@ export interface AssistantConnectionStatus {
   available: boolean;
   /** Quais IAs já têm integração no backend. */
   providers: Record<AssistantProviderKey, boolean>;
-  connection: { provider: AssistantProviderKey; keyHint: string; createdAt: string } | null;
+  /** Proprietário/gerente: conecta e desconecta a IA do workspace (Configurações → IA e conexões). */
+  canManage: boolean;
+  /** Chave de IA do workspace — a equipe toda usa, cada um com as próprias permissões. */
+  connection: { provider: AssistantProviderKey; keyHint: string; createdAt: string; connectedBy: string | null } | null;
 }
 
 export interface AssistantChatMessage {
@@ -34,10 +37,12 @@ export interface AssistantTurnResponse {
 }
 
 export const assistantApi = {
-  getConnection: () => api.get<AssistantConnectionStatus>("/assistant/connection").then((r) => r.data),
-  connect: (provider: AssistantProviderKey, apiKey: string) =>
-    api.put<AssistantConnectionStatus>("/assistant/connection", { provider, apiKey }).then((r) => r.data),
-  disconnect: () => api.delete<AssistantConnectionStatus>("/assistant/connection").then((r) => r.data),
+  getConnection: (organizationId: number) =>
+    api.get<AssistantConnectionStatus>(`/organizations/${organizationId}/assistant/connection`).then((r) => r.data),
+  connect: (organizationId: number, provider: AssistantProviderKey, apiKey: string) =>
+    api.put<AssistantConnectionStatus>(`/organizations/${organizationId}/assistant/connection`, { provider, apiKey }).then((r) => r.data),
+  disconnect: (organizationId: number) =>
+    api.delete<AssistantConnectionStatus>(`/organizations/${organizationId}/assistant/connection`).then((r) => r.data),
   turn: (organizationId: number, messages: AssistantChatMessage[]) =>
     api.post<AssistantTurnResponse>(`/organizations/${organizationId}/assistant/turn`, { messages }).then((r) => r.data),
 };

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { isAxiosError } from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, KeyRound, Loader2, MessageSquare, Plus, ShieldCheck, Trash2, TriangleAlert } from "lucide-react";
+import { Check, Copy, ExternalLink, KeyRound, Loader2, MessageSquare, Plus, ShieldCheck, Sparkles, Trash2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,8 @@ import { getErrorMessage } from "@/lib/axios";
 import { getApiBaseUrl } from "@/lib/surfaces";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { mcpApi, type McpCapability, type McpToken, type McpTokenCreated, type McpTokenScope } from "@/services/assistant";
+import { assistantApi, mcpApi, type McpCapability, type McpToken, type McpTokenCreated, type McpTokenScope } from "@/services/assistant";
+import { ASSISTANT_STATUS_KEY } from "../../_components/assistant/assistant-context";
 import { BlockSkeleton } from "../../_components/states/loading-state";
 import { EmptyState } from "../../_components/states/empty-state";
 
@@ -293,6 +294,8 @@ export function IaConexoesTab({ orgId }: { orgId: number }) {
         </CardContent>
       </Card>
 
+      <InternalChatCard orgId={orgId} />
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">O que a IA passa a enxergar</CardTitle>
@@ -431,5 +434,137 @@ function CapabilityCard({ capability }: { capability: McpCapability }) {
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * Chat "Pergunte à IA" dentro da Nokta: aqui a Nokta é quem chama a IA, então
+ * precisa de uma chave de API (cobrada por uso na conta da Anthropic), diferente
+ * do conector acima, que usa a assinatura do Claude de quem conecta.
+ */
+function InternalChatCard({ orgId }: { orgId: number }) {
+  const queryClient = useQueryClient();
+  const statusKey = [...ASSISTANT_STATUS_KEY, orgId];
+  const statusQuery = useQuery({ queryKey: statusKey, queryFn: () => assistantApi.getConnection(orgId), staleTime: 5 * 60_000 });
+  const [apiKey, setApiKey] = useState("");
+  const [replacing, setReplacing] = useState(false);
+
+  const connectMutation = useMutation({
+    mutationFn: () => assistantApi.connect(orgId, "ANTHROPIC", apiKey.trim()),
+    onSuccess: (data) => {
+      queryClient.setQueryData(statusKey, data);
+      setApiKey("");
+      setReplacing(false);
+      toast.success("Claude conectado. O chat já está liberado para a equipe.");
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+  const disconnectMutation = useMutation({
+    mutationFn: () => assistantApi.disconnect(orgId),
+    onSuccess: (data) => {
+      queryClient.setQueryData(statusKey, data);
+      toast.success("IA desconectada do chat.");
+    },
+    onError: (err) => toast.error(getErrorMessage(err)),
+  });
+
+  const status = statusQuery.data;
+  const connection = status?.connection ?? null;
+  const showForm = !connection || replacing;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Sparkles className="size-4 text-violet-600" />
+          Chat dentro da Nokta
+        </CardTitle>
+        <CardDescription className="leading-relaxed">
+          Libera o &quot;Pergunte à IA&quot; aqui no painel para toda a equipe, cada um com as próprias permissões. Diferente do conector acima, aqui a Nokta chama a IA,
+          por isso precisa de uma <strong>chave de API da Anthropic</strong> (começa com sk-ant-). O uso é cobrado por consumo na conta dessa chave, à parte da
+          assinatura do Claude.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {statusQuery.isLoading ? (
+          <BlockSkeleton className="h-16" />
+        ) : status && !status.available ? (
+          <p className="rounded-lg bg-muted/60 px-4 py-3 text-sm text-muted-foreground">O chat ainda está sendo habilitado no servidor da Nokta.</p>
+        ) : (
+          <>
+            {connection && (
+              <div className="flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3">
+                <KeyRound className="size-4 shrink-0 text-violet-600" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium">Claude conectado</p>
+                  <p className="text-xs text-muted-foreground">
+                    chave <span className="font-mono">…{connection.keyHint}</span>
+                    {connection.connectedBy ? ` · por ${connection.connectedBy}` : ""} · {new Date(connection.createdAt).toLocaleDateString("pt-BR")}
+                  </p>
+                </div>
+                {!replacing && (
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setReplacing(true)}>
+                      Trocar chave
+                    </Button>
+                    <ConfirmDialog
+                      title="Desconectar a IA do chat?"
+                      description="O Pergunte à IA para de funcionar para toda a equipe até alguém conectar uma chave de novo. O conector do Claude não é afetado."
+                      onConfirm={() => disconnectMutation.mutate()}
+                      trigger={
+                        <Button variant="outline" size="sm" className="text-red-700 hover:text-red-800">
+                          Desconectar
+                        </Button>
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+            {showForm && (
+              <form
+                className="space-y-1.5"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (apiKey.trim().length >= 10 && !connectMutation.isPending) connectMutation.mutate();
+                }}
+              >
+                <Label htmlFor="assistant-api-key">Chave de API da Anthropic</Label>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    id="assistant-api-key"
+                    type="password"
+                    autoComplete="off"
+                    spellCheck={false}
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="sk-ant-api03-…"
+                    className="font-mono text-base sm:text-sm"
+                  />
+                  <Button type="submit" disabled={apiKey.trim().length < 10 || connectMutation.isPending} className="shrink-0">
+                    {connectMutation.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
+                    {connectMutation.isPending ? "Verificando…" : "Conectar Claude"}
+                  </Button>
+                  {replacing && (
+                    <Button type="button" variant="ghost" onClick={() => setReplacing(false)}>
+                      Cancelar
+                    </Button>
+                  )}
+                </div>
+                <a
+                  href="https://console.anthropic.com/settings/keys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-violet-700 hover:text-violet-800"
+                >
+                  Criar uma chave no console da Anthropic (precisa de crédito em Billing) <ExternalLink className="size-3" />
+                </a>
+              </form>
+            )}
+            <p className="text-xs text-muted-foreground">ChatGPT no chat interno chega em breve.</p>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

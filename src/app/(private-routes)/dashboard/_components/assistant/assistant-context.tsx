@@ -3,13 +3,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { isAxiosError } from "axios";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useOrganizations } from "@/context/OrganizationContext";
 import {
   assistantApi,
   type AssistantConnectionStatus,
   type AssistantNavigateAction,
-  type AssistantProviderKey,
   type AssistantStep,
 } from "@/services/assistant";
 
@@ -18,8 +17,8 @@ import {
  * painel lateral aberto pelo "Pergunte à IA" — a mesma conversa nos dois.
  *
  * Nada aqui simula a IA: toda resposta vem de POST .../assistant/turn, que
- * chama a IA conectada pelo usuário com as ferramentas que as permissões dele
- * liberam. A conversa vive só na memória da aba (some ao recarregar) e é
+ * chama a IA conectada pelo workspace (Configurações → IA e conexões) com as
+ * ferramentas que as permissões de quem pergunta liberam. A conversa vive só na memória da aba (some ao recarregar) e é
  * zerada ao trocar de organização.
  */
 
@@ -45,16 +44,15 @@ interface AssistantContextValue {
   send: (text: string) => void;
   retry: () => void;
   newConversation: () => void;
-  connect: (provider: AssistantProviderKey, apiKey: string) => Promise<void>;
-  connecting: boolean;
-  disconnect: () => Promise<void>;
-  /** Chamado depois de cada navegação executada pela IA (o painel lateral se fecha). */
+  /** Chamado depois de cada navegação (pela IA ou por um link do painel): o painel lateral se fecha. */
   setNavigateListener: (fn: (() => void) | null) => void;
+  notifyNavigated: () => void;
 }
 
 const AssistantContext = createContext<AssistantContextValue | null>(null);
 
-const STATUS_KEY = ["assistant", "connection"] as const;
+/** Prefixo invalidado também por Configurações → IA e conexões ao conectar/desconectar. */
+export const ASSISTANT_STATUS_KEY = ["assistant", "connection"] as const;
 
 function readError(error: unknown): AssistantTurnError {
   if (isAxiosError(error)) {
@@ -82,7 +80,12 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
   const navigateListener = useRef<(() => void) | null>(null);
   const turnSeq = useRef(0);
 
-  const statusQuery = useQuery({ queryKey: STATUS_KEY, queryFn: assistantApi.getConnection, staleTime: 5 * 60_000 });
+  const statusQuery = useQuery({
+    queryKey: [...ASSISTANT_STATUS_KEY, orgId],
+    queryFn: () => assistantApi.getConnection(orgId as number),
+    enabled: orgId !== null,
+    staleTime: 5 * 60_000,
+  });
 
   // Conversa pertence à organização: trocar de organização começa do zero.
   useEffect(() => {
@@ -116,7 +119,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
         setError(parsed);
         // Chave revogada/conta desconectada: atualiza o estado para o painel voltar ao passo de conectar.
         if (parsed.code === "ASSISTANT_KEY_INVALID" || parsed.code === "ASSISTANT_NOT_CONNECTED") {
-          queryClient.invalidateQueries({ queryKey: STATUS_KEY });
+          queryClient.invalidateQueries({ queryKey: ASSISTANT_STATUS_KEY });
         }
       } finally {
         if (seq === turnSeq.current) setPending(false);
@@ -148,28 +151,6 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     setPending(false);
   }, []);
 
-  const connectMutation = useMutation({
-    mutationFn: ({ provider, apiKey }: { provider: AssistantProviderKey; apiKey: string }) => assistantApi.connect(provider, apiKey),
-    onSuccess: (data) => queryClient.setQueryData(STATUS_KEY, data),
-  });
-
-  const connect = useCallback(
-    async (provider: AssistantProviderKey, apiKey: string) => {
-      try {
-        await connectMutation.mutateAsync({ provider, apiKey });
-      } catch (err) {
-        throw readError(err);
-      }
-    },
-    [connectMutation],
-  );
-
-  const disconnect = useCallback(async () => {
-    const data = await assistantApi.disconnect();
-    queryClient.setQueryData(STATUS_KEY, data);
-    newConversation();
-  }, [queryClient, newConversation]);
-
   const value = useMemo<AssistantContextValue>(
     () => ({
       status: statusQuery.data,
@@ -180,14 +161,12 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       send,
       retry,
       newConversation,
-      connect,
-      connecting: connectMutation.isPending,
-      disconnect,
       setNavigateListener: (fn) => {
         navigateListener.current = fn;
       },
+      notifyNavigated: () => navigateListener.current?.(),
     }),
-    [statusQuery.data, statusQuery.isLoading, entries, pending, error, send, retry, newConversation, connect, connectMutation.isPending, disconnect],
+    [statusQuery.data, statusQuery.isLoading, entries, pending, error, send, retry, newConversation],
   );
 
   return <AssistantContext.Provider value={value}>{children}</AssistantContext.Provider>;
