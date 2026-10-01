@@ -405,7 +405,8 @@ function ClientInstructions({ client, url, token }: { client: ClientKey; url: st
           {client === "desktop" ? " (os conectores da sua conta aparecem no app automaticamente)" : ""}, dê o nome <strong>Nokta</strong> e cole a URL.
         </li>
         <li>
-          Em <strong>Autenticação</strong>, escolha <strong>Sem login</strong>.
+          Em <strong>Autenticação</strong>, escolha <strong>Sem login</strong> — mesmo que o Claude marque &quot;Entrar agora&quot; como detectado (ele testa a URL ainda
+          sem o token).
         </li>
         <li>
           Em <strong>Cabeçalhos de requisição → Adicionar cabeçalho</strong>, use o nome <strong>Authorization</strong> e o valor abaixo.
