@@ -24,32 +24,29 @@ describe("landing institucional — metadata e canonical", () => {
   });
 });
 
-describe("landing institucional — destinos dos CTAs (Etapa 4)", () => {
-  it("Entrar (header e hero) leva pro login empresarial em app.nokta.live", () => {
+describe("landing institucional — destinos dos CTAs", () => {
+  it("Entrar e Já tenho conta levam pro login empresarial em app.nokta.live", () => {
     render(<InstitucionalPage />);
-    const links = screen.getAllByRole("link", { name: /^Entrar$|^Entrar na Nokta$/ });
+    const links = screen.getAllByRole("link", { name: /^Entrar$|^Já tenho conta$/ });
     expect(links.length).toBeGreaterThan(0);
     for (const link of links) {
       expect(link.getAttribute("href")).toBe("https://app.nokta.live/login");
     }
   });
 
-  it("Começar agora leva pro cadastro empresarial (register com ctx=produtor), nunca pro login público da bilheteria", () => {
+  it("Criar conta leva pro cadastro empresarial (register com ctx=produtor), nunca pro login público da bilheteria", () => {
     render(<InstitucionalPage />);
-    const links = screen.getAllByRole("link", { name: "Começar agora" });
+    const links = screen.getAllByRole("link", { name: /^Criar (minha )?conta$/ });
     expect(links.length).toBeGreaterThan(0);
     for (const link of links) {
       expect(link.getAttribute("href")).toBe("https://app.nokta.live/register?ctx=produtor");
     }
   });
 
-  it("Conhecer a bilheteria leva pro host público de ingressos", () => {
+  it("Bilheteria no rodapé leva pro host público de ingressos", () => {
     render(<InstitucionalPage />);
-    const links = screen.getAllByRole("link", { name: "Conhecer a bilheteria" });
-    expect(links.length).toBeGreaterThan(0);
-    for (const link of links) {
-      expect(link.getAttribute("href")).toBe("https://www.noktatickets.com.br/");
-    }
+    const link = screen.getByRole("link", { name: "Bilheteria" });
+    expect(link.getAttribute("href")).toBe("https://www.noktatickets.com.br/");
   });
 
   it("Contato no rodapé institucional usa um destino real (mailto), nunca um link morto", () => {

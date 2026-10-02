@@ -49,3 +49,8 @@ vi.mock("next/font/google", () => {
     Caveat: fakeFont,
   };
 });
+
+// next/font/local (lettering da Nokta, components/brand/nokta-wordmark.tsx).
+vi.mock("next/font/local", () => ({
+  default: () => ({ className: "font-mock", style: { fontFamily: "font-mock" }, variable: "--font-mock" }),
+}));
