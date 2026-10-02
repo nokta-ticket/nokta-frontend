@@ -3,9 +3,10 @@
 import { useEffect } from "react";
 
 /**
- * Liga a revelação das telas (clip-path de baixo para cima, uma vez) e a
- * borda do topo ao rolar. Sem JS ou com movimento reduzido, tudo fica
- * visível desde o início.
+ * Liga as animações da landing: entrada do topo (título palavra a palavra e
+ * encaixe dos pedaços do painel), revelação de cada bloco [data-reveal] ao
+ * entrar na tela (uma vez) e a borda do menu ao rolar. Sem JS ou com
+ * movimento reduzido, tudo fica visível desde o início.
  */
 export function LandingMotion() {
   useEffect(() => {
@@ -18,7 +19,11 @@ export function LandingMotion() {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       return () => root.removeEventListener("scroll", onScroll);
     }
+
     root.setAttribute("data-motion", "true");
+    // dois frames: o estado inicial precisa ser pintado antes da transição
+    const raf = requestAnimationFrame(() => requestAnimationFrame(() => root.setAttribute("data-intro", "in")));
+
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
@@ -28,10 +33,12 @@ export function LandingMotion() {
           }
         }
       },
-      { rootMargin: "0px 0px -15% 0px" },
+      { rootMargin: "0px 0px -12% 0px" },
     );
-    root.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+    root.querySelectorAll("[data-reveal]").forEach((el) => io.observe(el));
+
     return () => {
+      cancelAnimationFrame(raf);
       io.disconnect();
       root.removeEventListener("scroll", onScroll);
     };
