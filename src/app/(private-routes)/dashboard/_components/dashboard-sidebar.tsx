@@ -27,8 +27,10 @@ import { NoktaWordmark } from "@/components/brand/nokta-wordmark";
 function SidebarInner() {
   return (
     <>
-      <div className="flex items-center justify-center pb-2">
-        <NoktaWordmark className="text-[38px]" />
+      {/* Mesma faixa de 64px do header (topbar h-16): o -mt-5 anula o p-5
+          do aside para a logo ficar no centro vertical do header. */}
+      <div className="-mt-5 mb-1 flex h-16 shrink-0 items-center justify-center">
+        <NoktaWordmark className="text-[46px]" />
       </div>
 
       <UnifiedSidebar />
