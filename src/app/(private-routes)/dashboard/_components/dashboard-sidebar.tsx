@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import {
@@ -14,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { UnifiedSidebar } from "./unified-sidebar";
 import { UserMenu } from "./user-menu";
+import { NoktaWordmark } from "@/components/brand/nokta-wordmark";
 
 // Sidebar: logo → grupos de navegação por capacidade (Fase 4 — navegação
 // unificada definitiva; ver docs/platform/unified-navigation.md "Estruturas
@@ -27,9 +27,8 @@ import { UserMenu } from "./user-menu";
 function SidebarInner() {
   return (
     <>
-      <div className="flex items-center justify-center gap-2 pb-2">
-        <Image src="/logo-painel.svg" alt="Nokta Tickets" width={32} height={32} />
-        <span className="font-poppins text-xl font-extrabold tracking-tight text-foreground">NOKTA</span>
+      <div className="flex items-center justify-center pb-2">
+        <NoktaWordmark className="text-[38px]" />
       </div>
 
       <UnifiedSidebar />
@@ -69,8 +68,7 @@ export function DashboardSidebar() {
             <SidebarInner />
           </SheetContent>
         </Sheet>
-        <Image src="/logo-painel.svg" alt="Nokta Tickets" width={28} height={28} />
-        <span className="font-poppins text-lg font-extrabold tracking-tight text-foreground">NOKTA</span>
+        <NoktaWordmark className="text-[32px]" />
       </header>
 
       {/* Desktop: sidebar fixa */}

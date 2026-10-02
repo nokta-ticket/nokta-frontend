@@ -144,40 +144,68 @@ function routeRank(route: string): number {
 export type IconKey =
   | "home"
   | "calendar"
-  | "clock"
-  | "grid"
-  | "utensils"
-  | "boxes"
+  | "ticket"
+  | "scan"
+  | "megaphone"
+  | "reservation"
+  | "waitlist"
+  | "guests"
+  | "star"
+  | "tables"
+  | "orders"
+  | "cash"
+  | "card"
+  | "menu"
+  | "product"
+  | "modifier"
+  | "inventory"
+  | "purchase"
+  | "supplier"
   | "dollar"
   | "chart"
+  | "export"
   | "users"
   | "settings"
-  | "star"
   | "tablet";
 
+// Um ícone por item do menu (antes vários itens repetiam o ícone do grupo).
+// Chaves que caem na mesma rota (ex.: TABLES e TABS) dividem o mesmo ícone.
 const ICON_BY_KEY: Partial<Record<string, IconKey>> = {
   PLATFORM_HOME: "home",
   EVENTS: "calendar",
-  RESERVATIONS: "clock",
-  WAITLIST: "clock",
-  TABLES: "grid",
-  TABS: "grid",
-  ORDERS: "grid",
-  CASH_REGISTER: "grid",
-  MENUS: "utensils",
-  INVENTORY: "boxes",
+  TICKETING: "ticket",
+  TICKET_TYPES: "ticket",
+  LOTS: "ticket",
+  CHECK_IN: "scan",
+  PROMOTERS: "megaphone",
+  RESERVATIONS: "reservation",
+  WAITLIST: "waitlist",
+  GUEST_LISTS: "guests",
+  REVIEWS: "star",
+  TABLES: "tables",
+  TABS: "tables",
+  ORDERS: "orders",
+  PREPARATION: "orders",
+  CASH_REGISTER: "cash",
+  VENUE_PAYMENTS: "card",
+  MENUS: "menu",
+  PRODUCTS: "product",
+  MODIFIERS: "modifier",
+  INVENTORY: "inventory",
+  PURCHASES: "purchase",
+  SUPPLIERS: "supplier",
   FINANCE: "dollar",
   INSIGHTS: "chart",
+  EXPORTS: "export",
   TEAM: "users",
   SETTINGS: "settings",
-  REVIEWS: "star",
 };
 const ICON_BY_GROUP: Record<CapabilityGroup, IconKey> = {
   CORE: "home",
   EVENTS: "calendar",
-  RELATIONSHIP: "clock",
-  OPERATION: "grid",
-  PRODUCTS: "boxes",
+  RELATIONSHIP: "reservation",
+  OPERATION: "tables",
+  PRODUCTS: "inventory",
   MANAGEMENT: "dollar",
 };
 
