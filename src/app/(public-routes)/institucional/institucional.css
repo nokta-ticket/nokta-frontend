@@ -188,12 +188,11 @@
 .nk .foot-cols b { display: block; margin-bottom: 14px; font-family: var(--display); font-size: 14px; font-weight: 600; color: var(--ink); }
 .nk .foot-cols a { display: block; padding: 6px 0; color: var(--ink-2); transition: color 150ms ease; }
 .nk .foot-cols a:hover { color: var(--violet); }
-.nk .foot-bottom { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-top: 56px; padding: 24px 0; border-top: 1px solid var(--edge); font-size: 13px; color: var(--ink-3); }
+.nk .foot-bottom { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-top: 56px; padding: 24px 0 32px; border-top: 1px solid var(--edge); font-size: 13px; color: var(--ink-3); }
 .nk .foot-bottom p { margin: 0; }
 .nk .to-top { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: var(--ink-2); transition: color 150ms ease; }
 .nk .to-top:hover { color: var(--violet); }
 .nk .to-top svg { width: 14px; height: 14px; }
-.nk .foot-mark { display: flex; justify-content: center; color: #efebf8; font-size: clamp(110px, 32vw, 460px); line-height: 0.86; padding: 8px 0 12px; user-select: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .nk *, .nk *::before, .nk *::after { transition-duration: 0ms !important; animation: none !important; }

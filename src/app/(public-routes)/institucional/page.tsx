@@ -269,9 +269,6 @@ export default function InstitucionalPage() {
               Voltar ao topo <ArrowUp aria-hidden="true" />
             </a>
           </div>
-          <div className="foot-mark" aria-hidden="true">
-            <NoktaWordmark className="!text-inherit" />
-          </div>
         </div>
       </footer>
     </div>
