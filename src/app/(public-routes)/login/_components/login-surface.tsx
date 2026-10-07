@@ -198,7 +198,7 @@ function PlatformBackdrop({ registerHref }: { registerHref: string }) {
     <div className="fixed inset-0 z-50 overflow-y-auto bg-[#fbfaff] selection:bg-violet-600 selection:text-white lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.08fr)]">
       <div className="relative flex min-h-dvh flex-col">
         {/* Celular/tablet: faixa escura da marca no topo, card sobreposto. */}
-        <header className={`relative shrink-0 overflow-hidden rounded-b-[28px] px-6 pb-24 pt-6 text-white sm:px-10 lg:hidden ${PANORAMA_BG}`}>
+        <header className={`relative shrink-0 overflow-hidden px-6 pb-24 pt-6 text-white sm:px-10 lg:hidden ${PANORAMA_BG}`}>
           <div
             aria-hidden="true"
             className="pointer-events-none absolute -right-24 -top-24 h-[300px] w-[300px] rounded-full"
