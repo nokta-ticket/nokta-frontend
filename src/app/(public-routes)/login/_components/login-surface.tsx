@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSurface } from "@/lib/use-surface";
-import Image from "next/image";
 import { NoktaWordmark } from "@/components/brand/nokta-wordmark";
 import { LoginForm } from "./login-form";
 
@@ -142,100 +142,80 @@ function TicketsBackdrop({ registerHref }: { registerHref: string }) {
 }
 
 /**
- * Superfície Nokta (app.nokta.live) — mesmo card/form, moldura com a
- * identidade do painel (lavanda/violeta + o card escuro "Panorama" da
- * Início). No desktop a tela se divide: formulário à esquerda, e à direita
- * um painel escuro com a captura REAL da Início (a mesma da landing,
- * public/institucional/painel-inicio.webp) — sem números inventados. Abaixo
- * de lg só o formulário. Cobre o header/footer genérico de bilheteria que o
- * Root Layout sempre renderiza (ver comentário em src/app/layout.tsx) com um
- * wrapper `fixed inset-0` — mesmo padrão de register-surface.tsx.
+ * Superfície Nokta (app.nokta.live). Estrutura deliberadamente mínima:
+ * logo, formulário, link de cadastro e rodapé, centralizados. Nada de
+ * conteúdo ao lado do formulário (testado e recusado pelo usuário).
+ *
+ * O ambiente é o mesmo que o celular já tinha (pontilhado + brilhos
+ * ciano/magenta das cores da marca), mas com os brilhos crescendo com a
+ * tela — antes tinham 480px fixos e, no desktop, ficavam presos nas bordas,
+ * deixando o miolo da tela branco. Cobre o header/footer genérico de
+ * bilheteria do Root Layout com um wrapper `fixed inset-0` (mesmo padrão de
+ * register-surface.tsx).
  */
-const PANORAMA_BG = "bg-gradient-to-br from-[#1d1834] via-[#191530] to-[#141020]";
-const PLATFORM_HEADLINE = "Sua operação inteira em um só painel.";
-
-function PlatformShowcase() {
+function PlatformAtmosphere() {
   return (
-    <aside className="sticky top-0 hidden h-dvh p-3 lg:block">
-      <div className={`relative flex h-full flex-col overflow-hidden rounded-[28px] text-white ${PANORAMA_BG}`}>
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-40 -top-40 h-[520px] w-[520px] rounded-full"
-          style={{ background: "radial-gradient(circle, rgba(124,58,237,0.38) 0%, transparent 65%)" }}
-        />
-
-        <div className="relative shrink-0 px-12 pt-14 xl:px-16 xl:pt-20">
-          <h2 className="max-w-[16ch] font-[family-name:var(--font-poppins)] text-[40px] font-semibold leading-[1.04] tracking-[-0.035em] text-balance xl:text-[52px]">
-            {PLATFORM_HEADLINE}
-          </h2>
-          <p className="mt-5 max-w-[46ch] text-[15px] leading-relaxed text-[#c9c3dc] xl:text-base">
-            Eventos, ingressos, reservas, comandas, cardápio e financeiro da sua casa, lado a lado.
-          </p>
-        </div>
-
-        <div className="relative mt-10 flex-1 xl:mt-14">
-          <div className="absolute left-12 top-0 w-[140%] animate-in slide-in-from-bottom-10 duration-[900ms] ease-[cubic-bezier(0.23,1,0.32,1)] [perspective:1600px] motion-reduce:animate-none xl:left-16">
-            <div className="overflow-hidden rounded-[14px] bg-white shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_40px_80px_-30px_rgba(0,0,0,0.7)] [transform:rotateX(6deg)] [transform-origin:50%_0%]">
-              <Image
-                src="/institucional/painel-inicio.webp"
-                alt="Tela Início do painel da Nokta"
-                width={2400}
-                height={1500}
-                priority
-                sizes="(min-width: 1024px) 75vw, 0px"
-                className="block h-auto w-full"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-    </aside>
+    <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+      <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, #FAFAFC 0%, #F5F4FA 100%)" }} />
+      <div
+        className="absolute inset-0 opacity-[0.5]"
+        style={{
+          backgroundImage: "radial-gradient(circle, rgba(0,180,216,0.13) 1px, transparent 1px)",
+          backgroundSize: "28px 28px",
+        }}
+      />
+      <div
+        className="absolute left-[-12vw] top-1/2 h-[max(480px,58vw)] w-[max(480px,58vw)] -translate-y-1/2 rounded-full"
+        style={{ background: "rgba(0, 221, 255, 0.15)", filter: "blur(140px)" }}
+      />
+      <div
+        className="absolute right-[-14vw] top-1/2 h-[max(420px,52vw)] w-[max(420px,52vw)] -translate-y-[55%] rounded-full"
+        style={{ background: "rgba(255, 0, 212, 0.09)", filter: "blur(150px)" }}
+      />
+      <div
+        className="absolute inset-0"
+        style={{ background: "radial-gradient(ellipse 34% 52% at 50% 50%, rgba(250,250,252,0.85) 0%, transparent 100%)" }}
+      />
+    </div>
   );
 }
 
+const ENTER = "animate-in fade-in duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] fill-mode-both motion-reduce:animate-none";
+
 function PlatformBackdrop({ registerHref }: { registerHref: string }) {
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-white lg:bg-[#fbfaff] selection:bg-violet-600 selection:text-white lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.08fr)]">
-      <div className="relative isolate flex min-h-dvh flex-col">
-        {/* Celular/tablet: mesma moldura de antes (pontilhado + brilhos). */}
-        <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden lg:hidden">
-          <div
-            className="absolute inset-0"
-            style={{ background: "linear-gradient(180deg, #FAFAFC 0%, #F7F7FA 100%)" }}
-          />
-          <div
-            className="absolute inset-0 opacity-[0.45]"
-            style={{
-              backgroundImage: "radial-gradient(circle, rgba(0,180,216,0.12) 1px, transparent 1px)",
-              backgroundSize: "28px 28px",
-            }}
-          />
-          <div
-            className="absolute left-[-60px] top-1/2 h-[480px] w-[480px] -translate-y-1/2 rounded-full"
-            style={{ background: "rgba(0, 221, 255, 0.16)", filter: "blur(120px)" }}
-          />
-          <div
-            className="absolute right-[-80px] top-1/2 h-[420px] w-[420px] -translate-y-[55%] rounded-full"
-            style={{ background: "rgba(255, 0, 212, 0.12)", filter: "blur(140px)" }}
-          />
-        </div>
+    <div className="fixed inset-0 z-50 isolate flex flex-col overflow-y-auto bg-[#fafafc] selection:bg-violet-600 selection:text-white">
+      <PlatformAtmosphere />
 
-        <header className="flex h-20 shrink-0 items-center px-4 sm:px-6 lg:px-10">
-          <Link href="/" className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-600">
-            <NoktaWordmark className="text-[30px]" />
-          </Link>
-        </header>
+      <header className="mx-auto hidden h-16 w-full max-w-[1440px] shrink-0 items-center px-8 lg:flex">
+        <a
+          href="https://www.nokta.live"
+          className="group inline-flex items-center gap-1.5 rounded-md text-[13px] text-[#6b6878] transition-colors duration-150 hover:text-[#1c1a24] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-600"
+        >
+          <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-150 ease-out group-hover:-translate-x-0.5" />
+          Voltar para nokta.live
+        </a>
+      </header>
 
-        <div className="flex flex-1 items-center justify-center px-4 lg:py-6">
+      <main className="flex flex-1 flex-col items-center justify-center px-4 py-10 sm:py-14 lg:py-6 min-[1600px]:[zoom:1.1] min-[1920px]:[zoom:1.2] min-[2200px]:[zoom:1.3] min-[2500px]:[zoom:1.4]">
+        <Link
+          href="/"
+          className={`mb-8 inline-block rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-600 sm:mb-10 ${ENTER}`}
+        >
+          <NoktaWordmark className="text-[56px] sm:text-[52px]" />
+        </Link>
+        <div className={`flex w-full justify-center slide-in-from-bottom-2 delay-75 ${ENTER}`}>
           <LoginCard registerHref={registerHref} />
         </div>
+      </main>
 
-        <footer className="shrink-0 px-4 py-6 text-center text-xs text-[#8a8698]">
-          Nokta Tecnologia LTDA • CNPJ: 59.386.582/0001-39
-        </footer>
-      </div>
-
-      <PlatformShowcase />
+      <footer className="flex shrink-0 flex-col items-center gap-2 px-4 py-6 text-xs text-[#8a8698] lg:flex-row lg:justify-between lg:px-8 mx-auto w-full max-w-[1440px]">
+        <span>Nokta Tecnologia LTDA • CNPJ: 59.386.582/0001-39</span>
+        <nav className="flex items-center gap-5">
+          <Link href="/termos" className="transition-colors duration-150 hover:text-[#1c1a24]">Termos de uso</Link>
+          <Link href="/privacidade" className="transition-colors duration-150 hover:text-[#1c1a24]">Privacidade</Link>
+        </nav>
+      </footer>
     </div>
   );
 }
