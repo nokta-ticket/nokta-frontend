@@ -151,48 +151,31 @@ function TicketsBackdrop({ registerHref }: { registerHref: string }) {
  * Root Layout sempre renderiza (ver comentário em src/app/layout.tsx) com um
  * wrapper `fixed inset-0` — mesmo padrão de register-surface.tsx.
  */
-const PLATFORM_AREAS = ["Eventos e ingressos", "Reservas", "Comandas e caixa", "Cardápio", "Financeiro"];
+const PANORAMA_BG = "bg-gradient-to-br from-[#1d1834] via-[#191530] to-[#141020]";
+const PLATFORM_HEADLINE = "Sua operação inteira em um só painel.";
 
 function PlatformShowcase() {
   return (
     <aside className="sticky top-0 hidden h-dvh p-3 lg:block">
-      <div className="relative flex h-full flex-col overflow-hidden rounded-[28px] bg-gradient-to-br from-[#1d1834] via-[#191530] to-[#141020] text-white">
+      <div className={`relative flex h-full flex-col overflow-hidden rounded-[28px] text-white ${PANORAMA_BG}`}>
         <div
           aria-hidden="true"
           className="pointer-events-none absolute -right-40 -top-40 h-[520px] w-[520px] rounded-full"
-          style={{ background: "radial-gradient(circle, rgba(124,58,237,0.42) 0%, transparent 65%)" }}
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-[0.5]"
-          style={{
-            backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px)",
-            backgroundSize: "26px 26px",
-            maskImage: "linear-gradient(180deg, #000 0%, transparent 60%)",
-            WebkitMaskImage: "linear-gradient(180deg, #000 0%, transparent 60%)",
-          }}
+          style={{ background: "radial-gradient(circle, rgba(124,58,237,0.38) 0%, transparent 65%)" }}
         />
 
-        <div className="relative px-12 pt-14 xl:px-16 xl:pt-20">
-          <h2 className="max-w-[16ch] font-[family-name:var(--font-poppins)] text-[40px] font-semibold leading-[1.04] tracking-[-0.035em] text-balance xl:text-[48px]">
-            Sua operação inteira em um só painel.
+        <div className="relative shrink-0 px-12 pt-14 xl:px-16 xl:pt-20">
+          <h2 className="max-w-[16ch] font-[family-name:var(--font-poppins)] text-[40px] font-semibold leading-[1.04] tracking-[-0.035em] text-balance xl:text-[52px]">
+            {PLATFORM_HEADLINE}
           </h2>
-          <p className="mt-5 max-w-[44ch] text-[15px] leading-relaxed text-[#c9c3dc]">
-            Do ingresso vendido à comanda fechada no caixa, tudo o que acontece na sua casa aparece aqui, em tempo real.
+          <p className="mt-5 max-w-[46ch] text-[15px] leading-relaxed text-[#c9c3dc] xl:text-base">
+            Eventos, ingressos, reservas, comandas, cardápio e financeiro da sua casa, lado a lado.
           </p>
-          <ul className="mt-8 flex max-w-[460px] flex-wrap gap-x-5 gap-y-2.5 text-[13px] text-[#e4def3]">
-            {PLATFORM_AREAS.map((area) => (
-              <li key={area} className="flex items-center gap-2">
-                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#a78bfa]" />
-                {area}
-              </li>
-            ))}
-          </ul>
         </div>
 
-        <div className="relative mt-auto h-[46%] min-h-[260px]">
-          <div className="absolute left-12 top-6 w-[150%] origin-top-left animate-in slide-in-from-bottom-8 duration-1000 ease-out [perspective:1600px] motion-reduce:animate-none xl:left-16">
-            <div className="overflow-hidden rounded-[14px] bg-white shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_40px_80px_-30px_rgba(0,0,0,0.7)] [transform:rotateX(8deg)] [transform-origin:50%_0%]">
+        <div className="relative mt-10 flex-1 xl:mt-14">
+          <div className="absolute left-12 top-0 w-[140%] animate-in slide-in-from-bottom-10 duration-[900ms] ease-[cubic-bezier(0.23,1,0.32,1)] [perspective:1600px] motion-reduce:animate-none xl:left-16">
+            <div className="overflow-hidden rounded-[14px] bg-white shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_40px_80px_-30px_rgba(0,0,0,0.7)] [transform:rotateX(6deg)] [transform-origin:50%_0%]">
               <Image
                 src="/institucional/painel-inicio.webp"
                 alt="Tela Início do painel da Nokta"
@@ -214,20 +197,28 @@ function PlatformBackdrop({ registerHref }: { registerHref: string }) {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-[#fbfaff] selection:bg-violet-600 selection:text-white lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.08fr)]">
       <div className="relative flex min-h-dvh flex-col">
-        <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden lg:hidden">
+        {/* Celular/tablet: faixa escura da marca no topo, card sobreposto. */}
+        <header className={`relative shrink-0 overflow-hidden rounded-b-[28px] px-6 pb-24 pt-6 text-white sm:px-10 lg:hidden ${PANORAMA_BG}`}>
           <div
-            className="absolute left-1/2 top-[-120px] h-[360px] w-[520px] -translate-x-1/2 rounded-full"
-            style={{ background: "rgba(124, 58, 237, 0.10)", filter: "blur(90px)" }}
+            aria-hidden="true"
+            className="pointer-events-none absolute -right-24 -top-24 h-[300px] w-[300px] rounded-full"
+            style={{ background: "radial-gradient(circle, rgba(124,58,237,0.4) 0%, transparent 65%)" }}
           />
-        </div>
+          <Link href="/" className="relative inline-block rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
+            <NoktaWordmark className="text-[28px] text-white" />
+          </Link>
+          <p className="relative mt-8 max-w-[18ch] font-[family-name:var(--font-poppins)] text-[26px] font-semibold leading-[1.08] tracking-[-0.03em] text-balance sm:text-[32px]">
+            {PLATFORM_HEADLINE}
+          </p>
+        </header>
 
-        <header className="flex h-20 shrink-0 items-center px-6 sm:px-10">
+        <header className="hidden h-20 shrink-0 items-center px-10 lg:flex">
           <Link href="/" className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-600">
             <NoktaWordmark className="text-[30px]" />
           </Link>
         </header>
 
-        <div className="flex flex-1 items-center justify-center px-4 py-6">
+        <div className="relative -mt-16 flex flex-1 items-start justify-center px-4 pb-6 lg:mt-0 lg:items-center lg:py-6">
           <LoginCard registerHref={registerHref} />
         </div>
 
