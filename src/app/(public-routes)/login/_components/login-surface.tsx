@@ -195,30 +195,38 @@ function PlatformShowcase() {
 
 function PlatformBackdrop({ registerHref }: { registerHref: string }) {
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#fbfaff] selection:bg-violet-600 selection:text-white lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.08fr)]">
-      <div className="relative flex min-h-dvh flex-col">
-        {/* Celular/tablet: faixa escura da marca no topo, card sobreposto. */}
-        <header className={`relative shrink-0 overflow-hidden px-6 pb-24 pt-6 text-white sm:px-10 lg:hidden ${PANORAMA_BG}`}>
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-white lg:bg-[#fbfaff] selection:bg-violet-600 selection:text-white lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.08fr)]">
+      <div className="relative isolate flex min-h-dvh flex-col">
+        {/* Celular/tablet: mesma moldura de antes (pontilhado + brilhos). */}
+        <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden lg:hidden">
           <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -right-24 -top-24 h-[300px] w-[300px] rounded-full"
-            style={{ background: "radial-gradient(circle, rgba(124,58,237,0.4) 0%, transparent 65%)" }}
+            className="absolute inset-0"
+            style={{ background: "linear-gradient(180deg, #FAFAFC 0%, #F7F7FA 100%)" }}
           />
-          <Link href="/" className="relative inline-block rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
-            <NoktaWordmark className="text-[28px] text-white" />
-          </Link>
-          <p className="relative mt-8 max-w-[18ch] font-[family-name:var(--font-poppins)] text-[26px] font-semibold leading-[1.08] tracking-[-0.03em] text-balance sm:text-[32px]">
-            {PLATFORM_HEADLINE}
-          </p>
-        </header>
+          <div
+            className="absolute inset-0 opacity-[0.45]"
+            style={{
+              backgroundImage: "radial-gradient(circle, rgba(0,180,216,0.12) 1px, transparent 1px)",
+              backgroundSize: "28px 28px",
+            }}
+          />
+          <div
+            className="absolute left-[-60px] top-1/2 h-[480px] w-[480px] -translate-y-1/2 rounded-full"
+            style={{ background: "rgba(0, 221, 255, 0.16)", filter: "blur(120px)" }}
+          />
+          <div
+            className="absolute right-[-80px] top-1/2 h-[420px] w-[420px] -translate-y-[55%] rounded-full"
+            style={{ background: "rgba(255, 0, 212, 0.12)", filter: "blur(140px)" }}
+          />
+        </div>
 
-        <header className="hidden h-20 shrink-0 items-center px-10 lg:flex">
+        <header className="flex h-20 shrink-0 items-center px-4 sm:px-6 lg:px-10">
           <Link href="/" className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-600">
             <NoktaWordmark className="text-[30px]" />
           </Link>
         </header>
 
-        <div className="relative -mt-16 flex flex-1 items-start justify-center px-4 pb-6 lg:mt-0 lg:items-center lg:py-6">
+        <div className="flex flex-1 items-center justify-center px-4 lg:py-6">
           <LoginCard registerHref={registerHref} />
         </div>
 
