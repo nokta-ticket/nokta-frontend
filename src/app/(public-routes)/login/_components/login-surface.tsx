@@ -197,15 +197,17 @@ function PlatformBackdrop({ registerHref }: { registerHref: string }) {
         </a>
       </header>
 
-      <main className="flex flex-1 flex-col items-center justify-center px-4 py-10 sm:py-14 lg:py-6 min-[1600px]:[zoom:1.1] min-[1920px]:[zoom:1.2] min-[2200px]:[zoom:1.3] min-[2500px]:[zoom:1.4]">
-        <Link
-          href="/"
-          className={`mb-8 inline-block rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-600 sm:mb-10 ${ENTER}`}
-        >
-          <NoktaWordmark className="text-[56px] sm:text-[52px]" />
-        </Link>
-        <div className={`flex w-full justify-center slide-in-from-bottom-2 delay-75 ${ENTER}`}>
-          <LoginCard registerHref={registerHref} />
+      <main className="flex flex-1 flex-col items-center justify-center px-4 py-10 sm:py-14 lg:py-6">
+        <div className="flex w-full flex-col items-center min-[1920px]:[zoom:1.1] min-[2400px]:[zoom:1.2]">
+          <Link
+            href="/"
+            className={`mb-8 inline-block rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-violet-600 sm:mb-10 ${ENTER}`}
+          >
+            <NoktaWordmark className="text-[56px] sm:text-[52px]" />
+          </Link>
+          <div className={`flex w-full justify-center slide-in-from-bottom-2 delay-75 ${ENTER}`}>
+            <LoginCard registerHref={registerHref} />
+          </div>
         </div>
       </main>
 
