@@ -529,7 +529,9 @@ export default function EventoPageClient() {
                     const taxa = calcTaxa(valorFinal);
                     const limitDate = formatTicketDate(tk.dataLimite);
                     const isGratuito = valorFinal === 0;
-                    const disponivel = tk.disponivelParaVenda;
+                    // Lote sem unidades restantes: mostra "Esgotado" em vez de só travar o "+".
+                    const esgotado = tk.disponivelParaVenda && tk.quantidade <= 0;
+                    const disponivel = tk.disponivelParaVenda && !esgotado;
                     const subtotalCents = Math.round((valorFinal + taxa) * 100);
                     const parcelaMaxStr = (calcInstallmentCents(subtotalCents, maxParcelas, maxSemJuros, cardRateBps, cardFixedCents) / 100).toFixed(2).replace('.', ',');
 
@@ -590,7 +592,9 @@ export default function EventoPageClient() {
                           {limitDate && (
                             <p className="text-[11px] text-gray-400 mt-0.5 italic">Vendas até {limitDate}</p>
                           )}
-                          {!disponivel && (
+                          {esgotado ? (
+                            <p className="text-[11px] font-semibold text-red-600 mt-0.5">Esgotado</p>
+                          ) : !disponivel && (
                             <p className="text-[11px] font-semibold text-gray-400 mt-0.5">Não iniciado</p>
                           )}
                         </div>
