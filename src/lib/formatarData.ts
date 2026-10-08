@@ -26,3 +26,15 @@ export function formatarDataCurta(dataISO: string): string {
   });
   return formatada.charAt(0).toUpperCase() + formatada.slice(1);
 }
+
+/**
+ * Horário "HH:mm" a partir do que a API devolve — hoje um ISO completo
+ * ("1970-01-01T22:00:00.000Z"), às vezes só "22:00". Antes cada tela fazia
+ * `horario.slice(0, 5)`, o que no ISO virava "1970-".
+ */
+export function formatarHorario(horario?: string | null): string | null {
+  if (!horario) return null;
+  const timePart = horario.includes('T') ? horario.split('T')[1] : horario;
+  const hhmm = timePart?.slice(0, 5);
+  return hhmm && /^\d{2}:\d{2}$/.test(hhmm) ? hhmm : null;
+}

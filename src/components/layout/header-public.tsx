@@ -147,7 +147,7 @@ export default function Header() {
       </div>
 
       {/* ── DESKTOP ───────────────────────────────────────────────── */}
-      <div className="hidden lg:flex max-w-[1300px] mx-auto px-4 sm:px-6 lg:px-8 items-center h-20">
+      <div className="hidden lg:flex max-w-[1300px] min-[1800px]:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 items-center h-20">
 
         {/* Logo — esquerda */}
         <div className="flex-1 flex items-center">
@@ -160,7 +160,7 @@ export default function Header() {
         </div>
 
         {/* Nav — centro */}
-        <nav className="flex items-center gap-8 text-md text-gray-500">
+        <nav className="flex items-center gap-8 text-[15px] text-gray-600">
           {navLinks.map((link) => {
             const isActive = pathname === link.href;
             return (
@@ -181,17 +181,16 @@ export default function Header() {
 
         {/* Botões — direita */}
         <div className="flex-1 flex justify-end items-center gap-3">
-          <Link href="/login">
-            <Button variant="outline" className="font-semibold cursor-pointer px-6">Entrar</Button>
-          </Link>
-          <Link href="/register">
-            <Button
-              variant="outline"
-              className="font-semibold cursor-pointer text-white px-6 bg-gradient-to-r from-[#9944CC] to-[#3399FF]"
-            >
-              Cadastrar
-            </Button>
-          </Link>
+          <Button asChild variant="outline" className="font-semibold cursor-pointer px-6 active:scale-[0.97]">
+            <Link href="/login">Entrar</Link>
+          </Button>
+          {/* Gradiente da marca escurecido: no #3399FF original o branco ficava em 2,9:1. */}
+          <Button
+            asChild
+            className="font-semibold cursor-pointer text-white px-6 border-0 bg-gradient-to-r from-[#7a2fb0] to-[#1f6ad4] hover:opacity-95 active:scale-[0.97]"
+          >
+            <Link href="/register">Cadastrar</Link>
+          </Button>
         </div>
       </div>
 

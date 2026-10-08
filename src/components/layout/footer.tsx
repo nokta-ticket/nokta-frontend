@@ -12,7 +12,7 @@ export default function Footer() {
 
       {/* ── DESKTOP ─────────────────────────────────────────────── */}
       <div className="hidden lg:block">
-        <div className="max-w-[1300px] mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-4 gap-10 items-start pb-12 mt-12">
+        <div className="max-w-[1300px] min-[1800px]:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-4 gap-10 items-start pb-12 mt-12">
           <div className="flex flex-col justify-between h-full">
             <Link href="/" className="w-fit block">
               <Image src="/logo.svg" alt="Nokta Tickets" width={160} height={40} className="h-20 w-auto" priority />
@@ -36,37 +36,37 @@ export default function Footer() {
           </div>
 
           <div className="space-y-4">
-            <h4 className="text-base font-semibold text-black">NAVEGAÇÃO</h4>
-            <ul className="space-y-2 text-lg text-gray-700">
-              <li><Link href="/" className="hover:underline">Inicio</Link></li>
-              <li><Link href="/eventos" className="hover:underline">Todos os Eventos</Link></li>
-              <li><Link href="/revenda" className="hover:underline">Marketplace</Link></li>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-900">Navegação</h2>
+            <ul className="space-y-2 text-[15px] text-gray-700">
+              <li><Link href="/" className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600">Início</Link></li>
+              <li><Link href="/eventos" className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600">Todos os Eventos</Link></li>
+              <li><Link href="/revenda" className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600">Revenda</Link></li>
             </ul>
           </div>
 
           <div className="space-y-4">
-            <h4 className="font-semibold text-lg uppercase text-black">CONTA</h4>
-            <ul className="space-y-2 text-gray-700">
-              <li><Link href="/perfil" className="hover:underline">Minha Conta</Link></li>
-              <li><Link href="/meus-ingressos" className="hover:underline">Meus Ingressos</Link></li>
-              <li><Link href="/favoritos" className="hover:underline">Favoritos</Link></li>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-900">Conta</h2>
+            <ul className="space-y-2 text-[15px] text-gray-700">
+              <li><Link href="/perfil" className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600">Minha Conta</Link></li>
+              <li><Link href="/meus-ingressos" className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600">Meus Ingressos</Link></li>
+              <li><Link href="/favoritos" className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600">Favoritos</Link></li>
             </ul>
           </div>
 
           <div className="space-y-4">
-            <h4 className="text-lg font-semibold uppercase text-black">SUPORTE</h4>
-            <ul className="space-y-2 text-gray-700">
-              <li><Link href="/ajuda" target="_blank" rel="noopener noreferrer" className="hover:underline">Fale Conosco</Link></li>
-              <li><Link href="/termos" className="hover:underline">Termos de Uso</Link></li>
-              <li><Link href="/privacidade" className="hover:underline">Política de Privacidade</Link></li>
-              <li><Link href="/politica-de-cancelamento" className="hover:underline">Cancelamento e Reembolso</Link></li>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-900">Suporte</h2>
+            <ul className="space-y-2 text-[15px] text-gray-700">
+              <li><Link href="/ajuda" target="_blank" rel="noopener noreferrer" className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600">Fale Conosco</Link></li>
+              <li><Link href="/termos" className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600">Termos de Uso</Link></li>
+              <li><Link href="/privacidade" className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600">Política de Privacidade</Link></li>
+              <li><Link href="/politica-de-cancelamento" className="rounded-sm underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600">Cancelamento e Reembolso</Link></li>
             </ul>
           </div>
         </div>
 
         <div className="h-px w-full bg-gradient-to-r from-[#9944CC]/50 via-[#D86CFA]/35 to-[#3399FF]/45 mb-8" />
 
-        <div className="max-w-[1300px] mx-auto py-8 text-sm text-gray-500 flex flex-col md:flex-row justify-between items-center px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1300px] min-[1800px]:max-w-[1600px] mx-auto py-8 text-sm text-gray-600 flex flex-col md:flex-row justify-between items-center px-4 sm:px-6 lg:px-8">
           <span>© 2026 NOKTA TICKETS. Todos os direitos reservados.</span>
           <span>Nokta Tecnologia LTDA • CNPJ: 59.386.582/0001-39</span>
           <span>Feito com 💜 para os amantes de eventos</span>

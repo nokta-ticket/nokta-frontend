@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/pagination'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { formatarDataBR } from '@/lib/formatarData'
+import { formatarDataBR, formatarHorario } from '@/lib/formatarData'
 import { MEDIA_FALLBACK, resolveThumbnailUrl } from '@/lib/media'
 import api from '@/lib/axios'
 
@@ -117,7 +117,7 @@ export default function EventosAtivos() {
 
                 <p className="text-xs text-muted-foreground flex items-center mt-1">
                   <Calendar className="w-4 h-4 mr-1" />
-                  {formatarDataBR(evento.data)} às {evento.horario.slice(0, 5)}
+                  {formatarDataBR(evento.data)} às {formatarHorario(evento.horario) ?? ""}
                 </p>
 
                 <p className="text-xs text-muted-foreground flex items-center mt-1">

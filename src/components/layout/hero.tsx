@@ -5,30 +5,43 @@ import { useKeenSlider } from 'keen-slider/react';
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Link from 'next/link';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
-import { Button } from '@/components/ui/button';
-import { ArrowRight, ArrowLeft, Calendar, MapPin } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Calendar, MapPin, Pause, Play } from 'lucide-react';
 import clsx from 'clsx';
 import api from '@/lib/axios';
 import { EventoAPI } from '@/interfaces/events';
 import { resolveThumbnailUrl } from '@/lib/media';
 import SearchOverlay from './search-overlay';
 
+const AUTOPLAY_MS = 6000;
+
+// Pausa manual (botão) lida pelo plugin: o keen-slider não recria o plugin
+// quando o estado React muda.
+const autoplayState = { userPaused: false };
+
 function AutoplayPlugin(slider: any) {
   let timeout: ReturnType<typeof setTimeout>;
-  let mouseOver = false;
+  let hovering = false;
+  let focused = false;
+  const reduceMotion =
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   function clearNextTimeout() { clearTimeout(timeout); }
   function nextTimeout() {
     clearTimeout(timeout);
-    if (mouseOver) return;
-    timeout = setTimeout(() => slider.next(), 3500);
+    if (reduceMotion || hovering || focused || autoplayState.userPaused || document.hidden) return;
+    timeout = setTimeout(() => slider.next(), AUTOPLAY_MS);
   }
+  const onVisibility = () => nextTimeout();
   slider.on('created', () => {
-    slider.container.addEventListener('mouseover', () => { mouseOver = true; clearNextTimeout(); });
-    slider.container.addEventListener('mouseout', () => { mouseOver = false; nextTimeout(); });
+    slider.container.addEventListener('mouseenter', () => { hovering = true; clearNextTimeout(); });
+    slider.container.addEventListener('mouseleave', () => { hovering = false; nextTimeout(); });
+    slider.container.addEventListener('focusin', () => { focused = true; clearNextTimeout(); });
+    slider.container.addEventListener('focusout', () => { focused = false; nextTimeout(); });
+    document.addEventListener('visibilitychange', onVisibility);
     nextTimeout();
   });
+  slider.on('destroyed', () => document.removeEventListener('visibilitychange', onVisibility));
   slider.on('dragStarted', clearNextTimeout);
   slider.on('animationEnded', nextTimeout);
   slider.on('updated', nextTimeout);
@@ -76,6 +89,12 @@ export default function HeroSlider() {
 
   // Desktop
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    setReduceMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    return () => { autoplayState.userPaused = false; };
+  }, []);
   const [sliderRef, instRef] = useKeenSlider<HTMLDivElement>(
     {
       loop: canLoop,
@@ -85,6 +104,14 @@ export default function HeroSlider() {
     },
     [canLoop ? AutoplayPlugin : NoAutoplayPlugin]
   );
+
+  function togglePause() {
+    const next = !paused;
+    autoplayState.userPaused = next;
+    setPaused(next);
+    // Ao retomar, o plugin reagenda no próximo "updated".
+    if (!next) instRef.current?.update();
+  }
 
   useEffect(() => {
     (async () => {
@@ -295,91 +322,152 @@ export default function HeroSlider() {
       </section>
 
       {/* ── DESKTOP ──────────────────────────────────────────── */}
-      <section className="hidden lg:block w-full max-w-[1300px] mx-auto px-4 sm:px-6 lg:px-8 mt-6 relative">
+      <section
+        aria-roledescription="carrossel"
+        aria-label="Eventos em destaque"
+        className="hidden lg:block w-full max-w-[1300px] min-[1800px]:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 mt-6 relative"
+      >
         <div ref={sliderRef} className="keen-slider relative z-10">
-          {eventos.map((ev) => {
+          {eventos.map((ev, idx) => {
             const evDate = parseDateSafe(ev.data);
-            const dataFmt = evDate
-              ? evDate.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' })
-              : '';
+            const dia = evDate ? evDate.toLocaleDateString('pt-BR', { day: '2-digit' }) : '';
+            const mes = evDate ? evDate.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '') : '';
+            const semana = evDate ? evDate.toLocaleDateString('pt-BR', { weekday: 'long' }) : '';
             const horarioFmt = extractTime(ev.horario);
+            const href = `/evento/${ev.slug ?? ev.id}`;
+            const acabando = ev.ultimoLote === true || (ev.percentualVendido ?? 0) >= 80;
+            const isCurrent = idx === currentSlide;
+            const src = resolveThumbnailUrl(ev.thumbnails[0], null);
             return (
-              <div key={ev.id} className="keen-slider__slide flex flex-col lg:flex-row gap-6 relative z-10">
-                <div className="w-full lg:w-2/3 relative rounded-lg overflow-hidden">
-                  <AspectRatio ratio={16 / 9}>
-                    {(() => {
-                      const src = resolveThumbnailUrl(ev.thumbnails[0], null);
-                      return src ? (
-                        <Image src={src} alt={ev.nome} fill className="object-cover rounded-md" priority unoptimized />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-violet-900 to-indigo-800 rounded-md" />
-                      );
-                    })()}
+              <div
+                key={ev.id}
+                role="group"
+                aria-roledescription="slide"
+                aria-label={`${idx + 1} de ${eventos.length}: ${ev.nome}`}
+                aria-hidden={!isCurrent}
+                inert={!isCurrent}
+                className="keen-slider__slide flex flex-row gap-6 relative z-10"
+              >
+                <Link
+                  href={href}
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  className="group block w-2/3 relative rounded-2xl overflow-hidden"
+                >
+                  {/* 1200x521: proporção real das artes enviadas (16:9 cortava as laterais). */}
+                  <AspectRatio ratio={1200 / 521}>
+                    {src ? (
+                      <Image
+                        src={src}
+                        alt=""
+                        fill
+                        className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.02]"
+                        priority
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-violet-900 to-indigo-800" />
+                    )}
                   </AspectRatio>
-                </div>
-                <Card className="w-full lg:w-1/3 flex flex-col justify-between shadow-md">
-                  <CardHeader className="text-center">
-                    <CardTitle className="text-xl font-bold">{ev.nome}</CardTitle>
-                    <div className="font-semibold flex justify-center text-sm text-muted-foreground mt-2">
-                      <span className="text-center leading-tight">
-                        {ev.endereco?.logradouro}, {ev.endereco?.localidade} - {ev.endereco?.uf}
-                      </span>
-                    </div>
-                    <div className="font-semibold flex justify-center text-sm text-muted-foreground mt-2">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-purple-300" />
-                        <span>{dataFmt}{horarioFmt && <> • {horarioFmt}h</>}</span>
+                </Link>
+                <div className="w-1/3 flex flex-col rounded-2xl border border-gray-200 bg-white p-6 xl:p-8 shadow-[0_10px_30px_-18px_rgba(28,24,48,0.25)]">
+                  <div className="flex items-start gap-5">
+                    {evDate && (
+                      <div className="flex shrink-0 flex-col items-center rounded-xl bg-violet-50 px-4 py-2.5 text-violet-800">
+                        <span className="text-[13px] font-semibold uppercase tracking-wide">{mes}</span>
+                        <span className="text-[34px] font-bold leading-none tabular-nums">{dia}</span>
                       </div>
+                    )}
+                    <div className="min-w-0">
+                      {acabando && (
+                        <span className="mb-2 inline-block rounded-md bg-orange-600 px-2 py-0.5 text-[12px] font-bold text-white">
+                          Tá acabando
+                        </span>
+                      )}
+                      <h2 className="line-clamp-2 text-2xl font-bold leading-tight text-[#181d27] xl:text-[28px]">
+                        {ev.nome}
+                      </h2>
                     </div>
-                  </CardHeader>
-                  <CardContent className="flex flex-col gap-4 mt-4">
-                    <Button
-                      className="w-full text-white bg-gradient-to-r from-[#9944CC] to-[#3399FF] hover:opacity-90"
-                      onClick={() => router.push(`/evento/${ev.slug ?? ev.id}`)}
-                    >
-                      Comprar Ingresso
-                    </Button>
-                    <Button
-                      variant="outline"
-                      className="w-full flex items-center justify-center gap-2"
-                      onClick={() => router.push(`/evento/${ev.slug ?? ev.id}`)}
-                    >
-                      Mais Detalhes <ArrowRight size={16} />
-                    </Button>
-                  </CardContent>
-                </Card>
+                  </div>
+                  <dl className="mt-6 space-y-3 text-[15px] text-[#414651]">
+                    <div className="flex items-start gap-2.5">
+                      <dt className="sr-only">Quando</dt>
+                      <Calendar className="mt-0.5 h-[18px] w-[18px] shrink-0 text-violet-700" aria-hidden="true" />
+                      <dd className="first-letter:uppercase">
+                        {semana}
+                        {horarioFmt && ` · ${horarioFmt}`}
+                      </dd>
+                    </div>
+                    {ev.endereco && (
+                      <div className="flex items-start gap-2.5">
+                        <dt className="sr-only">Onde</dt>
+                        <MapPin className="mt-0.5 h-[18px] w-[18px] shrink-0 text-violet-700" aria-hidden="true" />
+                        <dd>
+                          {ev.endereco.logradouro}
+                          <br />
+                          {ev.endereco.localidade} - {ev.endereco.uf}
+                        </dd>
+                      </div>
+                    )}
+                  </dl>
+                  <Link
+                    href={href}
+                    className="mt-auto inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-violet-700 text-[15px] font-semibold text-white transition-[background-color,transform] duration-150 ease-out hover:bg-violet-800 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
+                  >
+                    Ver ingressos <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </Link>
+                </div>
               </div>
             );
           })}
         </div>
 
-        <Button
-          variant="outline" size="icon" aria-label="Anterior"
-          className="absolute top-1/2 left-3 shadow-md -translate-y-1/2 z-10 bg-white/80 hover:bg-white"
-          onClick={() => instRef.current?.prev()}
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-        <Button
-          variant="outline" size="icon" aria-label="Próximo"
-          className="absolute top-1/2 right-3 shadow-md -translate-y-1/2 z-10 bg-white/80 hover:bg-white"
-          onClick={() => instRef.current?.next()}
-        >
-          <ArrowRight className="w-5 h-5" />
-        </Button>
-
-        <div className="flex justify-center gap-2 mt-6 z-10 relative">
-          {eventos.map((_, idx) => (
+        <div className="mt-5 flex items-center justify-center gap-3">
+          <button
+            type="button"
+            aria-label="Evento anterior"
+            onClick={() => instRef.current?.prev()}
+            className="grid h-9 w-9 place-items-center rounded-full border border-gray-200 bg-white text-gray-700 transition-[background-color,transform] duration-150 hover:bg-gray-50 active:scale-[0.95] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div className="flex items-center">
+            {eventos.map((ev, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => instRef.current?.moveToIdx(idx)}
+                aria-label={`Ir para ${ev.nome}`}
+                aria-current={currentSlide === idx}
+                className="grid h-6 w-6 place-items-center rounded-full focus-visible:outline-2 focus-visible:outline-violet-600"
+              >
+                <span
+                  className={clsx(
+                    'block h-2 rounded-full transition-[width,background-color] duration-200 ease-out',
+                    currentSlide === idx ? 'w-6 bg-violet-700' : 'w-2 bg-gray-300 hover:bg-gray-400'
+                  )}
+                />
+              </button>
+            ))}
+          </div>
+          <button
+            type="button"
+            aria-label="Próximo evento"
+            onClick={() => instRef.current?.next()}
+            className="grid h-9 w-9 place-items-center rounded-full border border-gray-200 bg-white text-gray-700 transition-[background-color,transform] duration-150 hover:bg-gray-50 active:scale-[0.95] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
+          >
+            <ArrowRight className="h-4 w-4" />
+          </button>
+          {!reduceMotion && (
             <button
-              key={idx}
-              onClick={() => instRef.current?.moveToIdx(idx)}
-              aria-label={`Ir para slide ${idx + 1}`}
-              className={clsx(
-                'w-3 h-3 transition-all rounded-full',
-                currentSlide === idx ? 'bg-violet-600' : 'bg-muted-foreground/30 hover:bg-muted-foreground/60'
-              )}
-            />
-          ))}
+              type="button"
+              onClick={togglePause}
+              aria-label={paused ? 'Retomar troca automática' : 'Pausar troca automática'}
+              className="ml-1 grid h-9 w-9 place-items-center rounded-full text-gray-600 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
+            >
+              {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+            </button>
+          )}
         </div>
       </section>
     </>

@@ -9,6 +9,7 @@ import { resolveThumbnailUrl } from "@/lib/media";
 import { ResaleCardSkeleton } from "@/components/ui/skeleton";
 import SearchOverlay from "@/components/layout/search-overlay";
 import { EventoAPI } from "@/interfaces/events";
+import { formatarHorario } from "@/lib/formatarData";
 
 interface ResaleItem {
   id: number;
@@ -42,7 +43,7 @@ function ResaleCard({ r }: { r: ResaleItem }) {
         weekday: "short", day: "2-digit", month: "short",
       })
     : null;
-  const horario = r.evento?.horario?.slice(0, 5);
+  const horario = formatarHorario(r.evento?.horario);
   const preco = (r.buyerPrice ?? r.originalPrice) as number;
 
   return (

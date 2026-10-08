@@ -315,7 +315,7 @@ export default function HeaderPrivate() {
       </Sheet>
 
       {/* ── DESKTOP ─────────────────────────────────────────────────── */}
-      <div className="hidden lg:flex max-w-[1300px] mx-auto px-4 sm:px-6 lg:px-8 items-center h-20">
+      <div className="hidden lg:flex max-w-[1300px] min-[1800px]:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 items-center h-20">
 
         <div className="flex-1 flex items-center">
           <Link href="/" className="font-bold font-gooddog text-[1.75rem] leading-none text-transparent bg-clip-text bg-gradient-to-r from-[#9944CC] to-[#3399FF]">

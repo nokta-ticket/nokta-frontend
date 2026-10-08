@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation"
 import { Calendar, MapPin, Ticket, ImageIcon, Globe, FileText, ArrowRight, CheckCircle2, AlertCircle } from "lucide-react"
 import { SectionProps } from "../types"
-import { formatarDataCurta } from "@/lib/formatarData"
+import { formatarDataCurta, formatarHorario } from "@/lib/formatarData"
 import { cn } from "@/lib/utils"
 
 const STATUS_BADGE: Record<number, { label: string; className: string; dot: string }> = {
@@ -123,7 +123,7 @@ export default function SectionVisaoGeral({ event, onRefresh }: SectionProps) {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: "Data",     value: event.data    ? formatarDataCurta(event.data) : "–" },
-          { label: "Horário",  value: event.horario ? event.horario.slice(0, 5) : "–" },
+          { label: "Horário",  value: formatarHorario(event.horario) ?? "–" },
           { label: "Ingressos", value: String(totalCapacity) },
           { label: "Lotes",    value: String(event.ingressos?.length ?? 0) },
         ].map((stat) => (

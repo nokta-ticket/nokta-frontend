@@ -7,8 +7,7 @@ import dayjs from "dayjs";
 import isBetween from "dayjs/plugin/isBetween";
 import "dayjs/locale/pt-br";
 
-import { Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import api from "@/lib/axios";
 import { EventoAPI } from "@/interfaces/events";
@@ -351,35 +350,55 @@ export default function EventGrid() {
       {/* ══════════════════════════════════════════════════════
           VERSÃO DESKTOP  (oculta abaixo de lg)
           ══════════════════════════════════════════════════════ */}
-      <section className="hidden lg:block mx-auto mt-12 w-full max-w-[1300px] px-4 sm:px-6 lg:px-8">
-        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <h2 className="text-2xl font-semibold">Todos os eventos</h2>
-          <div className="w-full max-w-sm">
+      <section className="hidden lg:block mx-auto mt-14 w-full max-w-[1300px] min-[1800px]:max-w-[1600px] px-4 sm:px-6 lg:px-8">
+        <div className="mb-6 flex items-end justify-between gap-6">
+          <h2 className="text-3xl font-semibold tracking-tight text-[#181d27]">Todos os eventos</h2>
+          <div className="relative w-full max-w-sm">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" aria-hidden="true" />
             <Input
+              aria-label="Pesquisar eventos por nome"
               placeholder="Pesquisar eventos"
               value={q}
               onChange={(e) => setQ(e.target.value)}
+              className="h-11 pl-9 text-[15px] placeholder:text-gray-500"
             />
           </div>
         </div>
 
         {filtered.length === 0 ? (
-          <p className="text-center text-muted-foreground py-20">
-            Nenhum evento encontrado.
-          </p>
+          <div className="rounded-2xl border border-dashed border-gray-300 py-16 text-center">
+            <p className="text-base font-medium text-[#181d27]">Nenhum evento com &ldquo;{q.trim()}&rdquo;</p>
+            <p className="mt-1 text-sm text-gray-600">Confira a grafia ou veja a lista completa.</p>
+            <button
+              type="button"
+              onClick={() => setQ("")}
+              className="mt-4 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-800 transition-colors hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
+            >
+              Limpar busca
+            </button>
+          </div>
         ) : (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          // Poucos eventos: cards maiores em 2 colunas, em vez de deixar
+          // colunas vazias numa grade de 3/4.
+          <div
+            className={
+              filtered.length <= 2
+                ? "grid grid-cols-2 gap-6"
+                : "grid grid-cols-2 gap-6 xl:grid-cols-3 min-[1800px]:grid-cols-4"
+            }
+          >
             {filtered.map((ev) => (
               <EventCard key={ev.id} event={ev} />
             ))}
           </div>
         )}
 
-        <div className="mb-10 mt-10 flex justify-center">
-          <Link href="/eventos">
-            <Button className="bg-violet-600 px-10 py-4 text-sm uppercase text-white transition-colors hover:bg-violet-700">
-              Ver Todos Eventos!
-            </Button>
+        <div className="mb-12 mt-10 flex justify-center">
+          <Link
+            href="/eventos"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-violet-700 px-8 text-[15px] font-semibold text-white transition-[background-color,transform] duration-150 ease-out hover:bg-violet-800 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
+          >
+            Ver todos os eventos
           </Link>
         </div>
       </section>

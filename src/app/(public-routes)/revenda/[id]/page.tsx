@@ -9,6 +9,7 @@ import { resolveMediaUrl } from "@/lib/media";
 import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { ResalePaymentSheet } from "./_components/resale-payment-sheet";
+import { formatarHorario } from "@/lib/formatarData";
 
 interface ResaleDetail {
   id: number;
@@ -280,7 +281,7 @@ export default function ComprarRevendaPage() {
                     <line x1="8" y1="2" x2="8" y2="6" stroke="#9944CC" strokeWidth="1.5" strokeLinecap="round"/>
                     <line x1="16" y1="2" x2="16" y2="6" stroke="#9944CC" strokeWidth="1.5" strokeLinecap="round"/>
                   </svg>
-                  <span>{dataFmt}{resale.evento?.horario ? ` · ${resale.evento.horario.slice(0, 5)}` : ""}</span>
+                  <span>{dataFmt}{formatarHorario(resale.evento?.horario) ? ` · ${formatarHorario(resale.evento?.horario)}` : ""}</span>
                 </div>
               )}
             </div>
