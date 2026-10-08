@@ -78,12 +78,34 @@ function itemMainPriceLabel(item: PublicMenuItem): string | null {
   return `${sorted[0].variantNome} · ${formatCentsBRL(sorted[0].effectivePriceCents)}`;
 }
 
-/** "5 tamanhos", "3 opções" — rótulo do acionador do bottom sheet de variações; null quando não há múltiplas variações (nada a mostrar). */
+/**
+ * Medida real (volume/massa) no nome da variação, ou null. Diferente de
+ * `parseVariantSize`, exige unidade: "8 anos", "1 bola" e "Kiwi" não são
+ * tamanho.
+ */
+function parseVariantMeasure(nome: string): number | null {
+  const match = nome.replace(",", ".").match(/(\d+(?:\.\d+)?)\s*(ml|cl|l|kg|g|oz)\b/i);
+  if (!match) return null;
+  const value = parseFloat(match[1]);
+  const unit = match[2].toLowerCase();
+  if (unit === "l" || unit === "kg") return value * 1000;
+  if (unit === "cl") return value * 10;
+  return value;
+}
+
+/**
+ * "5 tamanhos", "4 opções" — rótulo do acionador do bottom sheet de
+ * variações; null quando não há múltiplas variações. "Tamanhos" só quando
+ * toda variação tem medida e as medidas são diferentes entre si (Água sem
+ * gás 500ml / com gás 500ml são opções, não tamanhos).
+ */
 function variantCountLabel(item: PublicMenuItem): string | null {
-  if (item.prices.length <= 1) return null;
   const count = item.prices.length;
-  const word = item.prices.every((p) => parseVariantSize(p.variantNome) !== null) ? "tamanho" : "opção";
-  return `${count} ${word}${count > 1 ? (word === "tamanho" ? "s" : "ões") : ""}`;
+  if (count <= 1) return null;
+  const measures = item.prices.map((p) => parseVariantMeasure(p.variantNome));
+  const isSizes =
+    measures.every((m) => m !== null) && new Set(measures).size === measures.length;
+  return `${count} ${isSizes ? "tamanhos" : "opções"}`;
 }
 
 /**
@@ -885,7 +907,9 @@ function VariantSheet({ item, onClose }: { item: PublicMenuItem; onClose: () => 
         <div className="flex shrink-0 items-center justify-between px-5 pb-3 pt-3">
           <div className="min-w-0">
             <h2 className="truncate font-poppins text-base font-semibold text-[#141414]">{item.nome}</h2>
-            <p className="text-sm text-[#9a9aa0]">Escolha o tamanho</p>
+            <p className="text-sm text-[#9a9aa0]">
+              {variantCountLabel(item)?.endsWith("tamanhos") ? "Escolha o tamanho" : "Escolha a opção"}
+            </p>
           </div>
           <button
             type="button"
