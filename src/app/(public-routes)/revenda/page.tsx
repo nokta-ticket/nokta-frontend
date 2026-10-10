@@ -240,7 +240,7 @@ const VENDER_ITEMS = [
       </svg>
     ),
     title: "Não vendeu? Tudo certo",
-    desc: "Se não vender até 4h antes do evento, o ingresso volta para a sua carteira.",
+    desc: "Se não vender até 2h antes do evento, o ingresso volta para a sua carteira.",
   },
   {
     icon: (
@@ -250,7 +250,7 @@ const VENDER_ITEMS = [
       </svg>
     ),
     title: "Prazo da revenda",
-    desc: "Disponível até 4 horas antes do início do evento.",
+    desc: "Disponível até 2 horas antes do início do evento.",
   },
 ];
 

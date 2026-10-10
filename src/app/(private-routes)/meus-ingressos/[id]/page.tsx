@@ -910,7 +910,7 @@ export default function DetalheIngressoPage() {
             title: "Até quando posso revender?",
             content: (
               <div className="space-y-2 text-[13px] text-gray-600 leading-relaxed">
-                <p>A revenda fica disponível até 4 horas antes do início do evento.</p>
+                <p>A revenda fica disponível até 2 horas antes do início do evento.</p>
                 <p>Depois desse prazo, o ingresso não poderá mais ser colocado à venda.</p>
               </div>
             ),
