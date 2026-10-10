@@ -8,6 +8,9 @@ export interface PublicMenuPrice {
   effectivePriceCents: number;
 }
 
+/** Área do cardápio público: bebidas/alimentos (MENU) ou tabacaria (TOBACCO) — nunca exibidas juntas. */
+export type PublicMenuSection = "MENU" | "TOBACCO";
+
 export interface PublicMenuItem {
   id: number;
   nome: string;
@@ -23,6 +26,8 @@ export interface PublicMenuItem {
   favoritedByVisitor: boolean;
   /** Só preenchido nos itens de `menu.highlights` (nunca dentro de `category.items`, onde seria redundante) — nome da categoria de origem, mostrado como faixa no card do carrossel de Destaques. */
   categoryNome?: string | null;
+  /** Só nos itens de `menu.highlights`: área da categoria de origem. */
+  section?: PublicMenuSection;
 }
 
 export interface PublicMenuCategory {
@@ -30,6 +35,8 @@ export interface PublicMenuCategory {
   nome: string;
   descricao: string | null;
   imageUrl: string | null;
+  /** Ausente em respostas antigas em cache — tratar como "MENU". */
+  section?: PublicMenuSection;
   items: PublicMenuItem[];
 }
 

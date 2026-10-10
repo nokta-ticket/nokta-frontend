@@ -29,12 +29,16 @@ export interface VenueMenuDetail extends VenueMenu {
   categories: VenueMenuCategory[];
 }
 
+export type VenueMenuCategorySection = "MENU" | "TOBACCO";
+
 export interface VenueMenuCategory {
   id: number;
   menuId: number;
   nome: string;
   descricao: string | null;
   imageUrl: string | null;
+  /** Área do cardápio público: "TOBACCO" aparece só na aba Tabacaria, separada de bebidas/alimentos. */
+  section: VenueMenuCategorySection;
   displayOrder: number;
   active: boolean;
   /** Quantos itens de cardápio a categoria tem — 0 significa que ela ainda não aparece no cardápio público (categoria vazia é sempre escondida do cliente). */
@@ -202,6 +206,7 @@ export interface CreateVenueMenuCategoryPayload {
   nome: string;
   descricao?: string;
   imageUrl?: string;
+  section?: VenueMenuCategorySection;
   displayOrder?: number;
   active?: boolean;
 }

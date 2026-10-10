@@ -7,7 +7,13 @@ import { HomeIcon } from "@/components/icons/HomeIcon";
 import { InstagramIcon } from "@/components/icons/InstagramIcon";
 import { SearchIcon } from "@/components/icons/SearchIcon";
 import { WhatsappIcon } from "@/components/icons/WhatsappIcon";
-import { formatCentsBRL, type PublicMenuCategory, type PublicMenuItem, type PublicMenuResponse } from "@/services/venue-menu-public";
+import {
+  formatCentsBRL,
+  type PublicMenuCategory,
+  type PublicMenuItem,
+  type PublicMenuResponse,
+  type PublicMenuSection,
+} from "@/services/venue-menu-public";
 import { resolveMediaUrl } from "@/lib/media";
 
 type ViewMode = "list" | "grid" | "large";
@@ -173,8 +179,14 @@ export function MenuView({
   // usuário pra remover a duplicação) — a seção continua existindo, só sem
   // atalho de clique dedicado; o estado inicial cai direto na 1ª categoria.
   const [activeCategoryId, setActiveCategoryId] = useState<number | "highlights">(
-    data.menu.categories[0]?.id ?? "highlights",
+    (data.menu.categories.find((c) => (c.section ?? "MENU") === "MENU") ?? data.menu.categories[0])?.id ?? "highlights",
   );
+  // Área escolhida pelo cliente: bebidas/alimentos ("MENU") ou tabacaria
+  // ("TOBACCO"). As duas NUNCA aparecem juntas — cada área tem carrossel de
+  // categorias, destaques e seções próprios; o seletor logo abaixo do
+  // perfil só existe quando o cardápio tem as duas. Com uma área só, ela é
+  // mostrada direto (ver `activeSection`), sem seletor.
+  const [section, setSection] = useState<PublicMenuSection>("MENU");
   const [view, setView] = useState<ViewMode>("list");
   const [showAppbar, setShowAppbar] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -194,6 +206,7 @@ export function MenuView({
   // vindo de `data`, nunca uma cópia congelada do momento do clique.
   const [detailItemId, setDetailItemId] = useState<number | null>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+  const sectionSwitchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const sectionRefs = useRef(new Map<number | "highlights", HTMLDivElement>());
 
@@ -241,6 +254,22 @@ export function MenuView({
         data.menu.highlights.find((i) => i.id === detailItemId) ??
         null);
 
+  const hasTobacco = data.menu.categories.some((c) => c.section === "TOBACCO");
+  const hasMenu = data.menu.categories.some((c) => (c.section ?? "MENU") === "MENU");
+  const hasBothSections = hasTobacco && hasMenu;
+  const activeSection: PublicMenuSection = hasBothSections ? section : hasTobacco ? "TOBACCO" : "MENU";
+  const visibleCategories = data.menu.categories.filter((c) => (c.section ?? "MENU") === activeSection);
+  const visibleHighlights = data.menu.highlights.filter((i) => (i.section ?? "MENU") === activeSection);
+
+  const switchSection = (next: PublicMenuSection) => {
+    setSection(next);
+    const first = data.menu.categories.find((c) => (c.section ?? "MENU") === next);
+    if (first) setActiveCategoryId(first.id);
+    // Quem troca pelo atalho do fim da página precisa voltar ao começo da
+    // área nova, senão cai no meio de uma lista que não escolheu.
+    sectionSwitchRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const { profile } = data;
   // Nome exibido publicamente é o do CARDÁPIO (menu.nome, editável em
   // "Nome do cardápio" no dashboard) — nunca o nome da organização
@@ -259,7 +288,9 @@ export function MenuView({
               showAppbar ? "flex translate-y-0" : "flex -translate-y-full"
             }`}
           >
-            <span className="truncate font-poppins text-sm font-medium md:text-base">{displayName}</span>
+            <span className="truncate font-poppins text-sm font-medium md:text-base">
+              {hasBothSections && activeSection === "TOBACCO" ? "Tabacaria" : displayName}
+            </span>
             <div className="ml-auto flex gap-1">
               <ViewButton active={view === "list"} onClick={() => setView("list")} icon={<List size={18} />} label="Lista" />
               <ViewButton active={view === "grid"} onClick={() => setView("grid")} icon={<LayoutGrid size={18} />} label="Grade" />
@@ -400,6 +431,25 @@ export function MenuView({
         flex-col dentro de um pai `items-stretch` (padrão do flex, sem
         override), então todos os itens da mesma altura ficam alinhados
         pelo topo do círculo automaticamente. */}
+        {/* ÁREAS — Cardápio | Tabacaria. Só aparece quando o cardápio tem as
+        duas; a tabacaria nunca divide carrossel, destaques ou lista com
+        bebidas e alimentos (pedido explícito do usuário). Mesma linguagem
+        dos títulos de seção (texto grande + linha fina embaixo), sem pílula,
+        ícone ou cartão: a primeira versão tinha tudo isso e foi recusada
+        por "parecer feita por IA". */}
+        {hasBothSections ? (
+          <div ref={sectionSwitchRef} className="scroll-mt-[52px] px-5 md:px-8">
+            <div role="tablist" aria-label="Áreas do cardápio" className="flex gap-7 border-b border-[#ececee]">
+              <SectionTab active={activeSection === "MENU"} onClick={() => switchSection("MENU")} label="Cardápio" />
+              <SectionTab active={activeSection === "TOBACCO"} onClick={() => switchSection("TOBACCO")} label="Tabacaria" />
+            </div>
+          </div>
+        ) : null}
+
+        {activeSection === "TOBACCO" ? (
+          <p className="px-5 pt-3 text-sm text-[#8b8b90] md:px-8">Venda proibida para menores de 18 anos.</p>
+        ) : null}
+
         <div className="border-b border-black/[0.03] pb-6 pt-5">
           {/* leading-none corta a caixa de linha rente ao cap-height, sem
           espaço pro descendente do "g" de "Categorias" — mesmo com mb-5
@@ -409,7 +459,7 @@ export function MenuView({
           título e "Ver todas" alinhados na mesma linha visual. */}
           <div className="mb-5 flex items-center justify-between px-5 md:px-8">
             <h3 className="font-poppins text-[18px] font-semibold leading-normal text-[#141414] md:text-xl">Categorias</h3>
-            {data.menu.categories.length > 0 ? (
+            {visibleCategories.length > 0 ? (
               <button
                 type="button"
                 onClick={() => setAllCategoriesOpen(true)}
@@ -422,7 +472,7 @@ export function MenuView({
           <div className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex gap-x-[30px] px-5 pb-1 pt-1.5 md:px-8">
               {/* Chip "Destaques" removido do carrossel — a seção Destaques já aparece logo abaixo dele, o chip era uma duplicação do mesmo conceito (pedido explícito do usuário). A seção continua existindo normalmente. */}
-              {data.menu.categories.map((cat) => (
+              {visibleCategories.map((cat) => (
                 <CategoryAvatarButton
                   key={cat.id}
                   label={cat.nome}
@@ -437,19 +487,19 @@ export function MenuView({
 
         {/* SECTIONS — todas as categorias (e Destaques) empilhadas em sequência, cada uma com título próprio funcionando como separador visual entre a categoria anterior e a próxima (pedido explícito do usuário: "acabou Cervejas, avisar que começa a próxima"). */}
         <div className="pb-24">
-          {data.menu.highlights.length > 0 ? (
+          {visibleHighlights.length > 0 ? (
             <HighlightsSection
               ref={(el) => {
                 if (el) sectionRefs.current.set("highlights", el);
                 else sectionRefs.current.delete("highlights");
               }}
-              items={data.menu.highlights}
+              items={visibleHighlights}
               onToggleFavorite={onToggleFavorite}
               onOpenVariants={setVariantSheetItem}
               onOpenDetail={(item) => setDetailItemId(item.id)}
             />
           ) : null}
-          {data.menu.categories.map((cat) => (
+          {visibleCategories.map((cat) => (
             <MenuSection
               key={cat.id}
               ref={(el) => {
@@ -464,6 +514,26 @@ export function MenuView({
               onOpenDetail={(item) => setDetailItemId(item.id)}
             />
           ))}
+          {/* Atalho para a outra área no fim da lista — quem rolou o
+          cardápio inteiro sem voltar ao topo ainda descobre a tabacaria (e
+          volta dela) sem procurar o seletor. Uma linha de texto entre duas
+          linhas finas, no mesmo peso dos títulos de seção. */}
+          {hasBothSections ? (
+            <div className="px-5 pt-10 md:px-8">
+              <button
+                type="button"
+                onClick={() => switchSection(activeSection === "MENU" ? "TOBACCO" : "MENU")}
+                className="flex w-full items-center justify-between gap-4 border-y border-[#ececee] py-5 text-left active:bg-[#faf9fb]"
+              >
+                <span className="font-poppins text-xl font-semibold text-[#141414] md:text-2xl">
+                  {activeSection === "MENU" ? "Tabacaria" : "Cardápio"}
+                </span>
+                <span className="shrink-0 text-sm text-[#8b8b90]">
+                  {activeSection === "MENU" ? "Ver itens →" : "Voltar →"}
+                </span>
+              </button>
+            </div>
+          ) : null}
         </div>
 
         {/* FOOTER — mesmo rodapé da Home pública (venue-home-view.tsx): faixa simples com razão social/CNPJ da Nokta + Instagram discreto, no lugar do antigo "NOKTA" estilizado em faixa preta. */}
@@ -486,7 +556,7 @@ export function MenuView({
 
       {allCategoriesOpen ? (
         <AllCategoriesOverlay
-          categories={data.menu.categories}
+          categories={visibleCategories}
           activeCategoryId={activeCategoryId}
           onSelect={(id) => {
             setAllCategoriesOpen(false);
@@ -1038,6 +1108,32 @@ function ProductDetailOverlay({
         ) : null}
       </div>
     </div>
+  );
+}
+
+/**
+ * Aba do seletor de área (Cardápio | Tabacaria): texto no tamanho dos
+ * títulos de seção, com um traço preto sobre a linha fina na aba ativa.
+ */
+function SectionTab({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={`relative -mb-px flex h-12 items-center font-poppins text-xl font-semibold transition-colors duration-200 md:text-2xl ${
+        active ? "text-[#141414]" : "text-[#8b8b90]"
+      }`}
+    >
+      {label}
+      <span
+        aria-hidden
+        className={`absolute inset-x-0 bottom-0 h-[2px] origin-left bg-[#141414] transition-transform duration-200 ease-out motion-reduce:transition-none ${
+          active ? "scale-x-100" : "scale-x-0"
+        }`}
+      />
+    </button>
   );
 }
 

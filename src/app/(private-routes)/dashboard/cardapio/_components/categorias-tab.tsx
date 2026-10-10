@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/dialog";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
-import type { VenueMenu, VenueMenuCategory } from "@/services/venue-menu";
+import type { VenueMenu, VenueMenuCategory, VenueMenuCategorySection } from "@/services/venue-menu";
 import { useVenueCategories, useVenueCategoryMutations } from "../_hooks/use-venue-categories";
 import { ActiveBadge } from "./venue-status-badge";
 import { ImageField } from "./image-field";
@@ -48,6 +48,13 @@ import { EmptyState } from "../../_components/states/empty-state";
 import { TableSkeleton } from "../../_components/states/loading-state";
 import { ErrorState } from "../../_components/states/error-state";
 import { CategoriaBulkCreateDialog } from "./categoria-bulk-create-dialog";
+
+interface CategoryFormValues {
+  nome: string;
+  descricao: string;
+  imageUrl: string | null;
+  section: VenueMenuCategorySection;
+}
 
 function CategoryFormDialog({
   open,
@@ -59,18 +66,20 @@ function CategoryFormDialog({
   open: boolean;
   onOpenChange: (v: boolean) => void;
   category: VenueMenuCategory | null;
-  onSubmit: (values: { nome: string; descricao: string; imageUrl: string | null }) => void;
+  onSubmit: (values: CategoryFormValues) => void;
   loading: boolean;
 }) {
   const [nome, setNome] = useState(category?.nome ?? "");
   const [descricao, setDescricao] = useState(category?.descricao ?? "");
   const [imageUrl, setImageUrl] = useState<string | null>(category?.imageUrl ?? null);
+  const [section, setSection] = useState<VenueMenuCategorySection>(category?.section ?? "MENU");
 
   useEffect(() => {
     if (open) {
       setNome(category?.nome ?? "");
       setDescricao(category?.descricao ?? "");
       setImageUrl(category?.imageUrl ?? null);
+      setSection(category?.section ?? "MENU");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, category?.id]);
@@ -101,6 +110,19 @@ function CategoryFormDialog({
             />
           </div>
           <ImageField value={imageUrl} onChange={setImageUrl} />
+          <div className="flex items-start justify-between gap-4 rounded-lg border border-black/10 px-3 py-3">
+            <div className="min-w-0">
+              <Label htmlFor="categoria-tabacaria">Categoria da tabacaria</Label>
+              <p className="mt-1 text-xs text-black/50">
+                Aparece só na aba Tabacaria do cardápio, separada de bebidas e alimentos.
+              </p>
+            </div>
+            <Switch
+              id="categoria-tabacaria"
+              checked={section === "TOBACCO"}
+              onCheckedChange={(checked) => setSection(checked ? "TOBACCO" : "MENU")}
+            />
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
@@ -109,7 +131,7 @@ function CategoryFormDialog({
           <Button
             disabled={loading || !nome.trim()}
             onClick={() =>
-              onSubmit({ nome: nome.trim(), descricao: descricao.trim(), imageUrl })
+              onSubmit({ nome: nome.trim(), descricao: descricao.trim(), imageUrl, section })
             }
           >
             {loading ? "Salvando…" : "Salvar"}
@@ -157,7 +179,14 @@ function SortableCategoryRow({
         <GripVertical size={18} />
       </button>
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-gray-900">{category.nome}</p>
+        <p className="flex items-center gap-2 font-medium text-gray-900">
+          <span className="truncate">{category.nome}</span>
+          {category.section === "TOBACCO" ? (
+            <span className="shrink-0 rounded-full bg-[#1a1a1d] px-2 py-0.5 text-[11px] font-medium text-white">
+              Tabacaria
+            </span>
+          ) : null}
+        </p>
         {category.descricao ? (
           <p className="line-clamp-2 break-words text-xs text-black/50">{category.descricao}</p>
         ) : null}
@@ -228,12 +257,13 @@ export function CategoriasTab({
     );
   }
 
-  const handleSubmit = (values: { nome: string; descricao: string; imageUrl: string | null }) => {
+  const handleSubmit = (values: CategoryFormValues) => {
     if (!selectedMenuId) return;
     const payload = {
       nome: values.nome,
       descricao: values.descricao || undefined,
       imageUrl: values.imageUrl ?? undefined,
+      section: values.section,
     };
     const mutation = editing
       ? update.mutateAsync({ categoryId: editing.id, payload })
