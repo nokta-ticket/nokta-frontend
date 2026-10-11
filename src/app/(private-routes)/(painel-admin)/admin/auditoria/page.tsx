@@ -42,6 +42,7 @@ const ENTITY_LABEL: Record<string, string> = {
   USER: "Usuário",
   USER_TICKET: "Ingresso",
   EVENT: "Evento",
+  ORGANIZATION: "Workspace",
 };
 
 export default function AuditoriaPage() {

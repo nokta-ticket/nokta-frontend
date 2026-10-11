@@ -1,5 +1,6 @@
 import {
   BarChart2,
+  Building2,
   ClipboardCheck,
   CreditCard,
   KeyRound,
@@ -29,6 +30,11 @@ export const sidebarLinks: SidebarLink[] = [
     label: "Usuários",
     icon: <Users size={16} />,
     href: "/admin/usuarios",
+  },
+  {
+    label: "Workspaces",
+    icon: <Building2 size={16} />,
+    href: "/admin/workspaces",
   },
   {
     label: "Ingressos",

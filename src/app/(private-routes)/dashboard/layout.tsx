@@ -8,6 +8,7 @@ import { DashboardQueryProvider } from "./_components/query-provider";
 import { DashboardSidebar } from "./_components/dashboard-sidebar";
 import { Topbar } from "./_components/topbar";
 import { RequireWorkspaceProvider } from "./_components/require-workspace-provider";
+import { WorkspaceBlockedGate } from "./_components/workspace-blocked-gate";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
@@ -22,7 +23,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
             <div className="flex-1 overflow-hidden flex flex-col">
               <Topbar />
-              <div className="flex-1 overflow-y-auto p-4 lg:p-8">{children}</div>
+              <div className="flex-1 overflow-y-auto p-4 lg:p-8">
+                <WorkspaceBlockedGate>{children}</WorkspaceBlockedGate>
+              </div>
             </div>
           </div>
         </RequireWorkspaceProvider>

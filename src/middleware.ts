@@ -88,6 +88,7 @@ const onboardingRoutes = ["/produtor/onboarding", "/dashboard/onboarding"];
 const protectedAdminRoutes = [
   "/admin/dashboard",
   "/admin/usuarios",
+  "/admin/workspaces",
   "/admin/ingressos",
   "/admin/eventos",
   "/admin/pedidos-produtor",
