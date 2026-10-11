@@ -294,6 +294,19 @@ export default function EventoPageClient() {
   // reserva). Sem isto a tela deixava escolher ingresso e ir até o pagamento.
   const vendasEncerradas = !isEncerrado && isSalesClosed(evento, now);
 
+  // Seleção de ingressos fica na própria página (celular e computador). No
+  // computador ela não existia: "Comprar ingresso" mandava para um checkout
+  // vazio, sem nenhum ingresso escolhido.
+  function scrollToTickets() {
+    document.getElementById("ingressos")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function continueToCheckout() {
+    if (totalSelecionado === 0 || vendasEncerradas) return;
+    // Gate de login logo ao continuar (antes do checkout).
+    if (!isAuthenticated) { setShowLoginModal(true); return; }
+    router.push(buildCheckoutUrl());
+  }
+
   function buildCheckoutUrl() {
     const base = `/evento/${evento!.slug ?? evento!.id}/checkout`;
     const selected = Object.entries(quantities).filter(([, qty]) => qty > 0);
@@ -399,12 +412,10 @@ export default function EventoPageClient() {
                     {isCancelled ? "Evento Cancelado" : isEncerrado ? "Evento Encerrado" : "Vendas encerradas"}
                   </Button>
                 ) : (
-                  <Link href={checkoutHref}>
-                    <Button className="bg-gradient-to-r from-[#9944CC] to-[#3399FF] hover:brightness-110 text-white font-bold px-8 h-12 gap-2 text-[15px] shadow-xl shadow-violet-900/40 transition-all rounded-xl">
+                  <Button onClick={tickets.length > 0 ? scrollToTickets : () => router.push(checkoutHref)} className="bg-gradient-to-r from-[#9944CC] to-[#3399FF] hover:brightness-110 text-white font-bold px-8 h-12 gap-2 text-[15px] shadow-xl shadow-violet-900/40 transition-all rounded-xl">
                       <Ticket size={16} />
                       Comprar ingresso
                     </Button>
-                  </Link>
                 )}
                 <button
                   onClick={handleShare}
@@ -530,7 +541,7 @@ export default function EventoPageClient() {
 
             {/* ── Seleção de Ingressos (mobile only) ────────────── */}
             {tickets.length > 0 && (
-              <div className="lg:hidden">
+              <div id="ingressos" className="scroll-mt-24">
                 <SectionLabel>{vendasEncerradas ? "Ingressos" : "Escolha uma opção"}</SectionLabel>
                 {vendasEncerradas ? (
                   <p className="mt-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[13px] text-gray-700">
@@ -634,10 +645,33 @@ export default function EventoPageClient() {
                   })}
                 </div>
 
+                {/* Computador: total + continuar logo abaixo dos lotes (no
+                    celular esse papel é da barra fixa do rodapé). */}
+                <div className="mt-4 hidden items-center justify-between gap-4 lg:flex">
+                  <p className="text-[13px] text-gray-600">
+                    {totalSelecionado > 0
+                      ? `${totalSelecionado} ingresso${totalSelecionado > 1 ? 's' : ''} selecionado${totalSelecionado > 1 ? 's' : ''}`
+                      : vendasEncerradas
+                        ? ''
+                        : 'Escolha a quantidade de cada ingresso.'}
+                  </p>
+                  <button
+                    disabled={totalSelecionado === 0 || vendasEncerradas}
+                    onClick={continueToCheckout}
+                    className={cn(
+                      'rounded-xl px-8 py-3 text-[15px] font-bold text-white transition',
+                      totalSelecionado > 0 && !vendasEncerradas
+                        ? 'bg-gradient-to-r from-[#9944CC] to-[#3399FF] hover:brightness-110 shadow-lg shadow-violet-200'
+                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    )}
+                  >
+                    {vendasEncerradas ? 'Vendas encerradas' : 'Continuar'}
+                  </button>
+                </div>
               </div>
             )}
 
-            {tickets.length > 0 && <div className="lg:hidden h-px bg-gradient-to-r from-[#9944CC]/20 via-[#D86CFA]/10 to-transparent" />}
+            {tickets.length > 0 && <div className="h-px bg-gradient-to-r from-[#9944CC]/20 via-[#D86CFA]/10 to-transparent" />}
 
             {/* Sobre o evento — bloco editorial com barra lateral */}
             {evento.descricao && (
@@ -652,7 +686,7 @@ export default function EventoPageClient() {
             <div className="h-px bg-gradient-to-r from-[#9944CC]/20 via-[#D86CFA]/10 to-transparent" />
 
             {/* Programação */}
-            <EventProgramJourney items={parseProgramacao(evento.programacao ?? '')} ctaHref={checkoutHref} />
+            <EventProgramJourney items={parseProgramacao(evento.programacao ?? '')} ctaHref={tickets.length > 0 ? "#ingressos" : checkoutHref} />
 
             {/* Info extra */}
             {evento.info && (
@@ -1037,12 +1071,7 @@ export default function EventoPageClient() {
 
           <button
             disabled={totalSelecionado === 0 || vendasEncerradas}
-            onClick={() => {
-              if (totalSelecionado === 0 || vendasEncerradas) return;
-              // Gate de login logo ao continuar (antes do checkout).
-              if (!isAuthenticated) { setShowLoginModal(true); return; }
-              router.push(buildCheckoutUrl());
-            }}
+            onClick={continueToCheckout}
             className={cn(
               'block w-full py-3.5 rounded-xl font-bold text-[15px] text-white transition',
               totalSelecionado > 0 && !vendasEncerradas
