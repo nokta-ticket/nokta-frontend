@@ -20,11 +20,11 @@ const CSP_DIRECTIVES = [
   // Cloudflare nos domínios proxiados (Web Analytics) — não é algo que o
   // app carrega por escolha, mas bloquear via CSP só gera erro de console
   // sem nenhum ganho de segurança real (é o próprio Cloudflare na frente).
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://3ds-nx-js.stone.com.br https://static.cloudflareinsights.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://3ds-nx-js.stone.com.br https://static.cloudflareinsights.com https://connect.facebook.net",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
   "font-src 'self' data:",
-  "connect-src 'self' https://api.nokta.live https://api.noktatickets.com.br https://*.supabase.co https://api.pagar.me https://3ds-nx-js.stone.com.br https://cloudflareinsights.com https://viacep.com.br http://localhost:3333",
+  "connect-src 'self' https://api.nokta.live https://api.noktatickets.com.br https://*.supabase.co https://api.pagar.me https://3ds-nx-js.stone.com.br https://cloudflareinsights.com https://viacep.com.br https://www.facebook.com https://web.facebook.com https://graph.facebook.com http://localhost:3333",
   "frame-src https:",
   "frame-ancestors 'none'",
   "object-src 'none'",
