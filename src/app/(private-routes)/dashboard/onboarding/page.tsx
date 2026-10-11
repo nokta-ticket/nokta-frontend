@@ -528,6 +528,14 @@ export default function PlatformOnboardingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [createdOrgId, step, progressChecked, skippedIdentification, selection]);
 
+  // Avisa o backend em que etapa o dono está, só para o painel admin ver
+  // onde o lead parou (Workspaces). Retomar o onboarding continua sendo pelo
+  // localStorage acima; se esta chamada falhar, nada muda para o usuário.
+  useEffect(() => {
+    if (!createdOrgId || !progressChecked || step < 1 || step > 3) return;
+    void api.patch(`/organizations/${createdOrgId}/onboarding-step`, { step }).catch(() => {});
+  }, [createdOrgId, step, progressChecked]);
+
   // Caminho "só falta criar workspace" (needsWorkspaceOnly, abaixo): o
   // workspace acabou de ser criado agora mesmo — segue direto pra etapa
   // "Operação", sem repetir Identificação (já não faz sentido nesse

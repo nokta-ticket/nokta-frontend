@@ -6,7 +6,6 @@ import Link from "next/link";
 import Cookies from "js-cookie";
 import { AlertCircle, ArrowLeft, Ban, Pencil, Save, ShieldCheck, Trash2, X } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,7 +28,7 @@ import {
 } from "@/components/ui/table";
 import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
-import { MODULE_LABEL, WorkspaceStatusBadge } from "../_components/workspace-labels";
+import { MODULE_LABEL, WorkspaceStageBadge, WorkspaceStatusBadge } from "../_components/workspace-labels";
 
 interface Workspace {
   id: number;
@@ -43,6 +42,7 @@ interface Workspace {
   bloqueadoMotivo: string | null;
   createdAt: string;
   onboardingCompleted: boolean;
+  etapa: string;
   owner: { id: number; nome: string | null; sobrenome: string | null; email: string; telefone: string | null } | null;
   modules: { module: string; ativo: boolean }[];
   members: { id: number; userId: number; nome: string; email: string; role: string; status: string }[];
@@ -262,9 +262,7 @@ export default function WorkspaceDetalhesPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <WorkspaceStatusBadge status={ws.status} />
-          {!ws.onboardingCompleted && (
-            <Badge className="rounded-full bg-amber-100 px-3 py-1 text-xs text-amber-700">Onboarding incompleto</Badge>
-          )}
+          <WorkspaceStageBadge etapa={ws.etapa} />
         </div>
       </div>
 
