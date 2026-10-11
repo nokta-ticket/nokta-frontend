@@ -10,7 +10,8 @@ import {
   Shield,
   Star,
   Ticket,
-  Users
+  Users,
+  UserX
 } from "lucide-react";
 import { ReactNode } from "react";
 
@@ -30,6 +31,11 @@ export const sidebarLinks: SidebarLink[] = [
     label: "Usuários",
     icon: <Users size={16} />,
     href: "/admin/usuarios",
+  },
+  {
+    label: "Contas excluídas",
+    icon: <UserX size={16} />,
+    href: "/admin/contas-excluidas",
   },
   {
     label: "Workspaces",

@@ -485,7 +485,7 @@ export default function TabDadosGerais({ user, onRefresh }: TabDadosGeraisProps)
             <DialogTitle className="text-red-700">Excluir conta permanentemente</DialogTitle>
             <DialogDescription>
               Apaga a conta, os pedidos e ingressos dela e as organizações das quais é dona, com tudo dentro
-              (eventos, cardápio, comandas, financeiro, equipe). Não tem volta. A exclusão só é recusada se
+              (eventos, cardápio, comandas, financeiro, equipe). Não tem volta, mas o histórico completo fica guardado em Contas excluídas. A exclusão só é recusada se
               apagaria ingressos que hoje pertencem a outras contas.
             </DialogDescription>
           </DialogHeader>
