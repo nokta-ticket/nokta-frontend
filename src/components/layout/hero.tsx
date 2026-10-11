@@ -17,8 +17,12 @@ import SearchOverlay from './search-overlay';
 const AUTOPLAY_MS = 6000;
 
 // Pausa manual (botão) lida pelo plugin: o keen-slider não recria o plugin
-// quando o estado React muda.
-const autoplayState = { userPaused: false };
+// quando o estado React muda. `sync` é o reagendamento do próprio plugin,
+// chamado pelo botão para cancelar (ou retomar) o avanço na hora.
+const autoplayState: { userPaused: boolean; sync: (() => void) | null } = {
+  userPaused: false,
+  sync: null,
+};
 
 function AutoplayPlugin(slider: any) {
   let timeout: ReturnType<typeof setTimeout>;
@@ -41,9 +45,14 @@ function AutoplayPlugin(slider: any) {
     slider.container.addEventListener('focusin', () => { focused = true; clearNextTimeout(); });
     slider.container.addEventListener('focusout', () => { focused = false; nextTimeout(); });
     document.addEventListener('visibilitychange', onVisibility);
+    autoplayState.sync = nextTimeout;
     nextTimeout();
   });
-  slider.on('destroyed', () => document.removeEventListener('visibilitychange', onVisibility));
+  slider.on('destroyed', () => {
+    clearNextTimeout();
+    autoplayState.sync = null;
+    document.removeEventListener('visibilitychange', onVisibility);
+  });
   slider.on('dragStarted', clearNextTimeout);
   slider.on('animationEnded', nextTimeout);
   slider.on('updated', nextTimeout);
@@ -114,8 +123,8 @@ export default function HeroSlider() {
     const next = !paused;
     autoplayState.userPaused = next;
     setPaused(next);
-    // Ao retomar, o plugin reagenda no próximo "updated".
-    if (!next) instRef.current?.update();
+    // Cancela o avanço já agendado ao pausar e agenda o próximo ao retomar.
+    autoplayState.sync?.();
   }
 
   useEffect(() => {
