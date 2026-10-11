@@ -4,6 +4,7 @@ import "keen-slider/keen-slider.min.css";
 import { useKeenSlider } from "keen-slider/react";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { isSalesClosed } from "@/lib/event-sales";
 import Image from "next/image";
 import Link from "next/link";
 import { toast } from "@/lib/toast";
@@ -121,6 +122,13 @@ export default function EventoPageClient() {
   const { isAuthenticated } = useAuth();
   const [evento, setEvento] = useState<EventDetails | null>(null);
   const [loading, setLoading] = useState(true);
+  // Relógio da tela: reavalia o fim das vendas sem precisar recarregar (quem
+  // abriu a página antes do prazo vê "Vendas encerradas" quando ele chega).
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000);
+    return () => clearInterval(t);
+  }, []);
   const [currentSlide, setSlide] = useState(0);
   const [policyModal, setPolicyModal] = useState<PolicyModal>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -282,6 +290,9 @@ export default function EventoPageClient() {
   })();
   const isCancelled = evento.status === 3;
   const isEncerrado = isEventPast || isCancelled;
+  // Vendas encerram 2h antes do início (mesma regra do backend, que recusa a
+  // reserva). Sem isto a tela deixava escolher ingresso e ir até o pagamento.
+  const vendasEncerradas = !isEncerrado && isSalesClosed(evento, now);
 
   function buildCheckoutUrl() {
     const base = `/evento/${evento!.slug ?? evento!.id}/checkout`;
@@ -383,9 +394,9 @@ export default function EventoPageClient() {
 
               {/* CTAs */}
               <div className="flex items-center gap-3.5">
-                {isEncerrado ? (
+                {isEncerrado || vendasEncerradas ? (
                   <Button disabled className="bg-gray-500 text-white font-bold px-8 h-12 gap-2 text-[15px] rounded-xl cursor-not-allowed opacity-70">
-                    {isCancelled ? "Evento Cancelado" : "Evento Encerrado"}
+                    {isCancelled ? "Evento Cancelado" : isEncerrado ? "Evento Encerrado" : "Vendas encerradas"}
                   </Button>
                 ) : (
                   <Link href={checkoutHref}>
@@ -520,7 +531,12 @@ export default function EventoPageClient() {
             {/* ── Seleção de Ingressos (mobile only) ────────────── */}
             {tickets.length > 0 && (
               <div className="lg:hidden">
-                <SectionLabel>Escolha uma opção</SectionLabel>
+                <SectionLabel>{vendasEncerradas ? "Ingressos" : "Escolha uma opção"}</SectionLabel>
+                {vendasEncerradas ? (
+                  <p className="mt-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[13px] text-gray-700">
+                    <span className="font-bold text-[#0F172A]">Vendas encerradas.</span> As vendas terminam 2 horas antes do início do evento.
+                  </p>
+                ) : null}
 
                 <div className="mt-3 flex flex-col gap-3">
                   {tickets.map((tk) => {
@@ -531,7 +547,7 @@ export default function EventoPageClient() {
                     const isGratuito = valorFinal === 0;
                     // Lote sem unidades restantes: mostra "Esgotado" em vez de só travar o "+".
                     const esgotado = tk.disponivelParaVenda && tk.quantidade <= 0;
-                    const disponivel = tk.disponivelParaVenda && !esgotado;
+                    const disponivel = tk.disponivelParaVenda && !esgotado && !vendasEncerradas;
                     const subtotalCents = Math.round((valorFinal + taxa) * 100);
                     const parcelaMaxStr = (calcInstallmentCents(subtotalCents, maxParcelas, maxSemJuros, cardRateBps, cardFixedCents) / 100).toFixed(2).replace('.', ',');
 
@@ -1020,23 +1036,25 @@ export default function EventoPageClient() {
           )}
 
           <button
-            disabled={totalSelecionado === 0}
+            disabled={totalSelecionado === 0 || vendasEncerradas}
             onClick={() => {
-              if (totalSelecionado === 0) return;
+              if (totalSelecionado === 0 || vendasEncerradas) return;
               // Gate de login logo ao continuar (antes do checkout).
               if (!isAuthenticated) { setShowLoginModal(true); return; }
               router.push(buildCheckoutUrl());
             }}
             className={cn(
               'block w-full py-3.5 rounded-xl font-bold text-[15px] text-white transition',
-              totalSelecionado > 0
+              totalSelecionado > 0 && !vendasEncerradas
                 ? 'bg-gradient-to-r from-[#9944CC] to-[#3399FF] hover:brightness-110 shadow-lg shadow-violet-200'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             )}
           >
-            {totalSelecionado > 0
-              ? `Continuar · ${totalSelecionado} ingresso${totalSelecionado > 1 ? 's' : ''}`
-              : 'Selecione um ingresso'}
+            {vendasEncerradas
+              ? 'Vendas encerradas'
+              : totalSelecionado > 0
+                ? `Continuar · ${totalSelecionado} ingresso${totalSelecionado > 1 ? 's' : ''}`
+                : 'Selecione um ingresso'}
           </button>
         </div>
       )}

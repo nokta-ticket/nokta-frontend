@@ -15,6 +15,7 @@ import { formatCurrency } from "@/lib/formatCurrency";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/lib/toast";
 import { EventDetails } from "@/interfaces/events";
+import { isSalesClosed } from "@/lib/event-sales";
 import api, { getErrorMessage } from "@/lib/axios";
 import axios from "axios";
 import { CpfGate } from "./_components/cpf-gate";
@@ -719,6 +720,23 @@ function CheckoutContent() {
         onMyTickets={() => router.push("/meus-ingressos")}
         onExplore={() => router.push("/eventos")}
       />
+    );
+  }
+
+  // Vendas encerram 2h antes do início e o backend recusa reserva nova a
+  // partir daí. Quem JÁ tem reserva/pagamento em andamento (iniciado antes
+  // do prazo) continua até o fim do próprio prazo, como no backend.
+  if (isSalesClosed(evento) && !reservationCode && !orderCode && !pixUrl) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-6 text-center">
+        <h1 className="text-xl font-bold text-[#0F172A]">Vendas encerradas</h1>
+        <p className="max-w-sm text-sm text-gray-600">
+          As vendas de {evento.nome} terminaram 2 horas antes do início do evento.
+        </p>
+        <Button variant="outline" onClick={() => router.push(`/evento/${(evento as any).slug ?? evento.id}`)}>
+          Voltar para o evento
+        </Button>
+      </div>
     );
   }
 
