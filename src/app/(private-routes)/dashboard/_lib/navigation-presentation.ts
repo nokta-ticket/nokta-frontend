@@ -288,7 +288,7 @@ const FULL_CATALOG_PREVIEW: NavigationItem[] = [
   { key: "LOTS", label: "Lotes", route: "/dashboard/ingressos/lotes", group: "EVENTS" },
   { key: "CHECK_IN", label: "Check-in", route: "/dashboard/check-in", group: "EVENTS" },
   { key: "PROMOTERS", label: "Promotores", route: "/dashboard/promotores", group: "EVENTS" },
-  { key: "CUSTOMERS", label: "Clientes", route: "/dashboard/clientes", group: "RELATIONSHIP" },
+  { key: "CUSTOMERS", label: "CRM", route: "/dashboard/clientes", group: "RELATIONSHIP" },
   { key: "RESERVATIONS", label: "Reservas", route: "/dashboard/reservas", group: "RELATIONSHIP" },
   { key: "WAITLIST", label: "Fila de espera", route: "/dashboard/reservas?tab=fila", group: "RELATIONSHIP" },
   { key: "GUEST_LISTS", label: "Convidados", route: "/dashboard/convidados", group: "RELATIONSHIP" },

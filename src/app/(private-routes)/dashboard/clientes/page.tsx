@@ -86,7 +86,7 @@ export default function ClientesPage() {
   if (!enabled) {
     return (
       <PageContainer>
-        <EmptyState title="Clientes ainda não está ativo" description="Ative Eventos e ingressos em Explore a Nokta para ver quem compra de você." />
+        <EmptyState title="O CRM ainda não está ativo" description="Ative Eventos e ingressos em Explore a Nokta para ver quem compra de você." />
       </PageContainer>
     );
   }
