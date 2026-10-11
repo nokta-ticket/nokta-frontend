@@ -112,7 +112,7 @@ describe("nomenclatura da sidebar", () => {
     expect(layout).toEqual([
       ["Início", ["Início"]],
       ["Eventos", ["Eventos", "Check-in", "Promotores"]],
-      ["Relacionamento", ["Reservas", "Fila de espera", "Convidados", "Avaliações"]],
+      ["Relacionamento", ["Clientes", "Reservas", "Fila de espera", "Convidados", "Avaliações"]],
       ["Operação", ["Mesas e comandas", "Pedidos", "Caixa"]],
       ["Produtos", ["Cardápio", "Estoque"]],
       ["Gestão", ["Financeiro", "Insights", "Exportações", "Equipe", "Configurações"]],

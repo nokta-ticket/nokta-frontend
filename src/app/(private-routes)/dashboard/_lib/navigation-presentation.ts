@@ -120,6 +120,7 @@ const ROUTE_ORDER = [
   "/dashboard/eventos",
   "/dashboard/check-in",
   "/dashboard/promotores",
+  "/dashboard/clientes",
   "/dashboard/reservas",
   "/dashboard/reservas?tab=fila",
   "/dashboard/convidados",
@@ -150,6 +151,7 @@ export type IconKey =
   | "reservation"
   | "waitlist"
   | "guests"
+  | "customers"
   | "star"
   | "tables"
   | "orders"
@@ -181,6 +183,7 @@ const ICON_BY_KEY: Partial<Record<string, IconKey>> = {
   RESERVATIONS: "reservation",
   WAITLIST: "waitlist",
   GUEST_LISTS: "guests",
+  CUSTOMERS: "customers",
   REVIEWS: "star",
   TABLES: "tables",
   TABS: "tables",
@@ -271,7 +274,7 @@ export function buildUnifiedNavigation(items: NavigationItem[]): UnifiedNavGroup
 /**
  * Espelha CAPABILITY_CATALOG (nokta-api/src/core/platform/common/
  * capability-catalog.ts) — todas as capacidades reais, exceto as marcadas
- * `future: true` no backend (revenda de ingressos, clientes: ainda não
+ * `future: true` no backend (revenda de ingressos: ainda não
  * implementáveis, nunca ativáveis de verdade). Usado só como preview
  * estático "como se tudo estivesse ativo" para quem ainda não tem
  * organização (ex.: onboarding) — GET .../me/navigation não tem o que
@@ -285,6 +288,7 @@ const FULL_CATALOG_PREVIEW: NavigationItem[] = [
   { key: "LOTS", label: "Lotes", route: "/dashboard/ingressos/lotes", group: "EVENTS" },
   { key: "CHECK_IN", label: "Check-in", route: "/dashboard/check-in", group: "EVENTS" },
   { key: "PROMOTERS", label: "Promotores", route: "/dashboard/promotores", group: "EVENTS" },
+  { key: "CUSTOMERS", label: "Clientes", route: "/dashboard/clientes", group: "RELATIONSHIP" },
   { key: "RESERVATIONS", label: "Reservas", route: "/dashboard/reservas", group: "RELATIONSHIP" },
   { key: "WAITLIST", label: "Fila de espera", route: "/dashboard/reservas?tab=fila", group: "RELATIONSHIP" },
   { key: "GUEST_LISTS", label: "Convidados", route: "/dashboard/convidados", group: "RELATIONSHIP" },

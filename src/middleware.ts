@@ -53,6 +53,9 @@ const publicRoutes = [
   { path: "/privacidade", whenAutenticated: "next" },
   { path: "/termos", whenAutenticated: "next" },
   { path: "/ajuda", whenAutenticated: "next" },
+  // Descadastro da divulgação de um produtor: quem clica é o cliente dele,
+  // que não tem conta no painel. O token assinado é a prova de origem.
+  { path: "/descadastro/[id]", whenAutenticated: "next" },
   // Nokta Access — o dispositivo físico (scanner/Hub) que troca o código de
   // pareamento nunca tem sessão de usuário. Pública de propósito, mas
   // protegida pela própria natureza do código (6 dígitos, TTL de 10min,
