@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Camera, Loader2, ShieldCheck, User } from "lucide-react";
 import api from "@/lib/axios";
 import { toast } from "@/lib/toast";
+import { useAuth } from "@/context/AuthContext";
 import { getApiBaseUrl } from "@/lib/surfaces";
 import { ImageCropperDialog } from "@/components/media/ImageCropperDialog";
 
@@ -17,6 +18,7 @@ function getInitials(nome: string, sobrenome: string): string {
 
 export default function EditarFotoPerfilPage() {
   const router = useRouter();
+  const { updateFotoPerfil } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [loading, setLoading] = useState(true);
@@ -56,6 +58,8 @@ export default function EditarFotoPerfilPage() {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setFotoPerfil(res.data.fotoPerfil);
+      // Sem isto o cabeçalho continuava com a foto antiga (ou o boneco padrão) até recarregar a página.
+      updateFotoPerfil(res.data.fotoPerfil ?? null);
       setImageSrc(null);
       toast.success("Foto atualizada!");
     } catch (err: any) {

@@ -185,7 +185,7 @@ export default function PerfilPage() {
 
       {/* Avatar + foto */}
       <div className="flex flex-col items-center gap-3 py-6">
-        <Avatar className="h-24 w-24 text-2xl">
+        <Avatar className="h-24 w-24 rounded-full text-2xl">
           {fotoSrc && <AvatarImage src={fotoSrc} alt={nomeCompleto} className="object-cover" />}
           <AvatarFallback className="bg-violet-100 text-violet-700 font-semibold text-2xl">
             {initials}

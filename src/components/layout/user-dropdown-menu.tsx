@@ -59,7 +59,7 @@ export function UserDropdownMenu() {
       >
         <Avatar className="h-10 w-10 rounded-full">
           {user?.fotoPerfil ? (
-            <AvatarImage src={user.fotoPerfil} alt="Usuário" />
+            <AvatarImage src={user.fotoPerfil} alt="Usuário" className="object-cover" />
           ) : (
             <AvatarImage src="/user_default.png" alt="Usuário" />
           )}
