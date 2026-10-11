@@ -29,6 +29,8 @@ function AutoplayPlugin(slider: any) {
   function clearNextTimeout() { clearTimeout(timeout); }
   function nextTimeout() {
     clearTimeout(timeout);
+    // Com 0 ou 1 slide não há para onde avançar (o slider nasce vazio, antes dos eventos chegarem).
+    if (slider.slides.length < 2) return;
     if (reduceMotion || hovering || focused || autoplayState.userPaused || document.hidden) return;
     timeout = setTimeout(() => slider.next(), AUTOPLAY_MS);
   }
@@ -84,7 +86,7 @@ export default function HeroSlider() {
       slideChanged(s) { setMobileCurrent(s.track.details.rel); },
       disabled: eventos.length === 0,
     },
-    [canLoop ? NoAutoplayPlugin : NoAutoplayPlugin]
+    [NoAutoplayPlugin]
   );
 
   // Desktop
@@ -102,7 +104,10 @@ export default function HeroSlider() {
       slideChanged(s) { setCurrentSlide(s.track.details.rel); },
       disabled: eventos.length === 0,
     },
-    [canLoop ? AutoplayPlugin : NoAutoplayPlugin]
+    // O useKeenSlider guarda os plugins do PRIMEIRO render (antes dos eventos
+    // chegarem), então a escolha não pode depender de `eventos`: o próprio
+    // plugin confere se há mais de um slide.
+    [AutoplayPlugin]
   );
 
   function togglePause() {
