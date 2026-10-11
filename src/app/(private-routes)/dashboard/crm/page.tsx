@@ -36,11 +36,11 @@ const INACTIVE: CrmFilters = { inactiveDays: 90 };
 const IMPORTED: CrmFilters = { sources: ["IMPORT"] };
 
 /**
- * Clientes: a lista de quem compra do produtor, os públicos que ele recorta,
+ * CRM: a lista de quem compra do produtor, os públicos que ele recorta,
  * as campanhas que ele manda e os canais por onde elas saem. Todo número do
  * topo filtra a lista de contatos.
  */
-export default function ClientesPage() {
+export default function CrmPage() {
   const { currentOrg, activeModuleKeys, loadingOrgs, loadingModules } = useOrganizations();
   const { guard } = useRequireWorkspace();
   const orgId = currentOrg?.id ?? null;
