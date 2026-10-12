@@ -26,7 +26,7 @@ import { EmptyState } from "../_components/states/empty-state";
 import { BlockSkeleton } from "../_components/states/loading-state";
 import { DeleteEventoDialog } from "./_components/dialogs/delete-evento-dialog";
 import { CancelEventoDialog } from "./_components/dialogs/cancel-evento-dialog";
-import { N2VerificationBanner } from "./_components/n2-verification-banner";
+import { LegalFinancialPendingBanner } from "../_components/legal-financial-pending-banner";
 
 // EventStatus: 1=DRAFT 2=PUBLISHED 3=CANCELLED 4=FINISHED
 const STATUS_BADGE: Record<number, { label: string; className: string }> = {
@@ -163,7 +163,8 @@ export default function EventosPage() {
 
   return (
     <PageContainer>
-      <N2VerificationBanner />
+      {/* A verificação que libera ingresso pago é a do workspace (dados jurídicos e financeiros), não a antiga por usuário. */}
+      <LegalFinancialPendingBanner orgId={currentOrg.id} />
 
       <section className="w-full mt-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
