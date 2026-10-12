@@ -32,12 +32,15 @@ export function emptyEntityDetails(): EntityDetailsFormState {
 export function StepEntityDetails({
   legalType,
   initialValue,
+  savedDocumentMasked,
   onSubmit,
   onBack,
   submitting,
 }: {
   legalType: LegalType;
   initialValue: EntityDetailsFormState;
+  /** CPF/CNPJ já salvo no rascunho (mascarado). Com ele, o campo pode ficar em branco para manter o documento. */
+  savedDocumentMasked: string | null;
   onSubmit: (value: EntityDetailsFormState) => void;
   onBack: () => void;
   submitting: boolean;
@@ -48,13 +51,14 @@ export function StepEntityDetails({
 
   const documentDigits = normalizeDigits(value.document);
   const documentValid = isCompany ? validateCnpj(documentDigits) : validateCpf(documentDigits);
+  const keepsSavedDocument = !documentDigits && !!savedDocumentMasked;
 
   const annualRevenue = moneyToDecimal(value.annualRevenue);
 
   // Aponta o campo que falta: uma mensagem única para os quatro não dizia qual corrigir.
   const missing = (() => {
     if (value.legalName.trim().length < 2) return isCompany ? "Preencha a razão social." : "Preencha seu nome completo.";
-    if (!documentValid) return isCompany ? "Informe um CNPJ válido." : "Informe um CPF válido.";
+    if (!documentValid && !keepsSavedDocument) return isCompany ? "Informe um CNPJ válido." : "Informe um CPF válido.";
     if (!isCompany) return null;
     if (!(Number(annualRevenue) > 0)) return "Informe o faturamento anual da empresa.";
     if (!isPhoneComplete(value.phone)) return "Informe o DDD e o telefone da empresa.";
@@ -94,10 +98,13 @@ export function StepEntityDetails({
           <Input
             value={isCompany ? formatCnpj(value.document) : formatCpf(value.document)}
             onChange={(e) => set("document", e.target.value.replace(/\D/g, "").slice(0, isCompany ? 14 : 11))}
-            placeholder={isCompany ? "00.000.000/0000-00" : "000.000.000-00"}
+            placeholder={savedDocumentMasked ?? (isCompany ? "00.000.000/0000-00" : "000.000.000-00")}
             inputMode="numeric"
             maxLength={isCompany ? 18 : 14}
           />
+          {keepsSavedDocument ? (
+            <p className="text-xs text-black/50">{isCompany ? "CNPJ" : "CPF"} já salvo. Deixe em branco para manter, ou digite outro para trocar.</p>
+          ) : null}
           {value.document ? (
             <p className={documentValid ? "text-xs text-green-600" : "text-xs text-red-500"}>
               {documentValid ? `${isCompany ? "CNPJ" : "CPF"} válido.` : `${isCompany ? "CNPJ" : "CPF"} inválido.`}

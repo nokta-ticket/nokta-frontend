@@ -125,6 +125,7 @@ export function LegalFinancialWizard({ orgId, profile }: { orgId: number; profil
         <StepEntityDetails
           legalType={draft.legalType}
           initialValue={draftToEntityDetails(draft)}
+          savedDocumentMasked={draft.documentMasked}
           submitting={patchEntityDetails.isPending}
           onBack={goBack}
           onSubmit={(value) =>
@@ -132,7 +133,7 @@ export function LegalFinancialWizard({ orgId, profile }: { orgId: number; profil
               {
                 legalName: value.legalName,
                 tradeName: value.tradeName || undefined,
-                document: value.document,
+                document: value.document || undefined,
                 siteUrl: value.siteUrl || undefined,
                 annualRevenue: value.annualRevenue || undefined,
                 corporationType: value.corporationType || undefined,

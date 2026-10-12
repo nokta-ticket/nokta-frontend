@@ -146,7 +146,8 @@ export interface PatchResponsibleTypePayload {
 export interface PatchEntityDetailsPayload {
   legalName: string;
   tradeName?: string;
-  document: string;
+  /** Ausente = manter o documento já salvo no rascunho. */
+  document?: string;
   siteUrl?: string;
   annualRevenue?: string;
   corporationType?: string;
