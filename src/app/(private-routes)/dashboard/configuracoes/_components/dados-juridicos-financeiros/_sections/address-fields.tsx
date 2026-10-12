@@ -64,7 +64,7 @@ export function AddressFields({
           id={`${idPrefix}-complementary`}
           value={value.complementary}
           onChange={(e) => set("complementary", e.target.value)}
-          placeholder="Sala, bloco, etc."
+          placeholder='Apto, bloco… ou "Casa"'
         />
       </div>
       <div className="space-y-1.5">

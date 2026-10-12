@@ -35,11 +35,25 @@ export function StepAddress({
   const [value, setValue] = useState(initialValue);
   const isCompany = legalType === "COMPANY";
 
-  const canAdvance = isAddressComplete(value.address) && isPhoneComplete(value.phone);
+  // Aponta o campo que falta. Complemento e ponto de referência são exigidos pela Pagar.me e eram os que mais passavam em branco.
+  const missing = (() => {
+    const { address } = value;
+    if (address.zipCode.replace(/\D/g, "").length !== 8) return "Informe o CEP com 8 dígitos.";
+    if (!address.street.trim()) return "Preencha a rua.";
+    if (!address.streetNumber.trim()) return "Preencha o número.";
+    if (!address.complementary.trim()) return 'Preencha o complemento. Se não houver, escreva "Casa" ou "Sem complemento".';
+    if (!address.neighborhood.trim()) return "Preencha o bairro.";
+    if (!address.city.trim()) return "Preencha a cidade.";
+    if (address.state.trim().length !== 2) return "Informe a UF com 2 letras.";
+    if (!address.referencePoint.trim()) return "Preencha o ponto de referência.";
+    if (!isAddressComplete(address)) return "Preencha o endereço completo.";
+    if (!isPhoneComplete(value.phone)) return "Informe o DDD e o telefone.";
+    return null;
+  })();
 
   const handleSubmit = () => {
-    if (!canAdvance) {
-      toast.error("Preencha o endereço completo (incluindo CEP) e o telefone.");
+    if (missing) {
+      toast.error(missing);
       return;
     }
     onSubmit(value);
