@@ -105,7 +105,7 @@ export function StepLegalRepresentative({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label>Renda mensal (R$)</Label>
-            <Input value={value.monthlyIncome} onChange={(e) => set("monthlyIncome", maskMoney(e.target.value))} placeholder="15.000,00" inputMode="numeric" />
+            <Input value={value.monthlyIncome} onChange={(e) => set("monthlyIncome", maskMoney(e.target.value, 12))} placeholder="15.000,00" inputMode="numeric" />
           </div>
           <div className="space-y-1.5">
             <Label>Ocupação profissional</Label>

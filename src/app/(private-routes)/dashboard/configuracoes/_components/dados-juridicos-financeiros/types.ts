@@ -40,8 +40,9 @@ export function isAddressComplete(address: AddressForm): boolean {
  * O campo guarda sempre o texto mascarado; quem envia para a API converte com
  * `moneyToDecimal`, porque o backend só aceita "500000.00".
  */
-export function maskMoney(raw: string): string {
-  const digits = raw.replace(/\D/g, "").replace(/^0+/, "").slice(0, 15);
+export function maskMoney(raw: string, maxDigits = 14): string {
+  // maxDigits acompanha a coluna do banco (faturamento Decimal(14,2), renda Decimal(12,2)): acima disso o banco recusa.
+  const digits = raw.replace(/\D/g, "").replace(/^0+/, "").slice(0, maxDigits);
   if (!digits) return "";
   const padded = digits.padStart(3, "0");
   const integer = padded.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, ".");
