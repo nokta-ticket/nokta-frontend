@@ -95,7 +95,7 @@ function StepUpModalInner({
 }) {
   const [phase, setPhase] = useState<"preview" | "code">("preview");
   const [grantId, setGrantId] = useState<string | null>(null);
-  const [method, setMethod] = useState<"TOTP" | "OTP_SMS" | null>(null);
+  const [method, setMethod] = useState<"TOTP" | "OTP_WHATSAPP" | null>(null);
   const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -148,12 +148,12 @@ function StepUpModalInner({
             </div>
             <p className="text-xs text-black/50">
               Esta ação exige verificação em duas etapas. Você vai precisar confirmar com o código do seu aplicativo autenticador (ou um código
-              enviado por SMS, se ainda não configurou o Authenticator).
+              enviado para o seu WhatsApp, se ainda não configurou o Authenticator).
             </p>
           </div>
         ) : (
           <div className="space-y-1.5">
-            <Label>{method === "TOTP" ? "Código do autenticador" : "Código enviado por SMS"}</Label>
+            <Label>{method === "TOTP" ? "Código do autenticador" : "Código enviado para o seu WhatsApp"}</Label>
             <Input
               value={code}
               onChange={(e) => setCode(e.target.value)}

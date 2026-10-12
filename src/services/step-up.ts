@@ -15,7 +15,7 @@ export type StepUpAction =
 export interface StepUpChallengeResult {
   grantId: string;
   expiresAt: string;
-  method: "TOTP" | "OTP_SMS";
+  method: "TOTP" | "OTP_WHATSAPP";
 }
 
 export interface StepUpVerifyResult {
