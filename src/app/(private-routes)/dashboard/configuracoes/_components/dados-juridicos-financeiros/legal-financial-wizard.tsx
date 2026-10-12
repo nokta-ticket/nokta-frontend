@@ -90,8 +90,11 @@ export function LegalFinancialWizard({ orgId, profile }: { orgId: number; profil
         if (result.recipient.created) {
           toast.success("Recebedor criado na Pagar.me.");
         } else {
+          // recipient.error já é o texto do motivo (string), não um erro do axios: getErrorMessage o descartava e mostrava só o genérico.
           toast.error(
-            getErrorMessage(result.recipient.error, "Dados salvos, mas não foi possível criar o recebedor agora. Tente novamente na tela de status."),
+            result.recipient.error
+              ? `Dados salvos, mas o recebedor não foi criado: ${result.recipient.error}`
+              : "Dados salvos, mas não foi possível criar o recebedor agora. Tente novamente.",
           );
         }
       },
