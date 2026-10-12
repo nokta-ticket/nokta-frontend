@@ -10,6 +10,10 @@ import {
   type PatchResponsibleTypePayload,
   type SetFinancialDestinationPayload,
 } from "@/services/venue-legal-financial";
+import { useStepUp, type StepUpPreviewField } from "@/components/session/step-up-modal";
+
+/** Mensagem com que o modal de step-up rejeita quando o usuário cancela: não é erro para mostrar. */
+export const STEP_UP_CANCELLED_MESSAGE = "Verificação de segurança cancelada.";
 
 const legalFinancialKeys = {
   profile: (orgId: number) => ["legal-financial", orgId, "profile"] as const,
@@ -66,8 +70,20 @@ export function usePatchBankAccount(orgId: number) {
 
 export function useSubmitLegalFinancialProfile(orgId: number) {
   const qc = useQueryClient();
+  const { openStepUp } = useStepUp();
   return useMutation({
-    mutationFn: () => legalFinancialApi.submit(orgId),
+    // Pede a confirmação de segurança antes do envio; cancelar rejeita com STEP_UP_CANCELLED_MESSAGE.
+    mutationFn: async (preview: StepUpPreviewField[]) => {
+      const stepUpToken = await openStepUp({
+        action: "RECIPIENT_CREATE_OR_UPDATE",
+        organizationId: orgId,
+        actionParams: { organizationId: orgId },
+        title: "Confirmar envio dos dados",
+        description: "Revise antes de autorizar. Depois do envio, alterações só por correção com o suporte.",
+        preview,
+      });
+      return legalFinancialApi.submit(orgId, stepUpToken);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: legalFinancialKeys.draft(orgId) });
       qc.invalidateQueries({ queryKey: legalFinancialKeys.profile(orgId) });
@@ -79,8 +95,19 @@ export function useSubmitLegalFinancialProfile(orgId: number) {
 // ── Destino financeiro (Pix) ───────────────────────────────────────────────
 export function useSetFinancialDestination(orgId: number) {
   const qc = useQueryClient();
+  const { openStepUp } = useStepUp();
   return useMutation({
-    mutationFn: (payload: SetFinancialDestinationPayload) => legalFinancialApi.setFinancialDestination(orgId, payload),
+    mutationFn: async (payload: SetFinancialDestinationPayload) => {
+      const stepUpToken = await openStepUp({
+        action: "FINANCIAL_DESTINATION_UPDATE",
+        organizationId: orgId,
+        actionParams: { organizationId: orgId },
+        title: "Confirmar destino financeiro",
+        description: "Esta alteração muda para onde o dinheiro da organização é enviado.",
+        preview: [],
+      });
+      return legalFinancialApi.setFinancialDestination(orgId, payload, stepUpToken);
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: legalFinancialKeys.profile(orgId) }),
   });
 }
@@ -96,8 +123,18 @@ export function useLegalFinancialRecipient(orgId: number | null) {
 
 export function useCreateRecipient(orgId: number) {
   const qc = useQueryClient();
+  const { openStepUp } = useStepUp();
   return useMutation({
-    mutationFn: () => legalFinancialApi.createRecipient(orgId),
+    mutationFn: async () => {
+      const stepUpToken = await openStepUp({
+        action: "RECIPIENT_CREATE_OR_UPDATE",
+        organizationId: orgId,
+        actionParams: { organizationId: orgId },
+        title: "Confirmar criação do recebedor",
+        preview: [],
+      });
+      return legalFinancialApi.createRecipient(orgId, stepUpToken);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: legalFinancialKeys.recipient(orgId) });
       qc.invalidateQueries({ queryKey: legalFinancialKeys.profile(orgId) });

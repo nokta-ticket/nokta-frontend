@@ -1,4 +1,5 @@
 import api from "@/lib/axios";
+import { STEP_UP_TOKEN_HEADER } from "@/services/step-up";
 
 export type LegalType = "INDIVIDUAL" | "COMPANY";
 export type VerificationStatus =
@@ -178,6 +179,8 @@ export interface SubmitResult {
 
 const base = (organizationId: number) => `/organizations/${organizationId}/legal-financial-profile`;
 
+const stepUpHeaders = (stepUpToken: string) => ({ headers: { [STEP_UP_TOKEN_HEADER]: stepUpToken } });
+
 export const legalFinancialApi = {
   getProfile: (organizationId: number) => api.get<LegalFinancialProfile>(base(organizationId)).then((r) => r.data),
 
@@ -199,16 +202,19 @@ export const legalFinancialApi = {
   patchBankAccount: (organizationId: number, payload: BankAccountPayload) =>
     api.patch<LegalFinancialDraft>(`${base(organizationId)}/draft/bank-account`, payload).then((r) => r.data),
 
-  submit: (organizationId: number) => api.post<SubmitResult>(`${base(organizationId)}/submit`).then((r) => r.data),
+  // submit, financial-destination e recipient exigem reautenticação reforçada (StepUpGuard no backend): sem o token respondem 403.
+  submit: (organizationId: number, stepUpToken: string) =>
+    api.post<SubmitResult>(`${base(organizationId)}/submit`, undefined, stepUpHeaders(stepUpToken)).then((r) => r.data),
 
   // ── Destino financeiro (Pix) ──────────────────────────────────────────
-  setFinancialDestination: (organizationId: number, payload: SetFinancialDestinationPayload) =>
-    api.post<LegalFinancialProfile>(`${base(organizationId)}/financial-destination`, payload).then((r) => r.data),
+  setFinancialDestination: (organizationId: number, payload: SetFinancialDestinationPayload, stepUpToken: string) =>
+    api.post<LegalFinancialProfile>(`${base(organizationId)}/financial-destination`, payload, stepUpHeaders(stepUpToken)).then((r) => r.data),
 
   // ── Recipient (leitura + retry manual) ─────────────────────────────────
   getRecipient: (organizationId: number) => api.get<RecipientStatus>(`${base(organizationId)}/recipient`).then((r) => r.data),
 
-  createRecipient: (organizationId: number) => api.post<RecipientStatus>(`${base(organizationId)}/recipient`).then((r) => r.data),
+  createRecipient: (organizationId: number, stepUpToken: string) =>
+    api.post<RecipientStatus>(`${base(organizationId)}/recipient`, undefined, stepUpHeaders(stepUpToken)).then((r) => r.data),
 
   // ── Prova de vida / KYC ─────────────────────────────────────────────────
   generateKycLink: (organizationId: number) => api.post<KycLinkResult>(`${base(organizationId)}/kyc-link`).then((r) => r.data),

@@ -6,6 +6,7 @@ import { getErrorMessage } from "@/lib/axios";
 import { useAuth } from "@/context/AuthContext";
 import { DRAFT_STEP_ORDER, type DraftStep, type LegalFinancialDraft, type LegalFinancialProfile } from "@/services/venue-legal-financial";
 import {
+  STEP_UP_CANCELLED_MESSAGE,
   useLegalFinancialDraft,
   usePatchAddress,
   usePatchBankAccount,
@@ -79,7 +80,12 @@ export function LegalFinancialWizard({ orgId, profile }: { orgId: number; profil
   const representativeName = user ? `${user.nome ?? ""} ${user.sobrenome ?? ""}`.trim() : "";
 
   const handleSubmitFinal = () => {
-    submit.mutate(undefined, {
+    const preview = [
+      { label: draft.legalType === "COMPANY" ? "Razão social" : "Nome", value: draft.legalName ?? "—" },
+      { label: draft.legalType === "COMPANY" ? "CNPJ" : "CPF", value: draft.documentMasked ?? "—" },
+      { label: "Conta bancária", value: draft.bankAccountMasked ?? "—" },
+    ];
+    submit.mutate(preview, {
       onSuccess: (result) => {
         if (result.recipient.created) {
           toast.success("Recebedor criado na Pagar.me.");
@@ -89,7 +95,10 @@ export function LegalFinancialWizard({ orgId, profile }: { orgId: number; profil
           );
         }
       },
-      onError: (err) => toast.error(getErrorMessage(err, "Não foi possível enviar os dados. Tente novamente.")),
+      onError: (err) => {
+        if (err instanceof Error && err.message === STEP_UP_CANCELLED_MESSAGE) return;
+        toast.error(getErrorMessage(err, "Não foi possível enviar os dados. Tente novamente."));
+      },
     });
   };
 
