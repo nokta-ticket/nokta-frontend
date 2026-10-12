@@ -23,6 +23,7 @@ import { StepAddress, emptyAddressStep } from "./_steps/step-address";
 import { StepBankAccount, emptyBankAccount } from "./_steps/step-bank-account";
 import { StepReview } from "./_steps/step-review";
 import { StepStatus } from "./_steps/step-status";
+import { decimalToMoney } from "./types";
 
 const STEP_LABELS: Record<DraftStep, string> = {
   RESPONSIBLE_TYPE: "Responsável",
@@ -204,7 +205,7 @@ function draftToEntityDetails(draft: LegalFinancialDraft) {
     legalName: draft.legalName ?? "",
     tradeName: draft.tradeName ?? "",
     siteUrl: draft.company.siteUrl ?? "",
-    annualRevenue: draft.company.annualRevenue ?? "",
+    annualRevenue: decimalToMoney(draft.company.annualRevenue),
     corporationType: draft.company.corporationType ?? "",
     foundingDate: draft.company.foundingDate ? draft.company.foundingDate.slice(0, 10) : "",
     phone: draft.company.phone ? { ddd: draft.company.phone.ddd, number: draft.company.phone.number } : emptyEntityDetails().phone,

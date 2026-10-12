@@ -9,7 +9,7 @@ import { formatCnpj, formatCpf, normalizeDigits, validateCnpj, validateCpf } fro
 import { toast } from "@/lib/toast";
 import type { LegalType } from "@/services/venue-legal-financial";
 import { PhoneFields } from "../_sections/phone-fields";
-import { emptyPhone, isPhoneComplete, type PhoneForm } from "../types";
+import { emptyPhone, isPhoneComplete, maskMoney, moneyToDecimal, type PhoneForm } from "../types";
 
 export interface EntityDetailsFormState {
   legalName: string;
@@ -46,14 +46,24 @@ export function StepEntityDetails({
   const documentDigits = normalizeDigits(value.document);
   const documentValid = isCompany ? validateCnpj(documentDigits) : validateCpf(documentDigits);
 
-  const canAdvance = value.legalName.trim().length >= 2 && documentValid && (!isCompany || (Number(value.annualRevenue.replace(",", ".")) > 0 && isPhoneComplete(value.phone)));
+  const annualRevenue = moneyToDecimal(value.annualRevenue);
+
+  // Aponta o campo que falta: uma mensagem única para os quatro não dizia qual corrigir.
+  const missing = (() => {
+    if (value.legalName.trim().length < 2) return isCompany ? "Preencha a razão social." : "Preencha seu nome completo.";
+    if (!documentValid) return isCompany ? "Informe um CNPJ válido." : "Informe um CPF válido.";
+    if (!isCompany) return null;
+    if (!(Number(annualRevenue) > 0)) return "Informe o faturamento anual da empresa.";
+    if (!isPhoneComplete(value.phone)) return "Informe o DDD e o telefone da empresa.";
+    return null;
+  })();
 
   const handleSubmit = () => {
-    if (!canAdvance) {
-      toast.error(isCompany ? "Preencha razão social, CNPJ válido, faturamento e telefone." : "Preencha seu nome completo e um CPF válido.");
+    if (missing) {
+      toast.error(missing);
       return;
     }
-    onSubmit(value);
+    onSubmit({ ...value, annualRevenue });
   };
 
   return (
@@ -101,7 +111,7 @@ export function StepEntityDetails({
               </div>
               <div className="space-y-1.5">
                 <Label>Faturamento anual (R$)</Label>
-                <Input value={value.annualRevenue} onChange={(e) => set("annualRevenue", e.target.value.replace(/[^0-9.,]/g, ""))} placeholder="500000.00" inputMode="decimal" />
+                <Input value={value.annualRevenue} onChange={(e) => set("annualRevenue", maskMoney(e.target.value))} placeholder="500.000,00" inputMode="numeric" />
               </div>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">

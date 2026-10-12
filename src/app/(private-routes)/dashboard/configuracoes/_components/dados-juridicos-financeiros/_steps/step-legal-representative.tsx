@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCpf, validateCpf } from "@/lib/br-data";
 import { toast } from "@/lib/toast";
+import { maskMoney, moneyToDecimal } from "../types";
 
 export interface LegalRepresentativeFormState {
   document: string;
@@ -44,7 +45,7 @@ export function StepLegalRepresentative({
     documentValid &&
     value.motherName.trim().length >= 2 &&
     !!value.birthdate &&
-    Number(value.monthlyIncome.replace(",", ".")) > 0 &&
+    Number(moneyToDecimal(value.monthlyIncome)) > 0 &&
     value.professionalOccupation.trim().length >= 2;
 
   const handleSubmit = () => {
@@ -52,7 +53,7 @@ export function StepLegalRepresentative({
       toast.error("Preencha CPF válido, nome da mãe, data de nascimento, renda e ocupação.");
       return;
     }
-    onSubmit(value);
+    onSubmit({ ...value, monthlyIncome: moneyToDecimal(value.monthlyIncome) });
   };
 
   return (
@@ -104,7 +105,7 @@ export function StepLegalRepresentative({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label>Renda mensal (R$)</Label>
-            <Input value={value.monthlyIncome} onChange={(e) => set("monthlyIncome", e.target.value.replace(/[^0-9.,]/g, ""))} placeholder="15000.00" inputMode="decimal" />
+            <Input value={value.monthlyIncome} onChange={(e) => set("monthlyIncome", maskMoney(e.target.value))} placeholder="15.000,00" inputMode="numeric" />
           </div>
           <div className="space-y-1.5">
             <Label>Ocupação profissional</Label>
