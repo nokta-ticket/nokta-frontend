@@ -8,7 +8,7 @@ import { toast } from "@/lib/toast";
 import type { LegalType } from "@/services/venue-legal-financial";
 import { AddressFields } from "../_sections/address-fields";
 import { PhoneFields } from "../_sections/phone-fields";
-import { emptyAddress, emptyPhone, isAddressComplete, isPhoneComplete, type AddressForm, type PhoneForm } from "../types";
+import { emptyAddress, emptyPhone, isPhoneComplete, missingAddressField, type AddressForm, type PhoneForm } from "../types";
 
 export interface AddressStepFormState {
   address: AddressForm;
@@ -35,21 +35,7 @@ export function StepAddress({
   const [value, setValue] = useState(initialValue);
   const isCompany = legalType === "COMPANY";
 
-  // Aponta o campo que falta. Complemento e ponto de referência são exigidos pela Pagar.me e eram os que mais passavam em branco.
-  const missing = (() => {
-    const { address } = value;
-    if (address.zipCode.replace(/\D/g, "").length !== 8) return "Informe o CEP com 8 dígitos.";
-    if (!address.street.trim()) return "Preencha a rua.";
-    if (!address.streetNumber.trim()) return "Preencha o número.";
-    if (!address.complementary.trim()) return 'Preencha o complemento. Se não houver, escreva "Casa" ou "Sem complemento".';
-    if (!address.neighborhood.trim()) return "Preencha o bairro.";
-    if (!address.city.trim()) return "Preencha a cidade.";
-    if (address.state.trim().length !== 2) return "Informe a UF com 2 letras.";
-    if (!address.referencePoint.trim()) return "Preencha o ponto de referência.";
-    if (!isAddressComplete(address)) return "Preencha o endereço completo.";
-    if (!isPhoneComplete(value.phone)) return "Informe o DDD e o telefone.";
-    return null;
-  })();
+  const missing = missingAddressField(value.address) ?? (isPhoneComplete(value.phone) ? null : "Informe o DDD e o telefone.");
 
   const handleSubmit = () => {
     if (missing) {

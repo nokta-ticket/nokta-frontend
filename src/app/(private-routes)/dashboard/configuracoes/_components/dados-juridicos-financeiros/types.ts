@@ -22,19 +22,6 @@ export function emptyPhone(): PhoneForm {
   return { ddd: "", number: "" };
 }
 
-export function isAddressComplete(address: AddressForm): boolean {
-  return Boolean(
-    address.street.trim() &&
-      address.complementary.trim() &&
-      address.streetNumber.trim() &&
-      address.neighborhood.trim() &&
-      address.city.trim() &&
-      address.state.trim().length === 2 &&
-      address.zipCode.replace(/\D/g, "").length === 8 &&
-      address.referencePoint.trim(),
-  );
-}
-
 /**
  * Máscara de valor em reais digitado como centavos ("50000000" → "500.000,00").
  * O campo guarda sempre o texto mascarado; quem envia para a API converte com
@@ -61,6 +48,19 @@ export function decimalToMoney(value?: string | null): string {
   const amount = Number(value);
   if (!value || !Number.isFinite(amount) || amount <= 0) return "";
   return maskMoney(amount.toFixed(2));
+}
+
+/** Mensagem do primeiro campo de endereço em branco, ou null se estiver completo. Complemento e ponto de referência são exigidos pela Pagar.me. */
+export function missingAddressField(address: AddressForm): string | null {
+  if (address.zipCode.replace(/\D/g, "").length !== 8) return "Informe o CEP com 8 dígitos.";
+  if (!address.street.trim()) return "Preencha a rua.";
+  if (!address.streetNumber.trim()) return "Preencha o número.";
+  if (!address.complementary.trim()) return 'Preencha o complemento. Se não houver, escreva "Casa" ou "Sem complemento".';
+  if (!address.neighborhood.trim()) return "Preencha o bairro.";
+  if (!address.city.trim()) return "Preencha a cidade.";
+  if (address.state.trim().length !== 2) return "Informe a UF com 2 letras.";
+  if (!address.referencePoint.trim()) return "Preencha o ponto de referência.";
+  return null;
 }
 
 export function isPhoneComplete(phone: PhoneForm): boolean {

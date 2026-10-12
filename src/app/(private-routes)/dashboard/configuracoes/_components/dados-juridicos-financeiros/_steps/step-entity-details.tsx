@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { formatCnpj, formatCpf, normalizeDigits, validateCnpj, validateCpf } from "@/lib/br-data";
 import { toast } from "@/lib/toast";
 import type { LegalType } from "@/services/venue-legal-financial";
+import { AddressFields } from "../_sections/address-fields";
 import { PhoneFields } from "../_sections/phone-fields";
-import { emptyPhone, isPhoneComplete, maskMoney, moneyToDecimal, type PhoneForm } from "../types";
+import { emptyAddress, emptyPhone, isPhoneComplete, maskMoney, missingAddressField, moneyToDecimal, type AddressForm, type PhoneForm } from "../types";
 
 export interface EntityDetailsFormState {
   legalName: string;
@@ -20,10 +21,12 @@ export interface EntityDetailsFormState {
   corporationType: string;
   foundingDate: string;
   phone: PhoneForm;
+  /** Endereço da empresa (só PJ) — exigido pela Pagar.me para criar o recebedor. */
+  address: AddressForm;
 }
 
 export function emptyEntityDetails(): EntityDetailsFormState {
-  return { legalName: "", tradeName: "", document: "", siteUrl: "", annualRevenue: "", corporationType: "", foundingDate: "", phone: emptyPhone() };
+  return { legalName: "", tradeName: "", document: "", siteUrl: "", annualRevenue: "", corporationType: "", foundingDate: "", phone: emptyPhone(), address: emptyAddress() };
 }
 
 export function StepEntityDetails({
@@ -55,7 +58,7 @@ export function StepEntityDetails({
     if (!isCompany) return null;
     if (!(Number(annualRevenue) > 0)) return "Informe o faturamento anual da empresa.";
     if (!isPhoneComplete(value.phone)) return "Informe o DDD e o telefone da empresa.";
-    return null;
+    return missingAddressField(value.address);
   })();
 
   const handleSubmit = () => {
@@ -127,6 +130,10 @@ export function StepEntityDetails({
             <div>
               <Label className="mb-3 block text-xs text-black/50">Telefone da empresa</Label>
               <PhoneFields value={value.phone} onChange={(phone) => set("phone", phone)} idPrefix="empresa-telefone" />
+            </div>
+            <div>
+              <Label className="mb-3 block text-xs text-black/50">Endereço da empresa</Label>
+              <AddressFields value={value.address} onChange={(address) => set("address", address)} idPrefix="empresa-endereco" />
             </div>
           </>
         ) : null}

@@ -152,6 +152,7 @@ export interface PatchEntityDetailsPayload {
   corporationType?: string;
   foundingDate?: string;
   phone?: LegalFinancialPhone;
+  address?: LegalFinancialAddress;
 }
 
 export interface PatchLegalRepresentativePayload {

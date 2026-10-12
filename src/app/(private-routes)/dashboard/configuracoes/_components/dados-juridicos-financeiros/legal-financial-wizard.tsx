@@ -138,6 +138,7 @@ export function LegalFinancialWizard({ orgId, profile }: { orgId: number; profil
                 corporationType: value.corporationType || undefined,
                 foundingDate: value.foundingDate || undefined,
                 phone: draft.legalType === "COMPANY" ? value.phone : undefined,
+                address: draft.legalType === "COMPANY" ? value.address : undefined,
               },
               { onSuccess: clearViewOverride, onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar.")) },
             )
@@ -221,5 +222,7 @@ function draftToEntityDetails(draft: LegalFinancialDraft) {
     corporationType: draft.company.corporationType ?? "",
     foundingDate: draft.company.foundingDate ? draft.company.foundingDate.slice(0, 10) : "",
     phone: draft.company.phone ? { ddd: draft.company.phone.ddd, number: draft.company.phone.number } : emptyEntityDetails().phone,
+    // Só PJ: no PF os campos company.address guardam o endereço da pessoa, que pertence à etapa Endereço.
+    address: draft.legalType === "COMPANY" ? draftToAddressStep(draft).address : emptyEntityDetails().address,
   };
 }
