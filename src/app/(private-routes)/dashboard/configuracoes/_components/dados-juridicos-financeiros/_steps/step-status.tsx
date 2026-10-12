@@ -106,7 +106,8 @@ export function StepStatus({ orgId, profile }: { orgId: number; profile: LegalFi
           <p className="text-xs text-red-600">A última tentativa de criar o recebedor falhou: {profile.recipientLastError}</p>
         ) : null}
 
-        {profile.hasRecipient ? (
+        {/* Recebedor já ativo na Pagar.me não precisa de prova de vida: o link só aparece enquanto o cadastro está em análise. */}
+        {profile.hasRecipient && profile.recipientStatus !== "active" ? (
           <div className="rounded-xl border border-[#ecebf1] bg-black/[0.02] p-3.5">
             <p className="text-xs text-black/60">
               Cadastro criado não significa saldo liberado — a Pagar.me pode pedir uma verificação de identidade adicional (prova de vida) antes de
