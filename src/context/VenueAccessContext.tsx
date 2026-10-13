@@ -3,6 +3,7 @@
 import { createContext, useContext, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/axios";
+import { venueAccessQueryKey } from "./dashboard-query-keys";
 import { useOrganizations } from "./OrganizationContext";
 import type { VenueMeAccess, VenueRoleKey } from "@/services/venue-team";
 
@@ -20,7 +21,6 @@ interface VenueAccessContextType {
 
 const VenueAccessContext = createContext<VenueAccessContextType | undefined>(undefined);
 
-const venueAccessQueryKey = (orgId: number) => ["organizations", orgId, "me", "access"] as const;
 
 export function VenueAccessProvider({ children }: { children: ReactNode }) {
   const { currentOrg } = useOrganizations();

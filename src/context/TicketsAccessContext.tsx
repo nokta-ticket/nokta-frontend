@@ -2,6 +2,7 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ticketsAccessQueryKey } from "./dashboard-query-keys";
 import { ticketsAccessApi, type TicketsMeAccess, type TicketsRoleKey } from "@/services/promoters";
 import { useOrganizations } from "./OrganizationContext";
 
@@ -17,7 +18,6 @@ interface TicketsAccessContextType {
 
 const TicketsAccessContext = createContext<TicketsAccessContextType | undefined>(undefined);
 
-const ticketsAccessQueryKey = (orgId: number) => ["organizations", orgId, "tickets", "access"] as const;
 
 export function TicketsAccessProvider({ children }: { children: ReactNode }) {
   const { currentOrg } = useOrganizations();

@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { platformApi, type ActivateBusinessNeedsPayload, type SaveBusinessProfilePayload } from "@/services/platform";
 
-const platformKeys = {
+export const platformKeys = {
   businessProfile: (orgId: number) => ["platform", orgId, "business-profile"] as const,
   capabilities: (orgId: number) => ["platform", orgId, "capabilities"] as const,
   explore: (orgId: number) => ["platform", orgId, "explore"] as const,

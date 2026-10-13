@@ -3,6 +3,8 @@
 import { Suspense, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useOrganizations } from "@/context/OrganizationContext";
+import { useTicketsAccess } from "@/context/TicketsAccessContext";
+import { writeBootHint } from "../_lib/boot-prefetch";
 import { PageContainer } from "../_components/page/page-container";
 import { PageHeader } from "../_components/page/page-header";
 import { BlockSkeleton } from "../_components/states/loading-state";
@@ -27,13 +29,26 @@ import { InicioContent } from "./_components/inicio-content";
  */
 function InicioDispatcher() {
   const router = useRouter();
-  const { currentOrg, activeModuleKeys, loadingOrgs, loadingModules } = useOrganizations();
+  const { currentOrg, activeModuleKeys, loadingOrgs, loadingModules, organizations } = useOrganizations();
+  const { can: canTickets, loading: loadingTicketsAccess } = useTicketsAccess();
 
   const onboardingPending = !loadingOrgs && (currentOrg === null || (!loadingModules && activeModuleKeys.length === 0));
 
   useEffect(() => {
     if (onboardingPending) router.replace("/dashboard/onboarding");
   }, [onboardingPending, router]);
+
+  // Organização sem bar e restaurante: a dica da próxima abertura sai daqui
+  // (a do bar é gravada pela própria Início do bar, que conhece a unidade).
+  const orgId = currentOrg?.id ?? null;
+  const hasVenue = activeModuleKeys.includes("venue");
+  const ready = !loadingOrgs && !loadingModules && !loadingTicketsAccess && !onboardingPending;
+  const canTicketsFinance = canTickets("tickets.finance.view");
+  useEffect(() => {
+    if (!ready || orgId === null || hasVenue || organizations[0]?.id !== orgId) return;
+    writeBootHint({ orgId, venue: false, locationId: null, venueFinance: false, ticketsFinance: canTicketsFinance, insights: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, orgId, hasVenue, canTicketsFinance]);
 
   if (loadingOrgs || onboardingPending || (currentOrg && loadingModules)) {
     return (

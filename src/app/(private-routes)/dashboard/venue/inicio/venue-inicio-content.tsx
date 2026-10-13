@@ -44,6 +44,7 @@ import { useVenueFinanceTimeline } from "../../financeiro/_venue/_hooks/use-venu
 import { useTicketsFinanceTimeline } from "../../inicio/_hooks/use-tickets-finance";
 import { useVenueInsightsOverview } from "../../insights/_venue/_hooks/use-venue-insights";
 import { useVenueHome } from "./_hooks/use-venue-home";
+import { writeBootHint } from "../../_lib/boot-prefetch";
 import { SalesByHourCard, TopProductsCard } from "./_components/home-insights";
 import { summarizePresence } from "./_lib/reservation-presence";
 
@@ -126,7 +127,7 @@ function HomeSkeleton() {
 export function VenueInicioPageContent() {
   const router = useRouter();
   const { loading: loadingAccess, defaultRoute, can } = useVenueAccess();
-  const { currentOrg, loadingOrgs } = useOrganizations();
+  const { currentOrg, loadingOrgs, organizations } = useOrganizations();
   const orgId = currentOrg?.id ?? null;
 
   useEffect(() => {
@@ -193,6 +194,24 @@ export function VenueInicioPageContent() {
     ...periodParams,
     comparison: "PREVIOUS_PERIOD",
   });
+
+  // Dica para a próxima abertura disparar tudo de uma vez (boot-prefetch.ts).
+  // Só para a organização que o painel abre por padrão (a primeira) e para a
+  // unidade padrão: é o que a tela mostra depois de recarregar.
+  const hasHome = Boolean(home);
+  const canTicketsFinance = ticketsOrgId !== null;
+  useEffect(() => {
+    if (orgId === null || !hasHome || locationId !== null || organizations[0]?.id !== orgId) return;
+    writeBootHint({
+      orgId,
+      venue: true,
+      locationId: selectedLocationId,
+      venueFinance: canViewFinance,
+      ticketsFinance: canTicketsFinance,
+      insights: canViewInsights,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId, hasHome, locationId, selectedLocationId, canViewFinance, canTicketsFinance, canViewInsights]);
 
   if (loadingAccess || redirecting || loadingOrgs || loadingLocations) {
     return <HomeSkeleton />;

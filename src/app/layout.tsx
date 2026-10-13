@@ -53,6 +53,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR" className={`${poppins.variable} ${spaceGrotesk.variable}`}>
+      <head>
+        {/* A API fica em outro domínio. Abrir a conexão (DNS + TLS) enquanto o
+            JavaScript ainda está baixando tira esse tempo da primeira chamada,
+            o que pesa em rede móvel. Cada superfície usa só um dos dois hosts;
+            o outro é uma conexão ociosa que o navegador descarta. */}
+        <link rel="preconnect" href="https://api.nokta.live" crossOrigin="use-credentials" />
+        <link rel="preconnect" href="https://api.noktatickets.com.br" crossOrigin="use-credentials" />
+      </head>
       <body className="bg-white antialiased font-sans" suppressHydrationWarning>
         <AuthProvider>
           <StepUpProvider>

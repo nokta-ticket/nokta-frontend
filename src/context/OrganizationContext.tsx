@@ -1,8 +1,11 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/axios";
+import { prefetchDashboardBoot, readBootHint } from "@/app/(private-routes)/dashboard/_lib/boot-prefetch";
+import { modulesQueryKey, organizationsQueryKey } from "./dashboard-query-keys";
 
 export interface Organization {
   id: number;
@@ -38,11 +41,22 @@ const OrganizationContext = createContext<OrganizationContextType | undefined>(
   undefined,
 );
 
-const organizationsQueryKey = ["me", "organizations"] as const;
-const modulesQueryKey = (orgId: number) => ["organizations", orgId, "modules"] as const;
-
 export function OrganizationProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+  const pathname = usePathname();
+
+  // Abertura em uma ida só (2026-10-13): dispara módulos, acessos, menu e, na
+  // Início, os dados da tela para a última organização aberta, em paralelo
+  // com /me/organizations. Roda uma vez, depois da hidratação. Ver
+  // dashboard/_lib/boot-prefetch.ts.
+  useEffect(() => {
+    const hint = readBootHint();
+    if (!hint) return;
+    const isInicio = pathname === "/dashboard" || pathname.startsWith("/dashboard/inicio");
+    prefetchDashboardBoot(queryClient, hint, isInicio);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Achado de performance mobile (2026-08-21): OrganizationContext,
   // VenueAccessContext e TicketsAccessContext refaziam suas chamadas de API
   // do zero (useState/useEffect cru, sem cache) toda vez que o dashboard

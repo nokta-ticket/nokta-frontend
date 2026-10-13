@@ -1,5 +1,6 @@
 import { HelpCircle, ArrowRight } from "lucide-react";
-import { Bricolage_Grotesque, Caveat } from "next/font/google";
+import { Bricolage_Grotesque } from "next/font/google";
+import localFont from "next/font/local";
 import Link from "next/link";
 import NotifyMeForm from "./notify-me-form";
 
@@ -9,9 +10,15 @@ const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
 });
 
-const caveat = Caveat({
-  subsets: ["latin"],
-  weight: ["600", "700"],
+// Caveat hospedada no repositório (arquivo variável, subconjunto latino), não
+// mais via next/font/google: em 2026-10-13 o Google passou a devolver, em
+// parte das respostas, um endereço de arquivo sem extensão para esta fonte, e
+// o next/font quebra o build inteiro ("Cannot read properties of null
+// (reading '1')"). Derrubou dois deploys seguidos na Vercel.
+const caveat = localFont({
+  src: "../../assets/fonts/Caveat-latin.woff2",
+  weight: "600 700",
+  display: "swap",
   variable: "--font-caveat",
 });
 
