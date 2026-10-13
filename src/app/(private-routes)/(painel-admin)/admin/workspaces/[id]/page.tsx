@@ -47,6 +47,7 @@ interface Workspace {
   modules: { module: string; ativo: boolean }[];
   members: { id: number; userId: number; nome: string; email: string; role: string; status: string }[];
   legalFinancial: { verificationStatus: string; recipientStatus: string | null; recipientBlocked: boolean } | null;
+  taxas?: { taxaServicoPercent: number };
   counts: {
     members: number;
     events: number;
@@ -112,6 +113,10 @@ export default function WorkspaceDetalhesPage() {
   const [blockLoading, setBlockLoading] = useState(false);
 
   const [moduleLoading, setModuleLoading] = useState<string | null>(null);
+
+  const [feeEditing, setFeeEditing] = useState(false);
+  const [feeValue, setFeeValue] = useState("");
+  const [feeSaving, setFeeSaving] = useState(false);
 
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -224,6 +229,27 @@ export default function WorkspaceDetalhesPage() {
     }
   }
 
+  async function handleSaveFee() {
+    const percent = Number(feeValue.replace(",", "."));
+    if (feeValue.trim() === "" || !Number.isFinite(percent) || percent < 0 || percent > 100) {
+      toast.error("Informe uma taxa entre 0 e 100.");
+      return;
+    }
+    setFeeSaving(true);
+    try {
+      const res = await api.patch<Workspace>(`/admin/workspaces/${ws.id}/taxas`, {
+        taxaServicoPercent: Math.round(percent * 100) / 100,
+      });
+      setWorkspace(res.data);
+      setFeeEditing(false);
+      toast.success("Taxa atualizada. Vale para as próximas compras.");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Não foi possível alterar a taxa."));
+    } finally {
+      setFeeSaving(false);
+    }
+  }
+
   async function handleDelete() {
     setDeleteLoading(true);
     try {
@@ -237,6 +263,8 @@ export default function WorkspaceDetalhesPage() {
     }
   }
 
+  // A API antiga (antes do deploy) não devolve `taxas`.
+  const feePercent = ws.taxas?.taxaServicoPercent ?? 10;
   const ownerName = ws.owner ? `${ws.owner.nome ?? ""} ${ws.owner.sobrenome ?? ""}`.trim() || "Sem nome" : "—";
 
   return (
@@ -393,6 +421,75 @@ export default function WorkspaceDetalhesPage() {
           <Field label="Produtos" value={ws.counts.venueProducts} />
           <Field label="Comandas" value={ws.counts.venueTabs} />
           <Field label="Reservas" value={ws.counts.venueReservations} />
+        </div>
+      </section>
+
+      {/* Taxas */}
+      <section className="space-y-3">
+        <h2 className="text-base font-semibold">Taxas de ingressos</h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-lg border bg-white p-4">
+            <p className="text-xs text-muted-foreground">Taxa da Nokta</p>
+            {feeEditing ? (
+              <div className="mt-2 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Input
+                    inputMode="decimal"
+                    value={feeValue}
+                    onChange={(e) => setFeeValue(e.target.value)}
+                    className="w-24"
+                    aria-label="Taxa da Nokta em porcentagem"
+                    autoFocus
+                  />
+                  <span className="text-sm text-muted-foreground">%</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => void handleSaveFee()}
+                    disabled={feeSaving}
+                    className="bg-violet-600 text-white hover:bg-violet-700"
+                  >
+                    {feeSaving ? "Salvando..." : "Salvar"}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setFeeEditing(false)} disabled={feeSaving}>
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-1 flex items-center justify-between gap-2">
+                <p className="text-sm font-medium text-gray-900">
+                  {feePercent.toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%
+                </p>
+                {isSuperAdmin && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setFeeValue(String(feePercent).replace(".", ","));
+                      setFeeEditing(true);
+                    }}
+                  >
+                    <Pencil className="mr-2 h-3.5 w-3.5" />
+                    Alterar
+                  </Button>
+                )}
+              </div>
+            )}
+            <p className="mt-2 text-xs text-muted-foreground">Sobre o valor do ingresso, paga pelo comprador.</p>
+          </div>
+          <div className="rounded-lg border bg-white p-4">
+            <p className="text-xs text-muted-foreground">Processamento (Pagar.me)</p>
+            <p className="mt-1 text-sm font-medium text-gray-900">Pago pelo comprador</p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Varia por Pix, cartão e parcelas e vale para todos os workspaces.{" "}
+              <Link href="/admin/taxas-gateway" className="text-violet-700 hover:underline">
+                Ver taxas do gateway
+              </Link>
+            </p>
+          </div>
+          <Field label="Produtor recebe" value="Valor integral do ingresso" />
         </div>
       </section>
 

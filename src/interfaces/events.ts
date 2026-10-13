@@ -28,6 +28,8 @@ export interface GetEvents {
 export interface EventDetails {
   id: string;
   slug?: string | null;
+  /** Taxa de serviço da Nokta (%) cobrada do comprador neste evento. */
+  taxaServicoPercent?: number;
   nome: string;
   descricao: string;
   programacao: string;

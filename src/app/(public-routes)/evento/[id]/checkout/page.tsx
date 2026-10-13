@@ -38,7 +38,7 @@ interface PaymentForm {
 }
 
 // ── Rate constants ─────────────────────────────────────────────
-const TAXA_SERVICO   = 0.10;    // Nokta platform fee
+const TAXA_SERVICO   = 0.10;    // Taxa de serviço padrão; o evento informa a do workspace
 const TAXA_PROTECAO  = 0.1284;
 
 // Pagar.me gateway rates
@@ -475,7 +475,8 @@ function CheckoutContent() {
 
   const valorDesconto = round2(subtotalBruto - subtotal);
 
-  const taxaServico = round2(subtotal * TAXA_SERVICO);
+  const taxaServicoRate = evento?.taxaServicoPercent !== undefined ? evento.taxaServicoPercent / 100 : TAXA_SERVICO;
+  const taxaServico = round2(subtotal * taxaServicoRate);
   const taxaProtecao = round2(subtotal * TAXA_PROTECAO);
 
   const subtotalBase = round2(

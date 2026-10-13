@@ -96,7 +96,7 @@ function formatTicketDate(raw?: string | null) {
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
 }
 
-function calcTaxa(valor: number) { return Math.round(valor * 0.1 * 100) / 100; }
+function calcTaxa(valor: number, percent: number) { return Math.round(valor * percent) / 100; }
 
 // Espelha o cálculo do backend (gross-up + split em centavos)
 function calcInstallmentCents(
@@ -227,7 +227,10 @@ export default function EventoPageClient() {
     const qty = quantities[tk.id] ?? 0;
     return sum + precoComDesconto(tk.valor) * qty;
   }, 0);
-  const totalSubtotalCents = Math.round(totalValor * 1.1 * 100);
+  // Taxa de serviço do workspace dono do evento (10% quando a API não informa).
+  const taxaPercent = evento?.taxaServicoPercent ?? 10;
+  const totalComTaxa = totalValor + calcTaxa(totalValor, taxaPercent);
+  const totalSubtotalCents = Math.round(totalComTaxa * 100);
   const totalParcelado = (calcInstallmentCents(totalSubtotalCents, maxParcelas, maxSemJuros, cardRateBps, cardFixedCents) / 100).toFixed(2).replace('.', ',');
 
   async function handleAplicarCupom() {
@@ -553,7 +556,7 @@ export default function EventoPageClient() {
                   {tickets.map((tk) => {
                     const qty = quantities[tk.id] ?? 0;
                     const valorFinal = precoComDesconto(tk.valor);
-                    const taxa = calcTaxa(valorFinal);
+                    const taxa = calcTaxa(valorFinal, taxaPercent);
                     const limitDate = formatTicketDate(tk.dataLimite);
                     const isGratuito = valorFinal === 0;
                     // Lote sem unidades restantes: mostra "Esgotado" em vez de só travar o "+".
@@ -1015,7 +1018,7 @@ export default function EventoPageClient() {
                 {maxSemJuros > 0
                   ? `ou ${maxParcelas}x R$ ${totalParcelado}`
                   : `Parcele em até ${maxParcelas}x R$ ${totalParcelado}`}
-                <button type="button" onClick={() => openParcelasSheet(totalValor * 1.1)} className="inline-flex">
+                <button type="button" onClick={() => openParcelasSheet(totalComTaxa)} className="inline-flex">
                   <Info size={12} className="text-black hover:opacity-70 transition-opacity" />
                 </button>
               </span>

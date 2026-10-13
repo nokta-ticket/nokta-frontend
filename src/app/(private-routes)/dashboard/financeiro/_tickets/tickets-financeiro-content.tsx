@@ -100,7 +100,7 @@ function RowFees({ row }: { row: StatementRow }) {
     return (
       <div className="space-y-2.5">
         <p className="font-semibold">Estorno {row.reference}</p>
-        <FeeLine title="Comissão Nokta devolvida" hint={`${f.commissionPercent}% · volta para você`} value={brl(f.commissionCents)} />
+        {f.commissionCents !== 0 && <FeeLine title="Comissão Nokta devolvida" hint={`${f.commissionPercent}% · volta para você`} value={brl(f.commissionCents)} />}
         {f.buyerServiceFeeCents !== 0 && <FeeLine title="Taxa de serviço" hint="Devolvida ao comprador pela Nokta" value={brl(f.buyerServiceFeeCents)} muted />}
       </div>
     );
@@ -122,7 +122,7 @@ function RowFees({ row }: { row: StatementRow }) {
           {row.quantity ?? 1} ingresso{(row.quantity ?? 1) > 1 ? "s" : ""} · {brl(row.grossCents)}
         </p>
       </div>
-      <FeeLine title="Comissão Nokta" hint={`${f.commissionPercent}% · descontada do seu valor`} value={brl(f.commissionCents)} />
+      {f.commissionCents !== 0 && <FeeLine title="Comissão Nokta" hint={`${f.commissionPercent}% · descontada do seu valor`} value={brl(f.commissionCents)} />}
       <FeeLine title="Taxa de serviço" hint="Paga pelo comprador, por cima do ingresso" value={brl(f.buyerServiceFeeCents)} muted />
       <FeeLine title="Processamento Pagar.me" hint="Pago pelo comprador, por cima do ingresso" value={brl(f.buyerGatewayFeeCents)} muted />
       <div className="flex justify-between gap-3 border-t border-[#f2f0f7] pt-2.5 font-semibold">
@@ -141,7 +141,7 @@ function SummaryFees({ summary, label }: { summary: TicketsStatementSummary; lab
         <p className="font-semibold">Taxas do período</p>
         <p className="text-[12.5px] text-[#6b6878]">{label}</p>
       </div>
-      <FeeLine title="Comissão Nokta" hint="Descontada do seu valor (já com estornos)" value={brl(f.commissionCents)} />
+      {f.commissionCents !== 0 && <FeeLine title="Comissão Nokta" hint="Descontada do seu valor (já com estornos)" value={brl(f.commissionCents)} />}
       {f.producerGatewayFeeCents !== 0 && <FeeLine title="Processamento em contestações" hint="Não devolvido pela Pagar.me" value={brl(f.producerGatewayFeeCents)} />}
       <FeeLine title="Taxa de serviço" hint="Paga pelos compradores, por cima do ingresso" value={brl(f.buyerServiceFeeCents)} muted />
       <FeeLine title="Processamento Pagar.me" hint="Pago pelos compradores, por cima do ingresso" value={brl(f.buyerGatewayFeeCents)} muted />
@@ -1064,7 +1064,7 @@ function DetailSheet({ row, onClose }: { row: StatementRow | null; onClose: () =
                     {row.buyerName ? <DetailLine label="Comprador" value={row.buyerName} /> : null}
                     <DetailLine label="Ingressos" value={row.quantity ?? 1} />
                     <DetailLine label="Valor dos ingressos" value={brl(row.grossCents)} />
-                    <DetailLine label={`Comissão Nokta (${row.fees.commissionPercent}%)`} value={brl(row.fees.commissionCents)} />
+                    {row.fees.commissionCents !== 0 && <DetailLine label={`Comissão Nokta (${row.fees.commissionPercent}%)`} value={brl(row.fees.commissionCents)} />}
                     <DetailLine label="Entra no seu saldo" value={brl(row.netCents)} strong />
                     {row.releaseAt ? <DetailLine label={row.status === "CUSTODY" ? "Libera em" : "Liberado em"} value={fmtDay(row.releaseAt)} /> : null}
                   </dl>
@@ -1099,7 +1099,7 @@ function DetailSheet({ row, onClose }: { row: StatementRow | null; onClose: () =
                   {row.buyerName ? <DetailLine label="Comprador" value={row.buyerName} /> : null}
                   <DetailLine label="Ingressos estornados" value={row.quantity ?? 1} />
                   <DetailLine label="Valor dos ingressos" value={brl(row.grossCents)} />
-                  <DetailLine label="Comissão Nokta devolvida" value={brl(row.fees.commissionCents)} />
+                  {row.fees.commissionCents !== 0 && <DetailLine label="Comissão Nokta devolvida" value={brl(row.fees.commissionCents)} />}
                   <DetailLine label="Sai do seu saldo" value={brl(row.netCents)} strong />
                   {row.reason ? <DetailLine label="Motivo" value={row.reason} /> : null}
                 </dl>
