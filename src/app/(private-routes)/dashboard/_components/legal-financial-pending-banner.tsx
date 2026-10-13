@@ -30,7 +30,7 @@ export function LegalFinancialPendingBanner({ orgId }: { orgId: number | null })
   };
 
   return (
-    <div className="flex items-start justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+    <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm sm:flex-row sm:items-start sm:justify-between">
       <div className="flex items-start gap-2">
         <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber-600" />
         <div>
@@ -40,7 +40,7 @@ export function LegalFinancialPendingBanner({ orgId }: { orgId: number | null })
       </div>
       <Link
         href="/dashboard/configuracoes?tab=juridico-financeiro"
-        className="shrink-0 whitespace-nowrap rounded-md border border-amber-300 bg-white px-3 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100"
+        className="ml-6 flex h-10 shrink-0 items-center self-start whitespace-nowrap rounded-md border border-amber-300 bg-white px-3 text-[13px] font-medium text-amber-900 hover:bg-amber-100 sm:ml-0 sm:h-auto sm:py-1.5 sm:text-xs"
       >
         Completar dados
       </Link>

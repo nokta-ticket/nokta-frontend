@@ -42,7 +42,7 @@ export function ProdutosTab({ orgId, params }: { orgId: number; params: VenueIns
     <div className="space-y-6">
       <div className="space-y-2">
         <Tabs value={ranking} onValueChange={(v) => setRanking(v as RankingKey)}>
-          <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+          <div className="scrollbar-hide -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
             <TabsList className="w-max min-w-full sm:w-fit">
               {RANKING_TABS.map((t) => (
                 <TabsTrigger key={t.key} value={t.key}>{t.label}</TabsTrigger>

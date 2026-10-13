@@ -22,13 +22,13 @@ export function MetricCard({
   const positive = (delta ?? 0) >= 0;
 
   return (
-    <Card className="rounded-xl bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between text-sm font-medium text-black/60">
-        <span>{label}</span>
+    <Card className="min-w-0 rounded-xl bg-white p-3.5 shadow-sm sm:p-4">
+      <div className="flex items-center justify-between gap-2 text-[13px] font-medium text-black/60 sm:text-sm">
+        <span className="min-w-0 truncate">{label}</span>
         {icon}
       </div>
-      <div className="mt-2 flex items-end justify-between gap-2">
-        <span className="text-3xl font-semibold text-gray-900">{value}</span>
+      <div className="mt-2 flex flex-col items-start gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-2">
+        <span className="min-w-0 text-[19px] leading-tight font-semibold tabular-nums text-gray-900 sm:text-3xl">{value}</span>
         {hasDelta ? (
           <span
             className={cn(
@@ -40,7 +40,7 @@ export function MetricCard({
             {Math.abs(delta as number).toFixed(1)}%
           </span>
         ) : (
-          <span className="text-xs text-black/30">—</span>
+          <span className="hidden text-xs text-black/30 sm:inline">—</span>
         )}
       </div>
     </Card>

@@ -74,8 +74,8 @@ export function MembersTab({ orgId, onOpenMember }: { orgId: number; onOpenMembe
             </Avatar>
 
             <button className="min-w-0 flex-1 text-left" onClick={() => onOpenMember(m.memberId)}>
-              <div className="flex items-center gap-2">
-                <p className="truncate font-medium text-gray-900">{m.nome}</p>
+              <div className="flex flex-wrap items-center gap-x-2">
+                <p className="max-w-full truncate font-medium text-gray-900">{m.nome}</p>
                 {m.isOrgOwner ? (
                   <span className="flex items-center gap-1 text-xs font-medium text-violet-700">
                     <ShieldCheck size={12} /> Proprietário
@@ -109,7 +109,7 @@ export function MembersTab({ orgId, onOpenMember }: { orgId: number; onOpenMembe
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="w-9" />
+              <div className="hidden w-9 sm:block" />
             )}
           </div>
         ))}

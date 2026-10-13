@@ -344,13 +344,13 @@ export function VenueInicioPageContent() {
         {shortcuts.length > 0 || (seesAnyAlertSource && alerts.length === 0) ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
             {shortcuts.length > 0 ? (
-              <nav aria-label="Ações rápidas" className="flex flex-wrap items-center gap-2">
+              <nav aria-label="Ações rápidas" className="scrollbar-hide -mx-4 flex w-[calc(100%+2rem)] items-center gap-2 overflow-x-auto overscroll-x-contain px-4 sm:mx-0 sm:w-auto sm:flex-wrap sm:overflow-visible sm:px-0">
                 {shortcuts.map(({ label, href, icon: Icon }) => (
                   <Link
                     key={label}
                     href={href}
                     className={cn(
-                      "group flex h-9 items-center gap-2 rounded-[10px] border border-[#e6e2ef] bg-white px-3.5 text-[13.5px] font-medium text-gray-900 hover:border-[#d9cdf6] hover:bg-[#faf8ff]",
+                      "group flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-[10px] border border-[#e6e2ef] bg-white px-3.5 text-[13.5px] font-medium text-gray-900 hover:border-[#d9cdf6] hover:bg-[#faf8ff] sm:h-9",
                       PRESSABLE,
                     )}
                   >

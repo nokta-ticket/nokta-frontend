@@ -151,7 +151,7 @@ export default function VenueReservasPage() {
       <SummaryBar summary={summary} />
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
-        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <div className="scrollbar-hide -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
           <TabsList className="w-max min-w-full sm:w-fit">
             <TabsTrigger value="agenda">Agenda</TabsTrigger>
             <TabsTrigger value="lista">Lista</TabsTrigger>

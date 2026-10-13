@@ -157,7 +157,7 @@ export function PedidosTab({ orgId, locationId }: { orgId: number; locationId: n
 
       {/* Mobile: abas por status */}
       <div className="space-y-3 md:hidden">
-        <div className="flex gap-1 overflow-x-auto">
+        <div className="scrollbar-hide flex gap-1 overflow-x-auto">
           {COLUMNS.map((col) => (
             <button
               key={col.status}

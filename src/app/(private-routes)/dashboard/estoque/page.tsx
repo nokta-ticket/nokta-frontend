@@ -135,7 +135,7 @@ export default function VenueEstoquePage() {
       {loadingSummary ? (
         <MetricsSkeleton count={4} />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <MetricCard label="Total de itens" value={String(summary?.totalItems ?? 0)} icon={<Boxes size={18} />} />
           <MetricCard label="Estoque baixo" value={String(summary?.lowStockCount ?? 0)} icon={<TrendingDown size={18} />} />
           <MetricCard label="Sem estoque" value={String(summary?.outOfStockCount ?? 0)} icon={<PackageX size={18} />} />
@@ -144,7 +144,7 @@ export default function VenueEstoquePage() {
       )}
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
-        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <div className="scrollbar-hide -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
           <TabsList className="w-max min-w-full sm:w-fit">
             <TabsTrigger value="geral">Visão geral</TabsTrigger>
             <TabsTrigger value="itens">Itens</TabsTrigger>

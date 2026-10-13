@@ -19,7 +19,7 @@ export function VendasTab({ orgId, params }: { orgId: number; params: VenueInsig
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <InsightsMetricCard label="Faturamento" value={formatCentsBRL(data.summary.grossRevenueCents.current)} comparison={data.summary.grossRevenueCents} />
         <InsightsMetricCard label="Ticket médio" value={formatCentsBRL(data.summary.averageTicketCents.current)} comparison={data.summary.averageTicketCents} />
         <InsightsMetricCard label="Pagamentos confirmados" value={String(data.summary.paymentsCount)} />

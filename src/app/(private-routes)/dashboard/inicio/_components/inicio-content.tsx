@@ -251,14 +251,14 @@ export function InicioContent() {
 
         <div>
           <h2 className="mb-4 font-poppins text-[19px] font-semibold tracking-tight text-foreground">Ações Rápidas</h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
             {QUICK_LINKS.map(({ key, label, description, href, icon: Icon }) => (
               <Link
                 key={key}
                 href={href}
-                className="group relative flex min-h-[158px] flex-col rounded-2xl bg-white p-[18px] shadow-[0_1px_2px_rgba(28,24,48,0.05),0_2px_6px_rgba(28,24,48,0.04)] transition-shadow hover:shadow-md"
+                className="group relative flex min-h-[132px] flex-col rounded-2xl bg-white p-3.5 shadow-[0_1px_2px_rgba(28,24,48,0.05),0_2px_6px_rgba(28,24,48,0.04)] transition-shadow hover:shadow-md sm:min-h-[158px] sm:p-[18px]"
               >
-                <div className="mb-4 flex h-[42px] w-[42px] items-center justify-center rounded-xl bg-violet-100 text-violet-600">
+                <div className="mb-3 flex h-[42px] w-[42px] sm:mb-4 items-center justify-center rounded-xl bg-violet-100 text-violet-600">
                   <Icon size={20} strokeWidth={1.8} />
                 </div>
                 <h4 className="text-[15px] font-semibold text-gray-900">{label}</h4>
@@ -271,7 +271,7 @@ export function InicioContent() {
             {navigation.data?.canExplore ? (
               <Link
                 href="/dashboard/explorar"
-                className="flex min-h-[158px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-violet-200 bg-transparent p-4 text-center text-sm font-semibold text-black/60 transition-colors hover:border-violet-400 hover:bg-violet-50 hover:text-violet-600"
+                className="flex min-h-[132px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed sm:min-h-[158px] border-violet-200 bg-transparent p-4 text-center text-sm font-semibold text-black/60 transition-colors hover:border-violet-400 hover:bg-violet-50 hover:text-violet-600"
               >
                 <Compass size={20} />
                 Explore a Nokta

@@ -268,7 +268,7 @@ export default function VenueCardapioPage() {
           <div className="overflow-hidden rounded-[18px] border border-black/[0.06] bg-white shadow-[0_1px_2px_rgba(20,20,35,.05),0_1px_3px_rgba(20,20,35,.03)]">
             <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
               <div className="flex items-center justify-between gap-3 border-b border-black/[0.06] px-6 pt-[18px]">
-                <div className="-mb-px overflow-x-auto">
+                <div className="scrollbar-hide -mb-px overflow-x-auto">
                   <TabsList className="h-auto w-max min-w-full gap-6 rounded-none border-0 bg-transparent p-0 sm:w-fit">
                     <TabsTrigger
                       value="produtos"

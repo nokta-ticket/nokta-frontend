@@ -20,11 +20,11 @@ export default function MetricCard({
       )}
     >
       <div className="flex flex-col gap-1">
-        <div className="flex items-center justify-between text-sm text-gray-600 font-medium">
+        <div className="flex items-center justify-between gap-2 text-[13px] text-gray-600 font-medium sm:text-sm">
           {title}
           {icon}
         </div>
-        <div className="text-2xl font-semibold text-gray-900">{value}</div>
+        <div className="text-[19px] leading-tight font-semibold tabular-nums text-gray-900 sm:text-2xl">{value}</div>
       </div>
     </Card>
   );

@@ -37,7 +37,7 @@ function NavGroupList({ groups, pathname }: { groups: UnifiedNavGroup[]; pathnam
                 <Link
                   key={item.key}
                   href={item.route}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-2 text-[14.5px] font-medium transition-colors ${isActive ? "bg-violet-100 text-violet-600" : "text-black/65 hover:bg-black/[0.04] hover:text-foreground"}`}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14.5px] lg:py-2 font-medium transition-colors ${isActive ? "bg-violet-100 text-violet-600" : "text-black/65 hover:bg-black/[0.04] hover:text-foreground"}`}
                 >
                   <UnifiedNavIcon iconKey={item.iconKey} className={isActive ? "text-violet-600" : "text-black/40"} />
                   {item.label}
@@ -110,7 +110,7 @@ export function UnifiedSidebar() {
       );
 
   return (
-    <nav className="flex flex-1 flex-col gap-5 overflow-y-auto text-sm">
+    <nav className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain text-sm">
       {orgNavLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -126,7 +126,7 @@ export function UnifiedSidebar() {
           <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-black/35">Promotor</p>
           <Link
             href="/dashboard/promotor"
-            className={`flex items-center gap-3 rounded-xl px-3 py-2 text-[14.5px] font-medium transition-colors ${
+            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14.5px] lg:py-2 font-medium transition-colors ${
               pathname.startsWith("/dashboard/promotor") ? "bg-violet-100 text-violet-600" : "text-black/65 hover:bg-black/[0.04] hover:text-foreground"
             }`}
           >
@@ -151,7 +151,7 @@ export function UnifiedSidebar() {
             <p className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-wide text-black/35">Descoberta</p>
             <Link
               href="/dashboard/explorar"
-              className={`flex items-center gap-3 rounded-xl px-3 py-2 text-[14.5px] font-medium transition-colors ${
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-[14.5px] lg:py-2 font-medium transition-colors ${
                 pathname.startsWith("/dashboard/explorar") ? "bg-violet-100 text-violet-600" : "text-black/65 hover:bg-black/[0.04] hover:text-foreground"
               }`}
             >

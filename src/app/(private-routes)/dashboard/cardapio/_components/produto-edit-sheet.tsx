@@ -228,7 +228,7 @@ export function ProdutoEditSheet({
           <SheetTitle>{product?.nome ?? "Produto"}</SheetTitle>
         </SheetHeader>
 
-        <div className="flex gap-1 overflow-x-auto border-b border-black/10 px-4 pb-2">
+        <div className="scrollbar-hide flex gap-1 overflow-x-auto border-b border-black/10 px-4 pb-2">
           {SECTIONS.map((s) => (
             <button
               key={s.key}

@@ -58,7 +58,7 @@ export default function TicketsInsightsPage() {
     return (
       <PageContainer>
         <PageHeader title="Insights — Tickets" description="Desempenho de vendas de ingressos." />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
             <div key={index} className="rounded-2xl border bg-card p-5 shadow-sm">
               <div className="mb-4 h-4 w-24 animate-pulse rounded bg-muted" />
@@ -107,7 +107,7 @@ export default function TicketsInsightsPage() {
     <PageContainer>
       <PageHeader title="Insights — Tickets" description="Desempenho de vendas de ingressos desta organização." />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <MetricCard
           title="Ingressos vendidos"
           value={metrics.ingressosVendidos.toString()}

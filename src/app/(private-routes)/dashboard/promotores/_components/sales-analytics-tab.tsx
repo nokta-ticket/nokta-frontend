@@ -47,7 +47,7 @@ export function SalesAnalyticsTab({ orgId, canExport }: { orgId: number; canExpo
       {loadingMetrics || !metrics ? (
         <MetricsSkeleton count={8} />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
           <MetricCard label="Promoters ativos" value={String(metrics.promotersAtivos)} />
           <MetricCard label="Cliques (estimativa única)" value={String(metrics.cliquesUnicosEstimados)} />
           <MetricCard label="Pedidos pagos atribuídos" value={String(metrics.pedidosPagos)} />

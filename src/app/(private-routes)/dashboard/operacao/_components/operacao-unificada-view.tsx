@@ -109,7 +109,7 @@ function TabRow({
       role="button"
       tabIndex={0}
       onKeyDown={(e) => e.key === "Enter" && onClick()}
-      className="relative flex cursor-pointer items-center border-t border-[#F1EFF5] px-[18px] py-4 pl-5 transition-colors first:border-t-0 hover:bg-[#FCFBFE]"
+      className="relative flex cursor-pointer items-center border-t border-[#F1EFF5] py-3.5 pr-2 pl-4 transition-colors first:border-t-0 hover:bg-[#FCFBFE] active:bg-[#F7F5FB] sm:px-[18px] sm:py-4 sm:pl-5"
     >
       <span className="absolute inset-y-0 left-0 w-1" style={{ background: style.accent }} />
 
@@ -120,11 +120,15 @@ function TabRow({
         <TypeIcon type={tab.type} />
       </div>
 
-      <div className="ml-3.5 min-w-0 flex-1">
-        <div className="text-[15px] font-semibold tracking-[-0.2px] text-[#1B1533]">{tabTitle(tab)}</div>
+      <div className="ml-3 min-w-0 flex-1 sm:ml-3.5">
+        <div className="truncate text-[15px] font-semibold tracking-[-0.2px] text-[#1B1533]">{tabTitle(tab)}</div>
         <div className="mt-1 flex items-center gap-1.5 text-[12.5px] text-[#6E7180]">
-          <Clock size={13} className="flex-none text-[#9B99A8]" />
-          {isOpen ? "Aberta" : tab.status === "CLOSED" ? "Encerrada" : "Cancelada"} às {formatTime(tab.status === "CLOSED" && tab.closedAt ? tab.closedAt : tab.openedAt)}
+          <Clock size={13} className="hidden flex-none text-[#9B99A8] sm:block" />
+          <span className="truncate">
+            {isOpen ? "Aberta" : tab.status === "CLOSED" ? "Encerrada" : "Cancelada"} às {formatTime(tab.status === "CLOSED" && tab.closedAt ? tab.closedAt : tab.openedAt)}
+            {/* No celular a coluna de pedidos some: a contagem vem para esta linha. */}
+            <span className="sm:hidden"> · {orderCount === 1 ? "1 pedido" : `${orderCount} pedidos`}</span>
+          </span>
         </div>
       </div>
 
@@ -135,7 +139,7 @@ function TabRow({
         {tab.customerName ? <span className="mt-1 block truncate text-[12.5px] text-[#6E7180]">{tab.customerName}</span> : null}
       </div>
 
-      <div className="w-[110px] flex-none text-right sm:w-[150px]">
+      <div className="ml-2 flex-none text-right sm:ml-0 sm:w-[150px]">
         <div className="text-[15px] font-bold tracking-[-0.2px] text-[#1B1533]">{centsToBRL(tab.totalCents)}</div>
         <span
           className="mt-1.5 inline-block rounded-[6px] px-2.5 py-1 text-[11px] font-semibold"
@@ -169,7 +173,7 @@ function TabRow({
         </DropdownMenu>
       ) : null}
 
-      <ChevronRight size={18} className="ml-2 flex-none text-[#9B99A8]" />
+      <ChevronRight size={18} className="ml-2 hidden flex-none text-[#9B99A8] sm:block" />
     </div>
   );
 }
@@ -266,8 +270,8 @@ export function OperacaoUnificadaView({
       </div>
 
       {/* Toolbar */}
-      <div className="mb-[22px] flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-1 overflow-x-auto rounded-xl border border-[#ECEAF1] bg-white px-2 pt-1.5">
+      <div className="mb-[22px] flex flex-wrap items-center gap-3 sm:gap-4">
+        <div className="scrollbar-hide flex items-center gap-1 overflow-x-auto rounded-xl border border-[#ECEAF1] bg-white px-2 pt-1.5">
           {TYPE_TABS.map((t) => {
             const active = typeFilter === t.key;
             return (
@@ -291,7 +295,7 @@ export function OperacaoUnificadaView({
           })}
         </div>
 
-        <div className="ml-auto flex gap-2.5">
+        <div className="flex gap-2.5 sm:ml-auto">
           <button
             type="button"
             className="inline-flex h-[42px] items-center gap-2 rounded-[10px] border border-[#ECEAF1] bg-white px-4 text-[13.5px] font-medium text-[#1B1533] transition-colors hover:border-[#DDD9E6] hover:bg-[#FDFDFE]"
@@ -338,38 +342,38 @@ export function OperacaoUnificadaView({
       </div>
 
       {/* Cards de resumo */}
-      <div className="mb-[26px] grid grid-cols-1 gap-3.5 sm:grid-cols-3">
-        <div className="flex items-start gap-3.5 rounded-xl border border-[#ECEAF1] bg-white p-4">
-          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px]" style={{ background: "#F1ECFB", color: "#6D28D9" }}>
+      <div className="mb-[26px] grid grid-cols-3 gap-2 sm:gap-3.5">
+        <div className="flex min-w-0 flex-col items-start gap-2.5 rounded-xl border border-[#ECEAF1] bg-white p-3 sm:flex-row sm:gap-3.5 sm:p-4">
+          <div className="hidden h-10 w-10 flex-none items-center justify-center rounded-[10px] sm:flex" style={{ background: "#F1ECFB", color: "#6D28D9" }}>
             <TypeIcon type="TABLE" />
           </div>
           <div>
             <div className="text-[12.5px] text-[#6E7180]">Mesas abertas</div>
-            <div className="mt-1 text-[22px] font-bold tracking-[-0.5px]">{mesasStat.count}</div>
+            <div className="mt-1 text-[20px] font-bold tracking-[-0.5px] tabular-nums sm:text-[22px]">{mesasStat.count}</div>
             <div className="mt-1 text-[12.5px] text-[#6E7180]">{centsToBRL(mesasStat.total)}</div>
           </div>
         </div>
 
-        <div className="flex items-start gap-3.5 rounded-xl border border-[#ECEAF1] bg-white p-4">
-          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px]" style={{ background: "#FFEDD5", color: "#EA580C" }}>
+        <div className="flex min-w-0 flex-col items-start gap-2.5 rounded-xl border border-[#ECEAF1] bg-white p-3 sm:flex-row sm:gap-3.5 sm:p-4">
+          <div className="hidden h-10 w-10 flex-none items-center justify-center rounded-[10px] sm:flex" style={{ background: "#FFEDD5", color: "#EA580C" }}>
             <TypeIcon type="INDIVIDUAL" />
           </div>
           <div>
             <div className="text-[12.5px] text-[#6E7180]">Comandas abertas</div>
-            <div className="mt-1 text-[22px] font-bold tracking-[-0.5px]">{comandasStat.count}</div>
+            <div className="mt-1 text-[20px] font-bold tracking-[-0.5px] tabular-nums sm:text-[22px]">{comandasStat.count}</div>
             <div className="mt-1 text-[12.5px] text-[#6E7180]">{centsToBRL(comandasStat.total)}</div>
           </div>
         </div>
 
-        <div className="flex items-start gap-3.5 rounded-xl border border-[#ECEAF1] bg-white p-4">
-          <div className="flex h-10 w-10 flex-none items-center justify-center rounded-[10px]" style={{ background: "#DCFCE7", color: "#15803D" }}>
+        <div className="flex min-w-0 flex-col items-start gap-2.5 rounded-xl border border-[#ECEAF1] bg-white p-3 sm:flex-row sm:gap-3.5 sm:p-4">
+          <div className="hidden h-10 w-10 flex-none items-center justify-center rounded-[10px] sm:flex" style={{ background: "#DCFCE7", color: "#15803D" }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20 6L9 17l-5-5" />
             </svg>
           </div>
           <div>
             <div className="text-[12.5px] text-[#6E7180]">Encerrados hoje</div>
-            <div className="mt-1 text-[22px] font-bold tracking-[-0.5px]">{closedStat.count}</div>
+            <div className="mt-1 text-[20px] font-bold tracking-[-0.5px] tabular-nums sm:text-[22px]">{closedStat.count}</div>
             <div className="mt-1 text-[12.5px] text-[#6E7180]">{centsToBRL(closedStat.total)}</div>
           </div>
         </div>

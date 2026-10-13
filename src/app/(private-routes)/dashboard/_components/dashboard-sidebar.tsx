@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import {
@@ -35,6 +36,15 @@ function SidebarInner() {
 
       <UnifiedSidebar />
 
+      {/* No celular o atalho do conector sai da barra do topo (não cabe ao lado
+          de período e workspace) e fica aqui, junto do resto do menu. */}
+      <Link
+        href="/dashboard/configuracoes?tab=ia"
+        className="mt-3 flex h-11 shrink-0 items-center justify-center rounded-xl bg-[#1c1a24] text-[13.5px] font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.97] motion-reduce:active:scale-100 lg:hidden"
+      >
+        Conectar ao Claude
+      </Link>
+
       <div className="mt-3 border-t border-black/10 pt-3">
         <UserMenu variant="sidebar" />
       </div>
@@ -42,7 +52,12 @@ function SidebarInner() {
   );
 }
 
-export function DashboardSidebar() {
+/**
+ * Gaveta do menu no celular/tablet (< lg). O botão fica dentro da Topbar:
+ * antes existia uma segunda faixa só para ele e a logo, e as duas faixas
+ * juntas tomavam 136px de uma tela de 844px.
+ */
+export function MobileNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -51,32 +66,29 @@ export function DashboardSidebar() {
   }, [pathname]);
 
   return (
-    <>
-      {/* Mobile: menu em Sheet */}
-      <header className="flex items-center gap-3 border-b border-black/10 bg-white p-4 lg:hidden">
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Abrir menu">
-              <Menu className="w-5 h-5 text-foreground" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent
-            side="left"
-            className="w-72 p-5 bg-white flex flex-col text-sm"
-          >
-            <SheetHeader>
-              <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
-            </SheetHeader>
-            <SidebarInner />
-          </SheetContent>
-        </Sheet>
-        <NoktaWordmark className="text-[32px]" />
-      </header>
-
-      {/* Desktop: sidebar fixa */}
-      <aside className="hidden h-full lg:flex w-[272px] flex-col gap-2 border-r border-black/10 bg-white p-5 text-sm">
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" aria-label="Abrir menu" className="-ml-2 size-10 lg:hidden">
+          <Menu className="size-5 text-foreground" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent
+        side="left"
+        className="flex w-[min(20rem,calc(100vw-3rem))] flex-col gap-2 bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-sm"
+      >
+        <SheetHeader className="p-0">
+          <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
+        </SheetHeader>
         <SidebarInner />
-      </aside>
-    </>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+export function DashboardSidebar() {
+  return (
+    <aside className="hidden h-full w-[272px] flex-col gap-2 border-r border-black/10 bg-white p-5 text-sm lg:flex">
+      <SidebarInner />
+    </aside>
   );
 }

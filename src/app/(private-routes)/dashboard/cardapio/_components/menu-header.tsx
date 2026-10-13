@@ -345,7 +345,10 @@ function StatusAndLinks({
         <div className="flex items-stretch gap-2.5">
           <div className="flex flex-1 items-center overflow-hidden rounded-[10px] border border-black/10 bg-[#fdfdfe]">
             <span className="h-11 shrink-0 whitespace-nowrap border-r border-black/10 bg-black/[0.035] px-3 text-[13px] leading-[44px] text-black/40">
-              {MARKETING_HOST}/cardapio/
+              {/* Celular: o domínio completo deixava 2 letras de espaço para o
+                  slug. O endereço inteiro continua em "Link público", logo abaixo. */}
+              <span className="hidden sm:inline">{MARKETING_HOST}</span>
+              <span className="sm:hidden">…</span>/cardapio/
             </span>
             {editingSlug ? (
               <input

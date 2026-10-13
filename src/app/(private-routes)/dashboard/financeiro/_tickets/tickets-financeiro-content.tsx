@@ -160,7 +160,9 @@ function BalanceCard({
   value,
   footer,
   loss = false,
+  className,
 }: {
+  className?: string;
   title: string;
   info: string;
   value: string;
@@ -168,7 +170,7 @@ function BalanceCard({
   loss?: boolean;
 }) {
   return (
-    <section className={cn(SURFACE, "flex flex-col justify-between gap-3 p-4 sm:gap-4 sm:p-6")}>
+    <section className={cn(SURFACE, "flex min-w-0 flex-col justify-between gap-3 p-4 sm:gap-4 sm:p-6", className)}>
       <div className="flex items-center gap-1.5 text-[14px] font-medium text-[#3a3746]">
         {title}
         <InfoTip label={`O que é ${title.toLowerCase()}`} text={info} />
@@ -192,12 +194,12 @@ function CardLink({ onClick, children }: { onClick: () => void; children: ReactN
 
 function SummaryItem({ icon, iconClass, label, value, hint, divider }: { icon: ReactNode; iconClass: string; label: ReactNode; value: ReactNode; hint: string; divider: string }) {
   return (
-    <div className={cn("flex items-center gap-4 p-5", divider)}>
-      <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl", iconClass)}>{icon}</span>
+    <div className={cn("flex min-w-0 items-center gap-4 p-4 sm:p-5", divider)}>
+      <span className={cn("hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl sm:flex", iconClass)}>{icon}</span>
       <div className="min-w-0">
         <div className="text-[13.5px] text-[#5f5c6b]">{label}</div>
-        <div className="font-poppins text-[22px] font-bold tabular-nums">{value}</div>
-        <p className="text-[12.5px] text-[#6b6878]">{hint}</p>
+        <div className="font-poppins text-[18px] font-bold tabular-nums sm:text-[22px]">{value}</div>
+        <p className="text-[12.5px] leading-snug text-[#6b6878]">{hint}</p>
       </div>
     </div>
   );
@@ -446,6 +448,7 @@ export default function TicketsFinanceiroPage({ contextSwitch }: { contextSwitch
               footer={<CardLink onClick={() => setTab("withdrawals")}>{active ? `Solicitado em ${fmtDate(active.requestedAt).slice(0, 5)} · ver saques` : "Ver saques"}</CardLink>}
             />
             <BalanceCard
+              className="col-span-2 sm:col-span-1"
               title="Contestações"
               info="Compras que o comprador contestou no banco ou no cartão (chargeback). O valor e as taxas são descontados do seu saldo."
               value={brl(data.chargebacks.totalCents)}
@@ -455,7 +458,7 @@ export default function TicketsFinanceiroPage({ contextSwitch }: { contextSwitch
           </div>
 
           {/* Abas */}
-          <div role="tablist" aria-label="Seções do financeiro" className="flex gap-1 overflow-x-auto border-b border-[#ebe8f2]">
+          <div role="tablist" aria-label="Seções do financeiro" className="scrollbar-hide flex gap-1 overflow-x-auto border-b border-[#ebe8f2]">
             {(
               [
                 ["statement", "Extrato"],
@@ -613,14 +616,14 @@ function StatementTab(props: {
   return (
     <div className="space-y-5">
       {/* Resumo do período */}
-      <section aria-label="Resumo do período" className={cn(SURFACE, "grid overflow-hidden sm:grid-cols-2 2xl:grid-cols-4")}>
+      <section aria-label="Resumo do período" className={cn(SURFACE, "grid grid-cols-2 overflow-hidden 2xl:grid-cols-4")}>
         <SummaryItem
           icon={<ArrowUpRight size={20} strokeWidth={1.8} />}
           iconClass="bg-emerald-50 text-emerald-700"
           label="Entradas"
           value={summary ? brl(summary.inCents) : "…"}
           hint="Vendas de ingressos"
-          divider="border-b border-[#f2f0f7] sm:border-r 2xl:border-b-0"
+          divider="border-b border-r border-[#f2f0f7] 2xl:border-b-0"
         />
         <SummaryItem
           icon={<ArrowDownLeft size={20} strokeWidth={1.8} />}
@@ -652,8 +655,8 @@ function StatementTab(props: {
               "…"
             )
           }
-          hint="Passe o mouse para ver cada taxa"
-          divider="border-b border-[#f2f0f7] sm:border-b-0 sm:border-r"
+          hint="Toque no valor para ver cada taxa"
+          divider="border-r border-[#f2f0f7]"
         />
         <SummaryItem
           icon={<BarChart3 size={20} strokeWidth={1.8} />}
@@ -684,7 +687,7 @@ function StatementTab(props: {
           </select>
           <ChevronDown size={16} className="pointer-events-none absolute right-3 text-[#6b6878]" aria-hidden="true" />
         </label>
-        <label className="relative flex h-11 flex-1 items-center rounded-[12px] border border-[#e6e2ef] bg-white pl-10 pr-4">
+        <label className="relative flex h-11 shrink-0 items-center rounded-[12px] border border-[#e6e2ef] bg-white pl-10 pr-4 xl:flex-1">
           <Search size={17} strokeWidth={1.8} className="pointer-events-none absolute left-3.5 text-[#6b6878]" aria-hidden="true" />
           <span className="sr-only">Pesquisar</span>
           <input

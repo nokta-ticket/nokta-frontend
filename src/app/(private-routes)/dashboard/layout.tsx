@@ -18,12 +18,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <TicketsAccessProvider>
         <PeriodProvider>
         <RequireWorkspaceProvider>
-          <div className="fixed inset-0 flex flex-col lg:flex-row bg-[#faf9fd] text-foreground overflow-hidden">
+          <div data-dashboard-shell className="fixed inset-0 flex flex-col lg:flex-row bg-[#faf9fd] text-foreground overflow-hidden">
             <DashboardSidebar />
 
-            <div className="flex-1 overflow-hidden flex flex-col">
+            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
               <Topbar />
-              <div className="flex-1 overflow-y-auto p-4 lg:p-8">
+              <div className="flex-1 overflow-y-auto overscroll-y-contain p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:p-8">
                 <WorkspaceBlockedGate>{children}</WorkspaceBlockedGate>
               </div>
             </div>

@@ -44,6 +44,40 @@ html, body {
   display: none;
 }
 
+/* Dashboard no toque (celular/tablet). Escopo: só enquanto o shell do
+   dashboard está montado (`data-dashboard-shell` em dashboard/layout.tsx).
+   O `:has()` no <html> alcança também diálogos, gavetas e popovers, que o
+   Radix renderiza direto no <body>, fora do shell. */
+@layer base {
+  @media (pointer: coarse) {
+    /* Área de toque mínima de 44px sem mudar o tamanho visual: vários botões
+       do dashboard têm 20 a 32px (ícone de ajuda, "Mais opções", abas). O
+       pseudo-elemento só cresce quando o botão é menor que 44px. Fica em
+       @layer base de propósito: qualquer utilitário (absolute, after:*) vence. */
+    html:has([data-dashboard-shell]) :where(button, [role="tab"], [role="switch"], [role="checkbox"], [role="radio"], a[data-slot="button"]) {
+      position: relative;
+    }
+    html:has([data-dashboard-shell]) :where(button, [role="tab"], [role="switch"], [role="checkbox"], [role="radio"], a[data-slot="button"])::after {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
+    }
+  }
+}
+
+/* Campo com fonte menor que 16px faz o Safari do iPhone dar zoom na página ao
+   focar (bug já corrigido tela a tela no cardápio, ajuda e notify-me). Fora de
+   @layer para vencer `text-sm`/`text-xs` de qualquer campo do dashboard. */
+@media (pointer: coarse) and (max-width: 767px) {
+  html:has([data-dashboard-shell]) :is(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea) {
+    font-size: 16px;
+  }
+}
+
 @font-face {
   font-family: 'GoodDog';
   src: url('/fonts/GOODDP__.TTF') format('truetype');

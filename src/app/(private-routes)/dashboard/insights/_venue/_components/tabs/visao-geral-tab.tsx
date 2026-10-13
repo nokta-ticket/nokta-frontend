@@ -27,7 +27,7 @@ export function VisaoGeralTab({ orgId, params, hasMultipleLocations }: { orgId: 
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <InsightsMetricCard label="Faturamento" value={formatCentsBRL(overview.cards.revenueCents.current)} icon={<DollarSign size={18} />} comparison={overview.cards.revenueCents} />
         <InsightsMetricCard label="Resultado operacional estimado" value={formatCentsBRL(overview.cards.operationalResultCents.current)} icon={<TrendingUp size={18} />} comparison={overview.cards.operationalResultCents} />
         <InsightsMetricCard label="Ticket médio" value={formatCentsBRL(overview.cards.averageTicketCents.current)} comparison={overview.cards.averageTicketCents} />

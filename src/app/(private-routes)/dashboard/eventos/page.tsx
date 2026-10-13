@@ -143,7 +143,7 @@ export default function EventosPage() {
     return (
       <PageContainer>
         <section className="w-full mt-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div className="mb-6 flex items-center justify-between gap-4">
             <h1 className="text-2xl font-semibold">Eventos</h1>
             <Button onClick={() => guard(() => {})}>
               <PlusCircleIcon className="w-4 h-4 mr-2" />
@@ -167,11 +167,13 @@ export default function EventosPage() {
       <LegalFinancialPendingBanner orgId={currentOrg.id} />
 
       <section className="w-full mt-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <h1 className="text-2xl font-semibold">Eventos</h1>
+        {/* Celular: título e "Novo Evento" na mesma linha, filtro logo abaixo em
+            largura total. O `contents` desfaz o agrupamento só abaixo de md. */}
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+          <h1 className="order-1 text-2xl font-semibold">Eventos</h1>
 
-          <div className="flex items-center gap-4">
-            <div>
+          <div className="contents md:order-2 md:flex md:items-center md:gap-4">
+            <div className="order-3 flex w-full md:order-none md:w-auto [&>button]:flex-1 md:[&>button]:flex-none">
               <Button
                 onClick={() => setFiltro("todos")}
                 variant={filtro === "todos" ? "default" : "outline"}
@@ -195,7 +197,7 @@ export default function EventosPage() {
               </Button>
             </div>
 
-            <Link href="/dashboard/eventos/criar">
+            <Link href="/dashboard/eventos/criar" className="order-2 md:order-none">
               <Button>
                 <PlusCircleIcon className="w-4 h-4 mr-2" />
                 Novo Evento
