@@ -7,15 +7,11 @@ import { getApiBaseUrl } from "./surfaces";
 // então uma NEXT_PUBLIC_API_URL fixa não bastaria mais. Ver lib/surfaces.ts.
 const api = axios.create({
   baseURL: getApiBaseUrl(),
-  // Só `Accept` por padrão. `Content-Type` em GET e o cabeçalho do ngrok
-  // tiravam toda chamada da categoria "simples" do CORS: como a API fica em
-  // outra origem (api.nokta.live), o navegador mandava um OPTIONS antes de
-  // CADA GET, dobrando as idas ao servidor de toda tela. Em POST/PUT/PATCH com
-  // corpo o axios já define `Content-Type: application/json` sozinho.
   headers: {
+    "Content-Type": "application/json",
     Accept: "application/json",
-    // Página de aviso do ngrok: só existe quando a API está atrás de um túnel.
-    ...(getApiBaseUrl().includes("ngrok") ? { "ngrok-skip-browser-warning": "true" } : {}),
+    // Bypasses ngrok's browser interstitial page in non-browser environments
+    "ngrok-skip-browser-warning": "true",
   },
   // Fase 5: sessão é cookie HttpOnly enviado automaticamente pelo
   // navegador — nunca mais Authorization: Bearer lido de um cookie
