@@ -250,8 +250,7 @@ export function VenueInicioPageContent() {
     .filter(Boolean);
   const showRestrictedNotice = home.onboarding.restricted && !home.onboarding.readyToOperate;
   const ticketsPeriodCents = sumRevenue(tickets.data);
-  const venuePeriodCents = sumRevenue(finance.data);
-  const periodCents = venuePeriodCents + ticketsPeriodCents;
+  const periodCents = sumRevenue(finance.data) + ticketsPeriodCents;
   const thisMonthCents = sumRevenue(financeThisMonth.data) + sumRevenue(ticketsThisMonth.data);
   const lastMonthCents = sumRevenue(financeLastMonth.data) + sumRevenue(ticketsLastMonth.data);
   const financeLoading = finance.isLoading || tickets.isLoading;
@@ -284,7 +283,18 @@ export function VenueInicioPageContent() {
 
   const monthDelta = formatMonthDelta(thisMonthCents, lastMonthCents);
   const insightsCards = insights.data?.cards;
-  const ticket = insightsCards?.averageTicketCents;
+  const venueTicket = insightsCards?.averageTicketCents;
+  // Ticket médio do Panorama junta comandas fechadas e pedidos de ingresso. Com ingressos no
+  // período a variação some: o período anterior de ingressos não é consultado aqui.
+  const ticketOrders = (tickets.data ?? []).reduce((sum, p) => sum + (p.ordersCount ?? 0), 0);
+  const closedTabs = insights.data?.secondary.closedTabsCount ?? 0;
+  const ticket =
+    venueTicket && ticketOrders > 0
+      ? {
+          current: Math.round((venueTicket.current * closedTabs + ticketsPeriodCents) / (closedTabs + ticketOrders)),
+          percentDiff: null,
+        }
+      : venueTicket;
   const guests = insightsCards?.guestsServed;
   // Pessoas atendidas depende do garçom informar quantas pessoas há na comanda; com
   // pouco preenchimento o número mente, então só aparece com >= 80% de cobertura.
@@ -407,12 +417,6 @@ export function VenueInicioPageContent() {
               <p className={cn(money, "mt-1.5 text-[30px] font-bold leading-none tracking-tight")}>
                 {financeLoading ? "…" : formatCentsBRL(periodCents)}
               </p>
-              {!financeLoading && ticketsPeriodCents > 0 ? (
-                <p className="mt-2 text-[13px] text-white/65">
-                  Bar e restaurante <b className={cn(money, "font-semibold text-white")}>{formatCentsBRL(venuePeriodCents)}</b>
-                  {" · "}Ingressos <b className={cn(money, "font-semibold text-white")}>{formatCentsBRL(ticketsPeriodCents)}</b>
-                </p>
-              ) : null}
               {/* "Este mês" era um card inteiro para três informações; virou esta linha. */}
               {!monthLoading ? (
                 <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-white/65">

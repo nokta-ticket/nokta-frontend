@@ -6,6 +6,7 @@ export interface TicketsFinanceTimelinePoint {
   date: string;
   revenueCents: number;
   resultCents: number;
+  ordersCount?: number;
 }
 
 export interface TicketsFinancePeriodParams {
