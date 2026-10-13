@@ -29,6 +29,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useOrganizations } from "@/context/OrganizationContext";
 import { useVenueAccess } from "@/context/VenueAccessContext";
+import { useTicketsAccess } from "@/context/TicketsAccessContext";
 import { periodDates, periodLabel, periodToFinanceParams, usePeriod } from "@/context/PeriodContext";
 import { formatCentsBRL } from "@/services/venue-finance";
 import { cn } from "@/lib/utils";
@@ -40,6 +41,7 @@ import { formatMonthDelta } from "../../_components/month-revenue-card";
 import { useVenueLocations } from "../../operacao/_hooks/use-venue-locations";
 import { OnboardingLocation } from "../../operacao/_components/onboarding-location";
 import { useVenueFinanceTimeline } from "../../financeiro/_venue/_hooks/use-venue-finance-overview";
+import { useTicketsFinanceTimeline } from "../../inicio/_hooks/use-tickets-finance";
 import { useVenueInsightsOverview } from "../../insights/_venue/_hooks/use-venue-insights";
 import { useVenueHome } from "./_hooks/use-venue-home";
 import { SalesByHourCard, TopProductsCard } from "./_components/home-insights";
@@ -176,6 +178,12 @@ export function VenueInicioPageContent() {
   const finance = useVenueFinanceTimeline(financeOrgId, locationId, periodParams);
   const financeThisMonth = useVenueFinanceTimeline(financeOrgId, locationId, { quickPeriod: "THIS_MONTH" });
   const financeLastMonth = useVenueFinanceTimeline(financeOrgId, locationId, { quickPeriod: "LAST_MONTH" });
+  // Organização que também vende ingressos: a venda entra no faturamento do Panorama e no gráfico.
+  const { can: canTickets } = useTicketsAccess();
+  const ticketsOrgId = canViewFinance && canTickets("tickets.finance.view") ? orgId : null;
+  const tickets = useTicketsFinanceTimeline(ticketsOrgId, periodParams);
+  const ticketsThisMonth = useTicketsFinanceTimeline(ticketsOrgId, { quickPeriod: "THIS_MONTH" });
+  const ticketsLastMonth = useTicketsFinanceTimeline(ticketsOrgId, { quickPeriod: "LAST_MONTH" });
   // Ticket médio, pessoas atendidas, mais vendidos e vendas por horário: um único endpoint do Insights.
   const canViewInsights = can("venue.insights.view");
   const insights = useVenueInsightsOverview(canViewInsights && locationId !== null ? orgId : null, {
@@ -241,9 +249,14 @@ export function VenueInicioPageContent() {
     .map((key) => SHORTCUT_CONFIG[key])
     .filter(Boolean);
   const showRestrictedNotice = home.onboarding.restricted && !home.onboarding.readyToOperate;
-  const periodCents = (finance.data ?? []).reduce((sum, p) => sum + p.revenueCents, 0);
-  const thisMonthCents = (financeThisMonth.data ?? []).reduce((sum, p) => sum + p.revenueCents, 0);
-  const lastMonthCents = (financeLastMonth.data ?? []).reduce((sum, p) => sum + p.revenueCents, 0);
+  const ticketsPeriodCents = sumRevenue(tickets.data);
+  const venuePeriodCents = sumRevenue(finance.data);
+  const periodCents = venuePeriodCents + ticketsPeriodCents;
+  const thisMonthCents = sumRevenue(financeThisMonth.data) + sumRevenue(ticketsThisMonth.data);
+  const lastMonthCents = sumRevenue(financeLastMonth.data) + sumRevenue(ticketsLastMonth.data);
+  const financeLoading = finance.isLoading || tickets.isLoading;
+  const monthLoading = financeThisMonth.isLoading || financeLastMonth.isLoading || ticketsThisMonth.isLoading || ticketsLastMonth.isLoading;
+  const chartData = finance.data ? mergeTimelines(finance.data, tickets.data ?? []) : undefined;
   const money = moneyClass(hideValues);
 
   const alerts = [
@@ -392,10 +405,16 @@ export function VenueInicioPageContent() {
             <div className="mt-5">
               <p className="text-[13.5px] text-white/65">Faturamento · {periodLabel(period)}</p>
               <p className={cn(money, "mt-1.5 text-[30px] font-bold leading-none tracking-tight")}>
-                {finance.isLoading ? "…" : formatCentsBRL(periodCents)}
+                {financeLoading ? "…" : formatCentsBRL(periodCents)}
               </p>
+              {!financeLoading && ticketsPeriodCents > 0 ? (
+                <p className="mt-2 text-[13px] text-white/65">
+                  Bar e restaurante <b className={cn(money, "font-semibold text-white")}>{formatCentsBRL(venuePeriodCents)}</b>
+                  {" · "}Ingressos <b className={cn(money, "font-semibold text-white")}>{formatCentsBRL(ticketsPeriodCents)}</b>
+                </p>
+              ) : null}
               {/* "Este mês" era um card inteiro para três informações; virou esta linha. */}
-              {!financeThisMonth.isLoading && !financeLastMonth.isLoading ? (
+              {!monthLoading ? (
                 <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-white/65">
                   Este mês <b className={cn(money, "font-semibold text-white")}>{formatCentsBRL(thisMonthCents)}</b>
                   {monthDelta ? (
@@ -572,8 +591,8 @@ export function VenueInicioPageContent() {
         <div className={cn("grid grid-cols-1 gap-4", canViewFinance && canViewInsights && "xl:grid-cols-[minmax(0,2fr)_minmax(0,0.95fr)]")}>
           {canViewFinance ? (
             <FinanceTimelineChart
-              data={finance.data}
-              isLoading={finance.isLoading}
+              data={chartData}
+              isLoading={financeLoading}
               // Resultado líquido = resultCents do timeline (faturamento − custo dos produtos − despesas pagas); o cálculo final ainda será definido.
               description={`Faturamento e resultado líquido por dia · ${periodLabel(period)}`}
               resultLabel="Resultado líquido"
@@ -600,4 +619,29 @@ export function VenueInicioPageContent() {
       ) : null}
     </PageContainer>
   );
+}
+
+interface TimelinePoint {
+  date: string;
+  revenueCents: number;
+  resultCents: number;
+}
+
+function sumRevenue(points: TimelinePoint[] | undefined): number {
+  return (points ?? []).reduce((sum, p) => sum + p.revenueCents, 0);
+}
+
+/** Soma bar e ingressos dia a dia; nos ingressos o resultado é o líquido do produtor. */
+function mergeTimelines(venue: TimelinePoint[], tickets: TimelinePoint[]): TimelinePoint[] {
+  if (tickets.length === 0) return venue;
+  const byDate = new Map<string, TimelinePoint>();
+  for (const p of [...venue, ...tickets]) {
+    const current = byDate.get(p.date);
+    byDate.set(p.date, {
+      date: p.date,
+      revenueCents: (current?.revenueCents ?? 0) + p.revenueCents,
+      resultCents: (current?.resultCents ?? 0) + p.resultCents,
+    });
+  }
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
