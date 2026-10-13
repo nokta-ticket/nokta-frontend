@@ -158,16 +158,18 @@ export function VenueInicioPageContent() {
     setLocationId(null);
   }, [orgId]);
 
-  useEffect(() => {
-    if (locationId !== null || activeLocations.length === 0) return;
-    setLocationId((activeLocations.find((l) => l.isMain) ?? activeLocations[0]).id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeLocations.length, locationId]);
-
+  // `locationId` é só a escolha manual do usuário. Sem escolha, /venue/home
+  // já responde pela unidade principal (mesma regra do backend), então a
+  // primeira busca serve para a tela. Antes um efeito gravava a unidade
+  // principal aqui depois que a lista de unidades chegava: a busca sem
+  // unidade era descartada e refeita com o id, e a tela só aparecia depois
+  // dessa segunda ida ao servidor (uma etapa a mais em fila; pesa em rede móvel).
   const { data: home, isLoading: loadingHome, isError: homeError, refetch: refetchHome } = useVenueHome(
     !redirecting ? orgId : null,
     locationId,
   );
+  const selectedLocationId =
+    locationId ?? (activeLocations.find((l) => l.isMain) ?? activeLocations[0])?.id ?? home?.location?.id ?? null;
 
   const canViewFinance = can("venue.finance.view");
   // Faturamento e gráfico seguem o filtro de período do header;
@@ -175,9 +177,9 @@ export function VenueInicioPageContent() {
   const { period } = usePeriod();
   const periodParams = periodToFinanceParams(period);
   const financeOrgId = canViewFinance ? orgId : null;
-  const finance = useVenueFinanceTimeline(financeOrgId, locationId, periodParams);
-  const financeThisMonth = useVenueFinanceTimeline(financeOrgId, locationId, { quickPeriod: "THIS_MONTH" });
-  const financeLastMonth = useVenueFinanceTimeline(financeOrgId, locationId, { quickPeriod: "LAST_MONTH" });
+  const finance = useVenueFinanceTimeline(financeOrgId, selectedLocationId, periodParams);
+  const financeThisMonth = useVenueFinanceTimeline(financeOrgId, selectedLocationId, { quickPeriod: "THIS_MONTH" });
+  const financeLastMonth = useVenueFinanceTimeline(financeOrgId, selectedLocationId, { quickPeriod: "LAST_MONTH" });
   // Organização que também vende ingressos: a venda entra no faturamento do Panorama e no gráfico.
   const { can: canTickets } = useTicketsAccess();
   const ticketsOrgId = canViewFinance && canTickets("tickets.finance.view") ? orgId : null;
@@ -186,8 +188,8 @@ export function VenueInicioPageContent() {
   const ticketsLastMonth = useTicketsFinanceTimeline(ticketsOrgId, { quickPeriod: "LAST_MONTH" });
   // Ticket médio, pessoas atendidas, mais vendidos e vendas por horário: um único endpoint do Insights.
   const canViewInsights = can("venue.insights.view");
-  const insights = useVenueInsightsOverview(canViewInsights && locationId !== null ? orgId : null, {
-    locationId: locationId ?? undefined,
+  const insights = useVenueInsightsOverview(canViewInsights && selectedLocationId !== null ? orgId : null, {
+    locationId: selectedLocationId ?? undefined,
     ...periodParams,
     comparison: "PREVIOUS_PERIOD",
   });
@@ -318,7 +320,7 @@ export function VenueInicioPageContent() {
     <PageContainer>
       {activeLocations.length > 1 ? (
         <div className="flex justify-end">
-          <Select value={locationId ? String(locationId) : ""} onValueChange={(v) => setLocationId(Number(v))}>
+          <Select value={selectedLocationId ? String(selectedLocationId) : ""} onValueChange={(v) => setLocationId(Number(v))}>
             <SelectTrigger className="w-56">
               <SelectValue placeholder="Unidade" />
             </SelectTrigger>
