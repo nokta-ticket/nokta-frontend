@@ -43,7 +43,7 @@ const TAXA_PROTECAO  = 0.1284;
 
 // Pagar.me gateway rates
 const GATEWAY_PIX_RATE      = 0.0109;
-const GATEWAY_PIX_FIXED     = 0.55;
+const GATEWAY_PIX_FIXED     = 0;       // Pix não tem taxa fixa na Pagar.me
 const GATEWAY_CARD_1X_RATE  = 0.0319;
 const GATEWAY_CARD_26_RATE  = 0.0449;
 const GATEWAY_CARD_718_RATE = 0.0499;

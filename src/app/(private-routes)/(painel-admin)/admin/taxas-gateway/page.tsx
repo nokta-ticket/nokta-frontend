@@ -44,7 +44,6 @@ export default function TaxasGatewayPage() {
   const [config, setConfig] = useState<GatewayConfig | null>(null);
 
   const [pixRate, setPixRate] = useState("");
-  const [pixFixed, setPixFixed] = useState("");
   const [cardRates, setCardRates] = useState<string[]>(Array(12).fill(""));
   const [cardFixed, setCardFixed] = useState("");
   const [maxInstallments, setMaxInstallments] = useState(12);
@@ -73,7 +72,6 @@ export default function TaxasGatewayPage() {
         const c = data.config as GatewayConfig;
         setConfig(c);
         setPixRate(bpsToPercent(c.pixRateBps));
-        setPixFixed(centsToReais(c.pixFixedCents));
         setCardRates((c.cardRateBps ?? []).map((bps) => bpsToPercent(bps ?? 0)));
         setCardFixed(centsToReais(c.cardFixedCents));
         setMaxInstallments(c.maxInstallments ?? 12);
@@ -94,7 +92,6 @@ export default function TaxasGatewayPage() {
     try {
       const payload = {
         pixRateBps: percentToBps(pixRate),
-        pixFixedCents: reaisToCents(pixFixed),
         cardRateBps: cardRates.map((r) => percentToBps(r)),
         cardFixedCents: reaisToCents(cardFixed),
         maxInstallments,
@@ -141,7 +138,9 @@ export default function TaxasGatewayPage() {
       <div className="space-y-6">
         <Section title="PIX">
           <Field label="Taxa (%)" value={pixRate} onChange={setPixRate} placeholder="1.09" />
-          <Field label="Taxa fixa (R$)" value={pixFixed} onChange={setPixFixed} placeholder="0.55" />
+          <p className="self-end pb-2 text-sm text-gray-500">
+            Sem taxa fixa: a Pagar.me cobra só o percentual sobre o total do Pix.
+          </p>
         </Section>
 
         <div className="rounded-lg border bg-white p-5 space-y-4">

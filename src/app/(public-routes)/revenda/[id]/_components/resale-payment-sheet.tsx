@@ -10,7 +10,7 @@ import { useAuth } from "@/context/AuthContext";
 import { THREEDS_ENABLED, tokenizeCard, loadTdsScript } from "@/lib/pagarme";
 
 // Fallbacks das taxas do gateway (o real vem de /pagamento/info-parcelas)
-const GATEWAY_PIX_RATE = 0.0109, GATEWAY_PIX_FIXED = 0.55;
+const GATEWAY_PIX_RATE = 0.0109, GATEWAY_PIX_FIXED = 0;
 const GATEWAY_CARD_1X = 0.0319, GATEWAY_CARD_26 = 0.0449, GATEWAY_CARD_718 = 0.0499, GATEWAY_CARD_FIXED = 0.99;
 
 const brl = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
