@@ -1,3 +1,4 @@
+import snapshot from "@/content/agenda/ticketmaster-snapshot.json";
 import type { AgendaEvent } from "./types";
 
 /**
@@ -30,6 +31,14 @@ interface TmEvent {
   priceRanges?: { min?: number; max?: number; currency?: string }[];
   classifications?: { genre?: { name?: string }; segment?: { name?: string } }[];
   _embedded?: { venues?: { name?: string; city?: { name?: string }; state?: { stateCode?: string; name?: string }; address?: { line1?: string } }[] };
+}
+
+/**
+ * Retrato do feed gravado por scripts/sync-agenda.mjs (rodado numa máquina
+ * com a chave). Vale quando o servidor não tem TICKETMASTER_API_KEY.
+ */
+function snapshotEvents(): AgendaEvent[] {
+  return (snapshot.events as TmEvent[]).map(mapTicketmasterEvent).filter((e): e is AgendaEvent => e !== null && e.status !== "cancelled");
 }
 
 export function ticketmasterEnabled(): boolean {
@@ -104,7 +113,12 @@ export function mapTicketmasterEvent(e: TmEvent): AgendaEvent | null {
  */
 export async function fetchTicketmasterEvents(opts: { city?: string; size?: number; keyword?: string } = {}): Promise<AgendaEvent[]> {
   const key = process.env.TICKETMASTER_API_KEY;
-  if (!key) return [];
+  if (!key) {
+    const all = snapshotEvents();
+    const city = opts.city ? strip(opts.city) : null;
+    const kw = opts.keyword ? strip(opts.keyword) : null;
+    return all.filter((e) => (!city || (e.city && strip(e.city) === city)) && (!kw || strip(e.name).includes(kw))).slice(0, opts.size ?? 100);
+  }
   const params = new URLSearchParams({
     apikey: key,
     countryCode: "BR",
@@ -127,7 +141,7 @@ export async function fetchTicketmasterEvents(opts: { city?: string; size?: numb
 
 export async function fetchTicketmasterEvent(rawId: string): Promise<AgendaEvent | null> {
   const key = process.env.TICKETMASTER_API_KEY;
-  if (!key) return null;
+  if (!key) return snapshotEvents().find((e) => e.id === `tm-${rawId}`) ?? null;
   try {
     const res = await fetch(`${BASE}/events/${encodeURIComponent(rawId)}.json?apikey=${key}&locale=*`, { next: { revalidate: 3600, tags: ["agenda"] } });
     if (!res.ok) return null;
