@@ -120,7 +120,6 @@ const TICKETS_ONLY_PREFIXES = [
   "/para-produtores",
 ];
 
-const REDIRECT_WHEN_NOT_AUTHENTICATION_ROUTE = "/";
 const REDIRECT_WHEN_INVALID_ROLE_ROUTE = "/";
 
 function parseJwt(token: string): { role?: string; exp?: number } | null {
@@ -395,23 +394,25 @@ export async function middleware(request: NextRequest) {
   // do axios já limpam o cookie "user" e mandam pro login).
   if (rawSessionCookie && !isValidToken(rawSessionCookie)) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = REDIRECT_WHEN_NOT_AUTHENTICATION_ROUTE;
+    redirectUrl.pathname = "/login";
+    redirectUrl.search = "";
     const response = NextResponse.redirect(redirectUrl);
     response.cookies.delete("nokta_session");
     response.cookies.delete("user");
     return response;
   }
 
-  // Not authenticated → public or redirect to home
+  // Sem sessão em rota protegida → login, guardando pra onde a pessoa ia
+  // (`redirect`, caminho interno seguro). Antes caía na home sem explicação
+  // — tocar em "Ingressos" deslogado parecia um clique morto.
   if (!authToken && !publicRoute) {
     const redirectUrl = request.nextUrl.clone();
     const isAuthOnlyUnauthenticated = onboardingRoutes.some((r) => path.startsWith(r));
-    if (isAuthOnlyUnauthenticated) {
-      redirectUrl.pathname = "/login";
-      redirectUrl.searchParams.set("ctx", "produtor");
-    } else {
-      redirectUrl.pathname = REDIRECT_WHEN_NOT_AUTHENTICATION_ROUTE;
-    }
+    redirectUrl.pathname = "/login";
+    redirectUrl.search = "";
+    if (isAuthOnlyUnauthenticated) redirectUrl.searchParams.set("ctx", "produtor");
+    const intended = `${path}${request.nextUrl.search}`;
+    if (isSafeInternalRedirect(intended)) redirectUrl.searchParams.set("redirect", intended);
     return NextResponse.redirect(redirectUrl);
   }
 

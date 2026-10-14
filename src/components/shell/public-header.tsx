@@ -10,7 +10,7 @@ import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
 import { initials } from "@/lib/format";
 import { resolveMediaUrl } from "@/lib/media";
-import { buildPlatformUrl } from "@/lib/surfaces";
+import { PRODUCER_DASHBOARD_PATH, PRODUCER_SIGNUP_PATH, usePlatformHref } from "@/lib/use-platform-href";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SearchCommand } from "./search-command";
 
@@ -19,8 +19,6 @@ const NAV = [
   { label: "Revenda", href: "/revenda" },
   { label: "Produtores", href: "/para-produtores" },
 ];
-
-const CREATE_EVENT_HREF = buildPlatformUrl("/register?ctx=produtor");
 
 /** Só visual (span) — quem envolve decide se é Link ou botão, pra nunca aninhar <a> em <a>/<button>. */
 function Avatar({ className }: { className?: string }) {
@@ -45,6 +43,8 @@ function Avatar({ className }: { className?: string }) {
 function UserMenu({ scrolled }: { scrolled: boolean }) {
   const { isAuthenticated, isAuthResolved, user, role, signOut } = useAuth();
   const router = useRouter();
+  const createHref = usePlatformHref(PRODUCER_SIGNUP_PATH);
+  const dashboardHref = usePlatformHref(PRODUCER_DASHBOARD_PATH);
 
   if (!isAuthResolved) return <Avatar />;
   if (!isAuthenticated) {
@@ -53,7 +53,7 @@ function UserMenu({ scrolled }: { scrolled: boolean }) {
         <Link href="/login" className={cn("inline-flex h-10 items-center rounded-pill px-4 text-sm font-semibold transition-colors", scrolled ? "text-foreground hover:bg-surface-2" : "text-white/85 hover:bg-white/10 hover:text-white")}>
           Entrar
         </Link>
-        <a href={CREATE_EVENT_HREF} className="btn-lift inline-flex h-10 items-center gap-2 rounded-pill bg-white pl-4 pr-3 text-sm font-bold text-[#16060f]">
+        <a href={createHref} className="btn-lift inline-flex h-10 items-center gap-2 rounded-pill bg-white pl-4 pr-3 text-sm font-bold text-[#16060f]">
           Criar evento
           <span className="flex size-6 items-center justify-center rounded-full bg-brand text-brand-foreground">
             <Icon name="bolt" size={11} />
@@ -86,7 +86,7 @@ function UserMenu({ scrolled }: { scrolled: boolean }) {
         <MenuItem icon="heart" label="Favoritos" onSelect={() => router.push("/favoritos")} />
         <MenuItem icon="user" label="Meu perfil" onSelect={() => router.push("/perfil")} />
         <DropdownMenuSeparator className="bg-border" />
-        {isProducer ? <MenuItem icon="chart-line" label="Painel do produtor" onSelect={() => window.location.assign(buildPlatformUrl("/dashboard/inicio"))} /> : <MenuItem icon="bolt" label="Quero produzir eventos" onSelect={() => router.push("/para-produtores")} />}
+        {isProducer ? <MenuItem icon="chart-line" label="Painel do produtor" onSelect={() => window.location.assign(dashboardHref)} /> : <MenuItem icon="bolt" label="Quero produzir eventos" onSelect={() => router.push("/para-produtores")} />}
         <DropdownMenuSeparator className="bg-border" />
         <MenuItem icon="logout" label="Sair" onSelect={() => signOut()} danger />
       </DropdownMenuContent>
@@ -133,6 +133,91 @@ function DesktopNav({ scrolled }: { scrolled: boolean }) {
   );
 }
 
+/**
+ * Cabeçalho do celular. Logo à esquerda; à direita a conta (pílula
+ * "Entrar" de vidro ou avatar com anel rosa). Busca e navegação ficam na
+ * barra inferior. Fora da home ganha o "voltar".
+ *
+ * DEV: `?hv=1|2|3|4` troca a variante visual pra comparar (some em produção).
+ */
+function MobileHeader({ isHome, scrolled, isAuthenticated, isAuthResolved, onBack, onSearch }: { isHome: boolean; scrolled: boolean; isAuthenticated: boolean; isAuthResolved: boolean; onBack: () => void; onSearch: () => void }) {
+  const [variant, setVariant] = useState(1);
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    const v = Number(new URLSearchParams(window.location.search).get("hv"));
+    if (v >= 1 && v <= 4) setVariant(v);
+  }, []);
+
+  const account = !isAuthResolved ? (
+    <span className="size-10 rounded-full bg-white/[0.06]" aria-hidden />
+  ) : isAuthenticated ? (
+    <Link href="/perfil" aria-label="Minha conta" className="press rounded-full ring-2 ring-brand/70 ring-offset-2 ring-offset-background">
+      <Avatar />
+    </Link>
+  ) : variant === 2 ? (
+    <Link href="/login" aria-label="Entrar" className="press relative flex size-10 items-center justify-center rounded-full bg-white/[0.07] text-foreground ring-1 ring-white/10 backdrop-blur-md">
+      <Icon name="user" size={15} />
+      <span className="absolute right-0.5 top-0.5 size-2 rounded-full bg-brand ring-2 ring-background" />
+    </Link>
+  ) : variant === 4 ? (
+    <Link href="/login" className="btn-lift inline-flex h-9 items-center gap-1.5 rounded-pill bg-brand px-4 text-[13px] font-bold text-brand-foreground">
+      Entrar
+    </Link>
+  ) : (
+    <Link href="/login" className="press inline-flex h-9 items-center gap-2 rounded-pill bg-white/[0.07] pl-1.5 pr-3.5 text-[13px] font-semibold text-foreground ring-1 ring-white/10 backdrop-blur-md">
+      <span className="flex size-6 items-center justify-center rounded-full bg-brand text-brand-foreground">
+        <Icon name="user" size={10} />
+      </span>
+      Entrar
+    </Link>
+  );
+
+  const back = !isHome ? (
+    <button type="button" onClick={onBack} aria-label="Voltar" className="relative flex size-10 items-center justify-center rounded-full bg-white/[0.06] text-foreground ring-1 ring-white/10 transition-colors hover:bg-surface-2">
+      <Icon name="arrow-left" size={16} />
+    </button>
+  ) : null;
+
+  if (variant === 3) {
+    // Gandaya: logo centralizada, conta à esquerda, busca à direita.
+    return (
+      <header className={cn("sticky top-0 z-40 pt-safe transition-[background-color,box-shadow] duration-300 lg:hidden", scrolled ? "bg-background/80 shadow-[0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl" : "bg-transparent")}>
+        <div className="relative grid h-16 grid-cols-[1fr_auto_1fr] items-center px-4">
+          <div className="flex items-center">{back ?? (isAuthenticated ? account : <Link href="/login" aria-label="Entrar" className="press flex size-10 items-center justify-center rounded-full bg-white/[0.06] text-foreground ring-1 ring-white/10"><Icon name="user" size={15} /></Link>)}</div>
+          <Link href="/" aria-label="Início" className="press">
+            <BrandLogo height={30} />
+          </Link>
+          <div className="flex justify-end">
+            <button type="button" onClick={onSearch} aria-label="Buscar" className="press flex size-10 items-center justify-center rounded-full bg-white/[0.06] text-foreground ring-1 ring-white/10">
+              <Icon name="search" size={15} />
+            </button>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  return (
+    <header className={cn("sticky top-0 z-40 pt-safe transition-[background-color,box-shadow] duration-300 lg:hidden", scrolled ? "bg-background/80 shadow-[0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl" : "bg-transparent")}>
+      <div className="relative flex h-16 items-center gap-2.5 overflow-hidden px-5">
+        <div aria-hidden className={cn("pointer-events-none absolute -left-8 -top-20 size-44 rounded-full bg-brand/25 blur-3xl transition-opacity duration-500", scrolled ? "opacity-0" : "opacity-100")} />
+        {back}
+        <Link href="/" aria-label="Início" className="press relative">
+          <BrandLogo height={isHome ? 32 : 26} />
+        </Link>
+        <div className="relative ml-auto flex items-center gap-2">
+          {variant === 2 ? (
+            <button type="button" onClick={onSearch} aria-label="Buscar" className="press flex size-10 items-center justify-center rounded-full bg-white/[0.07] text-foreground ring-1 ring-white/10 backdrop-blur-md">
+              <Icon name="search" size={15} />
+            </button>
+          ) : null}
+          {account}
+        </div>
+      </div>
+    </header>
+  );
+}
+
 function useScrolled(threshold = 24) {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
@@ -167,7 +252,7 @@ export type HeaderChrome = "full" | "minimal";
 export function PublicHeader({ chrome = "full", title }: { chrome?: HeaderChrome; title?: string }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isAuthResolved } = useAuth();
   const scrolled = useScrolled();
   const [searchOpen, setSearchOpen] = useState(false);
   const isHome = pathname === "/";
@@ -212,32 +297,7 @@ export function PublicHeader({ chrome = "full", title }: { chrome?: HeaderChrome
 
   return (
     <>
-      {/* celular */}
-      <header className={cn("sticky top-0 z-40 pt-safe transition-[background-color,box-shadow] duration-300 lg:hidden", scrolled ? "bg-background/85 shadow-[0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl" : "bg-background")}>
-        <div className="flex h-14 items-center px-3">
-          <div className="flex w-20 items-center">
-            {isHome ? (
-              <Link href={isAuthenticated ? "/perfil" : "/login"} aria-label="Minha conta" className="rounded-full text-foreground/80">
-                <Avatar />
-              </Link>
-            ) : (
-              <button type="button" onClick={() => router.back()} aria-label="Voltar" className="flex size-9 items-center justify-center rounded-full text-foreground transition-colors hover:bg-surface-2">
-                <Icon name="arrow-left" size={18} />
-              </button>
-            )}
-          </div>
-          <div className="flex flex-1 justify-center">
-            <Link href="/" aria-label="Início" className="press">
-              <BrandLogo height={30} />
-            </Link>
-          </div>
-          <div className="flex w-20 items-center justify-end">
-            <button type="button" onClick={openSearch} aria-label="Buscar eventos" className="flex size-9 items-center justify-center rounded-full text-foreground transition-colors hover:bg-surface-2">
-              <Icon name="search" size={18} />
-            </button>
-          </div>
-        </div>
-      </header>
+      <MobileHeader isHome={isHome} scrolled={scrolled} isAuthenticated={isAuthenticated} isAuthResolved={isAuthResolved} onBack={() => router.back()} onSearch={openSearch} />
 
       {/* desktop: ilha flutuante */}
       <header className="pointer-events-none fixed inset-x-0 top-0 z-40 hidden lg:block">
