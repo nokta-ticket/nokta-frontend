@@ -8,6 +8,8 @@ import { BrandLogo } from "@/components/brand/brand-logo";
 import { ForceTheme } from "@/components/theme/theme-provider";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
+import { getMarketingUrl } from "@/lib/surfaces";
+import { useSurface } from "@/lib/use-surface";
 
 /**
  * Moldura das telas de login/cadastro/recuperação/convite: o formulário
@@ -19,16 +21,22 @@ import { cn } from "@/lib/cn";
  * Celular: o card sobe de baixo como uma folha (fundo visível em cima).
  * Desktop: card centralizado.
  */
-export function AuthShell({ children, backHref = "/", size = "md", className }: { children: ReactNode; backHref?: string; size?: "sm" | "md" | "lg"; className?: string }) {
+export function AuthShell({ children, backHref: backHrefProp, size = "md", className }: { children: ReactNode; backHref?: string; size?: "sm" | "md" | "lg"; className?: string }) {
   const router = useRouter();
+  const surface = useSurface();
+  // Em app.nokta.live a raiz "/" só manda de volta pro login — "fora do
+  // card" leva pro site institucional. Na bilheteria, pra home.
+  const backHref = backHrefProp ?? (surface === "PLATFORM" ? getMarketingUrl("/") : "/");
+  const goBack = () => (backHref.startsWith("http") ? window.location.assign(backHref) : router.push(backHref));
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") router.push(backHref);
+      if (e.key === "Escape") goBack();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [backHref, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backHref]);
 
   return (
     <div className="fixed inset-0 z-40 overflow-y-auto overscroll-contain bg-background">
@@ -46,10 +54,10 @@ export function AuthShell({ children, backHref = "/", size = "md", className }: 
           fechar quando um arrasto de seleção termina fora do card. */}
       <div
         onMouseDown={(e) => {
-          if (e.target === e.currentTarget) router.push(backHref);
+          if (e.target === e.currentTarget) goBack();
         }}
         onTouchEnd={(e) => {
-          if (e.target === e.currentTarget) router.push(backHref);
+          if (e.target === e.currentTarget) goBack();
         }}
         className="relative flex min-h-dvh flex-col items-center justify-end sm:justify-center sm:p-6"
       >
