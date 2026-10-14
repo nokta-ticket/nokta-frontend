@@ -714,7 +714,7 @@ export default function EventoPageClient() {
             <div className="h-px bg-gradient-to-r from-[#9944CC]/20 via-[#D86CFA]/10 to-transparent" />
 
             {/* Programação */}
-            <EventProgramJourney items={parseProgramacao(evento.programacao ?? '')} ctaHref={vipActive ? "#vip" : tickets.length > 0 ? "#ingressos" : checkoutHref} />
+            <EventProgramJourney items={parseProgramacao(evento.programacao ?? '')} />
 
             {/* Info extra */}
             {evento.info && (

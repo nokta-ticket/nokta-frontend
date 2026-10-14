@@ -1,7 +1,6 @@
 'use client';
 
-import Link from 'next/link';
-import { Calendar, Ticket, Mic2, Music2, PartyPopper, DoorOpen, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Mic2, Music2, PartyPopper, DoorOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRef } from 'react';
 
@@ -16,7 +15,6 @@ export type ProgramItem = {
 
 interface EventProgramJourneyProps {
   items: ProgramItem[];
-  ctaHref?: string;
 }
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -428,29 +426,8 @@ function WarningBanner() {
   );
 }
 
-// ── CTA block ──────────────────────────────────────────────────
-function CTABlock({ href }: { href: string }) {
-  return (
-    <div className="mt-12 flex flex-col items-center justify-between gap-6 rounded-3xl border border-[#E9D5FF]/80 bg-gradient-to-r from-[#F5F0FF]/80 via-white to-[#EFF6FF]/60 px-8 py-8 sm:flex-row shadow-sm">
-      <div className="flex items-center gap-5">
-        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#7C3AED]/10 text-[#7C3AED]">
-          <Ticket size={26} />
-        </div>
-        <div>
-          <p className="text-xl font-extrabold text-[#0F172A]">Pronto para viver essa experiência?</p>
-          <p className="mt-1 text-sm text-[#475569]">Garanta seu ingresso e faça parte deste momento único.</p>
-        </div>
-      </div>
-      <Link href={href} className="shrink-0 flex items-center gap-2.5 rounded-2xl bg-gradient-to-r from-[#7C3AED] to-[#2D8CFF] px-10 py-3.5 text-base font-bold text-white shadow-[0_4px_20px_rgba(124,58,237,0.3)] transition-all hover:brightness-110 hover:shadow-[0_6px_28px_rgba(124,58,237,0.4)]">
-        <Ticket size={18} />
-        Comprar ingresso
-      </Link>
-    </div>
-  );
-}
-
 // ── Main export ────────────────────────────────────────────────
-export function EventProgramJourney({ items, ctaHref }: EventProgramJourneyProps) {
+export function EventProgramJourney({ items }: EventProgramJourneyProps) {
   if (!items.length) {
     return (
       <section className="mt-10">
@@ -474,14 +451,12 @@ export function EventProgramJourney({ items, ctaHref }: EventProgramJourneyProps
       <div className="mt-4 hidden lg:block">
         <DesktopTimeline items={items} />
         <WarningBanner />
-        {ctaHref && <CTABlock href={ctaHref} />}
       </div>
 
       {/* ── Mobile ──────────────────────────────────────────────── */}
       <div className="mt-4 lg:hidden">
         <MobileTimeline items={items} />
         <WarningBanner />
-        {ctaHref && <CTABlock href={ctaHref} />}
       </div>
     </section>
   );
