@@ -1,11 +1,11 @@
 "use client";
 
-import { ChevronDown, ChevronUp } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
+import { cn } from "@/lib/cn";
 
 /**
- * Reordenação simples (sem lib de drag-and-drop): mover para cima/baixo.
- * `index`/`total` referem-se à posição dentro da lista JÁ ORDENADA exibida.
+ * Reordenação simples (mover para cima/baixo) para listas curtas sem
+ * arrastar. `index`/`total` referem-se à posição na lista JÁ ORDENADA.
  */
 export function ReorderControls({
   index,
@@ -13,35 +13,24 @@ export function ReorderControls({
   onMoveUp,
   onMoveDown,
   disabled = false,
+  className,
 }: {
   index: number;
   total: number;
   onMoveUp: () => void;
   onMoveDown: () => void;
   disabled?: boolean;
+  className?: string;
 }) {
+  const btn = "flex h-5 w-7 items-center justify-center rounded-md text-subtle-foreground transition-colors hover:bg-surface-2 hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent";
   return (
-    <div className="flex flex-col">
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-5 w-6"
-        aria-label="Mover para cima"
-        disabled={disabled || index === 0}
-        onClick={onMoveUp}
-      >
-        <ChevronUp size={14} />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-5 w-6"
-        aria-label="Mover para baixo"
-        disabled={disabled || index === total - 1}
-        onClick={onMoveDown}
-      >
-        <ChevronDown size={14} />
-      </Button>
+    <div className={cn("flex shrink-0 flex-col", className)}>
+      <button type="button" aria-label="Mover para cima" disabled={disabled || index === 0} onClick={onMoveUp} className={btn}>
+        <Icon name="chevron-up" size={10} />
+      </button>
+      <button type="button" aria-label="Mover para baixo" disabled={disabled || index === total - 1} onClick={onMoveDown} className={btn}>
+        <Icon name="chevron-down" size={10} />
+      </button>
     </div>
   );
 }

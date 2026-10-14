@@ -1,19 +1,12 @@
 "use client";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { ConfirmDialog as UiConfirmDialog } from "@/components/ui/confirm-dialog";
 
 /**
- * Confirmação imperativa (arquivar produto/variação/cardápio/opção, remover
- * vínculo). Controlado externamente via `open` — dispara de qualquer botão
- * de ação (inclusive dentro de dropdown menus).
+ * Compatibilidade: a Operação (caixa, terminais, comandas) ainda importa
+ * `ConfirmDialog` daqui com a API antiga (`destructive`, `loading`,
+ * `onConfirm` síncrono). Delega pro primitivo canônico de
+ * `@/components/ui/confirm-dialog` — código novo deve importar de lá.
  */
 export function ConfirmDialog({
   open,
@@ -35,25 +28,14 @@ export function ConfirmDialog({
   onConfirm: () => void;
 }) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-            Cancelar
-          </Button>
-          <Button
-            variant={destructive ? "destructive" : "default"}
-            onClick={onConfirm}
-            disabled={loading}
-          >
-            {loading ? "Aguarde…" : confirmLabel}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <UiConfirmDialog
+      open={open}
+      onOpenChange={(v) => (!loading ? onOpenChange(v) : null)}
+      title={title}
+      description={description}
+      confirmLabel={confirmLabel}
+      danger={destructive}
+      onConfirm={onConfirm}
+    />
   );
 }

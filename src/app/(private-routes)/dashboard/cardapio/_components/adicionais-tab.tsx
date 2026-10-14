@@ -2,61 +2,31 @@
 
 import { useEffect, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
+import { Field } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { RowsSkeleton } from "@/components/ui/skeleton";
+import { StatusBadge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
-import { venueMenuApi, centsToBRL, type VenueModifierGroup, type VenueModifierOption } from "@/services/venue-menu";
-import {
-  useVenueModifierGroup,
-  useVenueModifierGroupMutations,
-  useVenueModifierGroups,
-  useVenueModifierOptionMutations,
-} from "../_hooks/use-venue-modifier-groups";
+import { cn } from "@/lib/cn";
+import { formatBRLCents } from "@/lib/format";
+import { venueMenuApi, type VenueModifierGroup, type VenueModifierOption } from "@/services/venue-menu";
+import { useVenueModifierGroup, useVenueModifierGroupMutations, useVenueModifierGroups, useVenueModifierOptionMutations } from "../_hooks/use-venue-modifier-groups";
 import { venueKeys } from "../_hooks/query-keys";
-import { ActiveBadge } from "./venue-status-badge";
 import { ReorderControls, buildSwapReorderPayload } from "./reorder-controls";
-import { ConfirmDialog } from "./confirm-dialog";
 import { MoneyField } from "./money-field";
 import { ModifierComponentsDialog } from "../../estoque/_components/modifier-components-dialog";
-import { EmptyState } from "../../_components/states/empty-state";
-import { TableSkeleton } from "../../_components/states/loading-state";
-import { ErrorState } from "../../_components/states/error-state";
 
-function GroupFormDialog({
-  open,
-  onOpenChange,
-  group,
-  onSubmit,
-  loading,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  group: VenueModifierGroup | null;
-  onSubmit: (nome: string) => void;
-  loading: boolean;
-}) {
+function GroupFormDialog({ open, onOpenChange, group, onSubmit, loading }: { open: boolean; onOpenChange: (v: boolean) => void; group: VenueModifierGroup | null; onSubmit: (nome: string) => void; loading: boolean }) {
   const [nome, setNome] = useState(group?.nome ?? "");
-
-  // Radix só chama onOpenChange em fechamentos internos — abrir é uma
-  // mudança de prop externa e não dispara esse callback, por isso o
-  // preenchimento do form precisa reagir a `open`/`group` via useEffect.
+  // Abrir é mudança de prop externa (Radix não chama onOpenChange) — preenche via efeito.
   useEffect(() => {
     if (open) setNome(group?.nome ?? "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -64,25 +34,21 @@ function GroupFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent size="sm">
         <DialogHeader>
           <DialogTitle>{group ? "Editar grupo" : "Novo grupo de adicionais"}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-2">
-          <Label htmlFor="grupo-nome">Nome</Label>
-          <Input
-            id="grupo-nome"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            placeholder="Ex.: Ponto da carne, Adicionais, Molhos"
-          />
-        </div>
+        <DialogBody>
+          <Field label="Nome" htmlFor="grupo-nome" required hint="Ex.: Ponto da carne, Molhos, Fruta da caipirinha">
+            <Input id="grupo-nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Molhos" onKeyDown={(e) => e.key === "Enter" && nome.trim() && onSubmit(nome.trim())} />
+          </Field>
+        </DialogBody>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
             Cancelar
           </Button>
-          <Button disabled={loading || !nome.trim()} onClick={() => onSubmit(nome.trim())}>
-            {loading ? "Salvando…" : "Salvar"}
+          <Button disabled={!nome.trim()} loading={loading} onClick={() => onSubmit(nome.trim())}>
+            Salvar
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -90,22 +56,9 @@ function GroupFormDialog({
   );
 }
 
-function OptionFormDialog({
-  open,
-  onOpenChange,
-  option,
-  onSubmit,
-  loading,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  option: VenueModifierOption | null;
-  onSubmit: (values: { nome: string; priceCents: number }) => void;
-  loading: boolean;
-}) {
+function OptionFormDialog({ open, onOpenChange, option, onSubmit, loading }: { open: boolean; onOpenChange: (v: boolean) => void; option: VenueModifierOption | null; onSubmit: (values: { nome: string; priceCents: number }) => void; loading: boolean }) {
   const [nome, setNome] = useState(option?.nome ?? "");
   const [priceCents, setPriceCents] = useState(option?.priceCents ?? 0);
-
   useEffect(() => {
     if (open) {
       setNome(option?.nome ?? "");
@@ -116,28 +69,22 @@ function OptionFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent size="sm">
         <DialogHeader>
           <DialogTitle>{option ? "Editar opção" : "Nova opção"}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="opcao-nome">Nome</Label>
-            <Input
-              id="opcao-nome"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              placeholder="Ex.: Bacon, Ao ponto, Zero"
-            />
-          </div>
-          <MoneyField label="Acréscimo (R$ 0,00 = grátis)" cents={priceCents} onChange={setPriceCents} />
-        </div>
+        <DialogBody>
+          <Field label="Nome" htmlFor="opcao-nome" required>
+            <Input id="opcao-nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Bacon, Ao ponto, Sem açúcar" />
+          </Field>
+          <MoneyField id="opcao-preco" label="Acréscimo (R$ 0,00 = grátis)" cents={priceCents} onChange={setPriceCents} />
+        </DialogBody>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
             Cancelar
           </Button>
-          <Button disabled={loading || !nome.trim()} onClick={() => onSubmit({ nome: nome.trim(), priceCents })}>
-            {loading ? "Salvando…" : "Salvar"}
+          <Button disabled={!nome.trim()} loading={loading} onClick={() => onSubmit({ nome: nome.trim(), priceCents })}>
+            Salvar
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -145,36 +92,20 @@ function OptionFormDialog({
   );
 }
 
-function GroupOptionsSheet({
-  orgId,
-  group,
-  onOpenChange,
-}: {
-  orgId: number;
-  group: VenueModifierGroup | null;
-  onOpenChange: (v: boolean) => void;
-}) {
-  const { create, update, archive, setActive, reorder } = useVenueModifierOptionMutations(
-    orgId,
-    group?.id ?? -1,
-  );
+function GroupOptionsSheet({ orgId, group, onOpenChange }: { orgId: number; group: VenueModifierGroup | null; onOpenChange: (v: boolean) => void }) {
+  const { create, update, archive, setActive, reorder } = useVenueModifierOptionMutations(orgId, group?.id ?? -1);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<VenueModifierOption | null>(null);
   const [archiving, setArchiving] = useState<VenueModifierOption | null>(null);
   const [stockOption, setStockOption] = useState<VenueModifierOption | null>(null);
-
-  // Busca fresca sempre que o grupo muda — usa o endpoint de detalhe (já inclui options).
   const detail = useVenueModifierGroup(orgId, group?.id ?? null);
-
   const options = detail.data?.options ?? [];
 
   const handleSubmit = (values: { nome: string; priceCents: number }) => {
-    const mutation = editing
-      ? update.mutateAsync({ optionId: editing.id, payload: values })
-      : create.mutateAsync(values);
+    const mutation = editing ? update.mutateAsync({ optionId: editing.id, payload: values }) : create.mutateAsync(values);
     mutation
       .then(() => {
-        toast.success(editing ? "Opção atualizada." : "Opção criada.");
+        toast.success(editing ? "Opção atualizada" : "Opção criada");
         setFormOpen(false);
         setEditing(null);
       })
@@ -184,110 +115,77 @@ function GroupOptionsSheet({
   const move = (index: number, direction: -1 | 1) => {
     const target = index + direction;
     if (target < 0 || target >= options.length) return;
-    const payload = buildSwapReorderPayload(options, index, target);
-    reorder.mutate(payload, {
-      onError: (err) => toast.error(getErrorMessage(err, "Não foi possível reordenar.")),
-    });
+    reorder.mutate(buildSwapReorderPayload(options, index, target), { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível reordenar.")) });
   };
 
   return (
     <Sheet open={group !== null} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-md">
+      <SheetContent side="right">
         <SheetHeader>
-          <SheetTitle>Opções — {group?.nome}</SheetTitle>
+          <SheetTitle>{group?.nome}</SheetTitle>
+          <SheetDescription>Opções que o cliente escolhe dentro deste grupo.</SheetDescription>
         </SheetHeader>
-
-        <div className="flex-1 space-y-4 overflow-y-auto px-4 pb-4">
-          <Button size="sm" onClick={() => { setEditing(null); setFormOpen(true); }}>
-            <Plus size={16} /> Nova opção
+        <SheetBody className="gap-4">
+          <Button size="sm" leftIcon="plus" className="w-fit" onClick={() => { setEditing(null); setFormOpen(true); }}>
+            Nova opção
           </Button>
 
-          {options.length === 0 ? (
-            <p className="py-8 text-center text-sm text-black/50">Nenhuma opção cadastrada ainda.</p>
+          {detail.isLoading ? (
+            <RowsSkeleton rows={3} />
+          ) : options.length === 0 ? (
+            <EmptyState compact icon="tag" title="Nenhuma opção ainda" description="Ex.: Bacon (+R$ 5), Cheddar (+R$ 4), Sem cebola (grátis)." />
           ) : (
-            <ul className="divide-y divide-black/5 rounded-xl border border-black/10 bg-white">
-              {options.map((option, i) => (
-                <li key={option.id} className="flex items-center gap-2 px-3 py-2.5">
-                  <ReorderControls
-                    index={i}
-                    total={options.length}
-                    onMoveUp={() => move(i, -1)}
-                    onMoveDown={() => move(i, 1)}
-                    disabled={reorder.isPending}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-gray-900">{option.nome}</p>
-                    <p className="text-xs text-black/50">
-                      {option.priceCents === 0 ? "Grátis" : `+ ${centsToBRL(option.priceCents)}`}
-                    </p>
-                  </div>
-                  {option.archivedAt ? (
-                    <ActiveBadge active={false} />
-                  ) : (
-                    <Switch
-                      checked={option.active}
-                      aria-label={option.active ? "Desativar opção" : "Ativar opção"}
-                      onCheckedChange={(checked) =>
-                        setActive.mutate(
-                          { optionId: option.id, active: checked },
-                          {
-                            onError: (err) =>
-                              toast.error(getErrorMessage(err, "Não foi possível atualizar a opção.")),
-                          },
-                        )
-                      }
-                    />
-                  )}
-                  {!option.archivedAt ? (
-                    <>
-                      <Button variant="outline" size="sm" onClick={() => setStockOption(option)}>
-                        Estoque
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => { setEditing(option); setFormOpen(true); }}
-                      >
-                        Editar
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => setArchiving(option)}>
-                        Arquivar
-                      </Button>
-                    </>
-                  ) : null}
-                </li>
-              ))}
+            <ul className="overflow-hidden rounded-card border border-border bg-surface">
+              {options.map((option, i) => {
+                const archived = Boolean(option.archivedAt);
+                return (
+                  <li key={option.id} className={cn("flex items-center gap-2 px-3 py-2.5", i > 0 && "border-t border-border", archived && "opacity-60")}>
+                    <ReorderControls index={i} total={options.length} onMoveUp={() => move(i, -1)} onMoveDown={() => move(i, 1)} disabled={reorder.isPending || archived} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">{option.nome}</p>
+                      <p className="text-caption text-muted-foreground tnum">{option.priceCents === 0 ? "Grátis" : `+ ${formatBRLCents(option.priceCents)}`}{archived ? " · arquivada" : ""}</p>
+                    </div>
+                    {archived ? (
+                      <StatusBadge tone="neutral">Arquivada</StatusBadge>
+                    ) : (
+                      <>
+                        <Switch checked={option.active} aria-label={option.active ? "Desativar opção" : "Ativar opção"} onCheckedChange={(checked) => setActive.mutate({ optionId: option.id, active: checked }, { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível atualizar a opção.")) })} />
+                        <Button variant="subtle" size="icon-sm" aria-label="Consumo de estoque" title="Consumo de estoque" onClick={() => setStockOption(option)}>
+                          <Icon name="box" size={14} />
+                        </Button>
+                        <Button variant="subtle" size="icon-sm" aria-label="Editar" title="Editar" onClick={() => { setEditing(option); setFormOpen(true); }}>
+                          <Icon name="edit" size={14} />
+                        </Button>
+                        <Button variant="subtle" size="icon-sm" aria-label="Arquivar" title="Arquivar" className="hover:bg-danger-bg hover:text-danger" onClick={() => setArchiving(option)}>
+                          <Icon name="trash" size={14} />
+                        </Button>
+                      </>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
-        </div>
+        </SheetBody>
 
-        <OptionFormDialog
-          open={formOpen}
-          onOpenChange={setFormOpen}
-          option={editing}
-          onSubmit={handleSubmit}
-          loading={create.isPending || update.isPending}
-        />
-        <ModifierComponentsDialog
-          orgId={orgId}
-          modifierOptionId={stockOption?.id ?? null}
-          optionName={stockOption?.nome}
-          open={stockOption !== null}
-          onOpenChange={(v) => !v && setStockOption(null)}
-        />
+        <OptionFormDialog open={formOpen} onOpenChange={setFormOpen} option={editing} onSubmit={handleSubmit} loading={create.isPending || update.isPending} />
+        <ModifierComponentsDialog orgId={orgId} modifierOptionId={stockOption?.id ?? null} optionName={stockOption?.nome} open={stockOption !== null} onOpenChange={(v) => !v && setStockOption(null)} />
         <ConfirmDialog
           open={archiving !== null}
           onOpenChange={(v) => !v && setArchiving(null)}
           title="Arquivar opção"
-          description={`Arquivar "${archiving?.nome}"? Ela deixa de poder ser oferecida, mas não é excluída.`}
+          description={`Arquivar "${archiving?.nome}"? Ela deixa de ser oferecida, mas não é excluída.`}
           confirmLabel="Arquivar"
-          loading={archive.isPending}
-          onConfirm={() => {
+          danger
+          onConfirm={async () => {
             if (!archiving) return;
-            archive.mutate(archiving.id, {
-              onSuccess: () => { toast.success("Opção arquivada."); setArchiving(null); },
-              onError: (err) => toast.error(getErrorMessage(err, "Não foi possível arquivar a opção.")),
-            });
+            try {
+              await archive.mutateAsync(archiving.id);
+              toast.success("Opção arquivada");
+            } catch (err) {
+              toast.error(getErrorMessage(err, "Não foi possível arquivar a opção."));
+              throw err;
+            }
           }}
         />
       </SheetContent>
@@ -298,28 +196,18 @@ function GroupOptionsSheet({
 export function AdicionaisTab({ orgId }: { orgId: number }) {
   const { data: groups, isLoading, isError, refetch } = useVenueModifierGroups(orgId);
   const { create, update, setActive, reorder } = useVenueModifierGroupMutations(orgId);
-
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<VenueModifierGroup | null>(null);
   const [openOptionsFor, setOpenOptionsFor] = useState<VenueModifierGroup | null>(null);
 
   const list = groups ?? [];
-
-  const detailQueries = useQueries({
-    queries: list.map((g) => ({
-      queryKey: venueKeys.modifierGroup(orgId, g.id),
-      queryFn: () => venueMenuApi.getModifierGroup(orgId, g.id),
-      staleTime: 60_000,
-    })),
-  });
+  const detailQueries = useQueries({ queries: list.map((g) => ({ queryKey: venueKeys.modifierGroup(orgId, g.id), queryFn: () => venueMenuApi.getModifierGroup(orgId, g.id), staleTime: 60_000 })) });
 
   const handleSubmit = (nome: string) => {
-    const mutation = editing
-      ? update.mutateAsync({ groupId: editing.id, payload: { nome } })
-      : create.mutateAsync({ nome });
+    const mutation = editing ? update.mutateAsync({ groupId: editing.id, payload: { nome } }) : create.mutateAsync({ nome });
     mutation
       .then(() => {
-        toast.success(editing ? "Grupo atualizado." : "Grupo criado.");
+        toast.success(editing ? "Grupo atualizado" : "Grupo criado");
         setFormOpen(false);
         setEditing(null);
       })
@@ -329,97 +217,70 @@ export function AdicionaisTab({ orgId }: { orgId: number }) {
   const move = (index: number, direction: -1 | 1) => {
     const target = index + direction;
     if (target < 0 || target >= list.length) return;
-    const payload = buildSwapReorderPayload(list, index, target);
-    reorder.mutate(payload, {
-      onError: (err) => toast.error(getErrorMessage(err, "Não foi possível reordenar.")),
-    });
+    reorder.mutate(buildSwapReorderPayload(list, index, target), { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível reordenar.")) });
   };
 
-  if (isError) {
-    return <ErrorState description="Não foi possível carregar os adicionais." onRetry={() => refetch()} />;
-  }
+  if (isError) return <ErrorState description="Não foi possível carregar os adicionais." onRetry={() => refetch()} />;
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-black/60">
-          Grupos reutilizáveis (Ponto da carne, Molhos…), vinculados aos produtos na edição de cada um.
-        </p>
-        <Button size="sm" onClick={() => { setEditing(null); setFormOpen(true); }}>
-          <Plus size={16} /> Novo grupo
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-body text-muted-foreground">Grupos reutilizáveis (Molhos, Ponto da carne…) — vincule a cada produto na edição dele.</p>
+        <Button size="sm" leftIcon="plus" className="shrink-0" onClick={() => { setEditing(null); setFormOpen(true); }}>
+          Novo grupo
         </Button>
       </div>
 
       {isLoading ? (
-        <TableSkeleton />
+        <RowsSkeleton rows={3} />
       ) : list.length === 0 ? (
-        <EmptyState
-          title="Nenhum grupo de adicionais"
-          description="Crie grupos de adicionais para oferecer opções e personalizações aos clientes."
-          actionLabel="Novo grupo"
-          onAction={() => setFormOpen(true)}
-        />
+        <EmptyState icon="layers" title="Nenhum grupo de adicionais" description="Crie grupos pra oferecer opções e personalizações aos clientes." action={<Button leftIcon="plus" onClick={() => setFormOpen(true)}>Novo grupo</Button>} />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-black/10 bg-white">
-          <ul className="divide-y divide-black/5">
-            {list.map((group, i) => (
-              <li key={group.id} className="flex items-center gap-3 px-4 py-3">
-                <ReorderControls
-                  index={i}
-                  total={list.length}
-                  onMoveUp={() => move(i, -1)}
-                  onMoveDown={() => move(i, 1)}
-                  disabled={reorder.isPending}
-                />
+        <ul className="overflow-hidden rounded-card border border-border bg-surface shadow-card">
+          {list.map((group, i) => {
+            const options = detailQueries[i]?.data?.options ?? null;
+            const active = options?.filter((o) => o.active && !o.archivedAt) ?? null;
+            return (
+              <li key={group.id} className={cn("row-in flex items-center gap-3 px-3 py-3 sm:px-4", i > 0 && "border-t border-border")} style={{ ["--i" as string]: i } as never}>
+                <ReorderControls index={i} total={list.length} onMoveUp={() => move(i, -1)} onMoveDown={() => move(i, 1)} disabled={reorder.isPending} />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-gray-900">{group.nome}</p>
-                  <p className="text-xs text-black/50">
-                    {detailQueries[i]?.data?.options.length ?? "—"} opções
-                  </p>
+                  <p className={cn("truncate text-sm font-medium", group.active ? "text-foreground" : "text-muted-foreground")}>{group.nome}</p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {active === null ? (
+                      <span className="text-caption text-subtle-foreground">carregando opções…</span>
+                    ) : active.length === 0 ? (
+                      <span className="text-caption text-warning">Sem opções ativas</span>
+                    ) : (
+                      <>
+                        {active.slice(0, 4).map((o) => (
+                          <span key={o.id} className="inline-flex items-center rounded-pill bg-surface-2 px-2 py-0.5 text-caption text-muted-foreground">
+                            {o.nome}
+                            {o.priceCents > 0 ? <span className="ml-1 tnum text-subtle-foreground">+{formatBRLCents(o.priceCents)}</span> : null}
+                          </span>
+                        ))}
+                        {active.length > 4 ? <span className="inline-flex items-center rounded-pill bg-surface-2 px-2 py-0.5 text-caption text-subtle-foreground tnum">+{active.length - 4}</span> : null}
+                      </>
+                    )}
+                  </div>
                 </div>
-                <ActiveBadge active={group.active} />
-                <Switch
-                  checked={group.active}
-                  aria-label={group.active ? "Desativar grupo" : "Ativar grupo"}
-                  onCheckedChange={(checked) =>
-                    setActive.mutate(
-                      { groupId: group.id, active: checked },
-                      {
-                        onError: (err) =>
-                          toast.error(getErrorMessage(err, "Não foi possível atualizar o grupo.")),
-                      },
-                    )
-                  }
-                />
-                <Button variant="outline" size="sm" onClick={() => setOpenOptionsFor(group)}>
+                <Switch checked={group.active} aria-label={group.active ? "Desativar grupo" : "Ativar grupo"} onCheckedChange={(checked) => setActive.mutate({ groupId: group.id, active: checked }, { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível atualizar o grupo.")) })} />
+                <Button variant="outline" size="sm" className="hidden sm:inline-flex" onClick={() => setOpenOptionsFor(group)}>
                   Opções
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => { setEditing(group); setFormOpen(true); }}
-                >
-                  Editar
+                <Button variant="subtle" size="icon-sm" className="sm:hidden" aria-label="Opções" onClick={() => setOpenOptionsFor(group)}>
+                  <Icon name="list" size={14} />
+                </Button>
+                <Button variant="subtle" size="icon-sm" aria-label="Editar grupo" onClick={() => { setEditing(group); setFormOpen(true); }}>
+                  <Icon name="edit" size={14} />
                 </Button>
               </li>
-            ))}
-          </ul>
-        </div>
+            );
+          })}
+        </ul>
       )}
 
-      <GroupFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        group={editing}
-        onSubmit={handleSubmit}
-        loading={create.isPending || update.isPending}
-      />
-
-      <GroupOptionsSheet
-        orgId={orgId}
-        group={openOptionsFor}
-        onOpenChange={(v) => !v && setOpenOptionsFor(null)}
-      />
+      <GroupFormDialog open={formOpen} onOpenChange={setFormOpen} group={editing} onSubmit={handleSubmit} loading={create.isPending || update.isPending} />
+      <GroupOptionsSheet orgId={orgId} group={openOptionsFor} onOpenChange={(v) => !v && setOpenOptionsFor(null)} />
     </div>
   );
 }

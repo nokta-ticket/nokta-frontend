@@ -2,28 +2,25 @@
 
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
-import { Check, ChevronDown, Copy, ExternalLink, ImagePlus, Instagram, MapPin, Pencil, Phone } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Dialog, DialogBody, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field, FieldGroup } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { extensionForMimeType, ImageCropperDialog } from "@/components/media/ImageCropperDialog";
-import { MenuQrCodeDialog } from "./menu-qr-code-dialog";
-import { buildMarketingUrl } from "@/lib/surfaces";
 import { resolveMediaUrl } from "@/lib/media";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/cn";
 import type { VenueMenu } from "@/services/venue-menu";
 import { useVenueMenuMutations } from "../_hooks/use-venue-menus";
-import { useUpdateOrganizationSlug } from "../_hooks/use-organization-slug";
 import { useUpdateVenuePublicProfile, useVenuePublicProfile } from "../_hooks/use-venue-public-profile";
 import { useImageUpload } from "../_hooks/use-image-upload";
-
-const MARKETING_HOST = buildMarketingUrl("").replace(/^https?:\/\//, "");
+import { MenuStatusBadge } from "./venue-status-badge";
+import { MenuShareDialog } from "./menu-share-dialog";
 
 function initials(name: string): string {
   return name
@@ -34,25 +31,32 @@ function initials(name: string): string {
     .join("");
 }
 
-function LogoUploader({ orgId, orgName }: { orgId: number; orgName: string }) {
+/**
+ * Upload + recorte de uma imagem do perfil público (logo ou banner).
+ * Reajustar sempre parte da imagem ORIGINAL (sem crop) salva em
+ * `*OriginalUrl` — nunca do resultado já recortado (evita degradar a cada
+ * reajuste). Ao escolher um arquivo novo, ele sobe como original antes de
+ * abrir o cropper.
+ */
+function useProfileImage(orgId: number, kind: "logo" | "banner") {
   const { data: profile } = useVenuePublicProfile(orgId);
   const update = useUpdateVenuePublicProfile(orgId);
   const { upload, uploading } = useImageUpload();
   const inputRef = useRef<HTMLInputElement>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
-  // Guarda a URL já enviada da imagem ORIGINAL (sem crop) enquanto o dialog
-  // está aberto — reabrir "Ajustar zoom/posição" depois sempre parte dela,
-  // nunca do resultado já recortado (evita degradar a cada reajuste). Ao
-  // escolher um arquivo novo, o próprio arquivo já sobe como original antes
-  // de abrir o cropper; ao reabrir a partir do que já existe, reaproveita
-  // logoOriginalUrl salvo (sem upload de novo).
   const [pendingOriginalUrl, setPendingOriginalUrl] = useState<string | null>(null);
+
+  const url = (kind === "logo" ? profile?.logoUrl : profile?.bannerUrl) ?? null;
+  const originalUrl = (kind === "logo" ? profile?.logoOriginalUrl : profile?.bannerOriginalUrl) ?? null;
+  const resolvedUrl = url ? (resolveMediaUrl(url) ?? url) : null;
+  // Fallback: imagens salvas antes do campo original existir reajustam a partir do recorte já salvo.
+  const resolvedOriginalUrl = originalUrl ? (resolveMediaUrl(originalUrl) ?? originalUrl) : resolvedUrl;
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return;
-    const originalUrl = await upload(file);
-    if (!originalUrl) return;
-    setPendingOriginalUrl(originalUrl);
+    const uploaded = await upload(file);
+    if (!uploaded) return;
+    setPendingOriginalUrl(uploaded);
     const reader = new FileReader();
     reader.onload = () => setImageSrc(reader.result as string);
     reader.readAsDataURL(file);
@@ -60,371 +64,102 @@ function LogoUploader({ orgId, orgName }: { orgId: number; orgName: string }) {
   };
 
   const handleConfirmCrop = async (blob: Blob) => {
-    // blob.type já vem correto do ImageCropperDialog (PNG/WEBP quando a
-    // origem tinha transparência, JPEG caso contrário) — nunca forçar
-    // .jpg/image/jpeg aqui, senão o fundo transparente vira preto de novo.
-    const file = new File([blob], `logo.${extensionForMimeType(blob.type)}`, { type: blob.type });
-    const url = await upload(file);
-    if (!url) return;
-    const originalUrl = pendingOriginalUrl ?? profile?.logoOriginalUrl ?? undefined;
-    update.mutate(
-      { logoUrl: url, ...(originalUrl ? { logoOriginalUrl: originalUrl } : {}) },
-      { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar a logo.")) },
-    );
+    // blob.type já vem certo do cropper (PNG/WEBP com transparência, JPEG
+    // caso contrário) — nunca forçar .jpg, senão fundo transparente vira preto.
+    const file = new File([blob], `${kind}.${extensionForMimeType(blob.type)}`, { type: blob.type });
+    const cropped = await upload(file);
+    if (!cropped) return;
+    const original = pendingOriginalUrl ?? originalUrl ?? undefined;
+    const payload = kind === "logo" ? { logoUrl: cropped, ...(original ? { logoOriginalUrl: original } : {}) } : { bannerUrl: cropped, ...(original ? { bannerOriginalUrl: original } : {}) };
+    update.mutate(payload, {
+      onSuccess: () => toast.success(kind === "logo" ? "Logo atualizada" : "Banner atualizado"),
+      onError: (err) => toast.error(getErrorMessage(err, kind === "logo" ? "Não foi possível salvar a logo." : "Não foi possível salvar o banner.")),
+    });
     setImageSrc(null);
     setPendingOriginalUrl(null);
   };
 
-  const logoUrl = profile?.logoUrl ?? null;
-  const resolvedLogoUrl = logoUrl ? (resolveMediaUrl(logoUrl) ?? logoUrl) : null;
-  const resolvedOriginalUrl = profile?.logoOriginalUrl
-    ? (resolveMediaUrl(profile.logoOriginalUrl) ?? profile.logoOriginalUrl)
-    : resolvedLogoUrl; // fallback: logos salvas antes desse campo existir reajustam a partir do próprio recorte já salvo.
-
-  const handleAdjustClick = () => {
+  const adjust = () => {
     setPendingOriginalUrl(null);
     if (resolvedOriginalUrl) setImageSrc(resolvedOriginalUrl);
   };
 
+  const cancel = () => {
+    setPendingOriginalUrl(null);
+    setImageSrc(null);
+  };
+
+  return { resolvedUrl, uploading, inputRef, imageSrc, handleFile, handleConfirmCrop, adjust, cancel, pick: () => inputRef.current?.click() };
+}
+
+function OverlayButton({ icon, label, onClick, disabled, className }: { icon: "upload" | "expand" | "camera"; label: string; onClick: () => void; disabled?: boolean; className?: string }) {
   return (
-    <div className="flex flex-col items-start">
-      <span className="mb-2 block text-xs font-medium text-black/50">Logo</span>
-      <div
-        className={`relative flex h-[118px] w-[118px] shrink-0 items-center justify-center rounded-full shadow-[0_8px_20px_rgba(0,0,0,.18)] ${resolvedLogoUrl ? "" : "bg-black"}`}
-      >
-        {resolvedLogoUrl ? (
-          // Sem fundo forçado atrás da imagem — se a logo tiver transparência
-          // real, deve mostrar o fundo da página por trás dela, nunca um
-          // preto artificial (pedido explícito do usuário: a logo aparece
-          // exatamente como foi enviada).
-          <Image src={resolvedLogoUrl} alt={orgName} fill sizes="118px" className="rounded-full object-cover" unoptimized />
-        ) : (
-          <>
-            <span className="pointer-events-none absolute h-[74px] w-[74px] rounded-full border border-white/35" />
-            <span className="relative font-poppins text-[19px] font-medium tracking-[0.12em] text-white">
-              {initials(orgName)}
-            </span>
-          </>
-        )}
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp"
-          className="hidden"
-          onChange={(e) => handleFile(e.target.files?.[0])}
-        />
-        {resolvedLogoUrl ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                disabled={uploading}
-                aria-label="Editar logo"
-                className="absolute bottom-0.5 right-0.5 grid h-[30px] w-[30px] place-items-center rounded-full border border-black/10 bg-white shadow-sm disabled:opacity-60"
-              >
-                <Pencil size={14} className="text-black/60" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleAdjustClick}>Ajustar zoom/posição</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => inputRef.current?.click()}>Trocar imagem</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
-          <button
-            type="button"
-            disabled={uploading}
-            onClick={() => inputRef.current?.click()}
-            aria-label="Enviar logo"
-            className="absolute bottom-0.5 right-0.5 grid h-[30px] w-[30px] place-items-center rounded-full border border-black/10 bg-white shadow-sm disabled:opacity-60"
-          >
-            <Pencil size={14} className="text-black/60" />
-          </button>
-        )}
-      </div>
-      <p className="mt-3.5 text-[11.5px] leading-relaxed text-black/40">
-        Formatos: JPG, PNG ou WEBP
-        <br />
-        Tamanho recomendado: 512x512px
-      </p>
-      <ImageCropperDialog
-        open={Boolean(imageSrc)}
-        onOpenChange={(v) => {
-          if (!v) {
-            setPendingOriginalUrl(null);
-            setImageSrc(null);
-          }
-        }}
-        imageSrc={imageSrc}
-        aspect={1}
-        cropShape="round"
-        title="Ajustar logo"
-        saving={uploading}
-        onConfirm={handleConfirmCrop}
-      />
-    </div>
+    <button type="button" onClick={onClick} disabled={disabled} aria-label={label} title={label} className={cn("flex size-9 items-center justify-center rounded-full bg-surface/90 text-foreground shadow-thumb backdrop-blur-sm transition-colors hover:bg-surface disabled:opacity-60", className)}>
+      <Icon name={icon} size={14} />
+    </button>
   );
 }
 
-function NameAndDescription({ menu, orgId }: { menu: VenueMenu; orgId: number }) {
+function MenuFormDialog({ orgId, menu, open, onOpenChange }: { orgId: number; menu: VenueMenu; open: boolean; onOpenChange: (v: boolean) => void }) {
   const { update } = useVenueMenuMutations(orgId);
   const [nome, setNome] = useState(menu.nome);
   const [descricao, setDescricao] = useState(menu.descricao ?? "");
 
   useEffect(() => {
-    setNome(menu.nome);
-    setDescricao(menu.descricao ?? "");
-  }, [menu.id, menu.nome, menu.descricao]);
-
-  const saveNome = () => {
-    const trimmed = nome.trim();
-    if (!trimmed || trimmed === menu.nome) {
+    if (open) {
       setNome(menu.nome);
+      setDescricao(menu.descricao ?? "");
+    }
+  }, [open, menu.id, menu.nome, menu.descricao]);
+
+  const save = () => {
+    const trimmed = nome.trim();
+    if (!trimmed) {
+      toast.error("Informe o nome do cardápio.");
       return;
     }
     update.mutate(
-      { menuId: menu.id, payload: { nome: trimmed } },
+      { menuId: menu.id, payload: { nome: trimmed, descricao: descricao.trim() } },
       {
-        onError: (err) => {
-          setNome(menu.nome);
-          toast.error(getErrorMessage(err, "Não foi possível renomear o cardápio."));
+        onSuccess: () => {
+          toast.success("Cardápio salvo");
+          onOpenChange(false);
         },
-      },
-    );
-  };
-
-  const saveDescricao = () => {
-    const trimmed = descricao.trim();
-    if (trimmed === (menu.descricao ?? "")) return;
-    update.mutate(
-      { menuId: menu.id, payload: { descricao: trimmed } },
-      {
-        onError: (err) => {
-          setDescricao(menu.descricao ?? "");
-          toast.error(getErrorMessage(err, "Não foi possível salvar a descrição."));
-        },
+        onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar o cardápio.")),
       },
     );
   };
 
   return (
-    <div className="min-w-0">
-      <div className="mb-4">
-        <span className="mb-2 block text-xs font-medium text-black/50">Nome do cardápio</span>
-        <Input
-          value={nome}
-          onChange={(e) => setNome(e.target.value)}
-          onBlur={saveNome}
-          onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-          className="h-11 rounded-[10px]"
-        />
-      </div>
-      <div>
-        <span className="mb-2 block text-xs font-medium text-black/50">Descrição (opcional)</span>
-        <Textarea
-          value={descricao}
-          onChange={(e) => setDescricao(e.target.value)}
-          onBlur={saveDescricao}
-          rows={4}
-          className="resize-none whitespace-pre-wrap break-words rounded-[10px]"
-        />
-      </div>
-    </div>
-  );
-}
-
-function StatusAndLinks({
-  orgId,
-  orgName,
-  orgSlug,
-  menu,
-  menus,
-  onSelectMenu,
-}: {
-  orgId: number;
-  orgName: string;
-  /** Organization.slug — sempre gerado na criação da org, mas o tipo permite null (ver schema); nesse caso mostramos um placeholder em vez de sumir com a seção inteira. */
-  orgSlug: string | null;
-  menu: VenueMenu;
-  menus: VenueMenu[];
-  onSelectMenu: (menuId: number) => void;
-}) {
-  const updateSlug = useUpdateOrganizationSlug(orgId);
-  // displaySlug é o que a UI mostra fora do modo de edição — nunca cai de
-  // volta pro orgSlug antigo (prop) enquanto a mutation está em voo. Sem
-  // isso, salvar troca de editingSlug=false ANTES de refreshOrganizations()
-  // (round-trip de rede) resolver e trazer o orgSlug novo, então a UI
-  // mostra o valor antigo por um instante e só depois "pisca" pro novo.
-  const [displaySlug, setDisplaySlug] = useState(orgSlug);
-  const [slugValue, setSlugValue] = useState(orgSlug ?? "");
-  const [editingSlug, setEditingSlug] = useState(false);
-  const [copiedSlug, setCopiedSlug] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
-  const copyTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    setSlugValue(orgSlug ?? "");
-    setDisplaySlug(orgSlug);
-  }, [orgSlug]);
-
-  const publicUrl = displaySlug ? buildMarketingUrl(`/cardapio/${displaySlug}`) : null;
-  // Link público real só existe pro cardápio PRINCIPAL (o público só tem
-  // espaço pra 1 cardápio por organização) — status Publicado/Rascunho já
-  // não bloqueia mais nada aqui (todo cardápio principal nasce publicado).
-  const canOpenPublic = Boolean(publicUrl) && menu.isMain && menu.status !== "ARCHIVED";
-
-  const saveSlug = () => {
-    setEditingSlug(false);
-    const trimmed = slugValue.trim();
-    if (!trimmed || trimmed === displaySlug) {
-      setSlugValue(displaySlug ?? "");
-      return;
-    }
-    setDisplaySlug(trimmed);
-    updateSlug.mutate(trimmed, {
-      onError: (err) => {
-        setSlugValue(orgSlug ?? "");
-        setDisplaySlug(orgSlug);
-        toast.error(getErrorMessage(err, "Não foi possível alterar o link. Tente outro."));
-      },
-      onSuccess: () => toast.success("Link público atualizado!"),
-    });
-  };
-
-  const copy = async (value: string, kind: "slug" | "link") => {
-    try {
-      await navigator.clipboard.writeText(value);
-      toast.success("Copiado!");
-      if (copyTimeout.current) clearTimeout(copyTimeout.current);
-      if (kind === "slug") setCopiedSlug(true);
-      else setCopiedLink(true);
-      copyTimeout.current = setTimeout(() => {
-        setCopiedSlug(false);
-        setCopiedLink(false);
-      }, 1800);
-    } catch {
-      toast.error("Não foi possível copiar.");
-    }
-  };
-
-  return (
-    <div className="min-w-0">
-      <div className="mb-4">
-        <span className="mb-2 block text-xs font-medium text-black/50">Status</span>
-        <div className="flex h-11 items-center rounded-[10px] border border-black/10 bg-[#fdfdfe] px-3.5">
-          {menu.status === "PUBLISHED" ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[13px] font-semibold text-emerald-700">
-              Publicado
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-black/5 px-2.5 py-1 text-[13px] font-semibold text-black/60">
-              {menu.status === "DRAFT" ? "Rascunho" : "Arquivado"}
-            </span>
-          )}
-          {menus.length > 1 ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="ml-auto text-black/30" aria-label="Trocar cardápio">
-                  <ChevronDown size={16} />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {menus.map((m) => (
-                  <DropdownMenuItem key={m.id} onClick={() => onSelectMenu(m.id)}>
-                    {m.nome} {m.isMain ? "· Principal" : ""}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="mb-4">
-        <span className="mb-2 block text-xs font-medium text-black/50">Slug (link público)</span>
-        <div className="flex items-stretch gap-2.5">
-          <div className="flex flex-1 items-center overflow-hidden rounded-[10px] border border-black/10 bg-[#fdfdfe]">
-            <span className="h-11 shrink-0 whitespace-nowrap border-r border-black/10 bg-black/[0.035] px-3 text-[13px] leading-[44px] text-black/40">
-              {/* Celular: o domínio completo deixava 2 letras de espaço para o
-                  slug. O endereço inteiro continua em "Link público", logo abaixo. */}
-              <span className="hidden sm:inline">{MARKETING_HOST}</span>
-              <span className="sm:hidden">…</span>/cardapio/
-            </span>
-            {editingSlug ? (
-              <input
-                autoFocus
-                value={slugValue}
-                onChange={(e) => setSlugValue(e.target.value)}
-                onBlur={saveSlug}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") e.currentTarget.blur();
-                  if (e.key === "Escape") {
-                    setSlugValue(displaySlug ?? "");
-                    setEditingSlug(false);
-                  }
-                }}
-                placeholder="nome-do-seu-negocio"
-                className="h-11 min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none"
-              />
-            ) : (
-              <button
-                onClick={() => setEditingSlug(true)}
-                className="h-11 min-w-0 flex-1 truncate px-3 text-left text-sm text-foreground"
-              >
-                {displaySlug ?? <span className="text-black/30">definir link…</span>}
-              </button>
-            )}
-            <button onClick={() => setEditingSlug(true)} className="grid h-11 w-11 shrink-0 place-items-center text-black/40" aria-label="Editar slug">
-              <Pencil size={15} />
-            </button>
-          </div>
-          <button
-            onClick={() => displaySlug && copy(displaySlug, "slug")}
-            disabled={!displaySlug}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] border border-black/10 bg-white text-black/50 hover:bg-black/[0.02] disabled:opacity-40"
-            aria-label="Copiar slug"
-          >
-            {copiedSlug ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
-          </button>
-        </div>
-      </div>
-
-      <div>
-        <span className="mb-2 block text-xs font-medium text-black/50">Link público</span>
-        <div className="flex items-stretch gap-2.5">
-          <div className="flex h-11 flex-1 items-center truncate rounded-[10px] border border-black/10 bg-[#f7f7fa] px-3.5 text-[13.5px] text-black/60">
-            {publicUrl ?? "Defina o link acima para gerar a URL pública"}
-          </div>
-          <button
-            onClick={() => publicUrl && copy(publicUrl, "link")}
-            disabled={!publicUrl}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] border border-black/10 bg-white text-black/50 hover:bg-black/[0.02] disabled:opacity-40"
-            aria-label="Copiar link"
-          >
-            {copiedLink ? <Check size={16} className="text-emerald-600" /> : <Copy size={16} />}
-          </button>
-          <MenuQrCodeDialog publicUrl={publicUrl} orgName={orgName} />
-          {canOpenPublic && publicUrl ? (
-            <a
-              href={publicUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-[10px] border border-black/10 bg-white text-black/50 hover:bg-black/[0.02]"
-              aria-label="Abrir cardápio público"
-            >
-              <ExternalLink size={16} />
-            </a>
-          ) : null}
-        </div>
-      </div>
-    </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent size="md">
+        <DialogHeader>
+          <DialogTitle>Editar cardápio</DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          <Field label="Nome" htmlFor="menu-nome" required>
+            <Input id="menu-nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Cardápio principal" />
+          </Field>
+          <Field label="Descrição" htmlFor="menu-descricao" optional hint="Aparece embaixo do nome no cardápio público.">
+            <Textarea id="menu-descricao" value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={3} />
+          </Field>
+        </DialogBody>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={update.isPending}>
+            Cancelar
+          </Button>
+          <Button onClick={save} loading={update.isPending}>
+            Salvar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
 function ContactFields({ orgId }: { orgId: number }) {
   const { data: profile } = useVenuePublicProfile(orgId);
   const update = useUpdateVenuePublicProfile(orgId);
-
   const [address, setAddress] = useState("");
   const [instagramUrl, setInstagramUrl] = useState("");
   const [whatsappNumber, setWhatsappNumber] = useState("");
@@ -441,172 +176,36 @@ function ContactFields({ orgId }: { orgId: number }) {
     if (trimmed === (profile?.[field] ?? "")) return;
     update.mutate(
       { [field]: trimmed || undefined },
-      { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar. Confira o dado e tente de novo.")) },
+      {
+        onSuccess: () => toast.success("Salvo"),
+        onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar. Confira o dado e tente de novo.")),
+      },
     );
   };
 
+  const blurOnEnter = (e: React.KeyboardEvent<HTMLInputElement>) => e.key === "Enter" && e.currentTarget.blur();
+
   return (
-    <div className="mt-6 grid grid-cols-1 gap-4 border-t border-black/[0.06] pt-6 sm:grid-cols-3">
-      <div>
-        <span className="mb-2 flex items-center gap-1.5 text-xs font-medium text-black/50">
-          <Instagram size={13} /> Instagram
-        </span>
-        <Input
-          value={instagramUrl}
-          onChange={(e) => setInstagramUrl(e.target.value)}
-          onBlur={() => saveField("instagramUrl", instagramUrl)}
-          placeholder="https://instagram.com/seu-bar"
-          className="h-11 rounded-[10px]"
-        />
-      </div>
-      <div>
-        <span className="mb-2 flex items-center gap-1.5 text-xs font-medium text-black/50">
-          <Phone size={13} /> WhatsApp
-        </span>
-        <Input
-          value={whatsappNumber}
-          onChange={(e) => setWhatsappNumber(e.target.value)}
-          onBlur={() => saveField("whatsappNumber", whatsappNumber)}
-          placeholder="+55 11 91234-5678"
-          className="h-11 rounded-[10px]"
-        />
-      </div>
-      <div>
-        <span className="mb-2 flex items-center gap-1.5 text-xs font-medium text-black/50">
-          <MapPin size={13} /> Endereço
-        </span>
-        <Input
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          onBlur={() => saveField("address", address)}
-          placeholder="Rua, número, bairro"
-          className="h-11 rounded-[10px]"
-        />
-      </div>
-    </div>
+    <FieldGroup columns={3}>
+      <Field label="Instagram" htmlFor="perfil-instagram">
+        <Input id="perfil-instagram" leftIcon="instagram" value={instagramUrl} onChange={(e) => setInstagramUrl(e.target.value)} onBlur={() => saveField("instagramUrl", instagramUrl)} onKeyDown={blurOnEnter} placeholder="instagram.com/seu-bar" />
+      </Field>
+      <Field label="WhatsApp" htmlFor="perfil-whatsapp">
+        <Input id="perfil-whatsapp" leftIcon="whatsapp" inputMode="tel" value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value)} onBlur={() => saveField("whatsappNumber", whatsappNumber)} onKeyDown={blurOnEnter} placeholder="+55 11 91234-5678" />
+      </Field>
+      <Field label="Endereço" htmlFor="perfil-endereco">
+        <Input id="perfil-endereco" leftIcon="map-pin" value={address} onChange={(e) => setAddress(e.target.value)} onBlur={() => saveField("address", address)} onKeyDown={blurOnEnter} placeholder="Rua, número, bairro" />
+      </Field>
+    </FieldGroup>
   );
 }
 
-function BannerUploader({ orgId }: { orgId: number }) {
-  const { data: profile } = useVenuePublicProfile(orgId);
-  const update = useUpdateVenuePublicProfile(orgId);
-  const { upload, uploading } = useImageUpload();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [imageSrc, setImageSrc] = useState<string | null>(null);
-  // Mesmo padrão do LogoUploader — reajustar sempre parte da imagem
-  // original sem crop, nunca do resultado já recortado.
-  const [pendingOriginalUrl, setPendingOriginalUrl] = useState<string | null>(null);
-
-  const handleFile = async (file: File | undefined) => {
-    if (!file) return;
-    const originalUrl = await upload(file);
-    if (!originalUrl) return;
-    setPendingOriginalUrl(originalUrl);
-    const reader = new FileReader();
-    reader.onload = () => setImageSrc(reader.result as string);
-    reader.readAsDataURL(file);
-    if (inputRef.current) inputRef.current.value = "";
-  };
-
-  const handleConfirmCrop = async (blob: Blob) => {
-    const file = new File([blob], `banner.${extensionForMimeType(blob.type)}`, { type: blob.type });
-    const url = await upload(file);
-    if (!url) return;
-    const originalUrl = pendingOriginalUrl ?? profile?.bannerOriginalUrl ?? undefined;
-    update.mutate(
-      { bannerUrl: url, ...(originalUrl ? { bannerOriginalUrl: originalUrl } : {}) },
-      { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar o banner.")) },
-    );
-    setImageSrc(null);
-    setPendingOriginalUrl(null);
-  };
-
-  const bannerUrl = profile?.bannerUrl ?? null;
-  const resolvedBannerUrl = bannerUrl ? (resolveMediaUrl(bannerUrl) ?? bannerUrl) : null;
-  const resolvedOriginalUrl = profile?.bannerOriginalUrl
-    ? (resolveMediaUrl(profile.bannerOriginalUrl) ?? profile.bannerOriginalUrl)
-    : resolvedBannerUrl;
-
-  const handleAdjustClick = () => {
-    setPendingOriginalUrl(null);
-    if (resolvedOriginalUrl) setImageSrc(resolvedOriginalUrl);
-  };
-
-  return (
-    <div className="mt-6">
-      <span className="mb-2 block text-xs font-medium text-black/50">Banner do cardápio (capa)</span>
-      {/* aspect-ratio trava a proporção de exibição em ~2.26:1 (430x190, medida do concorrente/referência — pedido explícito do usuário: "não quero recorte, quero que o sistema ajuste automaticamente"), IGUAL ao aspect usado no crop — sem isso o container esticava conforme a largura da tela (h-[180px] fixo com largura variável), fazendo o object-cover recortar mais do que o usuário viu/ajustou no editor. */}
-      <div
-        className="relative flex max-h-[210px] items-center justify-center overflow-hidden rounded-[14px] bg-[#08080a]"
-        style={{ aspectRatio: "430 / 190" }}
-      >
-        {resolvedBannerUrl ? (
-          <Image src={resolvedBannerUrl} alt="" fill className="object-cover" unoptimized />
-        ) : (
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "linear-gradient(115deg,transparent 40%,rgba(255,255,255,.05) 50%,transparent 60%), radial-gradient(60% 120% at 80% 120%, rgba(124,58,237,.14), transparent 60%)",
-            }}
-          />
-        )}
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp"
-          className="hidden"
-          onChange={(e) => handleFile(e.target.files?.[0])}
-        />
-        {resolvedBannerUrl ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                disabled={uploading}
-                aria-label="Editar banner"
-                className="absolute right-3.5 top-3.5 z-[2] grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm disabled:opacity-60"
-              >
-                <Pencil size={15} className="text-black/60" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleAdjustClick}>Ajustar zoom/posição</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => inputRef.current?.click()}>Trocar imagem</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : (
-          <button
-            type="button"
-            disabled={uploading}
-            onClick={() => inputRef.current?.click()}
-            aria-label="Enviar banner"
-            className="absolute right-3.5 top-3.5 z-[2] grid h-9 w-9 place-items-center rounded-full bg-white shadow-sm disabled:opacity-60"
-          >
-            <ImagePlus size={15} className="text-black/60" />
-          </button>
-        )}
-      </div>
-      <p className="mt-3 text-[11.5px] text-black/40">Tamanho recomendado: 430x190px</p>
-      <ImageCropperDialog
-        open={Boolean(imageSrc)}
-        onOpenChange={(v) => {
-          if (!v) {
-            setPendingOriginalUrl(null);
-            setImageSrc(null);
-          }
-        }}
-        imageSrc={imageSrc}
-        aspect={430 / 190}
-        cropShape="rect"
-        title="Ajustar banner"
-        saving={uploading}
-        onConfirm={handleConfirmCrop}
-      />
-    </div>
-  );
-}
-
+/**
+ * Cabeçalho do cardápio selecionado: banner 430×190 (mesma proporção do
+ * recorte — nunca estica/corta além do que o usuário ajustou), logo
+ * sobreposta, nome + status, ações (publicar/compartilhar/QR) e perfil
+ * público (Instagram, WhatsApp, endereço — salvam no blur).
+ */
 export function MenuHeader({
   orgId,
   orgName,
@@ -614,6 +213,10 @@ export function MenuHeader({
   menu,
   menus,
   onSelectMenu,
+  canPublish,
+  publishing,
+  onPublish,
+  onManageMenus,
 }: {
   orgId: number;
   orgName: string;
@@ -621,20 +224,102 @@ export function MenuHeader({
   menu: VenueMenu | null;
   menus: VenueMenu[];
   onSelectMenu: (menuId: number) => void;
+  canPublish: boolean;
+  publishing: boolean;
+  onPublish: () => void;
+  onManageMenus: () => void;
 }) {
+  const logo = useProfileImage(orgId, "logo");
+  const banner = useProfileImage(orgId, "banner");
+  const [editOpen, setEditOpen] = useState(false);
+  const [share, setShare] = useState<null | "link" | "qr">(null);
+
   if (!menu) return null;
 
   return (
-    <div className="rounded-[18px] border border-black/[0.06] bg-white p-[26px] shadow-[0_1px_2px_rgba(20,20,35,.05),0_1px_3px_rgba(20,20,35,.03)]">
-      <div className="grid grid-cols-1 gap-[34px] lg:grid-cols-[150px_1fr_1fr]">
-        <LogoUploader orgId={orgId} orgName={orgName} />
-        <NameAndDescription menu={menu} orgId={orgId} />
-        <StatusAndLinks orgId={orgId} orgName={orgName} orgSlug={orgSlug} menu={menu} menus={menus} onSelectMenu={onSelectMenu} />
+    <Card accent className="overflow-hidden">
+      {/* Banner (capa) — proporção travada em 430/190, igual ao aspect do crop. */}
+      <div className="relative w-full overflow-hidden bg-surface-2" style={{ aspectRatio: "430 / 190", maxHeight: 260 }}>
+        {banner.resolvedUrl ? <Image src={banner.resolvedUrl} alt="" fill sizes="(min-width: 1280px) 760px, 100vw" className="object-cover" unoptimized /> : <div className="absolute inset-0 bg-callout-info" aria-hidden />}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 poster-fade opacity-70" aria-hidden />
+        <input ref={banner.inputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={(e) => banner.handleFile(e.target.files?.[0])} />
+        <div className="absolute right-3 top-3 flex gap-2">
+          {banner.resolvedUrl ? <OverlayButton icon="expand" label="Ajustar zoom e posição do banner" onClick={banner.adjust} disabled={banner.uploading} /> : null}
+          <OverlayButton icon="upload" label={banner.resolvedUrl ? "Trocar banner" : "Enviar banner (430×190)"} onClick={banner.pick} disabled={banner.uploading} />
+        </div>
+        {!banner.resolvedUrl ? <p className="absolute bottom-3 left-4 text-caption text-muted-foreground">Capa do cardápio · 430×190px</p> : null}
       </div>
 
-      <ContactFields orgId={orgId} />
+      <div className="px-4 pb-4 sm:px-5 sm:pb-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+          {/* Logo sobreposta ao banner */}
+          <div className="relative -mt-10 size-20 shrink-0 sm:-mt-12 sm:size-24">
+            <div className={cn("relative size-full overflow-hidden rounded-full ring-4 ring-surface shadow-card", !logo.resolvedUrl && "bg-foreground text-background")}>
+              {logo.resolvedUrl ? (
+                // Sem fundo forçado atrás — logo com transparência mostra a superfície por trás, nunca um preto artificial.
+                <Image src={logo.resolvedUrl} alt={orgName} fill sizes="96px" className="object-cover" unoptimized />
+              ) : (
+                <span className="flex size-full items-center justify-center text-lg font-semibold tracking-[0.12em]">{initials(orgName)}</span>
+              )}
+            </div>
+            <input ref={logo.inputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp" className="hidden" onChange={(e) => logo.handleFile(e.target.files?.[0])} />
+            <div className="absolute -bottom-1 -right-1 flex gap-1">
+              {logo.resolvedUrl ? <OverlayButton icon="expand" label="Ajustar logo" onClick={logo.adjust} disabled={logo.uploading} className="size-8" /> : null}
+              <OverlayButton icon="camera" label={logo.resolvedUrl ? "Trocar logo" : "Enviar logo (512×512)"} onClick={logo.pick} disabled={logo.uploading} className="size-8" />
+            </div>
+          </div>
 
-      <BannerUploader orgId={orgId} />
-    </div>
+          <div className="min-w-0 flex-1 sm:pb-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="truncate text-title font-semibold tracking-tight text-foreground">{menu.nome}</h2>
+              <MenuStatusBadge status={menu.status} />
+              {menu.isMain ? <span className="inline-flex items-center gap-1 text-caption font-medium text-brand"><Icon name="star" size={11} /> Principal</span> : null}
+              <Button variant="subtle" size="icon-sm" aria-label="Editar nome e descrição" onClick={() => setEditOpen(true)}>
+                <Icon name="edit" size={13} />
+              </Button>
+            </div>
+            <p className="mt-1 line-clamp-2 text-body text-muted-foreground">{menu.descricao || "Sem descrição — conte em uma frase o que o cliente encontra aqui."}</p>
+          </div>
+
+          {menus.length > 1 ? (
+            <div className="w-full sm:w-56">
+              <NativeSelect aria-label="Cardápio" value={String(menu.id)} onChange={(e) => onSelectMenu(Number(e.target.value))}>
+                {menus.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.nome}
+                  </option>
+                ))}
+              </NativeSelect>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {canPublish ? (
+            <Button leftIcon="bolt" loading={publishing} onClick={onPublish}>
+              Publicar
+            </Button>
+          ) : null}
+          <Button variant={canPublish ? "outline" : "primary"} leftIcon="share" onClick={() => setShare("link")}>
+            Compartilhar
+          </Button>
+          <Button variant="outline" leftIcon="qr" onClick={() => setShare("qr")}>
+            QR code
+          </Button>
+          <Button variant="ghost" leftIcon="layers" onClick={onManageMenus} className="sm:ml-auto">
+            Cardápios
+          </Button>
+        </div>
+
+        <div className="mt-5 border-t border-border pt-5">
+          <ContactFields orgId={orgId} />
+        </div>
+      </div>
+
+      <ImageCropperDialog open={Boolean(logo.imageSrc)} onOpenChange={(v) => !v && logo.cancel()} imageSrc={logo.imageSrc} aspect={1} cropShape="round" title="Ajustar logo" saving={logo.uploading} onConfirm={logo.handleConfirmCrop} />
+      <ImageCropperDialog open={Boolean(banner.imageSrc)} onOpenChange={(v) => !v && banner.cancel()} imageSrc={banner.imageSrc} aspect={430 / 190} cropShape="rect" title="Ajustar banner" saving={banner.uploading} onConfirm={banner.handleConfirmCrop} />
+      <MenuFormDialog orgId={orgId} menu={menu} open={editOpen} onOpenChange={setEditOpen} />
+      <MenuShareDialog orgId={orgId} orgName={orgName} orgSlug={orgSlug} menu={menu} open={share !== null} onOpenChange={(v) => !v && setShare(null)} initialView={share ?? "link"} />
+    </Card>
   );
 }

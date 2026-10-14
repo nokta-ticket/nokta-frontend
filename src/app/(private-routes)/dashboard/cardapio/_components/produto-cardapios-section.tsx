@@ -1,43 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronUp, Plus, Star, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
+import { NativeSelect } from "@/components/ui/native-select";
+import { RowsSkeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
-import { centsToBRL } from "@/services/venue-menu";
+import { cn } from "@/lib/cn";
+import { formatBRLCents } from "@/lib/format";
+import type { VenueProductMenuInfo } from "@/services/venue-menu";
 import { useVenueProduct } from "../_hooks/use-venue-products";
 import { useVenueMenus } from "../_hooks/use-venue-menus";
 import { useVenueCategories } from "../_hooks/use-venue-categories";
 import { useVenueMenuItemMutations } from "../_hooks/use-venue-menu-items";
-import { ConfirmDialog } from "./confirm-dialog";
+import { MenuStatusBadge } from "./venue-status-badge";
 import { MoneyField } from "./money-field";
-import { BlockSkeleton } from "../../_components/states/loading-state";
-import { EmptyState } from "../../_components/states/empty-state";
-import { ErrorState } from "../../_components/states/error-state";
 
-function AddToMenuForm({
-  orgId,
-  productId,
-  availableMenus,
-  onAdded,
-}: {
-  orgId: number;
-  productId: number;
-  availableMenus: { id: number; nome: string }[];
-  onAdded: () => void;
-}) {
-  const [menuId, setMenuId] = useState<string>("");
-  const [categoryId, setCategoryId] = useState<string>("");
+function AddToMenuForm({ orgId, productId, availableMenus, onAdded }: { orgId: number; productId: number; availableMenus: { id: number; nome: string }[]; onAdded: () => void }) {
+  const [menuId, setMenuId] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const { data: categories } = useVenueCategories(orgId, menuId ? Number(menuId) : null);
   const { create } = useVenueMenuItemMutations(orgId, menuId ? Number(menuId) : -1);
 
@@ -50,7 +35,7 @@ function AddToMenuForm({
       { categoryId: Number(categoryId), productId },
       {
         onSuccess: () => {
-          toast.success("Produto adicionado ao cardápio.");
+          toast.success("Produto adicionado ao cardápio");
           setMenuId("");
           setCategoryId("");
           onAdded();
@@ -61,233 +46,140 @@ function AddToMenuForm({
   };
 
   return (
-    <div className="space-y-3 rounded-xl border border-dashed border-black/20 p-3">
-      <p className="text-sm font-medium text-gray-900">Adicionar a um cardápio</p>
+    <div className="space-y-3 rounded-card border border-dashed border-border-strong p-3.5">
+      <p className="text-sm font-medium text-foreground">Adicionar a outro cardápio</p>
       <div className="grid grid-cols-2 gap-2">
-        <Select value={menuId} onValueChange={(v) => { setMenuId(v); setCategoryId(""); }}>
-          <SelectTrigger className="w-full"><SelectValue placeholder="Cardápio" /></SelectTrigger>
-          <SelectContent>
-            {availableMenus.map((m) => (
-              <SelectItem key={m.id} value={String(m.id)}>{m.nome}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={categoryId} onValueChange={setCategoryId} disabled={!menuId}>
-          <SelectTrigger className="w-full"><SelectValue placeholder="Categoria" /></SelectTrigger>
-          <SelectContent>
-            {(categories ?? []).map((c) => (
-              <SelectItem key={c.id} value={String(c.id)}>{c.nome}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <NativeSelect aria-label="Cardápio" value={menuId} onChange={(e) => { setMenuId(e.target.value); setCategoryId(""); }}>
+          <option value="">Cardápio</option>
+          {availableMenus.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.nome}
+            </option>
+          ))}
+        </NativeSelect>
+        <NativeSelect aria-label="Categoria" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} disabled={!menuId}>
+          <option value="">Categoria</option>
+          {(categories ?? []).map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nome}
+            </option>
+          ))}
+        </NativeSelect>
       </div>
-      <Button size="sm" disabled={!menuId || !categoryId || create.isPending} onClick={handleAdd}>
-        <Plus size={14} /> Adicionar
+      <Button size="sm" leftIcon="plus" disabled={!menuId || !categoryId} loading={create.isPending} onClick={handleAdd}>
+        Adicionar
       </Button>
     </div>
+  );
+}
+
+function MenuAttachmentRow({ orgId, menuInfo, onRequestRemove }: { orgId: number; menuInfo: VenueProductMenuInfo; onRequestRemove: () => void }) {
+  const { data: categories } = useVenueCategories(orgId, menuInfo.menuId);
+  const { update, setVariantPrice, removeVariantPrice } = useVenueMenuItemMutations(orgId, menuInfo.menuId);
+  const [pricesOpen, setPricesOpen] = useState(menuInfo.prices.some((p) => p.overridePriceCents !== null));
+
+  return (
+    <li className="rounded-card border border-border bg-surface">
+      <div className="flex flex-wrap items-center gap-2 p-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <p className="truncate text-sm font-semibold text-foreground">{menuInfo.menuNome}</p>
+          <MenuStatusBadge status={menuInfo.menuStatus} />
+        </div>
+        <button
+          type="button"
+          title={menuInfo.highlighted ? "Remover dos destaques" : "Destacar neste cardápio"}
+          aria-label={menuInfo.highlighted ? "Remover dos destaques" : "Destacar neste cardápio"}
+          aria-pressed={menuInfo.highlighted}
+          onClick={() => update.mutate({ menuItemId: menuInfo.menuItemId, payload: { highlighted: !menuInfo.highlighted } }, { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível atualizar o destaque.")) })}
+          className={cn("flex size-9 items-center justify-center rounded-full transition-colors", menuInfo.highlighted ? "bg-warning-bg text-warning" : "text-subtle-foreground hover:bg-surface-2 hover:text-foreground")}
+        >
+          <Icon name={menuInfo.highlighted ? "star" : "star-outline"} size={15} />
+        </button>
+        <Switch checked={menuInfo.active} aria-label={menuInfo.active ? "Desativar neste cardápio" : "Ativar neste cardápio"} onCheckedChange={(checked) => update.mutate({ menuItemId: menuInfo.menuItemId, payload: { active: checked } }, { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível atualizar.")) })} />
+        <Button variant="subtle" size="icon-sm" aria-label="Remover do cardápio" title="Remover do cardápio" className="hover:bg-danger-bg hover:text-danger" onClick={onRequestRemove}>
+          <Icon name="close" size={14} />
+        </Button>
+      </div>
+      <div className="grid gap-2 border-t border-border px-3 py-3 sm:grid-cols-[1fr_auto] sm:items-center">
+        <NativeSelect aria-label="Categoria neste cardápio" value={String(menuInfo.categoryId)} onChange={(e) => update.mutate({ menuItemId: menuInfo.menuItemId, payload: { categoryId: Number(e.target.value) } }, { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível trocar a categoria.")) })}>
+          {(categories ?? []).map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.nome}
+            </option>
+          ))}
+        </NativeSelect>
+        <Button variant="ghost" size="sm" rightIcon={pricesOpen ? "chevron-up" : "chevron-down"} onClick={() => setPricesOpen((v) => !v)}>
+          Preço neste cardápio
+        </Button>
+      </div>
+      {pricesOpen ? (
+        <div className="space-y-2 border-t border-border bg-surface-2/40 px-3 py-3">
+          <p className="text-caption text-muted-foreground">Só preencha pra cobrar diferente do preço base aqui (happy hour, camarote…).</p>
+          {menuInfo.prices.map((price) => (
+            <div key={price.variantId} className="flex items-center gap-2 text-sm">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-foreground">{price.variantNome}</p>
+                <p className="text-caption text-subtle-foreground tnum">base {formatBRLCents(price.basePriceCents)}</p>
+              </div>
+              <div className="w-32">
+                <MoneyField cents={price.overridePriceCents ?? price.basePriceCents} onChange={(cents) => { if (cents === (price.overridePriceCents ?? price.basePriceCents)) return; setVariantPrice.mutate({ menuItemId: menuInfo.menuItemId, variantId: price.variantId, priceCents: cents }, { onSuccess: () => toast.success("Preço específico aplicado"), onError: (err) => toast.error(getErrorMessage(err, "Não foi possível definir o preço.")) }); }} />
+              </div>
+              <Button variant="subtle" size="icon-sm" aria-label="Voltar ao preço base" title="Voltar ao preço base" className={cn(price.overridePriceCents === null && "invisible")} onClick={() => removeVariantPrice.mutate({ menuItemId: menuInfo.menuItemId, variantId: price.variantId }, { onSuccess: () => toast.success("Volta ao preço base"), onError: (err) => toast.error(getErrorMessage(err, "Não foi possível remover o preço.")) })}>
+                <Icon name="undo" size={13} />
+              </Button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </li>
   );
 }
 
 export function ProdutoCardapiosSection({ orgId, productId }: { orgId: number; productId: number }) {
   const { data: product, isError, refetch } = useVenueProduct(orgId, productId);
   const { data: allMenus } = useVenueMenus(orgId);
-  const [expanded, setExpanded] = useState<number | null>(null);
-  const [removing, setRemoving] = useState<{ menuItemId: number; menuId: number; menuNome: string } | null>(
-    null,
-  );
+  const [removing, setRemoving] = useState<{ menuItemId: number; menuId: number; menuNome: string } | null>(null);
   const { remove } = useVenueMenuItemMutations(orgId, removing?.menuId ?? -1);
 
-  if (isError) {
-    return <ErrorState description="Não foi possível carregar os cardápios do produto." onRetry={() => refetch()} />;
-  }
-  if (!product) return <BlockSkeleton className="h-64" />;
+  if (isError) return <ErrorState description="Não foi possível carregar os cardápios do produto." onRetry={() => refetch()} />;
+  if (!product) return <RowsSkeleton rows={2} />;
 
-  const attachedMenuIds = new Set(product.menus.map((m) => m.menuId));
-  const availableMenus = (allMenus ?? []).filter(
-    (m) => !attachedMenuIds.has(m.id) && m.status !== "ARCHIVED",
-  );
+  const attached = new Set(product.menus.map((m) => m.menuId));
+  const availableMenus = (allMenus ?? []).filter((m) => !attached.has(m.id) && m.status !== "ARCHIVED");
 
   return (
     <div className="space-y-4">
       {product.menus.length === 0 ? (
-        <EmptyState
-          title="Ainda não está em nenhum cardápio"
-          description="Adicione este produto a um cardápio para que ele apareça na operação."
-        />
+        <EmptyState compact icon="utensils" title="Não está em nenhum cardápio" description="Adicione a um cardápio pra ele aparecer na operação e no público." />
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-2.5">
           {product.menus.map((menuInfo) => (
-            <MenuAttachmentRow
-              key={menuInfo.menuItemId}
-              orgId={orgId}
-              menuInfo={menuInfo}
-              expanded={expanded === menuInfo.menuItemId}
-              onToggleExpand={() =>
-                setExpanded((cur) => (cur === menuInfo.menuItemId ? null : menuInfo.menuItemId))
-              }
-              onRequestRemove={() =>
-                setRemoving({
-                  menuItemId: menuInfo.menuItemId,
-                  menuId: menuInfo.menuId,
-                  menuNome: menuInfo.menuNome,
-                })
-              }
-            />
+            <MenuAttachmentRow key={menuInfo.menuItemId} orgId={orgId} menuInfo={menuInfo} onRequestRemove={() => setRemoving({ menuItemId: menuInfo.menuItemId, menuId: menuInfo.menuId, menuNome: menuInfo.menuNome })} />
           ))}
         </ul>
       )}
 
-      {availableMenus.length > 0 ? (
-        <AddToMenuForm
-          orgId={orgId}
-          productId={productId}
-          availableMenus={availableMenus}
-          onAdded={() => refetch()}
-        />
-      ) : null}
+      {availableMenus.length > 0 ? <AddToMenuForm orgId={orgId} productId={productId} availableMenus={availableMenus} onAdded={() => refetch()} /> : null}
 
       <ConfirmDialog
         open={removing !== null}
         onOpenChange={(v) => !v && setRemoving(null)}
         title="Remover do cardápio"
-        description={`Remover este produto de "${removing?.menuNome}"? Isso remove só o vínculo — o produto continua existindo.`}
+        description={`Remover este produto de "${removing?.menuNome}"? Só o vínculo sai — o produto continua existindo.`}
         confirmLabel="Remover"
-        loading={remove.isPending}
-        onConfirm={() => {
+        danger
+        onConfirm={async () => {
           if (!removing) return;
-          remove.mutate(removing.menuItemId, {
-            onSuccess: () => {
-              toast.success("Produto removido do cardápio.");
-              setRemoving(null);
-              refetch();
-            },
-            onError: (err) => toast.error(getErrorMessage(err, "Não foi possível remover do cardápio.")),
-          });
+          try {
+            await remove.mutateAsync(removing.menuItemId);
+            toast.success("Produto removido do cardápio");
+            refetch();
+          } catch (err) {
+            toast.error(getErrorMessage(err, "Não foi possível remover do cardápio."));
+            throw err;
+          }
         }}
       />
     </div>
-  );
-}
-
-function MenuAttachmentRow({
-  orgId,
-  menuInfo,
-  expanded,
-  onToggleExpand,
-  onRequestRemove,
-}: {
-  orgId: number;
-  menuInfo: import("@/services/venue-menu").VenueProductMenuInfo;
-  expanded: boolean;
-  onToggleExpand: () => void;
-  onRequestRemove: () => void;
-}) {
-  const { data: categories } = useVenueCategories(orgId, menuInfo.menuId);
-  const { update, remove, setVariantPrice, removeVariantPrice } = useVenueMenuItemMutations(
-    orgId,
-    menuInfo.menuId,
-  );
-
-  return (
-    <li className="rounded-xl border border-black/10 bg-white">
-      <div className="flex items-center gap-2 p-3">
-        <button className="flex flex-1 items-center gap-2 text-left" onClick={onToggleExpand}>
-          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          <span className="font-medium text-gray-900">{menuInfo.menuNome}</span>
-        </button>
-        <button
-          type="button"
-          title={menuInfo.highlighted ? "Remover dos destaques" : "Destacar este item neste cardápio"}
-          aria-label={menuInfo.highlighted ? "Remover dos destaques" : "Destacar este item"}
-          onClick={() =>
-            update.mutate(
-              { menuItemId: menuInfo.menuItemId, payload: { highlighted: !menuInfo.highlighted } },
-              { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível atualizar o destaque.")) },
-            )
-          }
-          className="rounded-full p-1.5 transition-colors hover:bg-black/5"
-        >
-          <Star
-            size={18}
-            className={menuInfo.highlighted ? "fill-[#d9a326] stroke-[#d9a326]" : "stroke-black/30"}
-          />
-        </button>
-        <Select
-          value={String(menuInfo.categoryId)}
-          onValueChange={(v) =>
-            update.mutate(
-              { menuItemId: menuInfo.menuItemId, payload: { categoryId: Number(v) } },
-              { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível trocar a categoria.")) },
-            )
-          }
-        >
-          <SelectTrigger className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {(categories ?? []).map((c) => (
-              <SelectItem key={c.id} value={String(c.id)}>{c.nome}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Switch
-          checked={menuInfo.active}
-          aria-label={menuInfo.active ? "Desativar neste cardápio" : "Ativar neste cardápio"}
-          onCheckedChange={(checked) =>
-            update.mutate(
-              { menuItemId: menuInfo.menuItemId, payload: { active: checked } },
-              { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível atualizar.")) },
-            )
-          }
-        />
-        <Button variant="ghost" size="icon" aria-label="Remover do cardápio" onClick={onRequestRemove}>
-          <X size={16} />
-        </Button>
-      </div>
-
-      {expanded ? (
-        <div className="space-y-3 border-t border-black/5 p-3">
-          <Label className="text-xs text-black/50">Preço por variação neste cardápio</Label>
-          {menuInfo.prices.map((price) => (
-            <div key={price.variantId} className="flex items-center gap-2 text-sm">
-              <span className="w-24 shrink-0 truncate text-black/70">{price.variantNome}</span>
-              <span className="w-20 shrink-0 text-xs text-black/40">
-                base {centsToBRL(price.basePriceCents)}
-              </span>
-              <div className="w-28">
-                <MoneyField
-                  cents={price.overridePriceCents ?? price.basePriceCents}
-                  onChange={(cents) =>
-                    setVariantPrice.mutate(
-                      { menuItemId: menuInfo.menuItemId, variantId: price.variantId, priceCents: cents },
-                      {
-                        onSuccess: () => toast.success("Preço específico aplicado."),
-                        onError: (err) => toast.error(getErrorMessage(err, "Não foi possível definir o preço.")),
-                      },
-                    )
-                  }
-                />
-              </div>
-              {price.overridePriceCents !== null ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs"
-                  onClick={() =>
-                    removeVariantPrice.mutate(
-                      { menuItemId: menuInfo.menuItemId, variantId: price.variantId },
-                      {
-                        onSuccess: () => toast.success("Preço específico removido — volta ao preço base."),
-                        onError: (err) => toast.error(getErrorMessage(err, "Não foi possível remover o preço.")),
-                      },
-                    )
-                  }
-                >
-                  Remover
-                </Button>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      ) : null}
-    </li>
   );
 }

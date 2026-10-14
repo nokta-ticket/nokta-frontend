@@ -2,32 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ErrorState } from "@/components/ui/empty-state";
+import { Field, FieldGroup } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Sheet, SheetBody, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { getErrorMessage } from "@/lib/axios";
-import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { useVenueProduct, useVenueProductMutations } from "../_hooks/use-venue-products";
 import { useVenueStations } from "../_hooks/use-venue-stations";
 import { ProductStatusBadge } from "./venue-status-badge";
-import { ConfirmDialog } from "./confirm-dialog";
 import { ImageField } from "./image-field";
-import { BlockSkeleton } from "../../_components/states/loading-state";
-import { ErrorState } from "../../_components/states/error-state";
 import { ProdutoVariantesSection } from "./produto-variantes-section";
 import { ProdutoCardapiosSection } from "./produto-cardapios-section";
 import { ProdutoAdicionaisSection } from "./produto-adicionais-section";
@@ -38,14 +27,14 @@ export type ProdutoEditSection = "geral" | "variantes" | "cardapios" | "adiciona
 const NO_STATION = "NONE";
 
 const SECTIONS: { key: ProdutoEditSection; label: string }[] = [
-  { key: "geral", label: "Dados gerais" },
+  { key: "geral", label: "Geral" },
   { key: "variantes", label: "Variações" },
   { key: "cardapios", label: "Cardápios" },
   { key: "adicionais", label: "Adicionais" },
   { key: "estoque", label: "Estoque" },
 ];
 
-function DadosGeraisSection({ orgId, productId }: { orgId: number; productId: number }) {
+function DadosGeraisSection({ orgId, productId, onDirtyChange, registerSave }: { orgId: number; productId: number; onDirtyChange: (dirty: boolean) => void; registerSave: (fn: (() => void) | null) => void }) {
   const { data: product } = useVenueProduct(orgId, productId);
   const { data: stations } = useVenueStations(orgId);
   const { update, archive, setAvailability } = useVenueProductMutations(orgId);
@@ -70,152 +59,114 @@ function DadosGeraisSection({ orgId, productId }: { orgId: number; productId: nu
     setStationId(product.preparationStationId ? String(product.preparationStationId) : NO_STATION);
   }, [product]);
 
-  if (!product) return <BlockSkeleton className="h-96" />;
+  const dirty = Boolean(product) && (nome !== product!.nome || descricao !== (product!.descricao ?? "") || harmonizaCom !== (product!.harmonizaCom ?? "") || contraindicacoes !== (product!.contraindicacoes ?? "") || imageUrl !== product!.imageUrl || prepTime !== (product!.prepTimeMinutes ? String(product!.prepTimeMinutes) : "") || stationId !== (product!.preparationStationId ? String(product!.preparationStationId) : NO_STATION));
+
+  useEffect(() => {
+    onDirtyChange(dirty);
+  }, [dirty, onDirtyChange]);
+
+  const save = () => {
+    if (!nome.trim()) {
+      toast.error("Informe o nome do produto.");
+      return;
+    }
+    update.mutate(
+      { productId, payload: { nome: nome.trim(), descricao: descricao.trim() || undefined, harmonizaCom: harmonizaCom.trim() || undefined, contraindicacoes: contraindicacoes.trim() || undefined, imageUrl: imageUrl ?? undefined, prepTimeMinutes: prepTime ? Number(prepTime) : undefined, preparationStationId: stationId === NO_STATION ? undefined : Number(stationId) } },
+      { onSuccess: () => toast.success("Alterações salvas"), onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar as alterações.")) },
+    );
+  };
+
+  useEffect(() => {
+    registerSave(save);
+    return () => registerSave(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nome, descricao, harmonizaCom, contraindicacoes, imageUrl, prepTime, stationId, productId]);
+
+  if (!product) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-11 w-full" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-11 w-full" />
+        <Skeleton className="h-11 w-full" />
+      </div>
+    );
+  }
 
   const archived = product.status === "ARCHIVED";
 
-  const save = () => {
-    update.mutate(
-      {
-        productId,
-        payload: {
-          nome: nome.trim(),
-          descricao: descricao.trim() || undefined,
-          harmonizaCom: harmonizaCom.trim() || undefined,
-          contraindicacoes: contraindicacoes.trim() || undefined,
-          imageUrl: imageUrl ?? undefined,
-          prepTimeMinutes: prepTime ? Number(prepTime) : undefined,
-          preparationStationId: stationId === NO_STATION ? undefined : Number(stationId),
-        },
-      },
-      {
-        onSuccess: () => toast.success("Alterações salvas."),
-        onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar as alterações.")),
-      },
-    );
-  };
-
-  const toggleSoldOut = () => {
-    const next = product.status === "SOLD_OUT" ? "ACTIVE" : "SOLD_OUT";
-    setAvailability.mutate(
-      { productId, status: next },
-      {
-        onSuccess: () =>
-          toast.success(next === "SOLD_OUT" ? "Produto marcado como esgotado." : "Produto reativado."),
-        onError: (err) => toast.error(getErrorMessage(err, "Não foi possível atualizar a disponibilidade.")),
-      },
-    );
-  };
-
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-2">
-        <ProductStatusBadge status={product.status} />
-        {archived ? (
-          <span className="text-xs text-black/50">
-            Produto arquivado — não pode ser reativado por aqui.
-          </span>
-        ) : null}
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="edit-nome">Nome</Label>
-        <Input id="edit-nome" value={nome} onChange={(e) => setNome(e.target.value)} />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="edit-descricao">Descrição</Label>
-        <Textarea id="edit-descricao" value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={3} />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="edit-harmoniza">Harmoniza com</Label>
-        <Input
-          id="edit-harmoniza"
-          placeholder="Ex.: Sol, vinho tinto seco..."
-          value={harmonizaCom}
-          onChange={(e) => setHarmonizaCom(e.target.value)}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="edit-contraindicacoes">Contraindicações / alergênicos</Label>
-        <Input
-          id="edit-contraindicacoes"
-          placeholder="Ex.: Contém crustáceos e lactose"
-          value={contraindicacoes}
-          onChange={(e) => setContraindicacoes(e.target.value)}
-        />
-      </div>
-      <ImageField value={imageUrl} onChange={setImageUrl} />
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
-          <Label htmlFor="edit-prep">Tempo de preparo (min)</Label>
-          <Input id="edit-prep" type="number" min={0} value={prepTime} onChange={(e) => setPrepTime(e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label>Estação de preparo</Label>
-          <Select value={stationId} onValueChange={setStationId}>
-            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NO_STATION}>Sem estação</SelectItem>
-              {(stations ?? []).map((s) => (
-                <SelectItem key={s.id} value={String(s.id)}>{s.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <Button disabled={update.isPending || !nome.trim()} onClick={save} className="w-full">
-        {update.isPending ? "Salvando…" : "Salvar alterações"}
-      </Button>
+      <Field label="Nome" htmlFor="edit-nome" required>
+        <Input id="edit-nome" value={nome} onChange={(e) => setNome(e.target.value)} disabled={archived} />
+      </Field>
+      <Field label="Descrição" htmlFor="edit-descricao" optional>
+        <Textarea id="edit-descricao" value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={3} className="min-h-20" disabled={archived} />
+      </Field>
+      <ImageField value={imageUrl} onChange={setImageUrl} label="Foto" hint="Quadrada (1:1) fica melhor no cardápio." />
+      <FieldGroup columns={2}>
+        <Field label="Estação de preparo" htmlFor="edit-estacao">
+          <NativeSelect id="edit-estacao" value={stationId} onChange={(e) => setStationId(e.target.value)} disabled={archived}>
+            <option value={NO_STATION}>Sem estação</option>
+            {(stations ?? []).map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nome}
+              </option>
+            ))}
+          </NativeSelect>
+        </Field>
+        <Field label="Tempo de preparo" htmlFor="edit-prep" optional>
+          <Input id="edit-prep" type="number" inputMode="numeric" min={0} value={prepTime} onChange={(e) => setPrepTime(e.target.value)} suffix="min" disabled={archived} />
+        </Field>
+      </FieldGroup>
+      <Field label="Harmoniza com" htmlFor="edit-harmoniza" optional hint="Aparece na tela do produto no cardápio público.">
+        <Input id="edit-harmoniza" placeholder="Ex.: Porção de batata, vinho tinto seco" value={harmonizaCom} onChange={(e) => setHarmonizaCom(e.target.value)} disabled={archived} />
+      </Field>
+      <Field label="Contraindicações e alergênicos" htmlFor="edit-contraindicacoes" optional>
+        <Input id="edit-contraindicacoes" placeholder="Ex.: Contém crustáceos e lactose" value={contraindicacoes} onChange={(e) => setContraindicacoes(e.target.value)} disabled={archived} />
+      </Field>
 
       {!archived ? (
-        <div className="space-y-2 border-t border-black/10 pt-4">
-          <Button variant="outline" className="w-full" onClick={toggleSoldOut} disabled={setAvailability.isPending}>
+        <div className="flex flex-wrap gap-2 border-t border-border pt-4">
+          <Button variant="outline" size="sm" leftIcon={product.status === "SOLD_OUT" ? "check-circle" : "ban"} loading={setAvailability.isPending} onClick={() => setAvailability.mutate({ productId, status: product.status === "SOLD_OUT" ? "ACTIVE" : "SOLD_OUT" }, { onSuccess: () => toast.success(product.status === "SOLD_OUT" ? "Produto reativado" : "Produto marcado como esgotado"), onError: (err) => toast.error(getErrorMessage(err, "Não foi possível atualizar a disponibilidade.")) })}>
             {product.status === "SOLD_OUT" ? "Reativar produto" : "Marcar como esgotado"}
           </Button>
-          <Button
-            variant="outline"
-            className="w-full text-red-600 hover:text-red-600"
-            onClick={() => setArchiving(true)}
-          >
+          <Button variant="destructive-soft" size="sm" leftIcon="trash" onClick={() => setArchiving(true)}>
             Arquivar produto
           </Button>
         </div>
-      ) : null}
+      ) : (
+        <p className="text-caption text-muted-foreground">Produto arquivado — não pode ser reativado por aqui.</p>
+      )}
 
       <ConfirmDialog
         open={archiving}
         onOpenChange={setArchiving}
         title="Arquivar produto"
-        description={`Tem certeza que deseja arquivar "${product.nome}"? Ele deixa de aparecer nos cardápios ativos, mas nada é excluído.`}
+        description={`Arquivar "${product.nome}"? Ele some dos cardápios ativos, mas nada é excluído.`}
         confirmLabel="Arquivar"
-        loading={archive.isPending}
-        onConfirm={() =>
-          archive.mutate(productId, {
-            onSuccess: () => { toast.success("Produto arquivado."); setArchiving(false); },
-            onError: (err) => toast.error(getErrorMessage(err, "Não foi possível arquivar o produto.")),
-          })
-        }
+        danger
+        onConfirm={async () => {
+          try {
+            await archive.mutateAsync(productId);
+            toast.success("Produto arquivado");
+          } catch (err) {
+            toast.error(getErrorMessage(err, "Não foi possível arquivar o produto."));
+            throw err;
+          }
+        }}
       />
     </div>
   );
 }
 
-export function ProdutoEditSheet({
-  orgId,
-  productId,
-  initialSection = "geral",
-  open,
-  onOpenChange,
-}: {
-  orgId: number;
-  productId: number;
-  initialSection?: ProdutoEditSection;
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-}) {
+/** Edição do produto em gaveta lateral: dados gerais, variações, cardápios, adicionais e estoque. */
+export function ProdutoEditSheet({ orgId, productId, initialSection = "geral", open, onOpenChange }: { orgId: number; productId: number; initialSection?: ProdutoEditSection; open: boolean; onOpenChange: (v: boolean) => void }) {
   const [section, setSection] = useState<ProdutoEditSection>(initialSection);
+  const [dirty, setDirty] = useState(false);
+  const [saveFn, setSaveFn] = useState<(() => void) | null>(null);
   const { data: product, isError, refetch } = useVenueProduct(orgId, productId);
+  const { update } = useVenueProductMutations(orgId);
 
   useEffect(() => {
     if (open) setSection(initialSection);
@@ -223,31 +174,28 @@ export function ProdutoEditSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col sm:max-w-xl">
-        <SheetHeader>
-          <SheetTitle>{product?.nome ?? "Produto"}</SheetTitle>
+      <SheetContent side="right" className="sm:max-w-xl">
+        <SheetHeader className="pb-0">
+          <div className="flex flex-wrap items-center gap-2 pr-2">
+            <SheetTitle className="truncate">{product?.nome ?? "Produto"}</SheetTitle>
+            {product ? <ProductStatusBadge status={product.status} /> : null}
+          </div>
+          <Tabs value={section} onValueChange={(v) => setSection(v as ProdutoEditSection)} className="mt-2 gap-0">
+            <TabsList variant="line" className="-mx-5 px-5">
+              {SECTIONS.map((s) => (
+                <TabsTrigger key={s.key} value={s.key}>
+                  {s.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         </SheetHeader>
 
-        <div className="scrollbar-hide flex gap-1 overflow-x-auto border-b border-black/10 px-4 pb-2">
-          {SECTIONS.map((s) => (
-            <button
-              key={s.key}
-              onClick={() => setSection(s.key)}
-              className={cn(
-                "shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                section === s.key ? "bg-violet-100 text-violet-700" : "text-black/60 hover:bg-black/5",
-              )}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-4 pb-6">
+        <SheetBody>
           {isError ? (
             <ErrorState description="Não foi possível carregar o produto." onRetry={() => refetch()} />
           ) : section === "geral" ? (
-            <DadosGeraisSection orgId={orgId} productId={productId} />
+            <DadosGeraisSection orgId={orgId} productId={productId} onDirtyChange={setDirty} registerSave={(fn) => setSaveFn(() => fn)} />
           ) : section === "variantes" ? (
             <ProdutoVariantesSection orgId={orgId} productId={productId} />
           ) : section === "cardapios" ? (
@@ -257,7 +205,18 @@ export function ProdutoEditSheet({
           ) : (
             <ProdutoEstoqueSection orgId={orgId} productId={productId} />
           )}
-        </div>
+        </SheetBody>
+
+        {section === "geral" && product?.status !== "ARCHIVED" ? (
+          <SheetFooter>
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>
+              Fechar
+            </Button>
+            <Button leftIcon="check" disabled={!dirty} loading={update.isPending} onClick={() => saveFn?.()}>
+              Salvar alterações
+            </Button>
+          </SheetFooter>
+        ) : null}
       </SheetContent>
     </Sheet>
   );

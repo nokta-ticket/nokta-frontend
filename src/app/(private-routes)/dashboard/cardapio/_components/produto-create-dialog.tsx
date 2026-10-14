@@ -1,28 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field, FieldGroup } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/cn";
 import { VENUE_STOCK_CONTROL_LABEL, type VenueStockControl } from "@/services/venue-menu";
 import { useVenueProductMutations } from "../_hooks/use-venue-products";
 import { useVenueStations } from "../_hooks/use-venue-stations";
@@ -34,11 +22,9 @@ import { CategoryCombobox } from "./category-combobox";
 const NO_STATION = "NONE";
 
 /**
- * Produto nasce sempre vinculado ao cardápio selecionado na tela — nunca
- * fica órfão esperando um passo manual de "adicionar a um cardápio"
- * depois (ver ProdutoCardapiosSection, que continua existindo só para
- * vincular a OUTROS cardápios além deste). categoryId vai junto de
- * menuId no mesmo POST /products (ver CreateVenueProductPayload).
+ * Produto nasce sempre vinculado ao cardápio selecionado — nunca fica órfão
+ * esperando um passo manual de "adicionar a um cardápio". categoryId vai
+ * junto de menuId no mesmo POST /products.
  */
 export function ProdutoCreateDialog({
   orgId,
@@ -47,6 +33,7 @@ export function ProdutoCreateDialog({
   open,
   onOpenChange,
   onCreated,
+  onOpenBulk,
 }: {
   orgId: number;
   menuId: number | null;
@@ -54,6 +41,7 @@ export function ProdutoCreateDialog({
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onCreated: (productId: number) => void;
+  onOpenBulk?: () => void;
 }) {
   const { data: stations } = useVenueStations(orgId);
   const { data: categories } = useVenueCategories(orgId, menuId);
@@ -72,12 +60,9 @@ export function ProdutoCreateDialog({
   const [stockControl, setStockControl] = useState<VenueStockControl>("NONE");
 
   // defaultCategoryId chega assíncrono (ensure-default resolve depois do
-  // primeiro render) — sem isso, abrir o dialog rápido demais deixaria
-  // categoryId travado em null mesmo depois de "Geral" existir.
+  // primeiro render) — sem isso, abrir rápido deixaria a categoria em null.
   useEffect(() => {
-    if (categoryId === null && defaultCategoryId !== null) {
-      setCategoryId(defaultCategoryId);
-    }
+    if (categoryId === null && defaultCategoryId !== null) setCategoryId(defaultCategoryId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultCategoryId]);
 
@@ -100,7 +85,7 @@ export function ProdutoCreateDialog({
       {
         onSuccess: (category) => {
           setCategoryId(category.id);
-          toast.success(`Categoria "${category.nome}" criada.`);
+          toast.success(`Categoria "${category.nome}" criada`);
         },
         onError: (err) => toast.error(getErrorMessage(err, "Não foi possível criar a categoria.")),
       },
@@ -117,21 +102,10 @@ export function ProdutoCreateDialog({
       return;
     }
     create.mutate(
-      {
-        nome: nome.trim(),
-        descricao: descricao.trim() || undefined,
-        imageUrl: imageUrl ?? undefined,
-        preparationStationId: stationId === NO_STATION ? undefined : Number(stationId),
-        variantName: variantName.trim() || undefined,
-        sku: sku.trim() || undefined,
-        priceCents,
-        stockControl,
-        menuId,
-        categoryId,
-      },
+      { nome: nome.trim(), descricao: descricao.trim() || undefined, imageUrl: imageUrl ?? undefined, preparationStationId: stationId === NO_STATION ? undefined : Number(stationId), variantName: variantName.trim() || undefined, sku: sku.trim() || undefined, priceCents, stockControl, menuId, categoryId },
       {
         onSuccess: (product) => {
-          toast.success("Produto criado.");
+          toast.success("Produto criado");
           reset();
           onOpenChange(false);
           onCreated(product.id);
@@ -142,120 +116,84 @@ export function ProdutoCreateDialog({
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (!v) reset();
-        onOpenChange(v);
-      }}
-    >
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
+      <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle>Novo produto</DialogTitle>
+          <DialogDescription>
+            Já entra no cardápio selecionado.
+            {onOpenBulk ? (
+              <>
+                {" "}
+                <button type="button" className="font-medium text-brand underline-offset-4 hover:underline" onClick={() => { onOpenChange(false); onOpenBulk(); }}>
+                  Cadastrar vários de uma vez
+                </button>
+              </>
+            ) : null}
+          </DialogDescription>
         </DialogHeader>
+        <DialogBody>
+          <Field label="Nome" htmlFor="produto-nome" required>
+            <Input id="produto-nome" autoFocus value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Cerveja long neck" />
+          </Field>
+          <FieldGroup columns={2}>
+            <Field label="Categoria" htmlFor="produto-categoria" required>
+              <CategoryCombobox id="produto-categoria" categories={categories ?? []} value={categoryId} onSelectExisting={setCategoryId} onCreateNew={handleCreateCategory} disabled={createCategory.isPending} />
+            </Field>
+            <MoneyField id="produto-preco" label="Preço" cents={priceCents} onChange={setPriceCents} />
+          </FieldGroup>
+          <Field label="Descrição" htmlFor="produto-descricao" optional>
+            <Textarea id="produto-descricao" value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={2} className="min-h-20" placeholder="O que vem, como é servido…" />
+          </Field>
+          <FieldGroup columns={2}>
+            <Field label="Estação de preparo" htmlFor="produto-estacao" optional>
+              <NativeSelect id="produto-estacao" value={stationId} onChange={(e) => setStationId(e.target.value)}>
+                <option value={NO_STATION}>Sem estação</option>
+                {(stations ?? []).map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nome}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+            <ImageField value={imageUrl} onChange={setImageUrl} label="Foto" hint="Quadrada (1:1) fica melhor." />
+          </FieldGroup>
 
-        <div className="space-y-5">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="produto-nome">Nome</Label>
-              <Input
-                id="produto-nome"
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                placeholder="Ex.: Cerveja Long Neck"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="produto-descricao">Descrição (opcional)</Label>
-              <Textarea
-                id="produto-descricao"
-                value={descricao}
-                onChange={(e) => setDescricao(e.target.value)}
-                rows={2}
-              />
-            </div>
-            <ImageField value={imageUrl} onChange={setImageUrl} />
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label>Categoria</Label>
-                <CategoryCombobox
-                  categories={categories ?? []}
-                  value={categoryId}
-                  onSelectExisting={setCategoryId}
-                  onCreateNew={handleCreateCategory}
-                  disabled={createCategory.isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Estação (opcional)</Label>
-                <Select value={stationId} onValueChange={setStationId}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NO_STATION}>Sem estação</SelectItem>
-                    {(stations ?? []).map((s) => (
-                      <SelectItem key={s.id} value={String(s.id)}>{s.nome}</SelectItem>
+          <div>
+            <button type="button" onClick={() => setAdvancedOpen((v) => !v)} aria-expanded={advancedOpen} className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+              <Icon name="chevron-down" size={11} className={cn("transition-transform duration-300 ease-out-soft", advancedOpen && "rotate-180")} />
+              Variação, SKU e estoque
+            </button>
+            {advancedOpen ? (
+              <div className="surface-inset mt-3 space-y-4 rounded-xl p-4">
+                <p className="text-caption text-muted-foreground">Sem preencher, a variação é criada como &quot;Padrão&quot;, sem SKU. Mais variações (300 ml, 500 ml…) entram depois, na edição.</p>
+                <FieldGroup columns={2}>
+                  <Field label="Nome da variação" htmlFor="variante-nome">
+                    <Input id="variante-nome" value={variantName} onChange={(e) => setVariantName(e.target.value)} placeholder="Padrão" />
+                  </Field>
+                  <Field label="SKU" htmlFor="variante-sku">
+                    <Input id="variante-sku" value={sku} onChange={(e) => setSku(e.target.value)} placeholder="Normalizado ao salvar" />
+                  </Field>
+                </FieldGroup>
+                <Field label="Controle de estoque" htmlFor="variante-estoque">
+                  <NativeSelect id="variante-estoque" value={stockControl} onChange={(e) => setStockControl(e.target.value as VenueStockControl)}>
+                    {Object.entries(VENUE_STOCK_CONTROL_LABEL).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </NativeSelect>
+                </Field>
               </div>
-            </div>
-            <MoneyField label="Preço" cents={priceCents} onChange={setPriceCents} />
+            ) : null}
           </div>
-
-          <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-            <CollapsibleTrigger asChild>
-              <button className="flex w-full items-center gap-1.5 text-sm font-medium text-black/60 hover:text-black/80">
-                <ChevronDown size={16} className={advancedOpen ? "rotate-180 transition-transform" : "transition-transform"} />
-                Configurações avançadas
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="mt-3 space-y-4 rounded-xl border border-black/10 p-3">
-                <p className="text-xs text-black/50">
-                  Nome da variação e SKU — se não informar, a variação é criada como &quot;Padrão&quot;, sem SKU.
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="variante-nome">Nome da variação</Label>
-                    <Input
-                      id="variante-nome"
-                      value={variantName}
-                      onChange={(e) => setVariantName(e.target.value)}
-                      placeholder="Padrão"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="variante-sku">SKU</Label>
-                    <Input
-                      id="variante-sku"
-                      value={sku}
-                      onChange={(e) => setSku(e.target.value)}
-                      placeholder="Normalizado ao salvar"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Controle de estoque</Label>
-                  <Select value={stockControl} onValueChange={(v) => setStockControl(v as VenueStockControl)}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(VENUE_STOCK_CONTROL_LABEL).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>{label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </div>
-
+        </DialogBody>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={create.isPending}>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={create.isPending}>
             Cancelar
           </Button>
-          <Button disabled={create.isPending} onClick={handleSubmit}>
-            {create.isPending ? "Criando…" : "Criar produto"}
+          <Button loading={create.isPending} onClick={handleSubmit} leftIcon="plus">
+            Criar produto
           </Button>
         </DialogFooter>
       </DialogContent>

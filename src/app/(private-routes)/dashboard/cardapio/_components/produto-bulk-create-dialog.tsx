@@ -1,26 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { NativeSelect } from "@/components/ui/native-select";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/cn";
 import { VENUE_PRODUCT_STATUS_LABEL, type VenueProductStatus } from "@/services/venue-menu";
 import { useVenueMenuItemMutations } from "../_hooks/use-venue-menu-items";
 import { useVenueCategories, useVenueCategoryMutations } from "../_hooks/use-venue-categories";
@@ -43,38 +31,16 @@ interface DraftRow {
 let rowKeySeq = 0;
 function newRow(defaultCategoryId: number | null): DraftRow {
   rowKeySeq += 1;
-  return {
-    key: `row-${rowKeySeq}`,
-    nome: "",
-    categoryId: defaultCategoryId,
-    priceCents: 0,
-    stationId: NO_STATION,
-    status: "ACTIVE",
-  };
+  return { key: `row-${rowKeySeq}`, nome: "", categoryId: defaultCategoryId, priceCents: 0, stationId: NO_STATION, status: "ACTIVE" };
 }
 
 /**
- * Cadastro em massa: cada linha é um produto completo (nome, categoria,
- * preço, estação, disponibilidade). Toda linha nova já nasce com a
- * categoria padrão preenchida — nunca vazia (ver newRow). Linhas com erro
- * voltam destacadas depois de salvar; o modal continua aberto para
- * corrigir só elas, sem perder o que já foi criado com sucesso.
+ * Cadastro em massa: cada linha é um produto completo. Toda linha nova já
+ * nasce com a categoria padrão. Linhas com erro voltam destacadas depois de
+ * salvar; o modal continua aberto só com elas, sem perder o que já entrou.
+ * Desktop: grade; celular: um card por linha.
  */
-export function ProdutoBulkCreateDialog({
-  orgId,
-  menuId,
-  defaultCategoryId,
-  open,
-  onOpenChange,
-  onCreated,
-}: {
-  orgId: number;
-  menuId: number | null;
-  defaultCategoryId: number | null;
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  onCreated: () => void;
-}) {
+export function ProdutoBulkCreateDialog({ orgId, menuId, defaultCategoryId, open, onOpenChange, onCreated }: { orgId: number; menuId: number | null; defaultCategoryId: number | null; open: boolean; onOpenChange: (v: boolean) => void; onCreated: () => void }) {
   const { data: categories } = useVenueCategories(orgId, menuId);
   const { data: stations } = useVenueStations(orgId);
   const { createBulk } = useVenueMenuItemMutations(orgId, menuId ?? -1);
@@ -84,15 +50,9 @@ export function ProdutoBulkCreateDialog({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [rowErrors, setRowErrors] = useState<Map<string, string>>(new Map());
 
-  // defaultCategoryId chega assíncrono (ensure-default/categorias resolvem
-  // depois do primeiro render) — sem isso, abrir o modal rápido demais
-  // deixaria a única linha inicial sem categoria preenchida, contrariando
-  // o requisito de nunca mostrar a célula vazia.
   useEffect(() => {
     if (defaultCategoryId === null) return;
-    setRows((prev) =>
-      prev.map((r) => (r.categoryId === null ? { ...r, categoryId: defaultCategoryId } : r)),
-    );
+    setRows((prev) => prev.map((r) => (r.categoryId === null ? { ...r, categoryId: defaultCategoryId } : r)));
   }, [defaultCategoryId]);
 
   const reset = () => {
@@ -100,13 +60,8 @@ export function ProdutoBulkCreateDialog({
     setSelected(new Set());
     setRowErrors(new Map());
   };
-
-  const updateRow = (key: string, patch: Partial<DraftRow>) => {
-    setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
-  };
-
+  const updateRow = (key: string, patch: Partial<DraftRow>) => setRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   const addRow = () => setRows((prev) => [...prev, newRow(defaultCategoryId)]);
-
   const removeRow = (key: string) => {
     setRows((prev) => prev.filter((r) => r.key !== key));
     setSelected((prev) => {
@@ -115,29 +70,22 @@ export function ProdutoBulkCreateDialog({
       return next;
     });
   };
-
-  const toggleSelected = (key: string, checked: boolean) => {
+  const toggleSelected = (key: string, checked: boolean) =>
     setSelected((prev) => {
       const next = new Set(prev);
       if (checked) next.add(key);
       else next.delete(key);
       return next;
     });
-  };
+  const applyCategoryToSelected = (categoryId: number) => setRows((prev) => prev.map((r) => (selected.has(r.key) ? { ...r, categoryId } : r)));
 
-  const applyCategoryToSelected = (categoryId: number) => {
-    setRows((prev) => prev.map((r) => (selected.has(r.key) ? { ...r, categoryId } : r)));
-  };
-
-  const handleCreateCategory = (nome: string, applyToSelectedRows: boolean) => {
+  const createCategoryFor = (nome: string, apply: (id: number) => void) => {
     createCategory.mutate(
       { nome },
       {
         onSuccess: (category) => {
-          toast.success(`Categoria "${category.nome}" criada.`);
-          if (applyToSelectedRows && selected.size > 0) {
-            applyCategoryToSelected(category.id);
-          }
+          toast.success(`Categoria "${category.nome}" criada`);
+          apply(category.id);
         },
         onError: (err) => toast.error(getErrorMessage(err, "Não foi possível criar a categoria.")),
       },
@@ -147,19 +95,12 @@ export function ProdutoBulkCreateDialog({
   const handleSave = () => {
     if (!menuId) return;
     createBulk.mutate(
-      rows.map((r) => ({
-        nome: r.nome.trim() || undefined,
-        priceCents: r.priceCents,
-        categoryId: r.categoryId ?? undefined,
-        preparationStationId: r.stationId === NO_STATION ? undefined : Number(r.stationId),
-        status: r.status,
-      })),
+      rows.map((r) => ({ nome: r.nome.trim() || undefined, priceCents: r.priceCents, categoryId: r.categoryId ?? undefined, preparationStationId: r.stationId === NO_STATION ? undefined : Number(r.stationId), status: r.status })),
       {
         onSuccess: (result) => {
           const errorsByIndex = new Map(result.errors.map((e) => [e.index, e.message]));
           const nextErrors = new Map<string, string>();
           const remainingRows: DraftRow[] = [];
-
           rows.forEach((row, index) => {
             const message = errorsByIndex.get(index);
             if (message) {
@@ -167,23 +108,13 @@ export function ProdutoBulkCreateDialog({
               remainingRows.push(row);
             }
           });
-
-          if (result.created.length > 0) {
-            toast.success(
-              result.errors.length > 0
-                ? `${result.created.length} produto(s) criado(s). ${result.errors.length} linha(s) com erro.`
-                : `${result.created.length} produto(s) criado(s).`,
-            );
-          }
-
+          if (result.created.length > 0) toast.success(result.errors.length > 0 ? `${result.created.length} produto(s) criado(s). ${result.errors.length} linha(s) com erro.` : `${result.created.length} produto(s) criado(s)`);
           if (nextErrors.size === 0) {
             reset();
             onOpenChange(false);
             onCreated();
             return;
           }
-
-          // Mantém o modal aberto só com as linhas que falharam, destacadas.
           setRows(remainingRows.length > 0 ? remainingRows : [newRow(defaultCategoryId)]);
           setRowErrors(nextErrors);
           setSelected(new Set());
@@ -194,149 +125,121 @@ export function ProdutoBulkCreateDialog({
     );
   };
 
+  const stationSelect = (row: DraftRow) => (
+    <NativeSelect aria-label="Estação" value={row.stationId} onChange={(e) => updateRow(row.key, { stationId: e.target.value })}>
+      <option value={NO_STATION}>Sem estação</option>
+      {(stations ?? []).map((s) => (
+        <option key={s.id} value={s.id}>
+          {s.nome}
+        </option>
+      ))}
+    </NativeSelect>
+  );
+  const statusSelect = (row: DraftRow) => (
+    <NativeSelect aria-label="Disponibilidade" value={row.status} onChange={(e) => updateRow(row.key, { status: e.target.value as VenueProductStatus })}>
+      {BULK_STATUSES.map((status) => (
+        <option key={status} value={status}>
+          {VENUE_PRODUCT_STATUS_LABEL[status]}
+        </option>
+      ))}
+    </NativeSelect>
+  );
+  const categoryCombo = (row: DraftRow) => <CategoryCombobox categories={categories ?? []} value={row.categoryId} onSelectExisting={(categoryId) => updateRow(row.key, { categoryId })} onCreateNew={(nome) => createCategoryFor(nome, (id) => updateRow(row.key, { categoryId: id }))} disabled={createCategory.isPending} placeholder="Categoria" />;
+  const checkbox = (row: DraftRow) => <input type="checkbox" className="size-4 shrink-0 accent-brand" checked={selected.has(row.key)} onChange={(e) => toggleSelected(row.key, e.target.checked)} aria-label="Selecionar linha" />;
+
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (!v) reset();
-        onOpenChange(v);
-      }}
-    >
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-4xl">
+    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v); }}>
+      <DialogContent size="xl">
         <DialogHeader>
-          <DialogTitle>Adicionar vários produtos</DialogTitle>
+          <DialogTitle>Vários produtos de uma vez</DialogTitle>
+          <DialogDescription>Uma linha por produto. Selecione linhas pra aplicar a mesma categoria em todas.</DialogDescription>
         </DialogHeader>
-
-        {selected.size > 0 ? (
-          <div className="flex items-center gap-2 rounded-lg bg-violet-50 px-3 py-2 text-sm">
-            <span className="text-violet-900">{selected.size} selecionada(s)</span>
-            <div className="ml-auto w-56">
-              <CategoryCombobox
-                categories={categories ?? []}
-                value={null}
-                onSelectExisting={applyCategoryToSelected}
-                onCreateNew={(nome) => handleCreateCategory(nome, true)}
-                disabled={createCategory.isPending}
-              />
+        <DialogBody className="gap-4">
+          {selected.size > 0 ? (
+            <div className="flex flex-wrap items-center gap-3 rounded-xl bg-brand-soft px-3.5 py-2.5 text-sm">
+              <span className="font-medium text-brand tnum">{selected.size} selecionada(s)</span>
+              <div className="w-full sm:ml-auto sm:w-64">
+                <CategoryCombobox categories={categories ?? []} value={null} onSelectExisting={applyCategoryToSelected} onCreateNew={(nome) => createCategoryFor(nome, applyCategoryToSelected)} disabled={createCategory.isPending} placeholder="Aplicar categoria…" />
+              </div>
             </div>
-            <span className="text-xs text-violet-700">aplicar categoria</span>
+          ) : null}
+
+          {/* Desktop: grade */}
+          <div className="hidden overflow-hidden rounded-card border border-border md:block">
+            <table className="w-full text-sm">
+              <thead className="thead-hairline bg-surface-2/60 text-left">
+                <tr>
+                  <th className="w-10 px-3 py-2.5" />
+                  <th className="px-2 py-2.5 text-caption font-semibold uppercase tracking-[0.08em] text-subtle-foreground">Produto</th>
+                  <th className="px-2 py-2.5 text-caption font-semibold uppercase tracking-[0.08em] text-subtle-foreground">Categoria</th>
+                  <th className="w-36 px-2 py-2.5 text-caption font-semibold uppercase tracking-[0.08em] text-subtle-foreground">Preço</th>
+                  <th className="w-40 px-2 py-2.5 text-caption font-semibold uppercase tracking-[0.08em] text-subtle-foreground">Estação</th>
+                  <th className="w-36 px-2 py-2.5 text-caption font-semibold uppercase tracking-[0.08em] text-subtle-foreground">Disponível</th>
+                  <th className="w-12 px-2 py-2.5" />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => {
+                  const error = rowErrors.get(row.key);
+                  return (
+                    <tr key={row.key} className={cn("border-t border-border align-top", error && "bg-danger-bg")}>
+                      <td className="px-3 py-2 pt-4">{checkbox(row)}</td>
+                      <td className="min-w-44 px-2 py-2">
+                        <Input value={row.nome} onChange={(e) => updateRow(row.key, { nome: e.target.value })} placeholder="Nome do produto" aria-invalid={Boolean(error) || undefined} />
+                        {error ? <p role="alert" className="mt-1 text-caption text-danger">{error}</p> : null}
+                      </td>
+                      <td className="min-w-44 px-2 py-2">{categoryCombo(row)}</td>
+                      <td className="px-2 py-2"><MoneyField cents={row.priceCents} onChange={(cents) => updateRow(row.key, { priceCents: cents })} /></td>
+                      <td className="px-2 py-2">{stationSelect(row)}</td>
+                      <td className="px-2 py-2">{statusSelect(row)}</td>
+                      <td className="px-2 py-2">
+                        <Button variant="subtle" size="icon" aria-label="Remover linha" disabled={rows.length === 1} onClick={() => removeRow(row.key)}>
+                          <Icon name="close" size={13} />
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-        ) : null}
 
-        <div className="overflow-x-auto rounded-xl border border-black/10">
-          <table className="w-full text-sm">
-            <thead className="bg-black/[0.02] text-left text-xs text-black/50">
-              <tr>
-                <th className="w-8 px-2 py-2"></th>
-                <th className="px-2 py-2 font-medium">Produto</th>
-                <th className="px-2 py-2 font-medium">Categoria</th>
-                <th className="px-2 py-2 font-medium">Preço</th>
-                <th className="px-2 py-2 font-medium">Estação</th>
-                <th className="px-2 py-2 font-medium">Disponibilidade</th>
-                <th className="w-8 px-2 py-2"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-black/5">
-              {rows.map((row) => {
-                const error = rowErrors.get(row.key);
-                return (
-                  <tr key={row.key} className={error ? "bg-red-50" : ""}>
-                    <td className="px-2 py-2 align-top">
-                      <Checkbox
-                        checked={selected.has(row.key)}
-                        onCheckedChange={(checked) => toggleSelected(row.key, checked === true)}
-                        aria-label="Selecionar linha"
-                      />
-                    </td>
-                    <td className="min-w-[180px] px-2 py-2 align-top">
-                      <Input
-                        value={row.nome}
-                        onChange={(e) => updateRow(row.key, { nome: e.target.value })}
-                        placeholder="Nome do produto"
-                        className={error ? "border-red-400" : ""}
-                      />
-                      {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
-                    </td>
-                    <td className="min-w-[180px] px-2 py-2 align-top">
-                      <CategoryCombobox
-                        categories={categories ?? []}
-                        value={row.categoryId}
-                        onSelectExisting={(categoryId) => updateRow(row.key, { categoryId })}
-                        onCreateNew={(nome) => {
-                          createCategory.mutate(
-                            { nome },
-                            {
-                              onSuccess: (category) => {
-                                toast.success(`Categoria "${category.nome}" criada.`);
-                                updateRow(row.key, { categoryId: category.id });
-                              },
-                              onError: (err) =>
-                                toast.error(getErrorMessage(err, "Não foi possível criar a categoria.")),
-                            },
-                          );
-                        }}
-                      />
-                    </td>
-                    <td className="min-w-[140px] px-2 py-2 align-top">
-                      <MoneyField
-                        cents={row.priceCents}
-                        onChange={(cents) => updateRow(row.key, { priceCents: cents })}
-                      />
-                    </td>
-                    <td className="min-w-[160px] px-2 py-2 align-top">
-                      <Select value={row.stationId} onValueChange={(v) => updateRow(row.key, { stationId: v })}>
-                        <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={NO_STATION}>Sem estação</SelectItem>
-                          {(stations ?? []).map((s) => (
-                            <SelectItem key={s.id} value={String(s.id)}>{s.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="min-w-[140px] px-2 py-2 align-top">
-                      <Select
-                        value={row.status}
-                        onValueChange={(v) => updateRow(row.key, { status: v as VenueProductStatus })}
-                      >
-                        <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {BULK_STATUSES.map((status) => (
-                            <SelectItem key={status} value={status}>
-                              {VENUE_PRODUCT_STATUS_LABEL[status]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                    <td className="px-2 py-2 align-top">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label="Remover linha"
-                        disabled={rows.length === 1}
-                        onClick={() => removeRow(row.key)}
-                      >
-                        <Trash2 size={16} />
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+          {/* Celular: um card por linha */}
+          <div className="space-y-3 md:hidden">
+            {rows.map((row, i) => {
+              const error = rowErrors.get(row.key);
+              return (
+                <div key={row.key} className={cn("space-y-3 rounded-card border border-border bg-surface p-3", error && "border-danger-ring bg-danger-bg")}>
+                  <div className="flex items-center gap-3">
+                    {checkbox(row)}
+                    <span className="text-caption font-medium text-muted-foreground tnum">Produto {i + 1}</span>
+                    <Button variant="subtle" size="icon-sm" className="ml-auto" aria-label="Remover linha" disabled={rows.length === 1} onClick={() => removeRow(row.key)}>
+                      <Icon name="close" size={13} />
+                    </Button>
+                  </div>
+                  <Input value={row.nome} onChange={(e) => updateRow(row.key, { nome: e.target.value })} placeholder="Nome do produto" aria-invalid={Boolean(error) || undefined} />
+                  {error ? <p role="alert" className="text-caption text-danger">{error}</p> : null}
+                  {categoryCombo(row)}
+                  <div className="grid grid-cols-2 gap-2">
+                    <MoneyField cents={row.priceCents} onChange={(cents) => updateRow(row.key, { priceCents: cents })} />
+                    {statusSelect(row)}
+                  </div>
+                  {stationSelect(row)}
+                </div>
+              );
+            })}
+          </div>
 
-        <Button variant="outline" size="sm" onClick={addRow} className="w-fit">
-          <Plus size={14} /> Adicionar linha
-        </Button>
-
+          <Button variant="outline" size="sm" leftIcon="plus" onClick={addRow} className="w-fit">
+            Mais uma linha
+          </Button>
+        </DialogBody>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={createBulk.isPending}>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={createBulk.isPending}>
             Cancelar
           </Button>
-          <Button disabled={createBulk.isPending || !menuId} onClick={handleSave}>
-            {createBulk.isPending ? "Salvando…" : "Salvar todos"}
+          <Button loading={createBulk.isPending} disabled={!menuId} onClick={handleSave}>
+            Salvar todos
           </Button>
         </DialogFooter>
       </DialogContent>

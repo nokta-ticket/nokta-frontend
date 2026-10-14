@@ -1,30 +1,31 @@
 "use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CardapiosTab } from "./cardapios-tab";
 
 /**
- * "Gerenciar cardápios" deixou de ser uma aba própria (a tela de Cardápio
- * já resolve qual cardápio editar no cabeçalho) — vira um Dialog aberto a
- * partir de lá, reaproveitando CardapiosTab (criar/editar/definir
- * principal/publicar/arquivar) sem tocar sua lógica interna.
+ * "Gerenciar cardápios" não é uma aba própria (a tela resolve qual cardápio
+ * editar no cabeçalho) — é um Dialog que reaproveita CardapiosTab
+ * (criar/editar/definir principal/publicar/arquivar).
  */
-export function ManageMenusDialog({
-  orgId,
-  open,
-  onOpenChange,
-}: {
-  orgId: number;
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-}) {
+export function ManageMenusDialog({ orgId, open, onOpenChange, selectedMenuId, onSelectMenu }: { orgId: number; open: boolean; onOpenChange: (v: boolean) => void; selectedMenuId?: number | null; onSelectMenu?: (menuId: number) => void }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>Gerenciar cardápios</DialogTitle>
+          <DialogTitle>Cardápios</DialogTitle>
+          <DialogDescription>Principal, happy hour, camarote — cada um com as próprias categorias e preços.</DialogDescription>
         </DialogHeader>
-        <CardapiosTab orgId={orgId} />
+        <DialogBody>
+          <CardapiosTab
+            orgId={orgId}
+            selectedMenuId={selectedMenuId}
+            onSelectMenu={(id) => {
+              onSelectMenu?.(id);
+              onOpenChange(false);
+            }}
+          />
+        </DialogBody>
       </DialogContent>
     </Dialog>
   );
