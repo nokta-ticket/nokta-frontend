@@ -18,12 +18,14 @@ const brl = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigi
 type Props = {
   resaleId: number;
   buyerPrice: number;
+  /** Taxa de serviço da Nokta (%), a mesma da venda comum do evento. */
+  taxaServicoPercent?: number;
   eventoNome: string;
   onClose: () => void;
   onSuccess: () => void;
 };
 
-export function ResalePaymentSheet({ resaleId, buyerPrice, eventoNome, onClose, onSuccess }: Props) {
+export function ResalePaymentSheet({ resaleId, buyerPrice, taxaServicoPercent = 10, eventoNome, onClose, onSuccess }: Props) {
   const { user } = useAuth();
   const [method, setMethod] = useState<"pix" | "card" | null>(null);
   const [processing, setProcessing] = useState(false);
@@ -84,8 +86,11 @@ export function ResalePaymentSheet({ resaleId, buyerPrice, eventoNome, onClose, 
 
   const gwPct = method === "card" ? cardRateFor(parcelas) : method === "pix" ? pixRate : 0;
   const gwFixed = method === "card" ? cardFixedFor(parcelas) : method === "pix" ? pixFixed : 0;
-  const total = Math.round(((buyerPrice + gwFixed) / (1 - gwPct)) * 100) / 100;
-  const taxaProcessamento = Math.round((total - buyerPrice) * 100) / 100;
+  // Mesma conta da venda comum: ingresso + taxa de serviço, depois o processamento.
+  const taxaServico = Math.round(buyerPrice * taxaServicoPercent) / 100;
+  const subtotal = Math.round((buyerPrice + taxaServico) * 100) / 100;
+  const total = Math.round(((subtotal + gwFixed) / (1 - gwPct)) * 100) / 100;
+  const taxaProcessamento = Math.round((total - subtotal) * 100) / 100;
   const parcelaValor = method === "card" ? total / parcelas : total;
 
   const fld = (f: string) => (e: React.ChangeEvent<HTMLInputElement>) => setForm((p) => ({ ...p, [f]: e.target.value }));
@@ -221,6 +226,7 @@ export function ResalePaymentSheet({ resaleId, buyerPrice, eventoNome, onClose, 
             {method && (
               <div style={{ background: "#F8F8FA", borderRadius: 12, padding: 14, marginBottom: 16, fontSize: 13.5 }}>
                 <Row label="Valor do ingresso" value={brl(buyerPrice)} />
+                {taxaServico > 0 && <Row label="Taxa de serviço" value={brl(taxaServico)} />}
                 <Row label="Taxa de processamento" value={brl(taxaProcessamento)} />
                 <div style={{ borderTop: "1px solid #eaeaea", margin: "8px 0" }} />
                 <Row label={<strong>Total</strong>} value={<strong style={{ color: "#9944CC" }}>{brl(total)}</strong>} />

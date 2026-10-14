@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import {
   BarChart2, TrendingUp, Ticket, DollarSign,
-  ShoppingBag, Percent, CheckCircle2, Clock, XCircle,
+  ShoppingBag, CheckCircle2, Clock, XCircle,
 } from "lucide-react"
 import { toast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
@@ -156,19 +156,14 @@ export default function SectionVendas({ event }: SectionProps) {
             />
             <MetricCard
               icon={DollarSign}
-              label="Valor líquido est."
+              label="Você recebe"
               value={fmt(data.valorLiquido)}
-              sub={`Taxa plataforma: ${data.feePercent}%`}
+              sub="Valor integral dos ingressos; as taxas são pagas pelo comprador"
             />
             <MetricCard
               icon={Ticket}
               label="Ingressos vendidos"
               value={String(data.ingressosVendidos)}
-            />
-            <MetricCard
-              icon={Percent}
-              label="Taxas estimadas"
-              value={fmt(data.taxasEstimadas)}
             />
             <MetricCard
               icon={ShoppingBag}

@@ -14,6 +14,7 @@ import { formatarHorario } from "@/lib/formatarData";
 interface ResaleDetail {
   id: number;
   buyerPrice: number;
+  taxaServicoPercent?: number;
   sellerAmount: number;
   originalPrice: number;
   status: number;
@@ -487,6 +488,7 @@ export default function ComprarRevendaPage() {
         <ResalePaymentSheet
           resaleId={resale.id}
           buyerPrice={resale.buyerPrice ?? resale.originalPrice}
+          taxaServicoPercent={resale.taxaServicoPercent}
           eventoNome={resale.evento?.nome ?? "Evento"}
           onClose={() => setPaying(false)}
           onSuccess={() => { setPaying(false); setDone(true); }}

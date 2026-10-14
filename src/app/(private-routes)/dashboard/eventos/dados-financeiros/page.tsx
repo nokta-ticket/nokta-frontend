@@ -237,7 +237,7 @@ export default function DadosFinanceirosPage() {
             Regras atuais da conta
           </p>
           <div className="mt-3 space-y-2 text-sm text-gray-700">
-            <p>Taxa da plataforma: <strong>{data.platformFeePercent}%</strong></p>
+            <p>Você recebe o <strong>valor integral do ingresso</strong>. As taxas são pagas pelo comprador.</p>
             <p>Janela minima para saque: <strong>{data.withdrawalDelayDays} dias</strong></p>
           </div>
         </Card>
