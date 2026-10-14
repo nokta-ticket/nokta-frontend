@@ -39,10 +39,10 @@ describe("checkout — código do promoter é um canal próprio, nunca o mecanis
   });
 
   it("envia promoterCode explicitamente na reserva real (/pagamento/reservar)", () => {
-    const reservarCall = CHECKOUT_SOURCE.slice(
-      CHECKOUT_SOURCE.indexOf("/pagamento/reservar"),
-      CHECKOUT_SOURCE.indexOf("/pagamento/reservar") + 400,
-    );
+    // Âncora na CHAMADA (não no comentário de cabeçalho que também cita a rota).
+    const callIndex = CHECKOUT_SOURCE.indexOf('.post("/pagamento/reservar"');
+    expect(callIndex).toBeGreaterThan(-1);
+    const reservarCall = CHECKOUT_SOURCE.slice(callIndex, callIndex + 400);
     expect(reservarCall).toMatch(/promoterCode: promoterCode\.trim\(\) \|\| undefined/);
   });
 
