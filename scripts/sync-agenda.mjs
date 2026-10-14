@@ -6,7 +6,7 @@
  *
  * Uso (na raiz do nokta-frontend):
  *   node scripts/sync-agenda.mjs            # lê a chave do .env.local
- *   node scripts/sync-agenda.mjs --push     # e já faz commit + push na main
+ *   node scripts/sync-agenda.mjs --push     # e publica na main (só esse arquivo)
  *
  * Rode com frequência (o ideal é todo dia): evento que passou some sozinho
  * da agenda, mas preço, status e eventos novos só mudam com um retrato novo.
@@ -70,13 +70,24 @@ writeFileSync(out, `${JSON.stringify({ fetchedAt: new Date().toISOString(), even
 console.log(`${events.length} eventos gravados em ${out}`);
 
 if (process.argv.includes("--push")) {
-  const git = (...a) => execFileSync("git", a, { cwd: root, stdio: "inherit" });
-  git("add", out);
-  try {
-    git("commit", "-m", `chore(agenda): atualiza retrato do Ticketmaster (${events.length} eventos)`);
-  } catch {
+  // Commit só do retrato em cima da main remota, por baixo dos panos (índice
+  // temporário + commit-tree): não mexe na branch local nem em arquivos não
+  // commitados de quem está trabalhando nesta pasta.
+  const rel = "src/content/agenda/ticketmaster-snapshot.json";
+  const auth = ["-c", "credential.helper=", "-c", "credential.helper=!gh auth git-credential"];
+  const git = (args, env) => execFileSync("git", args, { cwd: root, env: { ...process.env, ...env }, encoding: "utf8" }).trim();
+  git([...auth, "fetch", "-q", "origin", "main"]);
+  const base = git(["rev-parse", "origin/main"]);
+  const blob = git(["hash-object", "-w", out]);
+  const index = { GIT_INDEX_FILE: join(root, ".git", "agenda-sync.index") };
+  git(["read-tree", base], index);
+  git(["update-index", "--add", "--cacheinfo", `100644,${blob},${rel}`], index);
+  const tree = git(["write-tree"], index);
+  if (tree === git(["rev-parse", `${base}^{tree}`])) {
     console.log("Nada mudou desde o último retrato.");
     process.exit(0);
   }
-  git("push", "origin", "HEAD:main");
+  const commit = git(["commit-tree", tree, "-p", base, "-m", `chore(agenda): atualiza retrato do Ticketmaster (${events.length} eventos)`]);
+  git([...auth, "push", "-q", "origin", `${commit}:refs/heads/main`]);
+  console.log(`Publicado na main: ${commit.slice(0, 7)}`);
 }

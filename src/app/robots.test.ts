@@ -19,9 +19,12 @@ describe("robots — indexação por superfície", () => {
     vi.restoreAllMocks();
   });
 
-  it("www.nokta.live (institucional) é totalmente indexável e expõe sitemap", async () => {
+  it("www.nokta.live (institucional) é indexável, bloqueia só fluxos privados e expõe o próprio sitemap", async () => {
     const result = await robotsForHost("www.nokta.live");
-    expect(result.rules).toEqual({ userAgent: "*", allow: "/" });
+    const rules = result.rules as { userAgent: string; allow: string; disallow: string[] };
+    expect(rules.allow).toBe("/");
+    expect(rules.disallow).toContain("/login");
+    expect(rules.disallow).not.toContain("/solucoes");
     expect(result.sitemap).toBe("https://www.nokta.live/sitemap.xml");
   });
 
@@ -36,5 +39,8 @@ describe("robots — indexação por superfície", () => {
     expect(rules.allow).toBe("/");
     expect(rules.disallow).toContain("/dashboard");
     expect(rules.disallow).toContain("/perfil");
+    expect(rules.disallow).toContain("/evento/*/checkout");
+    expect(rules.disallow).not.toContain("/evento");
+    expect(result.sitemap).toBe("https://www.noktatickets.com.br/sitemap.xml");
   });
 });

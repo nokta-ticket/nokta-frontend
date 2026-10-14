@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { NOINDEX } from "@/lib/seo/metadata";
 
 // Fase 5.3, Etapa 5 — o Root Layout parou de usar API dinâmica (Etapa 2),
 // o que deixou o Next livre pra prerenderizar estaticamente qualquer rota
@@ -9,6 +10,9 @@ import type { ReactNode } from "react";
 // Middleware (redireciona pra login sem cookie) e a API (401 sem sessão
 // HttpOnly válida) — isto aqui é só pra nunca virar artefato estático.
 export const dynamic = "force-dynamic";
+
+// Painel, admin, produtor e área do comprador: nunca no índice de busca.
+export const metadata = NOINDEX;
 
 export default function PrivateRoutesLayout({ children }: { children: ReactNode }) {
   return children;

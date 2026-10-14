@@ -92,6 +92,24 @@ describe("middleware — cruzamento entre as três superfícies", () => {
     expect(location.pathname).toBe("/login");
     expect(location.searchParams.get("redirect")).toBe("/meus-ingressos");
   });
+
+  it("página de eventos por cidade abre sem login na bilheteria (conteúdo indexável)", async () => {
+    const res = await middleware(buildRequest("https://www.noktatickets.com.br/eventos/em/sao-paulo"));
+    expect(res.headers.get("x-middleware-next")).toBe("1");
+    expect(res.headers.get("location")).toBeNull();
+  });
+
+  it("página de eventos por cidade no host institucional vai para a bilheteria (dona do conteúdo)", async () => {
+    const res = await middleware(buildRequest("https://www.nokta.live/eventos/em/sao-paulo"));
+    expect(await res.text()).toContain("https://www.noktatickets.com.br/eventos/em/sao-paulo");
+  });
+
+  it("imagem padrão de compartilhamento (/opengraph-image) abre sem login em qualquer host", async () => {
+    for (const host of ["www.noktatickets.com.br", "www.nokta.live"]) {
+      const res = await middleware(buildRequest(`https://${host}/opengraph-image`));
+      expect(res.headers.get("x-middleware-next")).toBe("1");
+    }
+  });
 });
 
 describe("middleware — Cache-Control por superfície (Fase 5.2/5.3, Etapa 5/18)", () => {

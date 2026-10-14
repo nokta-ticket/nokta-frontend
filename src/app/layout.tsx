@@ -9,6 +9,7 @@ import { AppThemeProvider } from "@/components/theme/theme-provider";
 import { AppToaster } from "@/components/ui/toaster";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/next";
+import { SITES } from "@/lib/seo/site";
 
 // O CSS do FontAwesome é importado acima uma vez — sem isso ele injeta um
 // <style> por ícone em runtime (e os ícones aparecem gigantes antes disso).
@@ -29,6 +30,10 @@ const anton = Anton({
 });
 
 export const metadata: Metadata = {
+  // Base pra URLs relativas de metadata (ex.: a /opengraph-image herdada
+  // por páginas sem imagem própria). Páginas com buildMetadata já usam URL
+  // absoluta no site canônico delas.
+  metadataBase: new URL(SITES.tickets.url),
   title: {
     default: "Nokta",
     template: "%s · Nokta",

@@ -86,6 +86,9 @@ const publicRoutes = [
   { path: "/avaliacao", whenAutenticated: "next" },
   { path: "/avaliacao/[id]", whenAutenticated: "next" },
   { path: "/", whenAutenticated: "next" },
+  // Imagem padrão de compartilhamento (src/app/opengraph-image.tsx): sem
+  // extensão, então o matcher não a pula — crawlers nunca têm sessão.
+  { path: "/opengraph-image", whenAutenticated: "next" },
 ] as const;
 
 // Home pública do estabelecimento (nokta.live/{orgSlug}) — catch-all de 1

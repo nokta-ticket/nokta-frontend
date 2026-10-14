@@ -23,7 +23,9 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     evento = null;
   }
   // O layout raiz já aplica o template "%s · Nokta".
-  if (!evento) return { title: "Lista VIP" };
+  // Link de lista VIP é de divulgação direta (stories/WhatsApp), não de
+  // busca: fora do índice — o canonical do evento é /evento/<slug>.
+  if (!evento) return { title: "Lista VIP", robots: { index: false, follow: false } };
 
   const title = `Lista VIP · ${evento.nome}`;
   const description = `Retire seu VIP para ${evento.nome} na Nokta Tickets.`;
@@ -34,6 +36,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     title,
     description,
     alternates: { canonical: url },
+    robots: { index: false, follow: false },
     openGraph: {
       title,
       description,

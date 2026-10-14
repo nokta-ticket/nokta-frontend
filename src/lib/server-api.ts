@@ -1,4 +1,15 @@
 import { getApiBaseUrl } from "@/lib/surfaces";
+import { SITES } from "@/lib/seo/site";
+
+/**
+ * Host pra resolver a API quando não há requisição (páginas estáticas/ISR,
+ * generateStaticParams): produção → API da bilheteria; preview da Vercel →
+ * API de preview (VERCEL_URL é *.vercel.app); local → NEXT_PUBLIC_API_URL.
+ */
+export function staticApiHost(): string | null {
+  if (process.env.VERCEL_ENV === "production") return new URL(SITES.tickets.url).hostname;
+  return process.env.VERCEL_URL ?? null;
+}
 
 /**
  * GET na API a partir do SERVIDOR (Server Components, sitemap, metadata).
