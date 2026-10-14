@@ -101,6 +101,14 @@ export function ContactsTab({
 
   return (
     <div className="space-y-4">
+      {list.data?.syncError ? (
+        <div className="rounded-[14px] border border-[#f0d7dc] bg-[#fcf5f6] px-4 py-3 text-[13.5px] leading-relaxed text-[#9b1c35]">
+          <p className="font-semibold">A lista pode estar desatualizada.</p>
+          <p>Não foi possível ler as compras e os VIPs mais recentes. Avise o suporte com o texto abaixo.</p>
+          <p className="mt-1 break-words font-mono text-[12px]">{list.data.syncError}</p>
+        </div>
+      ) : null}
+
       {/* Públicos salvos: um toque troca a lista */}
       {segments.length > 0 ? (
         <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Públicos salvos">
