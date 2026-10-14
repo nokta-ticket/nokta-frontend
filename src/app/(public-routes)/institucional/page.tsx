@@ -35,10 +35,10 @@ type Feature = { icon: IconName; title: string; text: string };
 
 const PRODUTORES: Feature[] = [
   { icon: "ticket", title: "Ingressos e lotes", text: "Venda com Pix e cartão parcelado, com a virada de lote que você definir e cupons quando quiser." },
-  { icon: "qr", title: "Check-in no celular", text: "O QR chega pelo WhatsApp antes do evento e a portaria lê pelo celular, mesmo sem internet estável." },
-  { icon: "megaphone", title: "Promoters", text: "Link de venda próprio pra cada promoter, com comissão e ranking na hora." },
+  { icon: "qr", title: "Check-in no celular", text: "O QR chega pelo WhatsApp antes do evento e a portaria lê o código pelo celular na entrada." },
+  { icon: "megaphone", title: "Promoters", text: "Link de venda próprio pra cada promoter, com cliques, pedidos pagos, conversão e comissão." },
   { icon: "people-group", title: "CRM e convidados", text: "Lista de convidados, cortesias e o histórico de quem já foi nas suas festas." },
-  { icon: "wallet", title: "Saldo por evento", text: "O que está liberado, em custódia e em saque, evento por evento — sem misturar." },
+  { icon: "wallet", title: "Saldo por evento", text: "O que está liberado, em custódia e em saque, evento por evento, sem misturar." },
 ];
 
 const BARES: Feature[] = [
@@ -58,7 +58,7 @@ const NUMBERS = [
 
 const FAQ = [
   { q: "Quanto custa usar a Nokta?", a: "Não tem mensalidade. Na venda de ingressos, a taxa de serviço é mostrada ao comprador no checkout e cada venda mostra o que é comissão e o que o comprador pagou por cima. A operação do bar segue o mesmo princípio: sem custo fixo pra começar." },
-  { q: "Preciso usar todas as partes?", a: "Não. Quem faz festa começa por Eventos; quem abre a porta todo dia começa por Bar e restaurante. Você liga as outras partes quando fizer sentido — tudo na mesma conta." },
+  { q: "Preciso usar todas as partes?", a: "Não. Quem faz festa começa por Eventos; quem abre a porta todo dia começa por Bar e restaurante. Você liga as outras partes quando fizer sentido, tudo na mesma conta." },
   { q: "Como recebo o dinheiro dos ingressos?", a: "O saldo fica separado por evento: o que está liberado, o que está em custódia e o que já está em saque. O saque cai na conta bancária cadastrada no seu workspace." },
   { q: "Funciona no celular?", a: "Sim. O painel inteiro foi feito pra celular: check-in na portaria, comandas na mão do garçom e o financeiro no bolso." },
   { q: "Como falo com a Nokta?", a: `Pelo e-mail ${COMPANY.emails.support}. Respondemos em até 24 horas úteis.` },
@@ -140,7 +140,7 @@ export default function InstitucionalPage() {
               <h1 id="nk-title" className="slide-up [--i:1] text-balance font-display text-hero uppercase text-white">
                 A plataforma de quem faz a noite acontecer
               </h1>
-              <p className="slide-up [--i:2] mt-6 max-w-xl text-pretty text-lg leading-relaxed text-white/80">A Nokta junta a venda de ingressos, a operação do bar e restaurante, as reservas e o financeiro. Você liga só as partes que usa — e tudo funciona no celular.</p>
+              <p className="slide-up [--i:2] mt-6 max-w-xl text-pretty text-lg leading-relaxed text-white/80">A Nokta junta a venda de ingressos, a operação do bar e restaurante, as reservas e o financeiro. Você liga só as partes que usa. E tudo funciona no celular.</p>
               <div className="slide-up [--i:3] mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Button asChild variant="primary" shape="pill" size="lg" className="w-full sm:w-auto">
                   <a href={cadastroUrl}>
@@ -157,7 +157,7 @@ export default function InstitucionalPage() {
               </div>
             </div>
             <div className="slide-up [--i:4] mt-12 lg:mt-16">
-              <Shot src="/institucional/painel-inicio.webp" alt="Tela Início do painel da Nokta: faturamento dos últimos 30 dias, operação agora, reservas de hoje e mais vendidos (dados de demonstração)" width={1440} height={900} priority className="mx-auto max-w-5xl rounded-[24px]" />
+              <Shot src="/institucional/painel-inicio.webp" alt="Tela Início do painel da Nokta: faturamento do dia, comandas abertas, reservas de hoje, ticket médio e o que está acontecendo na operação agora (dados de demonstração)" width={1440} height={900} priority className="mx-auto max-w-5xl rounded-[24px]" />
             </div>
           </div>
         </section>
@@ -189,7 +189,7 @@ export default function InstitucionalPage() {
                 <a href={cadastroUrl}>Começar a vender</a>
               </Button>
             </div>
-            <Shot src="/institucional/tela-eventos.webp" alt="Tela Eventos do painel da Nokta com três eventos publicados (demonstração)" width={1800} height={896} />
+            <Shot src="/institucional/tela-eventos.webp" alt="Tela Eventos do painel da Nokta com três eventos publicados (demonstração)" width={1800} height={1157} />
           </div>
         </section>
 
@@ -197,8 +197,8 @@ export default function InstitucionalPage() {
         <section id="bares" className="reveal scroll-mt-20 border-t border-border bg-surface/40" aria-labelledby="nk-bares">
           <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 lg:grid-cols-2 lg:items-center lg:gap-16 lg:px-6 lg:py-24">
             <div className="grid gap-4 lg:order-first">
-              <Shot src="/institucional/tela-comandas.webp" alt="Tela Mesas e comandas do painel da Nokta com comandas abertas (demonstração)" width={1800} height={1306} />
-              <Shot src="/institucional/tela-reservas.webp" alt="Tela Reservas do painel da Nokta com a agenda do dia (demonstração)" width={1800} height={1328} className="hidden lg:block" />
+              <Shot src="/institucional/tela-comandas.webp" alt="Tela Mesas e comandas do painel da Nokta com o mapa de mesas ocupadas e livres (demonstração)" width={1800} height={1096} />
+              <Shot src="/institucional/tela-reservas.webp" alt="Tela Reservas do painel da Nokta com a agenda do dia (demonstração)" width={1800} height={1093} className="hidden lg:block" />
             </div>
             <div>
               <p className="text-sm font-semibold text-brand">Para bares e casas</p>
@@ -237,7 +237,7 @@ export default function InstitucionalPage() {
                 ))}
               </ul>
             </div>
-            <Shot src="/institucional/tela-financeiro.webp" alt="Tela Financeiro de ingressos do painel da Nokta com saldo disponível e em custódia (demonstração)" width={1800} height={947} />
+            <Shot src="/institucional/tela-financeiro.webp" alt="Tela Financeiro de ingressos do painel da Nokta com saldo disponível e em custódia (demonstração)" width={1800} height={1274} />
           </div>
         </section>
 
