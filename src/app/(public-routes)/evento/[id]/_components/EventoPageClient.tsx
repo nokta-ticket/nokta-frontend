@@ -135,7 +135,11 @@ export default function EventoPageClient() {
   const [policyModal, setPolicyModal] = useState<PolicyModal>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [routeOpen, setRouteOpen] = useState(false);
-  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [allTickets, setTickets] = useState<Ticket[]>([]);
+  // Quem chegou pelo link da lista VIP e ainda pode retirar (ou já retirou)
+  // não vê os lotes pagos: ao lado de uma entrada gratuita eles só confundem.
+  const [vipActive, setVipActive] = useState(() => !!searchParams.get('vip'));
+  const tickets = vipActive ? [] : allTickets;
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [couponOpen, setCouponOpen] = useState(false);
   const [couponCode, setCouponCode] = useState('');
@@ -412,7 +416,12 @@ export default function EventoPageClient() {
 
               {/* CTAs */}
               <div className="flex items-center gap-3.5">
-                {isEncerrado || vendasEncerradas ? (
+                {vipActive ? (
+                  <Button onClick={() => document.getElementById("vip")?.scrollIntoView({ behavior: "smooth", block: "center" })} className="bg-gradient-to-r from-[#9944CC] to-[#3399FF] hover:brightness-110 text-white font-bold px-8 h-12 gap-2 text-[15px] shadow-xl shadow-violet-900/40 transition-all rounded-xl">
+                    <Ticket size={16} />
+                    Pegar VIP
+                  </Button>
+                ) : isEncerrado || vendasEncerradas ? (
                   <Button disabled className="bg-gray-500 text-white font-bold px-8 h-12 gap-2 text-[15px] rounded-xl cursor-not-allowed opacity-70">
                     {isCancelled ? "Evento Cancelado" : isEncerrado ? "Evento Encerrado" : "Vendas encerradas"}
                   </Button>
@@ -546,7 +555,7 @@ export default function EventoPageClient() {
 
             {/* Lista VIP: só para quem chegou pelo link do produtor (?vip=) */}
             {vipToken && (
-              <VipClaimCard token={vipToken} eventId={Number(evento.id)} eventPath={`/evento/${evento.slug ?? evento.id}`} />
+              <VipClaimCard token={vipToken} onActiveChange={setVipActive} eventId={Number(evento.id)} eventPath={`/evento/${evento.slug ?? evento.id}`} />
             )}
 
             {/* ── Seleção de Ingressos (mobile only) ────────────── */}
@@ -696,7 +705,7 @@ export default function EventoPageClient() {
             <div className="h-px bg-gradient-to-r from-[#9944CC]/20 via-[#D86CFA]/10 to-transparent" />
 
             {/* Programação */}
-            <EventProgramJourney items={parseProgramacao(evento.programacao ?? '')} ctaHref={tickets.length > 0 ? "#ingressos" : checkoutHref} />
+            <EventProgramJourney items={parseProgramacao(evento.programacao ?? '')} ctaHref={vipActive ? "#vip" : tickets.length > 0 ? "#ingressos" : checkoutHref} />
 
             {/* Info extra */}
             {evento.info && (

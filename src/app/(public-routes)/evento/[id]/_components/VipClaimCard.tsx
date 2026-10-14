@@ -33,9 +33,21 @@ function formatDeadline(iso: string): string {
   return `${day} às ${time}`;
 }
 
-export function VipClaimCard({ token, eventId, eventPath }: { token: string; eventId: number; eventPath: string }) {
+export function VipClaimCard({
+  token,
+  eventId,
+  eventPath,
+  onActiveChange,
+}: {
+  token: string;
+  eventId: number;
+  eventPath: string;
+  /** true enquanto o VIP pode ser retirado ou já foi retirado: a página esconde os lotes pagos. */
+  onActiveChange?: (active: boolean) => void;
+}) {
   const { isAuthenticated, user } = useAuth();
   const [data, setData] = useState<VipListResponse | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [needsCpf, setNeedsCpf] = useState(false);
@@ -50,11 +62,21 @@ export function VipClaimCard({ token, eventId, eventPath }: { token: string; eve
         // Link de outro evento não mostra nada aqui.
         if (active && res.data.evento.id === eventId) setData(res.data);
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (active) setLoaded(true);
+      });
     return () => {
       active = false;
     };
   }, [token, eventId]);
+
+  // Enquanto o link carrega conta como ativo, para os lotes pagos não
+  // piscarem na tela antes de sumir.
+  const active = !loaded || (!!data && (data.lista.status === "ABERTA" || result !== null));
+  useEffect(() => {
+    onActiveChange?.(active);
+  }, [active, onActiveChange]);
 
   // Quem chegou pelo link veio buscar o VIP: a página rola até ele.
   useEffect(() => {
