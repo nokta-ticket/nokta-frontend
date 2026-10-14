@@ -1,5 +1,5 @@
 {
- "fetchedAt": "2026-10-14T10:50:33.760Z",
+ "fetchedAt": "2026-10-14T22:00:03.454Z",
  "events": [
   {
    "id": "ZFIMVHtnMZ17FUF_",
@@ -3009,6 +3009,78 @@
    }
   },
   {
+   "id": "ZFIMVHtnMZ17avup",
+   "name": "Blitz | The Cavern Club",
+   "url": "https://www.ticketmaster.com.br/event/blitz-the-cavern-club",
+   "images": [
+    {
+     "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 2048
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_RETINA_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1136
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_TABLET_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1024
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_RETINA_PORTRAIT_16_9.jpg",
+     "ratio": "16_9",
+     "width": 640
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_RECOMENDATION_16_9.jpg",
+     "ratio": "16_9",
+     "width": 100
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_EVENT_DETAIL_PAGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 205
+    }
+   ],
+   "dates": {
+    "start": {
+     "localDate": "2026-11-12",
+     "localTime": "21:30:00"
+    },
+    "status": {
+     "code": "onsale"
+    }
+   },
+   "classifications": [
+    {
+     "genre": {
+      "name": "Rock"
+     },
+     "segment": {
+      "name": "Music"
+     }
+    }
+   ],
+   "_embedded": {
+    "venues": [
+     {
+      "name": "The Cavern Club",
+      "city": {
+       "name": "São Paulo"
+      },
+      "state": {
+       "stateCode": "SP"
+      },
+      "address": {
+       "line1": "Rua Olimpíadas 360"
+      }
+     }
+    ]
+   }
+  },
+  {
    "id": "ZFIMVHtnMZ17kv0O",
    "name": "The Cat Empire na Audio - SP",
    "url": "https://www.ticketmaster.com.br/event/the-cat-empire-na-audio-sp",
@@ -3152,6 +3224,78 @@
       },
       "address": {
        "line1": "Av. Ayrton Senna, 3000 - Barra da Tijuca, Rio de Janeiro"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "ZFIMVHtnMZ17avuN",
+   "name": "Blitz | The Cavern Club",
+   "url": "https://www.ticketmaster.com.br/event/blitz-the-cavern-club",
+   "images": [
+    {
+     "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 2048
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_RETINA_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1136
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_TABLET_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1024
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_RETINA_PORTRAIT_16_9.jpg",
+     "ratio": "16_9",
+     "width": 640
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_RECOMENDATION_16_9.jpg",
+     "ratio": "16_9",
+     "width": 100
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_EVENT_DETAIL_PAGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 205
+    }
+   ],
+   "dates": {
+    "start": {
+     "localDate": "2026-11-13",
+     "localTime": "21:30:00"
+    },
+    "status": {
+     "code": "onsale"
+    }
+   },
+   "classifications": [
+    {
+     "genre": {
+      "name": "Rock"
+     },
+     "segment": {
+      "name": "Music"
+     }
+    }
+   ],
+   "_embedded": {
+    "venues": [
+     {
+      "name": "The Cavern Club",
+      "city": {
+       "name": "São Paulo"
+      },
+      "state": {
+       "stateCode": "SP"
+      },
+      "address": {
+       "line1": "Rua Olimpíadas 360"
       }
      }
     ]
@@ -3373,6 +3517,78 @@
       },
       "address": {
        "line1": "R. Bragança Paulista 1281"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "ZFIMVHtnMZ17avFA",
+   "name": "Blitz | Ribeirão Preto",
+   "url": "https://www.ticketmaster.com.br/event/blitz-ribeirao-preto",
+   "images": [
+    {
+     "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 2048
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_RETINA_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1136
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_TABLET_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1024
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_RETINA_PORTRAIT_16_9.jpg",
+     "ratio": "16_9",
+     "width": 640
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_RECOMENDATION_16_9.jpg",
+     "ratio": "16_9",
+     "width": 100
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/fbc/b293c0ad-c904-4215-bc59-8d7f2414dfbc_106141_EVENT_DETAIL_PAGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 205
+    }
+   ],
+   "dates": {
+    "start": {
+     "localDate": "2026-11-14",
+     "localTime": "21:00:00"
+    },
+    "status": {
+     "code": "onsale"
+    }
+   },
+   "classifications": [
+    {
+     "genre": {
+      "name": "Rock"
+     },
+     "segment": {
+      "name": "Music"
+     }
+    }
+   ],
+   "_embedded": {
+    "venues": [
+     {
+      "name": "Multiplan Hall Ribeirão Shopping",
+      "city": {
+       "name": "Ribeirão Preto"
+      },
+      "state": {
+       "stateCode": "SP"
+      },
+      "address": {
+       "line1": "Av. Cel. Fernando Ferreira Leite 1540"
       }
      }
     ]
@@ -6545,6 +6761,83 @@
    }
   },
   {
+   "id": "ZFIMVHtnMZ17afeZ",
+   "name": "Ozzmosis | The Cavern Club",
+   "url": "https://www.ticketmaster.com.br/event/ozzmosis-the-cavern-club",
+   "images": [
+    {
+     "url": "https://s1.ticketm.net/dam/a/fe2/4dea843f-9d27-42d1-a4c7-4124cc69cfe2_RECOMENDATION_16_9.jpg",
+     "ratio": "16_9",
+     "width": 100
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/fe2/4dea843f-9d27-42d1-a4c7-4124cc69cfe2_RETINA_PORTRAIT_16_9.jpg",
+     "ratio": "16_9",
+     "width": 640
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/fe2/4dea843f-9d27-42d1-a4c7-4124cc69cfe2_TABLET_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1024
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/fe2/4dea843f-9d27-42d1-a4c7-4124cc69cfe2_SOURCE",
+     "ratio": "16_9",
+     "width": 2426
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/fe2/4dea843f-9d27-42d1-a4c7-4124cc69cfe2_RETINA_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1136
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/fe2/4dea843f-9d27-42d1-a4c7-4124cc69cfe2_EVENT_DETAIL_PAGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 205
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/fe2/4dea843f-9d27-42d1-a4c7-4124cc69cfe2_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 2048
+    }
+   ],
+   "dates": {
+    "start": {
+     "localDate": "2026-12-18",
+     "localTime": "21:30:00"
+    },
+    "status": {
+     "code": "onsale"
+    }
+   },
+   "classifications": [
+    {
+     "genre": {
+      "name": "Undefined"
+     },
+     "segment": {
+      "name": "Music"
+     }
+    }
+   ],
+   "_embedded": {
+    "venues": [
+     {
+      "name": "The Cavern Club",
+      "city": {
+       "name": "São Paulo"
+      },
+      "state": {
+       "stateCode": "SP"
+      },
+      "address": {
+       "line1": "Rua Olimpíadas 360"
+      }
+     }
+    ]
+   }
+  },
+  {
    "id": "ZFIMVHtnMZ17FF7b",
    "name": "Diogo Portugal - Medianeira",
    "url": "https://www.ticketmaster.com.br/event/diogo-portugal-medianeira",
@@ -6688,6 +6981,83 @@
       },
       "address": {
        "line1": "Parque Farroupilha 685"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "ZFIMVHtnMZ17afGM",
+   "name": "Ney Matogrosso | Bloco na Rua",
+   "url": "https://www.ticketmaster.com.br/event/ney-matogrosso-bloco-de-rua",
+   "images": [
+    {
+     "url": "https://s1.ticketm.net/dam/a/fcd/03b354d3-845d-4572-982a-c17d11b24fcd_1824721_TABLET_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1024
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/fcd/03b354d3-845d-4572-982a-c17d11b24fcd_1824721_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 2048
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/fcd/03b354d3-845d-4572-982a-c17d11b24fcd_1824721_RETINA_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1136
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/fcd/03b354d3-845d-4572-982a-c17d11b24fcd_SOURCE",
+     "ratio": "16_9",
+     "width": 2426
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/fcd/03b354d3-845d-4572-982a-c17d11b24fcd_1824721_EVENT_DETAIL_PAGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 205
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/fcd/03b354d3-845d-4572-982a-c17d11b24fcd_1824721_RECOMENDATION_16_9.jpg",
+     "ratio": "16_9",
+     "width": 100
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/fcd/03b354d3-845d-4572-982a-c17d11b24fcd_1824721_RETINA_PORTRAIT_16_9.jpg",
+     "ratio": "16_9",
+     "width": 640
+    }
+   ],
+   "dates": {
+    "start": {
+     "localDate": "2026-12-19",
+     "localTime": "21:00:00"
+    },
+    "status": {
+     "code": "onsale"
+    }
+   },
+   "classifications": [
+    {
+     "genre": {
+      "name": "Latin"
+     },
+     "segment": {
+      "name": "Music"
+     }
+    }
+   ],
+   "_embedded": {
+    "venues": [
+     {
+      "name": "Multiplan Hall Ribeirão Shopping",
+      "city": {
+       "name": "Ribeirão Preto"
+      },
+      "state": {
+       "stateCode": "SP"
+      },
+      "address": {
+       "line1": "Av. Cel. Fernando Ferreira Leite 1540"
       }
      }
     ]
@@ -8884,6 +9254,237 @@
    }
   },
   {
+   "id": "ZFIMVHtnMZ17kKvo",
+   "name": "Lollapalooza Brasil 2027",
+   "url": "https://www.ticketmaster.com.br/event/lollapaloozabr",
+   "images": [
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_SOURCE",
+     "ratio": "16_9",
+     "width": 2426
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_RECOMENDATION_16_9.jpg",
+     "ratio": "16_9",
+     "width": 100
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 2048
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_RETINA_PORTRAIT_16_9.jpg",
+     "ratio": "16_9",
+     "width": 640
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_RETINA_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1136
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_TABLET_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1024
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_EVENT_DETAIL_PAGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 205
+    }
+   ],
+   "dates": {
+    "start": {
+     "localDate": "2027-03-19",
+     "localTime": "11:00:00"
+    },
+    "status": {
+     "code": "onsale"
+    }
+   },
+   "classifications": [
+    {
+     "genre": {
+      "name": "Undefined"
+     },
+     "segment": {
+      "name": "Music"
+     }
+    }
+   ],
+   "_embedded": {
+    "venues": [
+     {
+      "name": "Autódromo de Interlagos",
+      "city": {
+       "name": "São Paulo"
+      },
+      "state": {
+       "stateCode": "SP"
+      },
+      "address": {
+       "line1": "Av. Senador Teotônio Vilela 261"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "ZFIMVHtnMZ17kKv3",
+   "name": "Lollapalooza Brasil 2027",
+   "url": "https://www.ticketmaster.com.br/event/lollapaloozabr",
+   "images": [
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_SOURCE",
+     "ratio": "16_9",
+     "width": 2426
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_RECOMENDATION_16_9.jpg",
+     "ratio": "16_9",
+     "width": 100
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 2048
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_RETINA_PORTRAIT_16_9.jpg",
+     "ratio": "16_9",
+     "width": 640
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_RETINA_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1136
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_TABLET_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1024
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_EVENT_DETAIL_PAGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 205
+    }
+   ],
+   "dates": {
+    "start": {
+     "localDate": "2027-03-20",
+     "localTime": "11:00:00"
+    },
+    "status": {
+     "code": "onsale"
+    }
+   },
+   "classifications": [
+    {
+     "genre": {
+      "name": "Undefined"
+     },
+     "segment": {
+      "name": "Music"
+     }
+    }
+   ],
+   "_embedded": {
+    "venues": [
+     {
+      "name": "Autódromo de Interlagos",
+      "city": {
+       "name": "São Paulo"
+      },
+      "state": {
+       "stateCode": "SP"
+      },
+      "address": {
+       "line1": "Av. Senador Teotônio Vilela 261"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "ZFIMVHtnMZ17kKvK",
+   "name": "Lollapalooza Brasil 2027",
+   "url": "https://www.ticketmaster.com.br/event/lollapaloozabr",
+   "images": [
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_SOURCE",
+     "ratio": "16_9",
+     "width": 2426
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_RECOMENDATION_16_9.jpg",
+     "ratio": "16_9",
+     "width": 100
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 2048
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_RETINA_PORTRAIT_16_9.jpg",
+     "ratio": "16_9",
+     "width": 640
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_RETINA_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1136
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_TABLET_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1024
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/57a/67cefd34-cd13-49ff-8338-10104309c57a_EVENT_DETAIL_PAGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 205
+    }
+   ],
+   "dates": {
+    "start": {
+     "localDate": "2027-03-21",
+     "localTime": "11:00:00"
+    },
+    "status": {
+     "code": "onsale"
+    }
+   },
+   "classifications": [
+    {
+     "genre": {
+      "name": "Undefined"
+     },
+     "segment": {
+      "name": "Music"
+     }
+    }
+   ],
+   "_embedded": {
+    "venues": [
+     {
+      "name": "Autódromo de Interlagos",
+      "city": {
+       "name": "São Paulo"
+      },
+      "state": {
+       "stateCode": "SP"
+      },
+      "address": {
+       "line1": "Av. Senador Teotônio Vilela 261"
+      }
+     }
+    ]
+   }
+  },
+  {
    "id": "ZFIMVHtnMZ17F3_b",
    "name": "Louis Tomlinson: How Did We Get Here? Latin American Tour",
    "url": "https://www.ticketmaster.com.br/event/vg-louis-tomlinson",
@@ -9464,6 +10065,78 @@
       },
       "address": {
        "line1": "Av. das Nações Unidas 22540"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "ZFIMVHtnMZ17aobZ",
+   "name": "Paula Fernandes | Qualistage",
+   "url": "https://www.ticketmaster.com.br/event/paula-fernandes-no-qualistage",
+   "images": [
+    {
+     "url": "https://s1.ticketm.net/dam/c/4f2/0109888a-61b5-4525-8432-b026ef04f4f2_105631_RETINA_PORTRAIT_16_9.jpg",
+     "ratio": "16_9",
+     "width": 640
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/4f2/0109888a-61b5-4525-8432-b026ef04f4f2_105631_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 2048
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/4f2/0109888a-61b5-4525-8432-b026ef04f4f2_105631_RECOMENDATION_16_9.jpg",
+     "ratio": "16_9",
+     "width": 100
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/4f2/0109888a-61b5-4525-8432-b026ef04f4f2_105631_TABLET_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1024
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/4f2/0109888a-61b5-4525-8432-b026ef04f4f2_105631_RETINA_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1136
+    },
+    {
+     "url": "https://s1.ticketm.net/dbimages/194946a.jpg",
+     "ratio": "16_9",
+     "width": 205
+    }
+   ],
+   "dates": {
+    "start": {
+     "localDate": "2027-06-05",
+     "localTime": "21:30:00"
+    },
+    "status": {
+     "code": "onsale"
+    }
+   },
+   "classifications": [
+    {
+     "genre": {
+      "name": "Pop"
+     },
+     "segment": {
+      "name": "Music"
+     }
+    }
+   ],
+   "_embedded": {
+    "venues": [
+     {
+      "name": "Qualistage",
+      "city": {
+       "name": "Rio de Janeiro"
+      },
+      "state": {
+       "stateCode": "RJ"
+      },
+      "address": {
+       "line1": "Av. Ayrton Senna, 3000 - Barra da Tijuca, Rio de Janeiro"
       }
      }
     ]
