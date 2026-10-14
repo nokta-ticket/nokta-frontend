@@ -49,6 +49,9 @@ const publicRoutes = [
   { path: "/vip/[id]", whenAutenticated: "next" },
   { path: "/revenda", whenAutenticated: "next" },
   { path: "/revenda/anunciar", whenAutenticated: "next" },
+  // Agenda: eventos de outras plataformas com link pra venda oficial.
+  { path: "/agenda", whenAutenticated: "next" },
+  { path: "/agenda/[id]", whenAutenticated: "next" },
   // Ver um anúncio de revenda é público; o login só entra na hora de comprar
   // (a própria página abre o modal). Antes o middleware mandava pro login
   // antes mesmo de mostrar o ingresso.
@@ -91,7 +94,9 @@ const publicRoutes = [
 // PLATFORM/TICKETS_PUBLIC), e um catch-all genérico lá liberaria como
 // "pública" qualquer rota de 1 segmento não reconhecida em app.nokta.live
 // (ex.: erro de digitação), em vez de redirecionar pro login.
-const ORG_SLUG_HOME_ROUTE = { path: "/[id]", whenAutenticated: "next" } as const;
+const PUBLIC_CONTENT_PREFIXES = ["/solucoes", "/comparativos", "/guias", "/eventos/em"];
+
+const ORG_SLUG_HOME_ROUTE ={ path: "/[id]", whenAutenticated: "next" } as const;
 
 // Fase 5: /produtor/* virou redirect fino pro dashboard unificado — não tem
 // mais gate de role própria (a autorização real é da API + contexto de
@@ -129,6 +134,7 @@ const TICKETS_ONLY_PREFIXES = [
   "/minhas-revendas",
   "/perfil",
   "/para-produtores",
+  "/agenda",
 ];
 
 const REDIRECT_WHEN_INVALID_ROLE_ROUTE = "/";
@@ -393,7 +399,12 @@ export async function middleware(request: NextRequest) {
 
   }
 
+  // Conteúdo aberto pra busca: soluções/comparativos/guias (nokta.live) e
+  // páginas de eventos por cidade (bilheteria), em qualquer profundidade.
+  const contentRoute = matchesAnyPrefix(path, PUBLIC_CONTENT_PREFIXES) ? ({ path, whenAutenticated: "next" } as const) : undefined;
+
   const publicRoute =
+    contentRoute ??
     publicRoutes.find((route) => matchDynamicRoute(path, route.path)) ??
     // Em dev sem separação de hosts (localhost puro) a home do estabelecimento
     // também precisa abrir sem login — senão não dá pra ver/testar a página.

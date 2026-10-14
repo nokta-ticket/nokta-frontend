@@ -4,7 +4,7 @@ import { Icon } from "@/components/ui/icon";
 import { COMPANY, LEGAL_LINE } from "@/lib/company";
 
 const COLUMNS = [
-  { title: "Explorar", links: [{ label: "Eventos", href: "/eventos" }, { label: "Revenda oficial", href: "/revenda" }, { label: "Para produtores", href: "/para-produtores" }] },
+  { title: "Explorar", links: [{ label: "Eventos", href: "/eventos" }, { label: "Agenda de shows", href: "/agenda" }, { label: "Revenda oficial", href: "/revenda" }, { label: "Para produtores", href: "/para-produtores" }] },
   { title: "Conta", links: [{ label: "Meus ingressos", href: "/meus-ingressos" }, { label: "Minhas revendas", href: "/minhas-revendas" }, { label: "Favoritos", href: "/favoritos" }, { label: "Meu perfil", href: "/perfil" }] },
   { title: "Ajuda", links: [{ label: "Central de ajuda", href: "/ajuda" }, { label: "Política de cancelamento", href: "/politica-de-cancelamento" }, { label: "Termos de uso", href: "/termos" }, { label: "Privacidade", href: "/privacidade" }] },
 ];

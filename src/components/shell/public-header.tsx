@@ -199,10 +199,25 @@ export type HeaderChrome = "full" | "minimal";
  * Cabeçalho da bilheteria.
  * Desktop: "ilha" flutuante — transparente por cima do banner no topo da
  * página; ao rolar vira um pill de vidro compacto, com links (realce que
- * desliza), busca ⌘K, Entrar e "Criar evento".
+ * desliza), busca (⌘K ou Ctrl K), Entrar e "Criar evento".
  * Celular: avatar · logo · busca, sólido ao rolar; a navegação principal
  * fica na barra inferior.
  */
+/**
+ * Rótulo do atalho de busca: ⌘K no Mac/iPad, Ctrl K no resto. Começa vazio e
+ * só aparece depois de montar, porque o servidor não sabe o sistema (evita
+ * erro de hidratação).
+ */
+function useShortcutLabel(): string | null {
+  const [label, setLabel] = useState<string | null>(null);
+  useEffect(() => {
+    const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
+    const platform = nav.userAgentData?.platform || nav.platform || nav.userAgent;
+    setLabel(/mac|iphone|ipad|ipod/i.test(platform) ? "⌘K" : "Ctrl K");
+  }, []);
+  return label;
+}
+
 export function PublicHeader({ chrome = "full", title }: { chrome?: HeaderChrome; title?: string }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -215,6 +230,7 @@ export function PublicHeader({ chrome = "full", title }: { chrome?: HeaderChrome
   const overlay = isHome && !scrolled;
 
   const openSearch = useCallback(() => setSearchOpen(true), []);
+  const shortcut = useShortcutLabel();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -271,7 +287,7 @@ export function PublicHeader({ chrome = "full", title }: { chrome?: HeaderChrome
               <button type="button" onClick={openSearch} className={cn("group flex h-10 items-center gap-2 rounded-pill pl-3.5 pr-2 text-sm transition-colors", overlay ? "text-white/80 hover:bg-white/10 hover:text-white" : "text-muted-foreground hover:bg-surface-2 hover:text-foreground")}>
                 <Icon name="search" size={14} />
                 <span className="hidden xl:inline">Buscar</span>
-                <kbd className={cn("hidden rounded-md border px-1.5 py-0.5 text-micro font-medium xl:block", overlay ? "border-white/20 text-white/60" : "border-border text-subtle-foreground")}>⌘K</kbd>
+                {shortcut ? <kbd className={cn("hidden whitespace-nowrap rounded-md border px-1.5 py-0.5 text-micro font-medium xl:block", overlay ? "border-white/20 text-white/60" : "border-border text-subtle-foreground")}>{shortcut}</kbd> : null}
               </button>
               <UserMenu scrolled={!overlay} />
             </div>

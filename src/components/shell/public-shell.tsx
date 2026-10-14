@@ -13,7 +13,11 @@ type Chrome = { header: "full" | "minimal" | "none"; bottomNav: boolean; footer:
 
 // Rotas que desenham o próprio shell (login, dashboard, cardápio público,
 // LP institucional…): nada do shell de bilheteria por cima.
-const CHROMELESS = [/^\/login/, /^\/register/, /^\/recuperar-senha/, /^\/auth\//, /^\/convites/, /^\/descadastro/, /^\/admin/, /^\/dashboard/, /^\/cardapio/, /^\/avaliacao/, /^\/institucional/];
+const CHROMELESS = [/^\/login/, /^\/register/, /^\/recuperar-senha/, /^\/auth\//, /^\/convites/, /^\/descadastro/, /^\/admin/, /^\/dashboard/, /^\/cardapio/, /^\/avaliacao/, /^\/institucional/, /^\/solucoes/, /^\/comparativos/, /^\/guias/];
+// Segmentos que desenham o próprio shell, vistos pela árvore de rotas e não
+// pela URL: em nokta.live a raiz é um rewrite pra /institucional, então a URL
+// do navegador continua "/" e só o segmento mostra que é a LP.
+const CHROMELESS_SEGMENTS = new Set(["institucional", "(conteudo)"]);
 // Rotas de auth interceptadas pelo slot `@modal` (abrem como card por cima
 // da página atual): a URL vira /login, mas quem está na tela é a página de
 // origem — ela mantém o shell dela.
@@ -23,7 +27,8 @@ const MINIMAL = [/^\/evento\/[^/]+\/checkout/, /^\/revenda\/anunciar/];
 // Páginas com barra de ação própria no rodapé (compra, ingresso): sem nav inferior.
 const NO_BOTTOM_NAV = [/^\/evento\//, /^\/vip\//, /^\/revenda\/\d+/, /^\/meus-ingressos\/[^/]+/];
 
-function resolveChrome(pathname: string, authModalOpen: boolean): Chrome {
+function resolveChrome(pathname: string, authModalOpen: boolean, segment: string | null): Chrome {
+  if (segment && CHROMELESS_SEGMENTS.has(segment)) return { header: "none", bottomNav: false, footer: false };
   if (authModalOpen && AUTH_MODAL.some((r) => r.test(pathname))) return { header: "full", bottomNav: true, footer: true };
   if (CHROMELESS.some((r) => r.test(pathname))) return { header: "none", bottomNav: false, footer: false };
   if (MINIMAL.some((r) => r.test(pathname))) return { header: "minimal", bottomNav: false, footer: false };
@@ -42,7 +47,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
   // quando nenhuma rota de auth está interceptada.
   const modalSegment = useSelectedLayoutSegment("modal");
   const authModalOpen = modalSegment !== null && modalSegment !== "__DEFAULT__";
-  const chrome = resolveChrome(pathname, authModalOpen);
+  const chrome = resolveChrome(pathname, authModalOpen, useSelectedLayoutSegment());
 
   return (
     <>

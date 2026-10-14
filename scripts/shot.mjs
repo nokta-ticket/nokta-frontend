@@ -15,6 +15,7 @@
  *   --key Enter       tecla única (Enter|Escape|Tab) no elemento focado
  *   --wait 2500       ms extra depois do load (dados do mock chegam com latência)
  *   --dark/--light    força o tema via classe no <html> (painel)
+ *   --dpr 2           densidade de pixels (prints nítidos para a landing)
  *   --console         imprime erros/avisos do console da página (o "N Issues" do Next)
  */
 import { spawn } from "node:child_process";
@@ -119,7 +120,7 @@ try {
     });
     listeners.set("Runtime.exceptionThrown", (p) => consoleLog.push(`[exception] ${p.exceptionDetails?.exception?.description ?? p.exceptionDetails?.text ?? ""}`.slice(0, 600)));
   }
-  await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: width < 768 });
+  await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: Number(args.dpr ?? 1), mobile: width < 768 });
   if (width < 768) await send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
 
   if (args.cookie) {
@@ -171,7 +172,7 @@ try {
   if (args.full) {
     const m = await send("Page.getLayoutMetrics");
     const h = Math.ceil(m.cssContentSize?.height ?? m.contentSize.height);
-    await send("Emulation.setDeviceMetricsOverride", { width, height: h, deviceScaleFactor: 1, mobile: width < 768 });
+    await send("Emulation.setDeviceMetricsOverride", { width, height: h, deviceScaleFactor: Number(args.dpr ?? 1), mobile: width < 768 });
     await sleep(300);
     clip = { x: 0, y: 0, width, height: h, scale: 1 };
   }
