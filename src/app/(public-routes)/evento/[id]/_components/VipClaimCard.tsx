@@ -148,11 +148,7 @@ export function VipClaimCard({
         const claiming = claimingToken === lista.token;
         return (
           <section key={lista.token} aria-label={lista.nome || "Lista VIP"}>
-            <div className="mb-1 flex items-start gap-2.5">
-              <span className="mt-1 h-5 w-[3px] shrink-0 rounded-full bg-gradient-to-b from-[#7C3AED] to-[#2D8CFF]" />
-              <h2 className="text-lg font-bold text-[#0F172A]">{lista.nome || "Lista VIP"}</h2>
-            </div>
-            <p className="pl-[13px] text-[13px] leading-relaxed text-gray-600">
+            <p className="text-[13px] leading-relaxed text-gray-600">
               Entrada gratuita, um nome por pessoa.
               {open && lista.ate ? ` Aberta até ${formatDeadline(lista.ate)}.` : ""}
             </p>
