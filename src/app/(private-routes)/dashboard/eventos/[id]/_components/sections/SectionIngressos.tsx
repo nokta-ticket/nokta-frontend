@@ -786,6 +786,7 @@ export default function SectionIngressos({ event, onRefresh }: SectionProps) {
           ))}
 
           <VipListCard
+            eventKey={String(event.slug ?? event.id)}
             lists={vipTickets}
             onCreate={() => { setVipEditingKey(null); setVipDialogOpen(true) }}
             onEdit={(key) => { setVipEditingKey(key); setVipDialogOpen(true) }}

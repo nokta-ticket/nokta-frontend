@@ -121,7 +121,10 @@ export default function EventoPageClient() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuth();
-  const vipToken = searchParams.get('vip');
+  // Link da lista VIP: /vip/<evento> (esta mesma página). `?vip=` é o formato
+  // dos primeiros links e continua aceito.
+  const isVipRoute = pathname.startsWith('/vip/');
+  const vipKey = isVipRoute ? String(id) : searchParams.get('vip');
   const [evento, setEvento] = useState<EventDetails | null>(null);
   const [loading, setLoading] = useState(true);
   // Relógio da tela: reavalia o fim das vendas sem precisar recarregar (quem
@@ -138,7 +141,7 @@ export default function EventoPageClient() {
   const [allTickets, setTickets] = useState<Ticket[]>([]);
   // Quem chegou pelo link da lista VIP e ainda pode retirar (ou já retirou)
   // não vê os lotes pagos: ao lado de uma entrada gratuita eles só confundem.
-  const [vipActive, setVipActive] = useState(() => !!searchParams.get('vip'));
+  const [vipActive, setVipActive] = useState(() => pathname.startsWith('/vip/') || !!searchParams.get('vip'));
   const tickets = vipActive ? [] : allTickets;
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [couponOpen, setCouponOpen] = useState(false);
@@ -554,8 +557,13 @@ export default function EventoPageClient() {
           <div className="lg:col-span-2 space-y-10">
 
             {/* Lista VIP: só para quem chegou pelo link do produtor (?vip=) */}
-            {vipToken && (
-              <VipClaimCard token={vipToken} onActiveChange={setVipActive} eventId={Number(evento.id)} eventPath={`/evento/${evento.slug ?? evento.id}`} />
+            {vipKey && (
+              <VipClaimCard
+                vipKey={vipKey}
+                eventId={Number(evento.id)}
+                returnPath={`/vip/${evento.slug ?? evento.id}`}
+                onActiveChange={setVipActive}
+              />
             )}
 
             {/* ── Seleção de Ingressos (mobile only) ────────────── */}

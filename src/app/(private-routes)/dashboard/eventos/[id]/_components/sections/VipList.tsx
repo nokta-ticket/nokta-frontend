@@ -168,16 +168,19 @@ export function VipListDialog({ open, onOpenChange, initial, eventDate, onConfir
 // ─── Card ─────────────────────────────────────────────────────────────────────
 
 interface VipListCardProps {
+  /** Endereço do evento (slug ou id): o link é /vip/<endereço>. */
+  eventKey: string
   lists: VipTicket[]
   onCreate: () => void
   onEdit: (key: string) => void
   onRemove: (key: string) => void
 }
 
-export function VipListCard({ lists, onCreate, onEdit, onRemove }: VipListCardProps) {
-  const copyLink = async (token: string) => {
+export function VipListCard({ eventKey, lists, onCreate, onEdit, onRemove }: VipListCardProps) {
+  const vipUrl = getPublicTicketsUrl(`/vip/${eventKey}`)
+  const copyLink = async () => {
     try {
-      await navigator.clipboard.writeText(getPublicTicketsUrl(`/vip/${token}`))
+      await navigator.clipboard.writeText(vipUrl)
       toast.success("Link copiado")
     } catch {
       toast.error("Não foi possível copiar o link")
@@ -203,7 +206,8 @@ export function VipListCard({ lists, onCreate, onEdit, onRemove }: VipListCardPr
       </div>
 
       {lists.map((list) => {
-        const link = list.vipToken ? getPublicTicketsUrl(`/vip/${list.vipToken}`) : null
+        // O link é o do evento; só vale depois que a lista está gravada.
+        const link = list.id ? vipUrl : null
         return (
           <div key={list._key} className="border-t border-gray-100 px-5 py-4 space-y-3">
             <div className="flex items-start justify-between gap-3">
@@ -236,11 +240,11 @@ export function VipListCard({ lists, onCreate, onEdit, onRemove }: VipListCardPr
               </div>
             </div>
 
-            {link && list.vipToken ? (
+            {link ? (
               <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50/60 pl-3 pr-1.5 py-1.5">
                 <p className="min-w-0 flex-1 truncate text-[12px] text-gray-700">{link}</p>
                 <Button
-                  onClick={() => copyLink(list.vipToken as string)}
+                  onClick={copyLink}
                   className="h-9 shrink-0 gap-1.5 rounded-lg px-3 text-[12px] font-semibold"
                 >
                   <Copy className="w-3.5 h-3.5" />
