@@ -1,261 +1,158 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import Link from 'next/link'
-import { toast } from '@/lib/toast'
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react'
-import { useAuth } from '@/context/AuthContext'
-import { isSafeInternalRedirect } from '@/lib/safe-redirect'
-import { currentSurfaceStateToken, getApiBaseUrl } from '@/lib/surfaces'
-import { useSurface } from '@/lib/use-surface'
-import { ConfirmEmailModal } from './confirmar-email-modal'
-
-// Fase 5: API resolvida por host, não uma NEXT_PUBLIC_API_URL fixa — o
-// mesmo build atende app.nokta.live e noktatickets.com.br.
-const API_URL = getApiBaseUrl()
-
-function OAuthButtons({ ctx }: { ctx: string }) {
-  const state = `${currentSurfaceStateToken()}:${ctx}`
-  const handleGoogle = () => { window.location.href = `${API_URL}/auth/google?state=${state}` }
-  const handleApple = ()  => { window.location.href = `${API_URL}/auth/apple?state=${state}` }
-
-  return (
-    <div className="space-y-2">
-      <button
-        type="button"
-        onClick={handleGoogle}
-        className="group flex h-[42px] sm:h-[46px] w-full items-center justify-center gap-2.5 rounded-xl border border-gray-200 bg-white px-4 text-[13px] font-medium text-gray-700 transition-all duration-150 hover:border-gray-300 hover:bg-gray-50/80 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
-      >
-        <svg width="17" height="17" viewBox="0 0 18 18" aria-hidden="true" className="shrink-0">
-          <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
-          <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
-          <path fill="#FBBC05" d="M3.964 10.707C3.784 10.167 3.682 9.59 3.682 9s.102-1.167.282-1.707V4.961H.957C.347 6.175 0 7.548 0 9s.347 2.825.957 4.039l3.007-2.332z"/>
-          <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"/>
-        </svg>
-        Continuar com Google
-      </button>
-
-      <button
-        type="button"
-        onClick={handleApple}
-        className="group flex h-[42px] sm:h-[46px] w-full items-center justify-center gap-2.5 rounded-xl border border-gray-200 bg-white px-4 text-[13px] font-medium text-gray-700 transition-all duration-150 hover:border-gray-300 hover:bg-gray-50/80 hover:shadow-[0_2px_8px_rgba(0,0,0,0.06)] active:scale-[0.99] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="shrink-0">
-          <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.54 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.029 1.52-.065 2.09-.987 3.925-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/>
-        </svg>
-        Continuar com Apple
-      </button>
-
-      {/* Divisor */}
-      <div className="relative py-0.5">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-gray-100" />
-        </div>
-        <div className="relative flex justify-center">
-          <span className="bg-white px-3 text-[11px] font-medium uppercase tracking-[0.08em] text-gray-500">
-            ou
-          </span>
-        </div>
-      </div>
-    </div>
-  )
-}
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import axios from "axios";
+import api, { getErrorMessage } from "@/lib/axios";
+import { toast } from "@/lib/toast";
+import { useAuth, type UserPayload } from "@/context/AuthContext";
+import { isSafeInternalRedirect } from "@/lib/safe-redirect";
+import { useSurface } from "@/lib/use-surface";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
+import { AuthDivider } from "@/components/auth/auth-screen";
+import { SocialAuthButtons } from "@/components/auth/social-auth-buttons";
+import { ConfirmEmailModal } from "./confirmar-email-modal";
 
 export function LoginForm() {
-  const router       = useRouter()
-  const surface      = useSurface()
-  const searchParams = useSearchParams()
+  const router = useRouter();
+  const surface = useSurface();
+  const searchParams = useSearchParams();
   // Em PLATFORM (app.nokta.live), login sempre segue o caminho de
   // gestor/produtor — mesmo raciocínio de forms-register.tsx: sem isso,
   // quem logasse direto (sem ?ctx=produtor) caía em "/" e nunca era
   // levado a completar o onboarding pendente.
-  const ctx          = searchParams.get('ctx') || (surface === 'PLATFORM' ? 'produtor' : '')
-  const redirectTo   = searchParams.get('redirect') || ''
-  const { signIn }   = useAuth()
+  const ctx = searchParams.get("ctx") || (surface === "PLATFORM" ? "produtor" : "");
+  const redirectTo = searchParams.get("redirect") || "";
+  const { signIn } = useAuth();
 
-  const [email,   setEmail]   = useState('')
-  const [senha,   setSenha]   = useState('')
-  const [showPw,  setShowPw]  = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const [modalOpen,        setModalOpen]        = useState(false)
-  const [emailConfirmacao, setEmailConfirmacao] = useState('')
-  const [phoneConfirmacao, setPhoneConfirmacao] = useState<string | undefined>(undefined)
-
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    try {
-      const res  = await fetch(`${API_URL}/auth/login`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ email, senha }),
-        // Fase 5: sessão é cookie HttpOnly — sem isso o navegador não grava
-        // o Set-Cookie de uma resposta de outra origem (api.*).
-        credentials: 'include',
-      })
-      const data = await res.json()
-
-      if (!res.ok) {
-        const msg: string = Array.isArray(data.message) ? data.message.join(' ') : (data.message || '')
-        // Conta sem telefone não tem pra onde mandar código — abrir o modal
-        // de verificação aqui deixaria a pessoa esperando algo impossível.
-        if (data.code === 'ACCOUNT_NOT_CONFIRMED_NO_PHONE') {
-          throw new Error(msg)
-        }
-        // Senha certa, conta não confirmada: o backend já reenviou o código
-        // pro WhatsApp da conta — abre a verificação direto.
-        if (data.code === 'ACCOUNT_NOT_CONFIRMED' || msg.toLowerCase().includes('confirmada')) {
-          setEmailConfirmacao(email)
-          setPhoneConfirmacao(data.phone)
-          setModalOpen(true)
-          if (data.code === 'ACCOUNT_NOT_CONFIRMED') toast.success(msg)
-          return
-        }
-        throw new Error(msg || 'Credenciais inválidas')
-      }
-
-      if (!data.user) throw new Error('Não foi possível concluir o login.')
-      await finishLogin(data.user)
-    } catch (err: any) {
-      toast.error(err.message || 'Erro ao fazer login')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const [modalOpen, setModalOpen] = useState(false);
+  const [emailConfirmacao, setEmailConfirmacao] = useState("");
+  const [phoneConfirmacao, setPhoneConfirmacao] = useState<string | undefined>(undefined);
 
   // Comum ao login normal e à confirmação da conta pelo modal (que já
   // autentica via cookie em confirmar-telefone).
-  const finishLogin = async (user: any) => {
-    signIn(user)
-    toast.success('Login realizado com sucesso!')
+  const finishLogin = async (user: UserPayload) => {
+    signIn(user);
+    toast.success("Login realizado com sucesso!");
 
     if (isSafeInternalRedirect(redirectTo)) {
-      router.push(redirectTo)
-    } else if (ctx === 'produtor') {
-      // Antes caía sempre em /dashboard/onboarding, que por sua vez
-      // redirecionava pra /dashboard/inicio se detectasse
-      // alreadyConfigured — funcionava (nenhuma tela chegava a
-      // renderizar), mas a URL passava visivelmente por
-      // /dashboard/onboarding antes do destino final, e o histórico do
-      // navegador ganhava uma entrada a mais. Decide aqui, antes de
-      // navegar: se toda organização do usuário já tem onboarding
-      // concluído (mesmo campo que dashboard/onboarding/page.tsx usa,
-      // vindo de GET /me/organizations), vai direto pro painel. Só passa
-      // por onboarding quando realmente falta algo — sem organização
-      // nenhuma (needsWorkspaceOnly) ou onboarding incompleto — casos em
-      // que a própria página decide entre essas duas telas.
+      router.push(redirectTo);
+    } else if (ctx === "produtor") {
+      // Decide aqui, antes de navegar: se toda organização do usuário já
+      // tem onboarding concluído (mesmo campo que dashboard/onboarding/
+      // page.tsx usa, vindo de GET /me/organizations), vai direto pro
+      // painel — sem a URL passar visivelmente por /dashboard/onboarding.
       try {
-        const orgsRes = await fetch(`${API_URL}/me/organizations`, { credentials: 'include' })
-        const orgs: Array<{ onboardingCompleted: boolean }> = orgsRes.ok ? await orgsRes.json() : []
-        const onboardingDone = orgs.length > 0 && orgs.every((o) => o.onboardingCompleted)
-        router.push(onboardingDone ? '/dashboard/inicio' : '/dashboard/onboarding')
+        const orgsRes = await api.get<Array<{ onboardingCompleted: boolean }>>("/me/organizations");
+        const orgs = Array.isArray(orgsRes.data) ? orgsRes.data : [];
+        const onboardingDone = orgs.length > 0 && orgs.every((o) => o.onboardingCompleted);
+        router.push(onboardingDone ? "/dashboard/inicio" : "/dashboard/onboarding");
       } catch {
-        router.push('/dashboard/onboarding')
+        router.push("/dashboard/onboarding");
       }
     } else {
       // Navegação forçada (não router.push): "/" decide a rota conforme
-      // autenticação no middleware (app.nokta.live) — o cache de rota do
-      // Next no client pode servir uma resposta anterior (anônima) e
-      // nunca sair do /login. Só um request de verdade garante que o
-      // middleware reavalie com o cookie que acabou de ser gravado.
-      window.location.href = '/'
+      // autenticação no middleware — o cache de rota do Next no client pode
+      // servir uma resposta anterior (anônima) e nunca sair do /login. Só
+      // um request de verdade garante que o middleware reavalie com o
+      // cookie que acabou de ser gravado.
+      window.location.href = "/";
     }
-  }
+  };
 
-  const handleConfirmSuccess = async (user: any) => {
-    setModalOpen(false)
-    if (user) {
-      await finishLogin(user)
-    } else {
-      toast.success('Conta confirmada! Faça login novamente.')
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setFormError(null);
+    try {
+      // Sessão é cookie HttpOnly gravado pela resposta — `api` já manda
+      // credenciais pra origem da API (withCredentials).
+      const res = await api.post("/auth/login", { email, senha });
+      const data = res.data;
+      if (!data?.user) throw new Error("Não foi possível concluir o login.");
+      await finishLogin(data.user);
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response) {
+        const data = (err.response.data ?? {}) as { code?: string; message?: string | string[]; phone?: string };
+        const msg: string = Array.isArray(data.message) ? data.message.join(" ") : data.message || "";
+        // Conta sem telefone não tem pra onde mandar código — abrir o modal
+        // de verificação aqui deixaria a pessoa esperando algo impossível.
+        if (data.code === "ACCOUNT_NOT_CONFIRMED_NO_PHONE") {
+          setFormError(msg);
+          toast.error(msg);
+          return;
+        }
+        // Senha certa, conta não confirmada: o backend já reenviou o código
+        // pro WhatsApp da conta — abre a verificação direto.
+        if (data.code === "ACCOUNT_NOT_CONFIRMED" || msg.toLowerCase().includes("confirmada")) {
+          setEmailConfirmacao(email);
+          setPhoneConfirmacao(data.phone);
+          setModalOpen(true);
+          if (data.code === "ACCOUNT_NOT_CONFIRMED") toast.success(msg);
+          return;
+        }
+        const finalMsg = msg || "E-mail ou senha incorretos.";
+        setFormError(finalMsg);
+        toast.error(finalMsg);
+        return;
+      }
+      const finalMsg = getErrorMessage(err, "Erro ao fazer login");
+      setFormError(finalMsg);
+      toast.error(finalMsg);
+    } finally {
+      setLoading(false);
     }
-  }
+  };
+
+  const handleConfirmSuccess = async (user: UserPayload | null | undefined) => {
+    setModalOpen(false);
+    if (user) {
+      await finishLogin(user);
+    } else {
+      toast.success("Conta confirmada! Faça login novamente.");
+    }
+  };
 
   return (
     <>
-      <div className="space-y-2.5 sm:space-y-3.5">
-        <OAuthButtons ctx={ctx} />
+      <div className="space-y-4">
+        <SocialAuthButtons ctx={ctx} mode="login" />
+        <AuthDivider />
 
-        <form className="space-y-2" onSubmit={handleLogin}>
+        <form className="space-y-3.5" onSubmit={handleLogin} noValidate>
+          <Field label="E-mail" htmlFor="login-email">
+            <Input id="login-email" type="email" leftIcon="mail" autoComplete="email" placeholder="voce@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </Field>
 
-          {/* E-mail */}
-          <div className="relative">
-            <Mail
-              size={15}
-              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
-            />
-            <input
-              type="email"
-              placeholder="E-mail"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              className="h-[42px] sm:h-[46px] w-full rounded-xl border border-gray-200 bg-gray-50/60 pl-[38px] pr-4 text-[16px] sm:text-[13.5px] text-gray-900 placeholder:text-gray-500 outline-none transition-all duration-150 focus:border-violet-600 focus:bg-white focus:ring-3 focus:ring-violet-500/25"
-            />
-          </div>
-
-          {/* Senha */}
-          <div>
-            <div className="relative">
-              <Lock
-                size={15}
-                className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <input
-                type={showPw ? 'text' : 'password'}
-                placeholder="Senha"
-                value={senha}
-                onChange={e => setSenha(e.target.value)}
-                required
-                className="h-[42px] sm:h-[46px] w-full rounded-xl border border-gray-200 bg-gray-50/60 pl-[38px] pr-10 text-[16px] sm:text-[13.5px] text-gray-900 placeholder:text-gray-500 outline-none transition-all duration-150 focus:border-violet-600 focus:bg-white focus:ring-3 focus:ring-violet-500/25"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPw(p => !p)}
-                aria-label={showPw ? 'Ocultar senha' : 'Mostrar senha'}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-gray-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
-              >
-                {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
-              </button>
-            </div>
-            <div className="mt-1.5 text-right">
-              <Link
-                href="/recuperar-senha"
-                className="text-[12px] text-violet-700 hover:text-violet-800 hover:underline underline-offset-2 transition-colors font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
-              >
+          <Field
+            label="Senha"
+            htmlFor="login-senha"
+            error={formError}
+            action={
+              <Link href="/recuperar-senha" className="font-medium text-brand underline-offset-4 hover:underline">
                 Esqueci a senha
               </Link>
-            </div>
-          </div>
-
-          {/* Botão submit */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="h-[42px] sm:h-[46px] w-full rounded-xl bg-[#5B21B6] text-[13.5px] font-semibold tracking-[0.01em] text-white/95 shadow-[0_1px_2px_rgba(0,0,0,0.08),_0_2px_8px_rgba(91,33,182,0.14)] transition-all duration-200 hover:bg-[#4C1D95] hover:shadow-[0_2px_10px_rgba(91,33,182,0.18)] active:scale-[0.99] active:shadow-none disabled:cursor-not-allowed disabled:opacity-55 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600"
+            }
           >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="h-[14px] w-[14px] rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                Entrando…
-              </span>
-            ) : (
-              'Entrar'
-            )}
-          </button>
+            <PasswordInput id="login-senha" leftIcon="lock" autoComplete="current-password" placeholder="Sua senha" value={senha} onChange={(e) => setSenha(e.target.value)} required aria-invalid={formError ? true : undefined} />
+          </Field>
 
+          <Button type="submit" size="full" loading={loading} className="mt-1">
+            {loading ? "Entrando…" : "Entrar"}
+          </Button>
         </form>
       </div>
 
-      <ConfirmEmailModal
-        open={modalOpen}
-        email={emailConfirmacao}
-        phone={phoneConfirmacao}
-        onClose={() => setModalOpen(false)}
-        onConfirm={handleConfirmSuccess}
-      />
+      <ConfirmEmailModal open={modalOpen} email={emailConfirmacao} phone={phoneConfirmacao} onClose={() => setModalOpen(false)} onConfirm={handleConfirmSuccess} />
     </>
-  )
+  );
 }

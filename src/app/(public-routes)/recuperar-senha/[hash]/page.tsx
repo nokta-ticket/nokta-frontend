@@ -1,108 +1,76 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import api from "@/lib/axios";
-import { AxiosError } from "axios";
-import { Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
+import { AuthFormFallback, AuthScreen } from "@/components/auth/auth-screen";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { PasswordInput } from "@/components/ui/password-input";
 
-export default function RecuperarSenha() {
+export default function RedefinirSenhaPage() {
   const router = useRouter();
-  const [showPassword, setShowPassword] = useState(false);
   const { hash } = useParams<{ hash: string }>();
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [password, setPassword] = useState("");
 
-  async function loadResetPasswordRequest() {
-    try {
-      setLoading(true);
-      const { data } = await api.get(
-        "/auth/validate-reset-password-request/" + hash
-      );
-    } catch (error: unknown) {
-      if (error instanceof AxiosError) {
-        toast.error(error.response?.data.message);
-      } else {
-        toast.error("Ocorreu um erro ao enviar email de recuperação");
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        await api.get(`/auth/validate-reset-password-request/${hash}`);
+      } catch (error) {
+        if (!active) return;
+        toast.error(getErrorMessage(error, "Este link de recuperação não é válido ou já expirou."));
+        router.push("/");
+        return;
+      } finally {
+        if (active) setLoading(false);
       }
-      router.push("/");
-    } finally {
-      setLoading(false);
-    }
-  }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [hash, router]);
 
-  async function updatePassword() {
+  async function updatePassword(e: React.FormEvent) {
+    e.preventDefault();
     if (password === "") {
       toast.error("Preencha a senha para continuar");
       return;
     }
-
     if (password.length < 6) {
-      toast.error("A senha teve ter no mínimo 6 caracteres");
+      toast.error("A senha deve ter no mínimo 6 caracteres");
       return;
     }
-
     try {
-      setLoading(true);
-      const { data } = await api.post("/auth/reset-password/" + hash, { password });
+      setSaving(true);
+      await api.post(`/auth/reset-password/${hash}`, { password });
       toast.success("Senha atualizada com sucesso");
       router.push("/login");
-    } catch (error: unknown) {
-      if (error instanceof AxiosError) {
-        toast.error(error.response?.data.message);
-      } else {
-        toast.error("Ocorreu um erro ao alterar a senha");
-      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Ocorreu um erro ao alterar a senha"));
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
-  }
-
-  useEffect(() => {
-    loadResetPasswordRequest();
-  }, [hash]);
-
-  if (loading) {
-    return (
-      <div className="min-h-[80vh] flex items-center justify-center -my-10">
-        <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
-      </div>
-    );
   }
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center -my-10">
-      <div className="w-full max-w-2xl space-y-6">
-        <h1 className="text-4xl font-semibold text-center">Altere sua senha</h1>
-        <div className="relative">
-          <Lock
-            className="absolute left-3 top-5 -translate-y-1/2 text-gray-400"
-            size={18}
-          />
-          <Input
-            type={showPassword ? "text" : "password"}
-            placeholder="Senha"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="h-11 rounded-lg pl-10"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword((p) => !p)}
-            aria-label="Mostrar/ocultar senha"
-            className="absolute right-3 top-6 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-          >
-            {showPassword ? <EyeOff size={21} /> : <Eye size={21} />}
-          </button>
-        </div>
-        <Button disabled={loading} onClick={updatePassword} className="w-full">
-          Alterar senha
-        </Button>
-      </div>
-    </div>
+    <AuthScreen title="Nova senha" subtitle="Escolha uma senha nova pra sua conta." backHref="/login">
+      {loading ? (
+        <AuthFormFallback rows={2} />
+      ) : (
+        <form onSubmit={updatePassword} className="space-y-4" noValidate>
+          <Field label="Nova senha" htmlFor="reset-senha" hint="Mínimo de 6 caracteres.">
+            <PasswordInput id="reset-senha" leftIcon="lock" autoComplete="new-password" placeholder="Digite a nova senha" value={password} onChange={(e) => setPassword(e.target.value)} required autoFocus />
+          </Field>
+          <Button type="submit" size="full" loading={saving}>
+            {saving ? "Salvando…" : "Alterar senha"}
+          </Button>
+        </form>
+      )}
+    </AuthScreen>
   );
 }

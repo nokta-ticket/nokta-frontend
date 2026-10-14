@@ -1,205 +1,103 @@
-'use client'
+"use client";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { useEffect, useRef, useState } from 'react'
-import { toast } from '@/lib/toast'
-import { getApiBaseUrl } from '@/lib/surfaces'
-
-// Fase 5: API resolvida por host, não uma NEXT_PUBLIC_API_URL fixa.
-const API_URL = getApiBaseUrl()
-
-// ─── OTP input ───────────────────────────────────────────────────────────────
-
-function OtpInput({ onComplete, disabled }: { onComplete: (code: string) => void; disabled?: boolean }) {
-  const [digits, setDigits] = useState(['', '', '', '', '', ''])
-  const r0 = useRef<HTMLInputElement>(null)
-  const r1 = useRef<HTMLInputElement>(null)
-  const r2 = useRef<HTMLInputElement>(null)
-  const r3 = useRef<HTMLInputElement>(null)
-  const r4 = useRef<HTMLInputElement>(null)
-  const r5 = useRef<HTMLInputElement>(null)
-  const refs = [r0, r1, r2, r3, r4, r5]
-
-  useEffect(() => {
-    refs[0].current?.focus()
-  }, [])
-
-  const handleChange = (idx: number, val: string) => {
-    const digit = val.replace(/\D/g, '').slice(-1)
-    const next = [...digits]
-    next[idx] = digit
-    setDigits(next)
-    if (digit && idx < 5) refs[idx + 1].current?.focus()
-    if (next.every((d) => d !== '')) onComplete(next.join(''))
-  }
-
-  const handleKeyDown = (idx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !digits[idx] && idx > 0) {
-      refs[idx - 1].current?.focus()
-    }
-  }
-
-  const handlePaste = (e: React.ClipboardEvent) => {
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
-    if (pasted.length === 6) {
-      const next = pasted.split('')
-      setDigits(next)
-      refs[5].current?.focus()
-      onComplete(pasted)
-    }
-    e.preventDefault()
-  }
-
-  return (
-    <div className="flex gap-2 justify-center" onPaste={handlePaste}>
-      {digits.map((d, i) => (
-        <input
-          key={i}
-          ref={refs[i]}
-          type="text"
-          inputMode="numeric"
-          maxLength={1}
-          value={d}
-          disabled={disabled}
-          onChange={(e) => handleChange(i, e.target.value)}
-          onKeyDown={(e) => handleKeyDown(i, e)}
-          className="h-12 w-10 rounded-lg border border-gray-300 text-center text-lg font-semibold focus:border-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-        />
-      ))}
-    </div>
-  )
-}
-
-// ─── Modal ───────────────────────────────────────────────────────────────────
+import { useEffect, useState } from "react";
+import api, { getErrorMessage } from "@/lib/axios";
+import { toast } from "@/lib/toast";
+import type { UserPayload } from "@/context/AuthContext";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Icon } from "@/components/ui/icon";
+import { OtpInput } from "@/components/ui/otp-input";
+import { useResendCooldown } from "@/components/auth/use-resend-cooldown";
 
 interface ConfirmEmailModalProps {
-  open: boolean
-  onClose: () => void
-  email: string
+  open: boolean;
+  onClose: () => void;
+  email: string;
   /** Telefone da conta (vem do 403 ACCOUNT_NOT_CONFIRMED do login) — só pro rate limit de tentativas. */
-  phone?: string
+  phone?: string;
   /** Recebe o usuário já autenticado: confirmar-telefone grava o cookie de sessão. */
-  onConfirm: (user: any) => void
+  onConfirm: (user: UserPayload | null | undefined) => void;
 }
 
+/**
+ * Conta criada mas nunca confirmada: o login devolve ACCOUNT_NOT_CONFIRMED
+ * (e já reenvia o código pro WhatsApp). Aqui a pessoa digita o código e sai
+ * autenticada — `POST /auth/confirmar-telefone` grava o cookie de sessão.
+ */
 export function ConfirmEmailModal({ open, onClose, email, phone, onConfirm }: ConfirmEmailModalProps) {
-  const [loading, setLoading] = useState(false)
-
-  // Resend cooldown
-  const [sendCount, setSendCount] = useState(0)
-  const [secondsLeft, setSecondsLeft] = useState(60)
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [invalid, setInvalid] = useState(false);
+  const cooldown = useResendCooldown(60);
 
   useEffect(() => {
-    if (!open) return
-    setSecondsLeft(60)
-    setSendCount(0)
-    timerRef.current = setInterval(() => {
-      setSecondsLeft((s) => {
-        if (s <= 1) { clearInterval(timerRef.current!); return 0 }
-        return s - 1
-      })
-    }, 1000)
-    return () => { if (timerRef.current) clearInterval(timerRef.current) }
-  }, [open])
-
-  const startCooldown = (nextCount: number) => {
-    const secs = nextCount * 300
-    setSecondsLeft(secs)
-    setSendCount(nextCount)
-    if (timerRef.current) clearInterval(timerRef.current)
-    timerRef.current = setInterval(() => {
-      setSecondsLeft((s) => {
-        if (s <= 1) { clearInterval(timerRef.current!); return 0 }
-        return s - 1
-      })
-    }, 1000)
-  }
-
-  const formatTime = (s: number) => {
-    const m = Math.floor(s / 60)
-    const sec = s % 60
-    return m > 0 ? `${m}m ${sec.toString().padStart(2, '0')}s` : `${s}s`
-  }
-
-  const handleConfirm = async (code: string) => {
-    setLoading(true)
-    try {
-      const res = await fetch(`${API_URL}/auth/confirmar-telefone`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(phone ? { token: code, phone } : { token: code }),
-        // Sem isso o navegador descarta o Set-Cookie de sessão (API em outra
-        // origem) — era por isso que depois de confirmar pedia "faça login
-        // novamente", mesmo o backend já tendo autenticado.
-        credentials: 'include',
-      })
-      if (!res.ok) throw new Error('Código inválido')
-      const data = await res.json()
-      onConfirm(data.user)
-    } catch {
-      toast.error('Código inválido. Tente novamente.')
-    } finally {
-      setLoading(false)
+    if (open) {
+      setCode("");
+      setInvalid(false);
+      cooldown.reset();
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const handleConfirm = async (value: string) => {
+    setLoading(true);
+    setInvalid(false);
+    try {
+      const res = await api.post("/auth/confirmar-telefone", phone ? { token: value, phone } : { token: value });
+      onConfirm(res.data?.user);
+    } catch {
+      setInvalid(true);
+      setCode("");
+      toast.error("Código inválido. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleResend = async () => {
-    if (secondsLeft > 0) return
+    if (!cooldown.canResend) return;
     try {
-      await fetch(`${API_URL}/auth/reenviar-confirmacao`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      })
-      toast.success('Novo código enviado!')
-      startCooldown(sendCount + 1)
-    } catch {
-      toast.error('Erro ao reenviar o código.')
+      await api.post("/auth/reenviar-confirmacao", { email });
+      toast.success("Novo código enviado!");
+      cooldown.startCooldown(cooldown.sendCount + 1);
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Erro ao reenviar o código."));
     }
-  }
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="space-y-5 max-w-sm">
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent size="sm">
         <DialogHeader>
-          <DialogTitle>Verificação de telefone</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Icon name="whatsapp" size={18} className="text-success" />
+            Confirma seu número
+          </DialogTitle>
+          <DialogDescription>Mandamos um código de 6 dígitos pro WhatsApp da sua conta.</DialogDescription>
         </DialogHeader>
+        <DialogBody className="gap-5 pb-6">
+          <OtpInput value={code} onChange={setCode} onComplete={handleConfirm} disabled={loading} invalid={invalid} autoFocus />
 
-        <p className="text-sm text-muted-foreground -mt-2">
-          Insira o código de 6 dígitos enviado para o seu WhatsApp.
-        </p>
-
-        <OtpInput onComplete={handleConfirm} disabled={loading} />
-
-        {loading && (
-          <p className="text-center text-sm text-violet-500 animate-pulse">Verificando…</p>
-        )}
-
-        <div className="text-center text-sm text-gray-400">
-          {secondsLeft > 0 ? (
-            <p>
-              Reenviar em{' '}
-              <span className="font-medium text-gray-600">{formatTime(secondsLeft)}</span>
-            </p>
-          ) : (
-            <p>
-              Não recebeu?{' '}
-              <button
-                type="button"
-                onClick={handleResend}
-                className="cursor-pointer text-violet-500 hover:underline font-medium"
-              >
-                Reenviar código
-              </button>
-            </p>
-          )}
-        </div>
-
-        <p className="text-center text-xs text-gray-400">Verifique as mensagens do WhatsApp no seu celular.</p>
+          <p className="flex min-h-5 items-center justify-center gap-2 text-center text-caption text-muted-foreground">
+            {loading ? (
+              <>
+                <Icon name="loader" size={12} className="animate-spin" /> Verificando…
+              </>
+            ) : cooldown.secondsLeft > 0 ? (
+              <>
+                Reenviar em <span className="tnum font-semibold text-foreground">{cooldown.formatTime(cooldown.secondsLeft)}</span>
+              </>
+            ) : (
+              <>
+                Não recebeu?{" "}
+                <button type="button" onClick={handleResend} className="font-semibold text-brand underline-offset-4 hover:underline">
+                  Reenviar código
+                </button>
+              </>
+            )}
+          </p>
+        </DialogBody>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -1,31 +1,28 @@
-"use client";
-import { TicketCardSkeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function MeusIngressosLoading() {
   return (
-    <div className="min-h-screen bg-background animate-fade-in">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-4 pt-8 pb-16">
-        <div className="max-w-2xl mx-auto space-y-2">
-          <div className="h-7 w-48 rounded-xl bg-white/20 animate-pulse" />
-          <div className="h-4 w-36 rounded-lg bg-white/15 animate-pulse" />
+    <div className="mx-auto w-full max-w-7xl px-4 pb-28 pt-4 lg:px-6 lg:pt-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-2">
+          <Skeleton className="h-9 w-56 rounded-lg" />
+          <Skeleton className="h-4 w-36" />
         </div>
+        <Skeleton className="h-11 w-full rounded-pill sm:w-64" />
       </div>
-      {/* Stats strip */}
-      <div className="max-w-2xl mx-auto px-4 -mt-8">
-        <div className="rounded-2xl border bg-card shadow-lg p-4 flex gap-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="flex-1 space-y-1">
-              <div className="h-6 w-8 rounded animate-pulse bg-muted/70 mx-auto" />
-              <div className="h-3 w-14 rounded animate-pulse bg-muted/50 mx-auto" />
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Skeleton className="h-11 w-full rounded-pill sm:w-56" />
+        <Skeleton className="h-11 w-full rounded-input sm:w-80" />
+      </div>
+      <div className="mt-5 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="space-y-3">
+            <Skeleton className="aspect-video w-full rounded-card" />
+            <div className="space-y-2 px-0.5">
+              <Skeleton className="h-3 w-1/2" />
+              <Skeleton className="h-3 w-2/3" />
             </div>
-          ))}
-        </div>
-      </div>
-      {/* Cards */}
-      <div className="max-w-2xl mx-auto px-4 mt-6 space-y-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <TicketCardSkeleton key={i} />
+          </div>
         ))}
       </div>
     </div>

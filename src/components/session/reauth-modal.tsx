@@ -1,29 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Field } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
+import { OtpInput } from "@/components/ui/otp-input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { toast } from "@/lib/toast";
-import { getErrorMessage } from "@/lib/axios";
-import api from "@/lib/axios";
+import api, { getErrorMessage } from "@/lib/axios";
 
 /**
  * Overlay bloqueante sobre a tela atual — nunca navega. A rota atual, filtros
  * e formulário em andamento por trás nunca se perdem porque a página nunca
  * desmonta. Chamado pelo AuthContext quando o timer de aviso de expiração
- * dispara (ver useSessionTimers).
+ * dispara (5min antes do fim absoluto da sessão).
  */
-export function ReauthModal({
-  open,
-  email,
-  onSuccess,
-}: {
-  open: boolean;
-  email: string;
-  onSuccess: (sessionExpiresAt: string | null) => void;
-}) {
+export function ReauthModal({ open, email, onSuccess }: { open: boolean; email: string; onSuccess: (sessionExpiresAt: string | null) => void }) {
   const [senha, setSenha] = useState("");
   const [code, setCode] = useState("");
   const [requires2fa, setRequires2fa] = useState(false);
@@ -37,7 +30,9 @@ export function ReauthModal({
     setTwoFactorToken("");
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (submitting) return;
     setSubmitting(true);
     try {
       if (requires2fa) {
@@ -64,56 +59,38 @@ export function ReauthModal({
     }
   };
 
+  const canSubmit = requires2fa ? code.length >= 6 : senha.length > 0;
+
   return (
     <Dialog open={open}>
-      <DialogContent
-        className="sm:max-w-md"
-        onInteractOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
-        showCloseButton={false}
-      >
-        <DialogHeader>
-          <DialogTitle>Sua sessão está prestes a expirar</DialogTitle>
-          <DialogDescription>
-            {requires2fa
-              ? "Confirme o código do seu aplicativo autenticador para continuar."
-              : "Confirme sua senha para continuar de onde parou, sem perder o que você estava fazendo."}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent size="sm" showCloseButton={false} onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+        <form onSubmit={handleSubmit}>
+          <DialogHeader className="pr-5 sm:pr-6">
+            <span className="mb-3 flex size-11 items-center justify-center rounded-full bg-brand-soft text-brand">
+              <Icon name="clock" size={18} />
+            </span>
+            <DialogTitle>Sua sessão está quase expirando</DialogTitle>
+            <DialogDescription>{requires2fa ? "Confirme o código do seu aplicativo autenticador para continuar." : "Confirme sua senha para continuar de onde parou, sem perder o que você estava fazendo."}</DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          {!requires2fa ? (
-            <div className="space-y-1.5">
-              <Label>Senha</Label>
-              <Input
-                type="password"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-                autoFocus
-              />
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              <Label>Código do autenticador</Label>
-              <Input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-                placeholder="000000"
-                inputMode="numeric"
-                maxLength={8}
-                autoFocus
-              />
-            </div>
-          )}
-        </div>
+          <DialogBody className="pt-1">
+            {!requires2fa ? (
+              <Field label="Senha" htmlFor="reauth-senha" hint={email}>
+                <PasswordInput id="reauth-senha" leftIcon="lock" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} autoFocus />
+              </Field>
+            ) : (
+              <Field label="Código do autenticador">
+                <OtpInput value={code} onChange={setCode} onComplete={() => handleSubmit()} disabled={submitting} autoFocus />
+              </Field>
+            )}
+          </DialogBody>
 
-        <DialogFooter>
-          <Button onClick={handleSubmit} disabled={submitting || (!requires2fa && !senha) || (requires2fa && !code)} className="w-full">
-            {submitting ? "Confirmando…" : "Confirmar"}
-          </Button>
-        </DialogFooter>
+          <DialogFooter className="border-t-0 pt-0">
+            <Button type="submit" size="full" loading={submitting} disabled={!canSubmit}>
+              {submitting ? "Confirmando…" : "Continuar conectado"}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

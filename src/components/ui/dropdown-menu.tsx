@@ -2,7 +2,7 @@
 
   import * as React from "react"
   import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
-  import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 
   import { cn } from "@/lib/utils"
 
@@ -100,7 +100,7 @@
       >
         <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
           <DropdownMenuPrimitive.ItemIndicator>
-            <CheckIcon className="size-4" />
+            <Icon name="check" size={12} />
           </DropdownMenuPrimitive.ItemIndicator>
         </span>
         {children}
@@ -135,7 +135,7 @@
       >
         <span className="pointer-events-none absolute left-2 flex size-3.5 items-center justify-center">
           <DropdownMenuPrimitive.ItemIndicator>
-            <CircleIcon className="size-2 fill-current" />
+            <Icon name="circle" size={8} />
           </DropdownMenuPrimitive.ItemIndicator>
         </span>
         {children}
@@ -217,7 +217,7 @@
         {...props}
       >
         {children}
-        <ChevronRightIcon className="ml-auto size-4" />
+        <Icon name="chevron-right" size={11} className="ml-auto opacity-60" />
       </DropdownMenuPrimitive.SubTrigger>
     )
   }

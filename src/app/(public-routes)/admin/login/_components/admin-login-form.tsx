@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, type UserPayload } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { TotpVerifyModal } from "./totp-verify-modal";
-import { getApiBaseUrl } from "@/lib/surfaces";
-
-// Fase 5: API resolvida por host, não uma NEXT_PUBLIC_API_URL fixa.
-const API_URL = getApiBaseUrl();
 
 export function AdminLoginForm() {
   const router = useRouter();
@@ -17,7 +17,6 @@ export function AdminLoginForm() {
 
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-  const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [totpOpen, setTotpOpen] = useState(false);
@@ -27,21 +26,9 @@ export function AdminLoginForm() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/auth/admin/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, senha }),
-        // Fase 5: sessão é cookie HttpOnly.
-        credentials: "include",
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        const msg: string = Array.isArray(data.message)
-          ? data.message.join(" ")
-          : data.message || "";
-        throw new Error(msg || "Credenciais inválidas");
-      }
+      // Sessão é cookie HttpOnly — `api` já envia credenciais.
+      const res = await api.post("/auth/admin/login", { email, senha });
+      const data = res.data;
 
       if (data.requires2fa) {
         setTwoFactorToken(data.twoFactorToken);
@@ -55,14 +42,14 @@ export function AdminLoginForm() {
       signIn(user);
       toast.success("Login administrativo realizado!");
       router.push("/admin/dashboard");
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao fazer login");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Credenciais inválidas"));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleTotpSuccess = (user: any) => {
+  const handleTotpSuccess = (user: UserPayload) => {
     setTotpOpen(false);
     signIn(user);
     toast.success("Login administrativo realizado!");
@@ -71,67 +58,19 @@ export function AdminLoginForm() {
 
   return (
     <>
-      <form className="space-y-3" onSubmit={handleLogin}>
-        <div className="relative">
-          <Mail
-            size={15}
-            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30"
-          />
-          <input
-            type="email"
-            placeholder="E-mail"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="h-11 w-full rounded-xl border border-white/10 bg-white/5 pl-10 pr-4 text-[16px] sm:text-sm text-white placeholder:text-white/30 outline-none transition-all focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"
-          />
-        </div>
-
-        <div className="relative">
-          <Lock
-            size={15}
-            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-white/30"
-          />
-          <input
-            type={showPw ? "text" : "password"}
-            placeholder="Senha"
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-            required
-            className="h-11 w-full rounded-xl border border-white/10 bg-white/5 pl-10 pr-10 text-[16px] sm:text-sm text-white placeholder:text-white/30 outline-none transition-all focus:border-violet-500/50 focus:ring-2 focus:ring-violet-500/20"
-          />
-          <button
-            type="button"
-            onClick={() => setShowPw((p) => !p)}
-            aria-label={showPw ? "Ocultar senha" : "Mostrar senha"}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 transition-colors hover:text-white/60"
-          >
-            {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
-          </button>
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="h-11 w-full rounded-xl bg-violet-600 text-sm font-semibold text-white shadow-lg shadow-violet-600/20 transition-all hover:bg-violet-500 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-              Verificando…
-            </span>
-          ) : (
-            "Entrar"
-          )}
-        </button>
+      <form className="space-y-3.5" onSubmit={handleLogin} noValidate>
+        <Field label="E-mail" htmlFor="admin-email">
+          <Input id="admin-email" type="email" leftIcon="mail" autoComplete="email" placeholder="voce@nokta.live" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </Field>
+        <Field label="Senha" htmlFor="admin-senha">
+          <PasswordInput id="admin-senha" leftIcon="lock" autoComplete="current-password" placeholder="Sua senha" value={senha} onChange={(e) => setSenha(e.target.value)} required />
+        </Field>
+        <Button type="submit" size="full" loading={loading} leftIcon={loading ? undefined : "shield"} className="mt-1">
+          {loading ? "Verificando…" : "Entrar"}
+        </Button>
       </form>
 
-      <TotpVerifyModal
-        open={totpOpen}
-        twoFactorToken={twoFactorToken}
-        onClose={() => setTotpOpen(false)}
-        onSuccess={handleTotpSuccess}
-      />
+      <TotpVerifyModal open={totpOpen} twoFactorToken={twoFactorToken} onClose={() => setTotpOpen(false)} onSuccess={handleTotpSuccess} />
     </>
   );
 }

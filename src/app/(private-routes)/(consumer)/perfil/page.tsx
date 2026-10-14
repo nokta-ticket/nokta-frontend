@@ -1,16 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Loader2, CheckCircle2, XCircle, Camera, Lock, Trash2, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import api from "@/lib/axios";
+import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
-import { getApiBaseUrl } from "@/lib/surfaces";
-
-// Fase 5: API resolvida por host, não uma NEXT_PUBLIC_API_URL fixa.
-const API_URL = getApiBaseUrl();
+import { useAuth } from "@/context/AuthContext";
+import { formatDateBR, initials } from "@/lib/format";
+import { resolveMediaUrl } from "@/lib/media";
+import { StatusBadge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldGroup } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface EnderecoData {
   cep?: string | null;
@@ -28,63 +33,39 @@ interface UserMe {
   email: string;
   telefone?: string | null;
   telefoneVerificado?: boolean | null;
-  createdAt: string;
+  createdAt?: string;
   fotoPerfil?: string | null;
   endereco?: EnderecoData | null;
 }
 
 function formatPhone(raw: string): string {
-  const d = raw.replace(/\D/g, "");
+  const d = raw.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
   if (d.length <= 2) return `(${d}`;
   if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
   if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7, 11)}`;
 }
 
-function formatDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    });
-  } catch {
-    return iso;
-  }
+function formatCep(v: string) {
+  const c = v.replace(/\D/g, "").slice(0, 8);
+  return c.length > 5 ? `${c.slice(0, 5)}-${c.slice(5)}` : c;
 }
 
-function getInitials(nome: string, sobrenome: string): string {
-  const a = nome?.[0] ?? "";
-  const b = sobrenome?.[0] ?? "";
-  return (a + b).toUpperCase();
-}
-
-function InfoRow({
-  label,
-  value,
-  extra,
-}: {
-  label: string;
-  value?: string | null;
-  extra?: React.ReactNode;
-}) {
+function InfoRow({ label, value, extra }: { label: string; value?: string | null; extra?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between py-4 border-b border-gray-100 last:border-0">
-      <div className="space-y-0.5">
-        <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">{label}</p>
-        <p className="text-sm font-medium text-gray-800">
-          {value || <span className="text-gray-300 italic">Não informado</span>}
-        </p>
+    <div className="flex items-center justify-between gap-3 py-3">
+      <div className="min-w-0">
+        <p className="text-micro uppercase tracking-wider text-subtle-foreground">{label}</p>
+        <p className="truncate text-sm font-medium text-foreground">{value || <span className="font-normal text-subtle-foreground">Não informado</span>}</p>
       </div>
       {extra}
     </div>
   );
 }
 
-function formatCep(v: string) { const c = v.replace(/\D/g, "").slice(0, 8); return c.length > 5 ? `${c.slice(0, 5)}-${c.slice(5)}` : c; }
-
 export default function PerfilPage() {
   const router = useRouter();
+  const { signOut } = useAuth();
   const [user, setUser] = useState<UserMe | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -104,7 +85,7 @@ export default function PerfilPage() {
     api
       .get("/auth/me")
       .then((res) => {
-        const d = res.data;
+        const d = res.data as UserMe;
         setUser(d);
         setNome(d.nome ?? "");
         setSobrenome(d.sobrenome ?? "");
@@ -119,7 +100,7 @@ export default function PerfilPage() {
           setEndComplemento(e.complemento ?? "");
         }
       })
-      .catch((err: any) => toast.error(err?.message ?? "Erro ao carregar perfil"))
+      .catch((err) => toast.error(getErrorMessage(err, "Erro ao carregar perfil")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -139,7 +120,10 @@ export default function PerfilPage() {
   };
 
   const handleSave = async () => {
-    if (!nome.trim()) { toast.error("O nome é obrigatório."); return; }
+    if (!nome.trim()) {
+      toast.error("O nome é obrigatório.");
+      return;
+    }
     setSaving(true);
     try {
       await api.put("/auth/me", {
@@ -156,154 +140,159 @@ export default function PerfilPage() {
         },
       });
       toast.success("Perfil atualizado!");
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Erro ao salvar.");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Erro ao salvar."));
     } finally {
       setSaving(false);
     }
   };
 
+  const handleSignOut = () => {
+    signOut();
+    router.push("/");
+  };
+
   if (loading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
+      <div className="mx-auto w-full max-w-2xl space-y-4 px-4 pb-28 pt-4 lg:px-6 lg:pt-8">
+        <Skeleton className="h-9 w-48 rounded-lg" />
+        <Skeleton className="h-28 w-full rounded-card" />
+        <Skeleton className="h-44 w-full rounded-card" />
+        <Skeleton className="h-40 w-full rounded-card" />
       </div>
     );
   }
 
   if (!user) return null;
 
-  const initials = getInitials(user.nome, user.sobrenome);
   const nomeCompleto = [user.nome, user.sobrenome].filter(Boolean).join(" ");
-  const fotoSrc = user.fotoPerfil ? (user.fotoPerfil.startsWith("http") ? user.fotoPerfil : `${API_URL.replace("/api", "")}/uploads/${user.fotoPerfil}`) : null;
-
-  const inputCls = "w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-violet-500 focus:ring-2 focus:ring-violet-100";
+  const fotoSrc = resolveMediaUrl(user.fotoPerfil, null);
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-10 space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Meu Perfil</h1>
+    <div className="mx-auto w-full max-w-2xl px-4 pb-28 pt-4 lg:px-6 lg:pt-8">
+      <h1 className="text-display font-medium tracking-tight text-foreground">Meu perfil</h1>
 
-      {/* Avatar + foto */}
-      <div className="flex flex-col items-center gap-3 py-6">
-        <Avatar className="h-24 w-24 rounded-full text-2xl">
-          {fotoSrc && <AvatarImage src={fotoSrc} alt={nomeCompleto} className="object-cover" />}
-          <AvatarFallback className="bg-violet-100 text-violet-700 font-semibold text-2xl">
-            {initials}
-          </AvatarFallback>
-        </Avatar>
-        <p className="text-lg font-semibold text-gray-900">{nomeCompleto}</p>
-        <button
-          onClick={() => router.push("/perfil/editar")}
-          className="flex items-center gap-1.5 text-sm font-medium text-violet-600 hover:text-violet-700"
-        >
-          <Camera size={14} /> Editar foto do perfil
-        </button>
-      </div>
+      <div className="mt-5 space-y-4">
+        {/* avatar */}
+        <Card accent>
+          <CardContent className="flex items-center gap-4">
+            <div className="relative shrink-0">
+              <span className="flex size-20 items-center justify-center overflow-hidden rounded-full bg-surface-3 text-title font-semibold text-foreground ring-2 ring-brand/40">
+                {fotoSrc ? <Image src={fotoSrc} alt="" width={80} height={80} className="size-full object-cover" unoptimized /> : initials(user.nome, user.sobrenome)}
+              </span>
+              <Link href="/perfil/editar" aria-label="Trocar foto" className="btn-lift absolute -bottom-1 -right-1 flex size-8 items-center justify-center rounded-full bg-brand text-brand-foreground">
+                <Icon name="camera" size={13} />
+              </Link>
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-lg font-semibold text-foreground">{nomeCompleto}</p>
+              <p className="truncate text-body text-muted-foreground">{user.email}</p>
+              <Button asChild variant="outline" size="sm" shape="pill" leftIcon="camera" className="mt-2.5">
+                <Link href="/perfil/editar">Trocar foto</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Info (read-only) */}
-      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
-        <InfoRow label="E-mail" value={user.email} />
-        <InfoRow
-          label="Telefone"
-          value={user.telefone ? formatPhone(user.telefone) : null}
-          extra={
-            user.telefone ? (
-              user.telefoneVerificado ? (
-                <span className="flex items-center gap-1 text-xs font-medium text-green-600">
-                  <CheckCircle2 size={14} /> Verificado
-                </span>
-              ) : (
-                <span className="flex items-center gap-1 text-xs font-medium text-orange-500">
-                  <XCircle size={14} /> Não verificado
-                </span>
-              )
-            ) : undefined
-          }
-        />
-        <InfoRow label="Membro desde" value={formatDate(user.createdAt)} />
-      </div>
+        {/* conta */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Conta</CardTitle>
+          </CardHeader>
+          <CardContent className="divide-y divide-border pt-1">
+            <InfoRow label="E-mail" value={user.email} />
+            <InfoRow label="Telefone" value={user.telefone ? formatPhone(user.telefone) : null} extra={user.telefone ? <StatusBadge tone={user.telefoneVerificado ? "success" : "warning"}>{user.telefoneVerificado ? "Verificado" : "Não verificado"}</StatusBadge> : undefined} />
+            <InfoRow label="Membro desde" value={user.createdAt ? formatDateBR(user.createdAt) : null} />
+          </CardContent>
+        </Card>
 
-      {/* Dados pessoais (editáveis) */}
-      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
-        <h2 className="font-semibold text-gray-900">Dados pessoais</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">Nome</label>
-            <input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome" className={inputCls} />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">Sobrenome</label>
-            <input value={sobrenome} onChange={(e) => setSobrenome(e.target.value)} placeholder="Sobrenome" className={inputCls} />
-          </div>
-        </div>
-      </div>
+        {/* dados pessoais */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Dados pessoais</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <FieldGroup columns={2}>
+              <Field label="Nome" htmlFor="perfil-nome" required>
+                <Input id="perfil-nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nome" autoComplete="given-name" />
+              </Field>
+              <Field label="Sobrenome" htmlFor="perfil-sobrenome">
+                <Input id="perfil-sobrenome" value={sobrenome} onChange={(e) => setSobrenome(e.target.value)} placeholder="Sobrenome" autoComplete="family-name" />
+              </Field>
+            </FieldGroup>
+          </CardContent>
+        </Card>
 
-      {/* Endereço (editável) */}
-      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
-        <h2 className="font-semibold text-gray-900">Endereço</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">CEP</label>
-            <input value={endCep} onChange={(e) => { const v = formatCep(e.target.value); setEndCep(v); buscarCep(v); }} maxLength={9} placeholder="00000-000" className={inputCls} />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">Número</label>
-            <input value={endNumero} onChange={(e) => setEndNumero(e.target.value)} placeholder="Nº" className={inputCls} />
-          </div>
-        </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700">Rua</label>
-          <input value={endRua} onChange={(e) => setEndRua(e.target.value)} placeholder="Logradouro" className={inputCls} />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700">Bairro</label>
-          <input value={endBairro} onChange={(e) => setEndBairro(e.target.value)} placeholder="Bairro" className={inputCls} />
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-2">
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">Cidade</label>
-            <input value={endCidade} onChange={(e) => setEndCidade(e.target.value)} placeholder="Cidade" className={inputCls} />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-gray-700">UF</label>
-            <input value={endUf} onChange={(e) => setEndUf(e.target.value.toUpperCase())} maxLength={2} placeholder="UF" className={`${inputCls} uppercase`} />
-          </div>
-        </div>
-        <div>
-          <label className="mb-1.5 block text-sm font-medium text-gray-700">Complemento (opcional)</label>
-          <input value={endComplemento} onChange={(e) => setEndComplemento(e.target.value)} placeholder="Apto, bloco..." className={inputCls} />
-        </div>
-      </div>
+        {/* endereço */}
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>Endereço</CardTitle>
+              <CardDescription>Digite o CEP e a gente preenche o resto.</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4">
+            <div className="grid grid-cols-[1fr_minmax(0,7rem)] gap-4">
+              <Field label="CEP" htmlFor="perfil-cep">
+                <Input
+                  id="perfil-cep"
+                  inputMode="numeric"
+                  autoComplete="postal-code"
+                  value={endCep}
+                  onChange={(e) => {
+                    const v = formatCep(e.target.value);
+                    setEndCep(v);
+                    buscarCep(v);
+                  }}
+                  maxLength={9}
+                  placeholder="00000-000"
+                />
+              </Field>
+              <Field label="Número" htmlFor="perfil-numero">
+                <Input id="perfil-numero" value={endNumero} onChange={(e) => setEndNumero(e.target.value)} placeholder="Nº" />
+              </Field>
+            </div>
+            <Field label="Rua" htmlFor="perfil-rua">
+              <Input id="perfil-rua" value={endRua} onChange={(e) => setEndRua(e.target.value)} placeholder="Logradouro" autoComplete="address-line1" />
+            </Field>
+            <Field label="Bairro" htmlFor="perfil-bairro">
+              <Input id="perfil-bairro" value={endBairro} onChange={(e) => setEndBairro(e.target.value)} placeholder="Bairro" />
+            </Field>
+            <div className="grid grid-cols-[1fr_minmax(0,5rem)] gap-4">
+              <Field label="Cidade" htmlFor="perfil-cidade">
+                <Input id="perfil-cidade" value={endCidade} onChange={(e) => setEndCidade(e.target.value)} placeholder="Cidade" autoComplete="address-level2" />
+              </Field>
+              <Field label="UF" htmlFor="perfil-uf">
+                <Input id="perfil-uf" value={endUf} onChange={(e) => setEndUf(e.target.value.toUpperCase())} maxLength={2} placeholder="UF" className="uppercase" autoComplete="address-level1" />
+              </Field>
+            </div>
+            <Field label="Complemento" htmlFor="perfil-complemento" optional>
+              <Input id="perfil-complemento" value={endComplemento} onChange={(e) => setEndComplemento(e.target.value)} placeholder="Apto, bloco…" autoComplete="address-line2" />
+            </Field>
+          </CardContent>
+        </Card>
 
-      {/* Botão salvar */}
-      <Button
-        className="w-full h-12 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-medium"
-        onClick={handleSave}
-        disabled={saving}
-      >
-        {saving ? <Loader2 size={16} className="mr-2 animate-spin" /> : <Check size={16} className="mr-2" />}
-        {saving ? "Salvando…" : "Salvar alterações"}
-      </Button>
-
-      {/* Actions */}
-      <div className="space-y-3">
-        <Button
-          variant="outline"
-          className="w-full h-12 rounded-xl border-gray-200 text-gray-700 font-medium hover:bg-gray-50"
-          onClick={() => router.push("/alterar-senha")}
-        >
-          <Lock size={16} className="mr-2" />
-          Alterar senha
+        <Button size="full" leftIcon={saving ? undefined : "check"} loading={saving} onClick={handleSave}>
+          {saving ? "Salvando…" : "Salvar alterações"}
         </Button>
 
-        <Button
-          variant="ghost"
-          className="w-full h-12 rounded-xl text-red-500 font-medium hover:bg-red-50 hover:text-red-600"
-          onClick={() => router.push("/excluir-conta")}
-        >
-          <Trash2 size={16} className="mr-2" />
-          Excluir conta
-        </Button>
+        {/* segurança */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Segurança</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 pt-3">
+            <Button variant="secondary" size="full" leftIcon="key" className="justify-start" onClick={() => toast.info("Em construção")}>
+              Alterar senha
+            </Button>
+            <Button variant="secondary" size="full" leftIcon="logout" className="justify-start" onClick={handleSignOut}>
+              Sair da conta
+            </Button>
+            <Button variant="destructive-soft" size="full" leftIcon="trash" className="justify-start" onClick={() => toast.info("Em construção")}>
+              Excluir conta
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

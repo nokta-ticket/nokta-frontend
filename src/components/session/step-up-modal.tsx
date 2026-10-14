@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { createContext, useCallback, useContext, useRef } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { createContext, useCallback, useContext, useRef, useState } from "react";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Callout } from "@/components/ui/callout";
+import { Field } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
+import { OtpInput } from "@/components/ui/otp-input";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
 import { stepUpApi, type StepUpAction } from "@/services/step-up";
@@ -67,13 +68,7 @@ export function StepUpProvider({ children }: { children: React.ReactNode }) {
   return (
     <StepUpContext.Provider value={{ openStepUp }}>
       {children}
-      {pending ? (
-        <StepUpModalInner
-          request={pending}
-          onSuccess={(token) => close({ token })}
-          onCancel={() => close({ cancelled: true })}
-        />
-      ) : null}
+      {pending ? <StepUpModalInner request={pending} onSuccess={(token) => close({ token })} onCancel={() => close({ cancelled: true })} /> : null}
     </StepUpContext.Provider>
   );
 }
@@ -84,15 +79,7 @@ export const useStepUp = (): StepUpContextType => {
   return ctx;
 };
 
-function StepUpModalInner({
-  request,
-  onSuccess,
-  onCancel,
-}: {
-  request: OpenStepUpArgs;
-  onSuccess: (token: string) => void;
-  onCancel: () => void;
-}) {
+function StepUpModalInner({ request, onSuccess, onCancel }: { request: OpenStepUpArgs; onSuccess: (token: string) => void; onCancel: () => void }) {
   const [phase, setPhase] = useState<"preview" | "code">("preview");
   const [grantId, setGrantId] = useState<string | null>(null);
   const [method, setMethod] = useState<"TOTP" | "OTP_WHATSAPP" | null>(null);
@@ -113,14 +100,15 @@ function StepUpModalInner({
     }
   };
 
-  const confirmCode = async () => {
-    if (!grantId) return;
+  const confirmCode = async (value = code) => {
+    if (!grantId || !value) return;
     setSubmitting(true);
     try {
-      const result = await stepUpApi.verify(grantId, code);
+      const result = await stepUpApi.verify(grantId, value);
       onSuccess(result.stepUpToken);
     } catch (err) {
       toast.error(getErrorMessage(err, "Código inválido. Verifique e tente novamente."));
+      setCode("");
     } finally {
       setSubmitting(false);
     }
@@ -128,54 +116,47 @@ function StepUpModalInner({
 
   return (
     <Dialog open onOpenChange={(next) => !next && onCancel()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent size="sm">
         <DialogHeader>
+          <span className="mb-3 flex size-11 items-center justify-center rounded-full bg-brand-soft text-brand">
+            <Icon name="shield" size={18} />
+          </span>
           <DialogTitle>{request.title}</DialogTitle>
           {request.description ? <DialogDescription>{request.description}</DialogDescription> : null}
         </DialogHeader>
 
-        {phase === "preview" ? (
-          <div className="space-y-4">
-            <div className="rounded-xl border border-[#ecebf1] bg-black/[0.02] p-3.5">
-              <dl className="space-y-2">
+        <DialogBody className="pt-1">
+          {phase === "preview" ? (
+            <>
+              <dl className="surface-inset divide-y divide-border rounded-xl">
                 {request.preview.map((field) => (
-                  <div key={field.label} className="flex items-center justify-between text-sm">
-                    <dt className="text-black/50">{field.label}</dt>
-                    <dd className="font-medium text-[#1a1626]">{field.value}</dd>
+                  <div key={field.label} className="flex items-center justify-between gap-4 px-4 py-2.5 text-sm">
+                    <dt className="text-muted-foreground">{field.label}</dt>
+                    <dd className="text-right font-medium text-foreground">{field.value}</dd>
                   </div>
                 ))}
               </dl>
-            </div>
-            <p className="text-xs text-black/50">
-              Esta ação exige verificação em duas etapas. Você vai precisar confirmar com o código do seu aplicativo autenticador (ou um código
-              enviado para o seu WhatsApp, se ainda não configurou o Authenticator).
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-1.5">
-            <Label>{method === "TOTP" ? "Código do autenticador" : "Código enviado para o seu WhatsApp"}</Label>
-            <Input
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && confirmCode()}
-              placeholder="000000"
-              inputMode="numeric"
-              maxLength={8}
-              autoFocus
-            />
-          </div>
-        )}
+              <Callout tone="info" icon="lock">
+                Esta ação exige verificação em duas etapas: o código do seu aplicativo autenticador ou, se ainda não configurou, um código enviado pro seu WhatsApp.
+              </Callout>
+            </>
+          ) : (
+            <Field label={method === "TOTP" ? "Código do autenticador" : "Código enviado pro seu WhatsApp"}>
+              <OtpInput value={code} onChange={setCode} onComplete={(v) => confirmCode(v)} disabled={submitting} autoFocus />
+            </Field>
+          )}
+        </DialogBody>
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={onCancel} disabled={submitting}>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onCancel} disabled={submitting}>
             Cancelar
           </Button>
           {phase === "preview" ? (
-            <Button onClick={startChallenge} disabled={submitting}>
+            <Button onClick={startChallenge} loading={submitting} rightIcon={submitting ? undefined : "arrow-right"}>
               {submitting ? "Iniciando…" : "Continuar"}
             </Button>
           ) : (
-            <Button onClick={confirmCode} disabled={submitting || !code}>
+            <Button onClick={() => confirmCode()} loading={submitting} disabled={code.length < 6}>
               {submitting ? "Confirmando…" : "Confirmar"}
             </Button>
           )}

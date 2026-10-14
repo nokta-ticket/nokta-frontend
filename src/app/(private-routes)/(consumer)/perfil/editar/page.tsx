@@ -1,23 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, Camera, Loader2, ShieldCheck, User } from "lucide-react";
-import api from "@/lib/axios";
+import Image from "next/image";
+import Link from "next/link";
+import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import { useAuth } from "@/context/AuthContext";
-import { getApiBaseUrl } from "@/lib/surfaces";
-import { ImageCropperDialog } from "@/components/media/ImageCropperDialog";
-
-// Fase 5: API resolvida por host, não uma NEXT_PUBLIC_API_URL fixa.
-const API_URL = getApiBaseUrl();
-
-function getInitials(nome: string, sobrenome: string): string {
-  return ((nome?.[0] ?? "") + (sobrenome?.[0] ?? "")).toUpperCase();
-}
+import { initials } from "@/lib/format";
+import { resolveMediaUrl } from "@/lib/media";
+import { ImageCropperDialog, extensionForMimeType } from "@/components/media/ImageCropperDialog";
+import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { Card, CardContent } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function EditarFotoPerfilPage() {
-  const router = useRouter();
   const { updateFotoPerfil } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -26,11 +24,11 @@ export default function EditarFotoPerfilPage() {
   const [nome, setNome] = useState("");
   const [sobrenome, setSobrenome] = useState("");
   const [fotoPerfil, setFotoPerfil] = useState<string | null>(null);
-
   const [imageSrc, setImageSrc] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get("/auth/me")
+    api
+      .get("/auth/me")
       .then((res) => {
         setNome(res.data.nome ?? "");
         setSobrenome(res.data.sobrenome ?? "");
@@ -53,98 +51,68 @@ export default function EditarFotoPerfilPage() {
     setUploading(true);
     try {
       const formData = new FormData();
-      formData.append("foto", blob, "profile.jpg");
-      const res = await api.patch("/auth/me/foto", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      formData.append("foto", blob, `profile.${extensionForMimeType(blob.type)}`);
+      const res = await api.patch("/auth/me/foto", formData, { headers: { "Content-Type": "multipart/form-data" } });
       setFotoPerfil(res.data.fotoPerfil);
-      // Sem isto o cabeçalho continuava com a foto antiga (ou o boneco padrão) até recarregar a página.
+      // Sem isto o cabeçalho continuava com a foto antiga até recarregar a página.
       updateFotoPerfil(res.data.fotoPerfil ?? null);
       setImageSrc(null);
       toast.success("Foto atualizada!");
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Erro ao enviar foto.");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Erro ao enviar foto."));
     } finally {
       setUploading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
-      </div>
-    );
-  }
-
-  const initials = getInitials(nome, sobrenome);
-  const fotoSrc = fotoPerfil && fotoPerfil.startsWith("http") ? fotoPerfil : null;
+  const fotoSrc = resolveMediaUrl(fotoPerfil, null);
 
   return (
-    <main className="min-h-screen bg-white text-[#0f172a]">
-      <section className="mx-auto max-w-lg px-4 py-8">
-        <div className="mb-6 flex items-center gap-3">
-          <button type="button" onClick={() => router.back()}
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-50 text-purple-600 transition hover:bg-purple-100">
-            <ArrowLeft size={20} />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Editar foto do perfil</h1>
-            <p className="text-sm text-slate-500">Adicione ou altere sua foto de perfil.</p>
-          </div>
+    <div className="mx-auto w-full max-w-2xl px-4 pb-28 pt-4 lg:px-6 lg:pt-8">
+      <div className="flex items-start gap-2">
+        <Link href="/perfil" aria-label="Voltar ao perfil" className="mt-1 flex size-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-surface-2 hover:text-foreground">
+          <Icon name="arrow-left" size={16} />
+        </Link>
+        <div>
+          <h1 className="text-display font-medium tracking-tight text-foreground">Foto do perfil</h1>
+          <p className="mt-1 text-body text-muted-foreground">Adicione ou troque a foto que aparece na sua conta.</p>
         </div>
+      </div>
 
-        <ImageCropperDialog
-          open={Boolean(imageSrc)}
-          onOpenChange={(v) => !v && setImageSrc(null)}
-          imageSrc={imageSrc}
-          aspect={1}
-          cropShape="round"
-          title="Ajustar foto de perfil"
-          saving={uploading}
-          onConfirm={handleSaveCrop}
-        />
+      <ImageCropperDialog open={Boolean(imageSrc)} onOpenChange={(v) => !v && setImageSrc(null)} imageSrc={imageSrc} aspect={1} cropShape="round" title="Ajustar foto de perfil" saving={uploading} onConfirm={handleSaveCrop} />
 
-        <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-5">
-            <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-purple-100 text-2xl font-black text-purple-600 overflow-hidden">
-              {fotoSrc ? (
-                <img src={fotoSrc} alt="Foto de perfil" className="h-full w-full object-cover" />
-              ) : (
-                initials || <User size={28} />
-              )}
-              <button type="button"
-                className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full bg-white text-purple-600 shadow-md transition hover:scale-105"
-                onClick={() => fileInputRef.current?.click()}>
-                <Camera size={14} />
-              </button>
-            </div>
-            <div>
-              <h2 className="font-semibold text-slate-800">Foto de perfil</h2>
-              <p className="mt-0.5 text-sm text-slate-500">Adicione uma foto para personalizar sua conta.</p>
-              <button type="button" onClick={() => fileInputRef.current?.click()}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-purple-600 transition hover:bg-purple-50">
-                <Camera size={15} />
-                Alterar foto
-              </button>
-              <p className="mt-1.5 text-xs text-slate-400">JPG, PNG ou WebP. Máx. 5MB.</p>
-            </div>
+      <Card className="mt-6">
+        <CardContent className="flex flex-col items-center gap-5 py-7 text-center sm:flex-row sm:text-left">
+          {loading ? (
+            <Skeleton className="size-28 shrink-0 rounded-full" />
+          ) : (
+            <button type="button" onClick={() => fileInputRef.current?.click()} aria-label="Escolher nova foto" className="press group relative shrink-0 rounded-full">
+              <span className="flex size-28 items-center justify-center overflow-hidden rounded-full bg-surface-3 text-display font-semibold text-foreground ring-2 ring-brand/40">
+                {fotoSrc ? <Image src={fotoSrc} alt="" width={112} height={112} className="size-full object-cover" unoptimized /> : initials(nome, sobrenome)}
+              </span>
+              <span className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                <Icon name="camera" size={22} />
+              </span>
+              <span className="btn-lift absolute -bottom-1 -right-1 flex size-9 items-center justify-center rounded-full bg-brand text-brand-foreground">
+                <Icon name="camera" size={14} />
+              </span>
+            </button>
+          )}
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base font-semibold text-foreground">{loading ? <Skeleton className="mx-auto h-5 w-40 sm:mx-0" /> : [nome, sobrenome].filter(Boolean).join(" ")}</h2>
+            <p className="mt-1 text-body text-muted-foreground">Uma foto ajuda a equipe do evento a te reconhecer na entrada.</p>
+            <Button variant="outline" shape="pill" leftIcon="upload" className="mt-4" disabled={loading || uploading} loading={uploading} onClick={() => fileInputRef.current?.click()}>
+              {fotoSrc ? "Trocar foto" : "Escolher foto"}
+            </Button>
+            <p className="mt-2 text-caption text-subtle-foreground">JPG, PNG ou WebP. Máx. 5MB.</p>
           </div>
           <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onFileChange} />
-        </div>
+        </CardContent>
+      </Card>
 
-        <div className="rounded-2xl bg-purple-50 p-5">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-purple-600">
-              <ShieldCheck size={20} />
-            </div>
-            <div>
-              <h3 className="font-bold text-purple-700">Seus dados estão seguros</h3>
-              <p className="mt-1 text-sm text-slate-500">Utilizamos criptografia e boas práticas para proteger suas informações.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
+      <Callout tone="info" icon="shield" title="Seus dados estão seguros" className="mt-4">
+        Usamos criptografia e boas práticas pra proteger suas informações. Sua foto só aparece pra você e pra equipe do evento.
+      </Callout>
+    </div>
   );
 }

@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { AlertCircle } from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { Button } from "@/components/ui/button";
 
 type PageStateProps = {
@@ -20,7 +20,7 @@ export function PageState({
   return (
     <div className="flex flex-col items-center gap-4 rounded-2xl border px-6 py-12 text-center">
       <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
-        {icon ?? <AlertCircle className="h-8 w-8 text-muted-foreground" />}
+        {icon ?? <Icon name="exclamation-circle" size={28} className="text-muted-foreground" />}
       </div>
       <div className="space-y-1">
         <p className="text-lg font-semibold">{title}</p>
