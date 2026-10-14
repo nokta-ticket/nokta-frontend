@@ -78,6 +78,16 @@ if (process.argv.includes("--push")) {
   const git = (args, env) => execFileSync("git", args, { cwd: root, env: { ...process.env, ...env }, encoding: "utf8" }).trim();
   git([...auth, "fetch", "-q", "origin", "main"]);
   const base = git(["rev-parse", "origin/main"]);
+  // Só o horário do retrato mudou? Não publica (evita commit e deploy à toa).
+  try {
+    const published = JSON.parse(git(["show", `${base}:${rel}`]));
+    if (JSON.stringify(published.events) === JSON.stringify(events)) {
+      console.log("Eventos iguais aos publicados; nada a fazer.");
+      process.exit(0);
+    }
+  } catch {
+    // Arquivo ainda não existe na main: segue e publica.
+  }
   const blob = git(["hash-object", "-w", out]);
   const index = { GIT_INDEX_FILE: join(root, ".git", "agenda-sync.index") };
   git(["read-tree", base], index);
