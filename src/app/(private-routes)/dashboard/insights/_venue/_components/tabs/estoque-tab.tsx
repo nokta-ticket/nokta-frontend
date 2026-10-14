@@ -1,116 +1,64 @@
 "use client";
 
-import { formatCentsBRL, type VenueInsightsFilterParams } from "@/services/venue-insights";
+import { StatCard } from "@/components/ui/stat-card";
+import { formatBRLCents } from "@/lib/format";
+import type { VenueInsightsFilterParams } from "@/services/venue-insights";
 import { useVenueInsightsStock } from "../../_hooks/use-venue-insights";
-import { InsightsHorizontalMoneyBarChart } from "../insights-charts";
-import { InsightsRankingTable } from "../insights-ranking-table";
-import { MetricsSkeleton } from "../../../../_components/states/loading-state";
+import { InsightsPanel, ProportionBars, RankList } from "../insights-charts";
+import { MiniStat, MiniStatGrid, StatGrid, TextStatCard } from "../insights-metric-card";
+import { plural, TabError, TabSkeleton } from "../insights-states";
+
+const count = (n: number) => n.toLocaleString("pt-BR");
+const quantity = (n: number | string) => Number(n).toLocaleString("pt-BR", { maximumFractionDigits: 2 });
 
 export function EstoqueTab({ orgId, params }: { orgId: number; params: VenueInsightsFilterParams }) {
-  const { data, isLoading } = useVenueInsightsStock(orgId, params);
+  const stock = useVenueInsightsStock(orgId, params);
 
-  if (isLoading || !data) {
-    return <MetricsSkeleton count={4} />;
-  }
+  if (stock.isLoading) return <TabSkeleton />;
+  if (stock.isError || !stock.data) return <TabError onRetry={() => void stock.refetch()} />;
+
+  const data = stock.data;
+  const s = data.summary;
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Indicator label="Valor estimado do estoque" value={formatCentsBRL(data.summary.estimatedValueCents)} />
-        <Indicator label="Itens sem estoque" value={String(data.summary.outOfStockCount)} tone={data.summary.outOfStockCount > 0 ? "danger" : "neutral"} />
-        <Indicator label="Itens com estoque baixo" value={String(data.summary.lowStockCount)} tone={data.summary.lowStockCount > 0 ? "warning" : "neutral"} />
-        <Indicator label="Compras no período" value={formatCentsBRL(data.summary.purchasesTotalCents)} />
+      <StatGrid>
+        <StatCard label="Valor em estoque" icon="warehouse" format="currency" value={s.estimatedValueCents / 100} hint="Estimado pelo custo médio" />
+        <TextStatCard label="Itens zerados" icon="box" value={count(s.outOfStockCount)} tone={s.outOfStockCount > 0 ? "danger" : "default"} hint={s.outOfStockCount > 0 ? "Sem saldo pra vender" : "Nenhum item sem saldo"} />
+        <TextStatCard label="Estoque baixo" icon="warning" value={count(s.lowStockCount)} tone={s.lowStockCount > 0 ? "warning" : "default"} hint={s.lowStockCount > 0 ? "Abaixo do mínimo" : "Nenhum item abaixo do mínimo"} />
+        <StatCard label="Compras no período" icon="truck" format="currency" value={s.purchasesTotalCents / 100} />
+      </StatGrid>
+
+      <MiniStatGrid>
+        <MiniStat label="Perdas no período" value={formatBRLCents(s.lossCents)} tone={s.lossCents > 0 ? "warning" : "default"} />
+        <MiniStat label="Consumo por vendas" value={formatBRLCents(s.consumptionCents)} />
+        <MiniStat label="Saldo negativo" value={count(s.negativeCount)} tone={s.negativeCount > 0 ? "danger" : "default"} />
+        <MiniStat label="Ajustes de contagem" value={count(s.countAdjustmentsCount)} />
+        <MiniStat label="Transferências" value={count(s.transfersCount)} />
+        <MiniStat label="Giro estimado" value={s.estimatedTurnover !== null ? s.estimatedTurnover.toLocaleString("pt-BR", { maximumFractionDigits: 2 }) : "—"} note={s.turnoverLabel} className="col-span-2" />
+      </MiniStatGrid>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <InsightsPanel title="Perdas por motivo" description="Valor perdido agrupado por motivo" empty={data.lossByReason.length === 0} emptyIcon="box" emptyTitle="Sem perdas no período" emptyDescription="As perdas registradas aparecem aqui, agrupadas por motivo.">
+          <ProportionBars color="var(--chart-4)" rows={data.lossByReason.map((l) => ({ key: l.reason, label: l.reason, value: l.amountCents, display: formatBRLCents(l.amountCents) }))} />
+        </InsightsPanel>
+        <InsightsPanel title="Valor em estoque por categoria" description="Onde o dinheiro está parado" empty={data.costByCategory.length === 0} emptyIcon="warehouse" emptyTitle="Sem itens em estoque" emptyDescription="O valor por categoria aparece aqui conforme houver saldo.">
+          <ProportionBars rows={data.costByCategory.map((c) => ({ key: c.nome, label: c.nome, value: c.valueCents, display: formatBRLCents(c.valueCents) }))} />
+        </InsightsPanel>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Indicator label="Perdas no período" value={formatCentsBRL(data.summary.lossCents)} />
-        <Indicator label="Consumo por vendas" value={formatCentsBRL(data.summary.consumptionCents)} />
-        <Indicator label="Itens com saldo negativo" value={String(data.summary.negativeCount)} tone={data.summary.negativeCount > 0 ? "danger" : "neutral"} />
-        <Indicator label="Ajustes de contagem" value={String(data.summary.countAdjustmentsCount)} />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <InsightsPanel title="Compras por fornecedor" description="Compras recebidas no período" empty={data.purchasesBySupplier.length === 0} emptyIcon="truck" emptyTitle="Sem compras no período" emptyDescription="As compras aparecem aqui conforme forem recebidas.">
+          <RankList rows={data.purchasesBySupplier.map((p, i) => ({ key: p.supplierId ?? `none-${i}`, label: p.nome, value: p.totalCents, display: formatBRLCents(p.totalCents), meta: plural(p.count, "compra", "compras") }))} />
+        </InsightsPanel>
+        <InsightsPanel title="Itens com maior valor parado" description="Saldo atual × custo médio" empty={data.highestValueItems.length === 0} emptyIcon="warehouse" emptyTitle="Sem itens em estoque" emptyDescription="Os itens com mais valor parado aparecem aqui conforme houver saldo.">
+          <RankList rows={data.highestValueItems.map((it) => ({ key: it.itemId, label: it.nome, sublabel: it.categoryNome ?? undefined, value: it.valueCents, display: formatBRLCents(it.valueCents), meta: `Saldo: ${quantity(it.quantityOnHand)}` }))} />
+        </InsightsPanel>
       </div>
 
-      <div className="rounded-lg border border-black/10 bg-white p-3">
-        <p className="text-xs text-black/50">Giro de estoque estimado</p>
-        <p className="text-lg font-semibold text-gray-900">{data.summary.estimatedTurnover !== null ? data.summary.estimatedTurnover.toFixed(2) : "—"}</p>
-        <p className="mt-1 text-xs text-black/40">{data.summary.turnoverLabel}</p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <InsightsHorizontalMoneyBarChart
-          data={data.lossByReason}
-          isLoading={isLoading}
-          title="Perdas por motivo"
-          dataKey="amountCents"
-          labelKey="reason"
-          emptyTitle="Sem perdas no período"
-          emptyDescription="As perdas registradas aparecerão aqui, agrupadas por motivo."
-        />
-        <InsightsHorizontalMoneyBarChart
-          data={data.costByCategory}
-          isLoading={isLoading}
-          title="Valor de estoque por categoria"
-          dataKey="valueCents"
-          labelKey="nome"
-          emptyTitle="Sem itens em estoque"
-          emptyDescription="O valor estimado por categoria aparecerá aqui conforme houver saldo em estoque."
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium">Compras por fornecedor</h3>
-          <InsightsRankingTable
-            rows={data.purchasesBySupplier}
-            keyExtractor={(r, i) => r.supplierId ?? `none-${i}`}
-            emptyTitle="Sem compras no período"
-            emptyDescription="As compras por fornecedor aparecerão aqui conforme forem recebidas."
-            columns={[
-              { header: "Fornecedor", render: (r) => r.nome },
-              { header: "Compras", align: "right", mobileLabel: "Compras", render: (r) => String(r.count) },
-              { header: "Total", align: "right", mobileLabel: "Total", render: (r) => formatCentsBRL(r.totalCents) },
-            ]}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium">Itens com maior valor em estoque</h3>
-          <InsightsRankingTable
-            rows={data.highestValueItems}
-            keyExtractor={(r) => r.itemId}
-            emptyTitle="Sem itens em estoque"
-            emptyDescription="Os itens com maior valor parado aparecerão aqui conforme houver saldo."
-            columns={[
-              { header: "Item", render: (r) => r.nome },
-              { header: "Saldo", align: "right", mobileLabel: "Saldo", render: (r) => String(r.quantityOnHand) },
-              { header: "Valor", align: "right", mobileLabel: "Valor", render: (r) => formatCentsBRL(r.valueCents) },
-            ]}
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium">Itens mais consumidos</h3>
-        <InsightsRankingTable
-          rows={data.mostConsumedItems}
-          keyExtractor={(r) => r.itemId}
-          emptyTitle="Sem consumo no período"
-          emptyDescription="Os itens mais consumidos por vendas aparecerão aqui conforme houver movimento."
-          columns={[
-            { header: "Item", render: (r) => r.nome },
-            { header: "Quantidade consumida", align: "right", mobileLabel: "Consumido", render: (r) => r.consumedQuantity.toFixed(2) },
-          ]}
-        />
-      </div>
-    </div>
-  );
-}
-
-function Indicator({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "warning" | "danger" }) {
-  const toneClass = tone === "danger" ? "text-red-600" : tone === "warning" ? "text-amber-700" : "text-gray-900";
-  return (
-    <div className="rounded-lg border border-black/10 bg-white p-3">
-      <p className="text-xs text-black/50">{label}</p>
-      <p className={`text-lg font-semibold ${toneClass}`}>{value}</p>
+      <InsightsPanel title="Itens mais consumidos" description="Baixados pelas vendas do período" empty={data.mostConsumedItems.length === 0} emptyIcon="box" emptyTitle="Sem consumo no período" emptyDescription="Os itens mais consumidos aparecem aqui conforme houver vendas.">
+        <RankList color="var(--chart-2)" rows={data.mostConsumedItems.map((it) => ({ key: it.itemId, label: it.nome, value: it.consumedQuantity, display: quantity(it.consumedQuantity) }))} />
+      </InsightsPanel>
     </div>
   );
 }

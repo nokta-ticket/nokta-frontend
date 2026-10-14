@@ -1,76 +1,79 @@
 "use client";
 
-import { formatCentsBRL, type VenueInsightsFilterParams } from "@/services/venue-insights";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { StatCard } from "@/components/ui/stat-card";
+import { formatBRLCents } from "@/lib/format";
+import type { VenueInsightsFilterParams } from "@/services/venue-insights";
 import { useVenueInsightsFinance } from "../../_hooks/use-venue-insights";
-import { InsightsHorizontalMoneyBarChart } from "../insights-charts";
-import { MetricsSkeleton } from "../../../../_components/states/loading-state";
+import { InsightsPanel, ProportionBars } from "../insights-charts";
+import { MiniStat, MiniStatGrid, StatGrid, TextStatCard } from "../insights-metric-card";
+import { plural, TabError, TabSkeleton } from "../insights-states";
+
+const count = (n: number) => n.toLocaleString("pt-BR");
 
 export function FinanceiroTab({ orgId, params }: { orgId: number; params: VenueInsightsFilterParams }) {
-  const { data, isLoading } = useVenueInsightsFinance(orgId, params);
+  const finance = useVenueInsightsFinance(orgId, params);
 
-  if (isLoading || !data) {
-    return <MetricsSkeleton count={4} />;
-  }
+  if (finance.isLoading) return <TabSkeleton />;
+  if (finance.isError || !finance.data) return <TabError onRetry={() => void finance.refetch()} />;
+
+  const data = finance.data;
+  const o = data.overview;
+  const negative = o.operationalResultCents < 0;
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Indicator label="Faturamento" value={formatCentsBRL(data.overview.grossRevenueCents)} />
-        <Indicator label="Receita líquida estimada" value={formatCentsBRL(data.overview.netRevenueCents)} />
-        <Indicator label="Despesas" value={formatCentsBRL(data.overview.expensesCents)} />
-        <Indicator
-          label="Resultado operacional estimado"
-          value={formatCentsBRL(data.overview.operationalResultCents)}
-          tone={data.overview.operationalResultCents < 0 ? "danger" : "neutral"}
-        />
-      </div>
+      <StatGrid>
+        <StatCard label="Faturamento" icon="sack-dollar" format="currency" value={o.grossRevenueCents / 100} />
+        <StatCard label="Receita líquida estimada" icon="wallet" format="currency" value={o.netRevenueCents / 100} hint="Descontadas as taxas estimadas" />
+        <StatCard label="Despesas" icon="receipt" format="currency" value={o.expensesCents / 100} />
+        <TextStatCard label="Resultado operacional" icon="chart-line" value={formatBRLCents(o.operationalResultCents)} tone={negative ? "danger" : "default"} hint={negative ? "Estimado · negativo no período" : "Estimado"} />
+      </StatGrid>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Indicator label="CMV" value={formatCentsBRL(data.overview.cmvCents)} />
-        <Indicator label="Margem bruta" value={formatCentsBRL(data.overview.grossMarginCents)} />
-        <Indicator label="Contas a pagar em aberto" value={String(data.overview.payablesOpenCount)} />
-        <Indicator label="Contas vencidas" value={String(data.overview.payablesOverdueCount)} tone={data.overview.payablesOverdueCount > 0 ? "danger" : "neutral"} />
-      </div>
+      <MiniStatGrid>
+        <MiniStat label="CMV" value={formatBRLCents(o.cmvCents)} />
+        <MiniStat label="Margem bruta" value={formatBRLCents(o.grossMarginCents)} />
+        <MiniStat label="Taxas estimadas" value={formatBRLCents(o.estimatedFeeCents)} />
+        <MiniStat label="Outras receitas" value={formatBRLCents(o.otherIncomeCents)} />
+        <MiniStat label="Contas a pagar em aberto" value={count(o.payablesOpenCount)} />
+        <MiniStat label="Contas vencidas" value={count(o.payablesOverdueCount)} tone={o.payablesOverdueCount > 0 ? "danger" : "default"} />
+      </MiniStatGrid>
 
-      <InsightsHorizontalMoneyBarChart
-        data={data.expensesByCategory}
-        isLoading={isLoading}
-        title="Despesas por categoria"
-        dataKey="amountCents"
-        labelKey="nome"
-        emptyTitle="Sem despesas no período"
-        emptyDescription="As despesas pagas ou incorridas aparecerão aqui por categoria."
-      />
+      <InsightsPanel title="Despesas por categoria" description="Despesas pagas ou incorridas no período" empty={data.expensesByCategory.length === 0} emptyIcon="receipt" emptyTitle="Sem despesas no período" emptyDescription="As despesas aparecem aqui por categoria conforme forem lançadas.">
+        <ProportionBars color="var(--chart-4)" rows={data.expensesByCategory.map((e) => ({ key: e.categoryId, label: e.nome, value: e.amountCents, display: formatBRLCents(e.amountCents) }))} />
+      </InsightsPanel>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border border-black/10 bg-white p-4">
-          <h3 className="text-sm font-medium">Divergência de caixa</h3>
-          <p className="mt-2 text-2xl font-semibold text-gray-900">{data.cashDivergence.sessionsCount}</p>
-          <p className="text-xs text-black/50">fechamento(s) com diferença no período</p>
-          {data.cashDivergence.sessionsCount > 0 ? (
-            <p className="mt-1 text-sm font-medium text-amber-700">{formatCentsBRL(data.cashDivergence.totalDifferenceCents)} de diferença acumulada</p>
-          ) : null}
-        </div>
-
-        <div className="rounded-xl border border-black/10 bg-white p-4">
-          <h3 className="text-sm font-medium">Conciliação de pagamentos</h3>
-          <p className="mt-2 text-2xl font-semibold text-gray-900">
-            {data.reconciliation.divergentCount} <span className="text-sm font-normal text-black/50">/ {data.reconciliation.totalCount}</span>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <InsightsPanel
+          title="Divergência de caixa"
+          description="Fechamentos com diferença entre contado e esperado"
+          action={
+            <Button asChild variant="subtle" size="sm">
+              <Link href="/dashboard/financeiro">Ver caixa</Link>
+            </Button>
+          }
+        >
+          <p className={`text-stat font-medium tabular-nums leading-none tracking-tight ${data.cashDivergence.sessionsCount > 0 ? "text-warning" : "text-foreground"}`}>{count(data.cashDivergence.sessionsCount)}</p>
+          <p className="mt-2 text-caption text-muted-foreground">{data.cashDivergence.sessionsCount > 0 ? `${plural(data.cashDivergence.sessionsCount, "fechamento", "fechamentos")} · ${formatBRLCents(data.cashDivergence.totalDifferenceCents)} de diferença acumulada` : "Nenhum fechamento com diferença no período"}</p>
+        </InsightsPanel>
+        <InsightsPanel
+          title="Conciliação de pagamentos"
+          description="Dias e métodos conferidos com a adquirente"
+          action={
+            <Button asChild variant="subtle" size="sm">
+              <Link href="/dashboard/financeiro">Ver conciliação</Link>
+            </Button>
+          }
+        >
+          <p className="text-stat font-medium tabular-nums leading-none tracking-tight text-foreground">
+            {count(data.reconciliation.divergentCount)} <span className="text-base font-normal text-muted-foreground">/ {count(data.reconciliation.totalCount)}</span>
           </p>
-          <p className="text-xs text-black/50">dia(s)/método(s) divergentes no período</p>
-        </div>
+          <p className="mt-2 text-caption text-muted-foreground">{data.reconciliation.divergentCount > 0 ? `${plural(data.reconciliation.divergentCount, "linha divergente", "linhas divergentes")} de ${count(data.reconciliation.totalCount)} conferidas` : "Nenhuma divergência nas linhas conferidas"}</p>
+        </InsightsPanel>
       </div>
 
-      <p className="text-xs text-black/40">{data.overview.disclaimer}</p>
-    </div>
-  );
-}
-
-function Indicator({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "danger" }) {
-  return (
-    <div className="rounded-lg border border-black/10 bg-white p-3">
-      <p className="text-xs text-black/50">{label}</p>
-      <p className={`text-lg font-semibold ${tone === "danger" ? "text-red-600" : "text-gray-900"}`}>{value}</p>
+      <p className="text-caption text-subtle-foreground">{o.disclaimer}</p>
     </div>
   );
 }

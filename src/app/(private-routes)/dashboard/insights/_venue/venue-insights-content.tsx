@@ -1,111 +1,141 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { SectionHeader } from "@/components/ui/section-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useOrganizations } from "@/context/OrganizationContext";
-import { PageContainer } from "../../_components/page/page-container";
-import { PageHeader } from "../../_components/page/page-header";
-import { EmptyState } from "../../_components/states/empty-state";
-import { BlockSkeleton } from "../../_components/states/loading-state";
-import { useVenueLocations } from "../../operacao/_hooks/use-venue-locations";
+import { usePeriod } from "@/context/PeriodContext";
+import { selectFinanceDispatch } from "../../_lib/finance-dispatch";
 import { OnboardingLocation } from "../../operacao/_components/onboarding-location";
-import { InsightsFilterBar, toInsightsApiParams, type InsightsFilterValue } from "./_components/insights-filter-bar";
-import { InsightsExportMenu } from "./_components/insights-export-menu";
-import { VisaoGeralTab } from "./_components/tabs/visao-geral-tab";
-import { VendasTab } from "./_components/tabs/vendas-tab";
+import { useVenueLocations } from "../../operacao/_hooks/use-venue-locations";
+import { InsightsExportDialog } from "./_components/insights-export-menu";
+import { DEFAULT_INSIGHTS_FILTER, InsightsToolbar, toInsightsApiParams, type InsightsFilterValue } from "./_components/insights-filter-bar";
+import { TabSkeleton } from "./_components/insights-states";
+import { EstoqueTab } from "./_components/tabs/estoque-tab";
+import { FinanceiroTab } from "./_components/tabs/financeiro-tab";
 import { OperacaoTab } from "./_components/tabs/operacao-tab";
 import { ProdutosTab } from "./_components/tabs/produtos-tab";
 import { ReservasTab } from "./_components/tabs/reservas-tab";
-import { EstoqueTab } from "./_components/tabs/estoque-tab";
-import { FinanceiroTab } from "./_components/tabs/financeiro-tab";
+import { VendasTab } from "./_components/tabs/vendas-tab";
+import { VisaoGeralTab } from "./_components/tabs/visao-geral-tab";
 
 type TabKey = "geral" | "vendas" | "operacao" | "produtos" | "reservas" | "estoque" | "financeiro";
 
+const TABS: { value: TabKey; label: string }[] = [
+  { value: "geral", label: "Geral" },
+  { value: "vendas", label: "Vendas" },
+  { value: "operacao", label: "Operação" },
+  { value: "produtos", label: "Produtos" },
+  { value: "reservas", label: "Reservas" },
+  { value: "estoque", label: "Estoque" },
+  { value: "financeiro", label: "Financeiro" },
+];
+
+/**
+ * Insights do bar (módulo Venue). O período vem do seletor global do topbar;
+ * comparação, unidade e granularidade ficam na toolbar local. Quando a
+ * organização também tem Ingressos, a página de Insights empilha os dois
+ * blocos — aí este vira uma seção ("Bar e restaurante"), não um h1.
+ */
 export default function VenueInsightsPage() {
   const { currentOrg, activeModuleKeys, loadingOrgs, loadingModules } = useOrganizations();
+  const { period } = usePeriod();
   const [tab, setTab] = useState<TabKey>("geral");
-  const [filter, setFilter] = useState<InsightsFilterValue>({
-    locationId: null,
-    quickPeriod: "TODAY",
-    startDate: "",
-    endDate: "",
-    comparison: "PREVIOUS_PERIOD",
-    granularity: "DAY",
-  });
+  const [filter, setFilter] = useState<InsightsFilterValue>(DEFAULT_INSIGHTS_FILTER);
 
   const orgId = currentOrg?.id ?? null;
   const venueActive = activeModuleKeys.includes("venue");
+  const standalone = selectFinanceDispatch(activeModuleKeys) !== "both";
+  const locationsQuery = useVenueLocations(venueActive ? orgId : null);
+  const locations = locationsQuery.data;
 
-  const { data: locations } = useVenueLocations(venueActive ? orgId : null);
-
+  // Trocou de organização → volta pra "Todas as unidades".
   useEffect(() => {
-    setFilter((f) => ({ ...f, locationId: null }));
+    setFilter((f) => (f.locationId === null ? f : { ...f, locationId: null }));
   }, [orgId]);
 
-  if (loadingOrgs || loadingModules) {
+  // Trocou o período global → granularidade volta pra automática.
+  useEffect(() => {
+    setFilter((f) => (f.granularity === null ? f : { ...f, granularity: null }));
+  }, [period]);
+
+  const params = useMemo(() => toInsightsApiParams(filter, period), [filter, period]);
+
+  const header = (actions?: ReactNode) => (standalone ? <PageHeader title="Insights" actions={actions} /> : <SectionHeader title="Bar e restaurante" icon="utensils" action={actions} />);
+
+  if (loadingOrgs || loadingModules || (venueActive && orgId !== null && !locations && !locationsQuery.isError)) {
     return (
-      <PageContainer>
-        <PageHeader title="Insights" description="Analise o desempenho operacional e comercial do estabelecimento." />
-        <BlockSkeleton className="h-96" />
-      </PageContainer>
+      <div className="w-full space-y-6">
+        {header()}
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-5">
+          <Skeleton className="h-4 w-20" />
+          <Skeleton className="h-9 w-full max-w-sm rounded-pill" />
+          <Skeleton className="h-10 w-full max-w-60 rounded-input" />
+        </div>
+        <Skeleton className="h-10 w-full max-w-xl" />
+        <TabSkeleton />
+      </div>
     );
   }
 
   if (!orgId || !venueActive) {
     return (
-      <PageContainer>
-        <PageHeader title="Insights" description="Analise o desempenho operacional e comercial do estabelecimento." />
-        <EmptyState title="Venue não está ativo" description="O módulo Venue precisa estar ativo nesta organização para ver os Insights." />
-      </PageContainer>
+      <div className="w-full space-y-6">
+        {header()}
+        <EmptyState
+          icon="store"
+          title="Operação do bar não está ativa"
+          description="Ative a Operação em Explore a Nokta pra acompanhar vendas, produtos, reservas, estoque e financeiro do bar."
+          action={
+            <Button asChild variant="outline">
+              <Link href="/dashboard/explorar">Explorar a Nokta</Link>
+            </Button>
+          }
+        />
+      </div>
     );
   }
 
-  if (locations && locations.length === 0) {
+  if (locationsQuery.isError || !locations) {
     return (
-      <PageContainer>
-        <PageHeader title="Insights" description="Analise o desempenho operacional e comercial do estabelecimento." />
+      <div className="w-full space-y-6">
+        {header()}
+        <ErrorState title="Não deu pra carregar as unidades" description="Confira a conexão e tenta de novo em alguns segundos." onRetry={() => void locationsQuery.refetch()} />
+      </div>
+    );
+  }
+
+  if (locations.length === 0) {
+    return (
+      <div className="w-full space-y-6">
+        {header()}
         <OnboardingLocation orgId={orgId} />
-      </PageContainer>
+      </div>
     );
   }
-
-  if (!locations) {
-    return (
-      <PageContainer>
-        <PageHeader title="Insights" description="Analise o desempenho operacional e comercial do estabelecimento." />
-        <BlockSkeleton className="h-96" />
-      </PageContainer>
-    );
-  }
-
-  const params = toInsightsApiParams(filter);
-  const hasMultipleLocations = locations.length > 1;
 
   return (
-    <PageContainer>
-      <PageHeader
-        title="Insights"
-        description="Leitura consolidada do que já acontece na Operação, Reservas, Estoque e Financeiro — não é uma nova fonte de dados."
-        actions={<InsightsExportMenu orgId={orgId} params={params} />}
-      />
+    <div className="w-full space-y-6">
+      {header(<InsightsExportDialog orgId={orgId} params={params} />)}
 
-      <InsightsFilterBar value={filter} onChange={setFilter} locations={locations} showGranularity={tab === "vendas"} />
+      <InsightsToolbar value={filter} onChange={setFilter} period={period} locations={locations} showGranularity={tab === "vendas"} />
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
-        <div className="scrollbar-hide -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          <TabsList className="w-max min-w-full sm:w-fit">
-            <TabsTrigger value="geral">Visão geral</TabsTrigger>
-            <TabsTrigger value="vendas">Vendas</TabsTrigger>
-            <TabsTrigger value="operacao">Operação</TabsTrigger>
-            <TabsTrigger value="produtos">Produtos</TabsTrigger>
-            <TabsTrigger value="reservas">Reservas</TabsTrigger>
-            <TabsTrigger value="estoque">Estoque</TabsTrigger>
-            <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
-          </TabsList>
-        </div>
+        <TabsList variant="line" aria-label="Seções dos insights">
+          {TABS.map((t) => (
+            <TabsTrigger key={t.value} value={t.value}>
+              {t.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
         <TabsContent value="geral">
-          <VisaoGeralTab orgId={orgId} params={params} hasMultipleLocations={hasMultipleLocations} />
+          <VisaoGeralTab orgId={orgId} params={params} hasMultipleLocations={locations.length > 1} />
         </TabsContent>
         <TabsContent value="vendas">
           <VendasTab orgId={orgId} params={params} />
@@ -126,6 +156,6 @@ export default function VenueInsightsPage() {
           <FinanceiroTab orgId={orgId} params={params} />
         </TabsContent>
       </Tabs>
-    </PageContainer>
+    </div>
   );
 }

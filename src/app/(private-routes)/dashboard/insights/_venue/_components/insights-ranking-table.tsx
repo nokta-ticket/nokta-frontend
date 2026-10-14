@@ -1,87 +1,101 @@
-import type { ReactNode } from "react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { EmptyState } from "../../../_components/states/empty-state";
-import { TableSkeleton } from "../../../_components/states/loading-state";
+"use client";
 
-export interface InsightsTableColumn<T> {
+import type { ReactNode } from "react";
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeadCell, DataTableRow, DataTableShell, MobileCard, MobileCardList } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
+import type { IconName } from "@/components/ui/icon";
+import { RowsSkeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/cn";
+
+export interface InsightsColumn<T> {
+  key: string;
   header: string;
   align?: "left" | "right";
+  /** Célula numérica (tabular, alinhada à direita). */
+  num?: boolean;
   render: (row: T) => ReactNode;
-  /** Se omitido, a coluna não aparece na visão em cartão (mobile) — use para colunas secundárias. */
+  /** Rótulo no card do celular. Omitido = a coluna não aparece no celular (use pra colunas secundárias). */
   mobileLabel?: string;
+  width?: number | string;
 }
 
 /**
- * Tabela/ranking responsiva: tabela normal em telas ≥ sm, lista de cartões
- * empilhados abaixo disso (primeira coluna vira o título do cartão).
+ * Tabela responsiva dos Insights: `DataTable` no desktop e `MobileCard`s no
+ * celular (primeira coluna vira o título do card; as outras entram como pares
+ * rótulo/valor quando têm `mobileLabel`).
  */
-export function InsightsRankingTable<T>({
+export function InsightsTable<T>({
   rows,
   columns,
-  keyExtractor,
-  isLoading,
+  rowKey,
+  loading,
+  fetching,
   emptyTitle,
   emptyDescription,
+  emptyIcon = "inbox",
+  footer,
+  title,
+  subtitle,
+  badge,
+  maxHeight = "none",
 }: {
   rows: T[];
-  columns: InsightsTableColumn<T>[];
-  keyExtractor: (row: T, index: number) => string | number;
-  isLoading?: boolean;
+  columns: InsightsColumn<T>[];
+  rowKey: (row: T, index: number) => string | number;
+  loading?: boolean;
+  /** Atualizando com dados antigos na tela (busca/paginação) — só esmaece. */
+  fetching?: boolean;
   emptyTitle: string;
-  emptyDescription: string;
+  emptyDescription?: string;
+  emptyIcon?: IconName;
+  footer?: ReactNode;
+  title?: (row: T) => ReactNode;
+  subtitle?: (row: T) => ReactNode;
+  badge?: (row: T) => ReactNode;
+  maxHeight?: string;
 }) {
-  if (isLoading) return <TableSkeleton />;
-  if (rows.length === 0) return <EmptyState title={emptyTitle} description={emptyDescription} />;
+  if (loading) return <RowsSkeleton rows={5} />;
+  if (rows.length === 0) return <EmptyState compact icon={emptyIcon} title={emptyTitle} description={emptyDescription} />;
 
-  const [titleColumn, ...restColumns] = columns;
-  const mobileColumns = restColumns.filter((c) => c.mobileLabel);
+  const [first, ...rest] = columns;
+  const mobileColumns = rest.filter((c) => c.mobileLabel);
 
   return (
-    <>
-      <div className="hidden overflow-hidden rounded-xl border border-black/10 bg-white sm:block">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {columns.map((c, i) => (
-                  <TableHead key={i} className={c.align === "right" ? "text-right" : undefined}>
-                    {c.header}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((row, i) => (
-                <TableRow key={keyExtractor(row, i)}>
-                  {columns.map((c, j) => (
-                    <TableCell key={j} className={c.align === "right" ? "text-right" : undefined}>
-                      {c.render(row)}
-                    </TableCell>
-                  ))}
-                </TableRow>
+    <DataTableShell
+      maxHeight={maxHeight}
+      className={cn("transition-opacity duration-150", fetching && "opacity-60")}
+      footer={footer}
+      table={
+        <DataTable>
+          <DataTableHead>
+            <tr>
+              {columns.map((c) => (
+                <DataTableHeadCell key={c.key} align={c.align ?? (c.num ? "right" : "left")} width={c.width}>
+                  {c.header}
+                </DataTableHeadCell>
               ))}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-
-      <div className="space-y-2 sm:hidden">
-        {rows.map((row, i) => (
-          <div key={keyExtractor(row, i)} className="rounded-lg border border-black/10 bg-white p-3">
-            <div className="font-medium text-gray-900">{titleColumn.render(row)}</div>
-            {mobileColumns.length > 0 ? (
-              <div className="mt-1 grid grid-cols-2 gap-x-2 gap-y-1 text-xs text-black/60">
-                {mobileColumns.map((c, j) => (
-                  <div key={j} className="flex justify-between gap-2">
-                    <span className="text-black/40">{c.mobileLabel}</span>
-                    <span className="font-medium text-gray-900">{c.render(row)}</span>
-                  </div>
+            </tr>
+          </DataTableHead>
+          <DataTableBody>
+            {rows.map((row, i) => (
+              <DataTableRow key={rowKey(row, i)} index={i}>
+                {columns.map((c) => (
+                  <DataTableCell key={c.key} align={c.align} num={c.num}>
+                    {c.render(row)}
+                  </DataTableCell>
                 ))}
-              </div>
-            ) : null}
-          </div>
-        ))}
-      </div>
-    </>
+              </DataTableRow>
+            ))}
+          </DataTableBody>
+        </DataTable>
+      }
+      mobile={
+        <MobileCardList>
+          {rows.map((row, i) => (
+            <MobileCard key={rowKey(row, i)} index={i} title={title ? title(row) : first.render(row)} subtitle={subtitle?.(row)} badge={badge?.(row)} meta={mobileColumns.map((c) => ({ label: c.mobileLabel as string, value: c.render(row), num: c.num }))} />
+          ))}
+        </MobileCardList>
+      }
+    />
   );
 }

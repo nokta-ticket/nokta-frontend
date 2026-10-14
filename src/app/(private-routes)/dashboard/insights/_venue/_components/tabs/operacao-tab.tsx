@@ -1,82 +1,87 @@
 "use client";
 
-import { formatCentsBRL, formatDurationMs, type VenueInsightsFilterParams } from "@/services/venue-insights";
+import { Icon } from "@/components/ui/icon";
+import { StatCard } from "@/components/ui/stat-card";
+import { formatBRLCents } from "@/lib/format";
+import { formatDurationMs, type VenueInsightsFilterParams, type VenueInsightsOperation } from "@/services/venue-insights";
 import { useVenueInsightsOperation } from "../../_hooks/use-venue-insights";
-import { InsightsCountByWeekdayChart } from "../insights-charts";
-import { InsightsRankingTable } from "../insights-ranking-table";
-import { MetricsSkeleton } from "../../../../_components/states/loading-state";
+import { hourLabel, InsightsBarChart, InsightsPanel, ProportionBars } from "../insights-charts";
+import { MiniStat, MiniStatGrid, StatGrid, TextStatCard } from "../insights-metric-card";
+import { plural, TabError, TabSkeleton } from "../insights-states";
+
+const count = (n: number) => n.toLocaleString("pt-BR");
 
 export function OperacaoTab({ orgId, params }: { orgId: number; params: VenueInsightsFilterParams }) {
-  const { data, isLoading } = useVenueInsightsOperation(orgId, params);
+  const operation = useVenueInsightsOperation(orgId, params);
 
-  if (isLoading || !data) {
-    return <MetricsSkeleton count={4} />;
-  }
+  if (operation.isLoading) return <TabSkeleton />;
+  if (operation.isError || !operation.data) return <TabError onRetry={() => void operation.refetch()} />;
 
-  const byHourRows = data.byHour.map((h) => ({ label: `${String(h.hour).padStart(2, "0")}h`, ordersCount: h.ordersCount }));
+  const data = operation.data;
+  const s = data.summary;
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Indicator label="Comandas abertas" value={String(data.summary.openedTabsCount)} />
-        <Indicator label="Comandas fechadas" value={String(data.summary.closedTabsCount)} />
-        <Indicator label="Tempo médio de comanda" value={formatDurationMs(data.summary.averageTabDurationMs)} />
-        <Indicator label="Tempo até 1º pedido" value={formatDurationMs(data.summary.averageTimeToFirstOrderMs)} />
-      </div>
+      <StatGrid>
+        <StatCard label="Comandas abertas" icon="receipt" value={s.openedTabsCount} />
+        <StatCard label="Comandas fechadas" icon="check-circle" value={s.closedTabsCount} />
+        <TextStatCard label="Tempo médio de comanda" icon="clock" value={formatDurationMs(s.averageTabDurationMs)} hint="Da abertura ao fechamento" />
+        <TextStatCard label="Tempo até o 1º pedido" icon="history" value={formatDurationMs(s.averageTimeToFirstOrderMs)} hint="Depois de abrir a comanda" />
+      </StatGrid>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Indicator label="Tempo médio de preparo" value={formatDurationMs(data.summary.averagePreparationTimeMs)} />
-        <Indicator label="Tempo até entrega" value={formatDurationMs(data.summary.averageTimeToDeliveryMs)} />
-        <Indicator label="Pedidos cancelados" value={String(data.summary.canceledOrdersCount)} />
-        <Indicator label="Itens cancelados" value={String(data.summary.canceledItemsCount)} />
-        <Indicator label="Desconto médio" value={data.summary.averageDiscountCents !== null ? formatCentsBRL(data.summary.averageDiscountCents) : "—"} />
-        <Indicator
-          label="Taxa de serviço média"
-          value={data.summary.averageServiceChargeRateBps !== null ? `${(data.summary.averageServiceChargeRateBps / 100).toFixed(1)}%` : "—"}
-        />
-      </div>
+      <MiniStatGrid>
+        <MiniStat label="Tempo médio de preparo" value={formatDurationMs(s.averagePreparationTimeMs)} />
+        <MiniStat label="Tempo até a entrega" value={formatDurationMs(s.averageTimeToDeliveryMs)} />
+        <MiniStat label="Pedidos cancelados" value={count(s.canceledOrdersCount)} tone={s.canceledOrdersCount > 0 ? "warning" : "default"} />
+        <MiniStat label="Itens cancelados" value={count(s.canceledItemsCount)} />
+        <MiniStat label="Desconto médio" value={s.averageDiscountCents !== null ? formatBRLCents(s.averageDiscountCents) : "—"} />
+        <MiniStat label="Taxa de serviço média" value={s.averageServiceChargeRateBps !== null ? `${(s.averageServiceChargeRateBps / 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%` : "—"} />
+      </MiniStatGrid>
 
-      <InsightsCountByWeekdayChart data={byHourRows} isLoading={isLoading} title="Pedidos por horário" dataKey="ordersCount" />
+      <InsightsBarChart title="Pedidos por horário" description="Pedidos lançados por hora do dia" kind="count" seriesLabel="Pedidos" color="var(--chart-2)" loading={false} data={data.byHour.map((h) => ({ label: hourLabel(h.hour), value: h.ordersCount }))} />
 
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium">Por estação de preparo</h3>
-        <InsightsRankingTable
-          rows={data.byStation}
-          keyExtractor={(r, i) => r.stationId ?? `none-${i}`}
-          emptyTitle="Sem itens no período"
-          emptyDescription="A distribuição por estação de preparo aparecerá aqui conforme os pedidos forem lançados."
-          columns={[
-            { header: "Estação", render: (r) => r.nome },
-            { header: "Itens", align: "right", mobileLabel: "Itens", render: (r) => String(r.itemCount) },
-            { header: "Tempo médio de preparo", align: "right", mobileLabel: "Tempo médio", render: (r) => formatDurationMs(r.averagePreparationTimeMs) },
-          ]}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium">Por operador</h3>
-        <p className="text-xs text-black/40">Contagens operacionais neutras — não é um ranking de desempenho.</p>
-        <InsightsRankingTable
-          rows={data.byOperator}
-          keyExtractor={(r) => r.userId}
-          emptyTitle="Sem movimento no período"
-          emptyDescription="As contagens por operador aparecerão aqui conforme comandas forem abertas e pedidos lançados."
-          columns={[
-            { header: "Operador", render: (r) => `Usuário #${r.userId}` },
-            { header: "Comandas abertas", align: "right", mobileLabel: "Comandas abertas", render: (r) => String(r.openedTabs) },
-            { header: "Pedidos lançados", align: "right", mobileLabel: "Pedidos lançados", render: (r) => String(r.createdOrders) },
-          ]}
-        />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <InsightsPanel title="Por estação de preparo" description="Itens lançados e tempo médio de preparo" empty={data.byStation.length === 0} emptyIcon="utensils" emptyTitle="Sem itens no período" emptyDescription="A distribuição por estação aparece aqui conforme os pedidos forem lançados.">
+          <ProportionBars
+            scale="max"
+            showShare
+            color="var(--chart-2)"
+            rows={data.byStation.map((st, i) => ({
+              key: st.stationId ?? `none-${i}`,
+              label: st.nome,
+              value: st.itemCount,
+              display: plural(st.itemCount, "item", "itens"),
+              hint: st.averagePreparationTimeMs !== null ? `Preparo médio: ${formatDurationMs(st.averagePreparationTimeMs)}` : "Sem tempo de preparo registrado",
+            }))}
+          />
+        </InsightsPanel>
+        <InsightsPanel title="Por operador" description="Contagens neutras — não é um ranking de desempenho" empty={data.byOperator.length === 0} emptyIcon="users" emptyTitle="Sem movimento no período" emptyDescription="As contagens aparecem aqui conforme comandas forem abertas e pedidos lançados.">
+          <OperatorList rows={data.byOperator} />
+        </InsightsPanel>
       </div>
     </div>
   );
 }
 
-function Indicator({ label, value }: { label: string; value: string }) {
+function OperatorList({ rows }: { rows: VenueInsightsOperation["byOperator"] }) {
   return (
-    <div className="rounded-lg border border-black/10 bg-white p-3">
-      <p className="text-xs text-black/50">{label}</p>
-      <p className="text-lg font-semibold text-gray-900">{value}</p>
-    </div>
+    <ul className="divide-y divide-border">
+      {rows.map((r) => (
+        <li key={r.userId} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5 text-sm first:pt-0 last:pb-0">
+          <span className="flex items-center gap-2 font-medium text-foreground">
+            <Icon name="user" size={12} className="text-muted-foreground" />
+            Usuário #{r.userId}
+          </span>
+          <span className="tnum flex gap-4 text-muted-foreground">
+            <span>
+              <span className="font-medium text-foreground">{count(r.openedTabs)}</span> {r.openedTabs === 1 ? "comanda" : "comandas"}
+            </span>
+            <span>
+              <span className="font-medium text-foreground">{count(r.createdOrders)}</span> {r.createdOrders === 1 ? "pedido" : "pedidos"}
+            </span>
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
