@@ -42,9 +42,35 @@ export function withAffiliate(url: string): string {
 }
 
 function pickImage(images: TmImage[] = []): string | null {
-  // Preferimos 16:9 grande (combina com o card da Nokta).
-  const wide = images.filter((i) => i.ratio === "16_9").sort((a, b) => (b.width ?? 0) - (a.width ?? 0));
+  // 16:9 (combina com o card) no tamanho mais perto de 1024px: a de 2048px
+  // pesa demais pra um card e a de 640px fica borrada na página do evento.
+  const wide = images.filter((i) => i.ratio === "16_9").sort((a, b) => Math.abs((a.width ?? 0) - 1024) - Math.abs((b.width ?? 0) - 1024));
   return (wide[0] ?? images[0])?.url ?? null;
+}
+
+const strip = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
+/** Bairros e grafias que o feed manda no lugar da cidade. */
+const CITY_ALIASES: Record<string, string> = {
+  "sao paulo": "São Paulo",
+  sp: "São Paulo",
+  santana: "São Paulo",
+  "rio de janeiro": "Rio de Janeiro",
+  rj: "Rio de Janeiro",
+  gavea: "Rio de Janeiro",
+  "barra da tijuca": "Rio de Janeiro",
+  "jurere internacional": "Florianópolis",
+  "grande florianopolis sao jose": "São José",
+  "salgadinho, olinda": "Olinda",
+};
+/** Capital de cada UF: destino de cidade vazia ou inválida ("Nocity"). */
+const CAPITAL_BY_UF: Record<string, string> = { SP: "São Paulo", RJ: "Rio de Janeiro", MG: "Belo Horizonte", PR: "Curitiba", RS: "Porto Alegre", SC: "Florianópolis", DF: "Brasília", BA: "Salvador", PE: "Recife", CE: "Fortaleza", GO: "Goiânia", PA: "Belém" };
+
+export function normalizeCity(raw: string | undefined, uf: string | undefined): string | null {
+  const key = raw ? strip(raw) : "";
+  if (CITY_ALIASES[key]) return CITY_ALIASES[key];
+  if (!key || key === "nocity") return uf ? (CAPITAL_BY_UF[uf] ?? null) : null;
+  return raw!.trim();
 }
 
 export function mapTicketmasterEvent(e: TmEvent): AgendaEvent | null {
@@ -60,7 +86,7 @@ export function mapTicketmasterEvent(e: TmEvent): AgendaEvent | null {
     date,
     time: e.dates?.start?.localTime?.slice(0, 5) ?? null,
     venue: venue?.name ?? null,
-    city: venue?.city?.name ?? null,
+    city: normalizeCity(venue?.city?.name, venue?.state?.stateCode),
     uf: venue?.state?.stateCode ?? null,
     address: venue?.address?.line1 ?? null,
     image: pickImage(e.images),
