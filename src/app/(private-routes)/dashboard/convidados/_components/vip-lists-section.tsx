@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Copy, Pencil, Plus, Trash2 } from "lucide-react";
+import { Copy, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -280,11 +280,6 @@ export function VipListsSection({ eventId, eventDate }: { eventId: number; event
             </div>
           );
         })}
-        <div className="px-4 py-2.5">
-          <Button variant="ghost" size="sm" onClick={openCreate}>
-            <Plus size={16} /> Nova lista VIP
-          </Button>
-        </div>
       </div>
 
       {nomes.length === 0 ? (
