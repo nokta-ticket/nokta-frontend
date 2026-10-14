@@ -4,15 +4,8 @@ import type { AgendaEvent } from "./types";
 
 export * from "./types";
 
-/** "São Paulo" → "sao-paulo" (URL das páginas de cidade). */
-export function citySlug(city: string): string {
-  return city
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-}
+export { citySlug } from "./city";
+import { citySlug } from "./city";
 
 function todayBrt(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());

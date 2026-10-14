@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Icon } from "@/components/ui/icon";
 import { formatBRL, formatDateBadge } from "@/lib/format";
-import { SOURCE_LABEL, type AgendaEvent } from "@/lib/agenda";
+import { SOURCE_LABEL, type AgendaEvent } from "@/lib/agenda/types";
 
 /** Atributos de todo link que leva pra venda oficial (afiliado). */
 export const OFFICIAL_LINK_PROPS = { target: "_blank", rel: "sponsored nofollow noopener" } as const;
