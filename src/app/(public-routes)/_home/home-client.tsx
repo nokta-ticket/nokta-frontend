@@ -7,8 +7,9 @@ import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/lib/toast";
 import type { EventoAPI, GetEvents } from "@/interfaces/events";
 import { Icon } from "@/components/ui/icon";
-import { EventCard, EventCardSkeleton, EventRow, EventRowSkeleton } from "@/components/events/event-card";
-import { HeroEvent, HeroEventSkeleton } from "@/components/events/hero-event";
+import { EventRow, EventRowSkeleton } from "@/components/events/event-card";
+import { HeroBanner } from "@/components/home/hero-banner";
+import { EventCardLux, EventCardLuxSkeleton, FeaturedCarousel, FeaturedCarouselSkeleton } from "@/components/home/event-showcase";
 import { SectionHeader } from "@/components/ui/section-header";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -65,14 +66,15 @@ export function HomeClient() {
       }
     : undefined;
 
-  const hero = state.featured?.[0] ?? state.events?.[0] ?? null;
-  const featuredRest = state.featured ? state.featured.filter((e) => e.id !== hero?.id) : null;
-  const upcoming = state.events ? state.events.filter((e) => e.id !== hero?.id) : null;
+  // O banner principal é a chamada pra produtores (ver HeroBanner) — todo
+  // evento em destaque vai pro carrossel "Destaques".
+  const featuredRest = state.featured;
+  const upcoming = state.events;
   const loading = state.featured === null;
 
   return (
     <div className="pb-8">
-      {loading ? <HeroEventSkeleton /> : hero ? <HeroEvent event={hero} /> : null}
+      <HeroBanner />
 
       {/* Destaques */}
       {(loading || (featuredRest && featuredRest.length > 0)) && (
@@ -80,10 +82,11 @@ export function HomeClient() {
           <div className="mx-auto max-w-7xl px-4 lg:px-6">
             <SectionHeader title="Destaques" action={<Link href="/eventos" className="text-sm font-semibold text-brand hover:underline">Ver todos</Link>} />
           </div>
-          <div className="snap-row mt-4 gap-3.5 px-4 lg:mx-auto lg:grid lg:max-w-7xl lg:grid-cols-4 lg:gap-6 lg:overflow-visible lg:px-6">
-            {loading
-              ? Array.from({ length: 4 }).map((_, i) => <EventCardSkeleton key={i} className="w-[46vw] max-w-[220px] lg:w-auto lg:max-w-none" />)
-              : featuredRest!.map((e, i) => <EventCard key={e.id} event={e} onToggleFavorite={toggleFavorite} className="w-[46vw] max-w-[220px] fade-up lg:w-auto lg:max-w-none" style={{ ["--i" as string]: i } as never} />)}
+          {/* celular: carrossel grande com snap */}
+          <div className="mt-4 lg:hidden">{loading ? <FeaturedCarouselSkeleton /> : <FeaturedCarousel events={featuredRest!} onToggleFavorite={toggleFavorite} />}</div>
+          {/* desktop: grade de cards premium */}
+          <div className="mx-auto mt-6 hidden max-w-7xl grid-cols-4 gap-6 px-6 lg:grid">
+            {loading ? Array.from({ length: 4 }).map((_, i) => <EventCardLuxSkeleton key={i} />) : featuredRest!.map((e, i) => <EventCardLux key={e.id} event={e} onToggleFavorite={toggleFavorite} index={i} priority={i < 4} />)}
           </div>
         </section>
       )}
@@ -98,7 +101,7 @@ export function HomeClient() {
           ) : loading ? (
             <>
               <div className="mt-4 space-y-2.5 lg:hidden">{Array.from({ length: 5 }).map((_, i) => <EventRowSkeleton key={i} />)}</div>
-              <div className="mt-6 hidden grid-cols-4 gap-6 lg:grid">{Array.from({ length: 8 }).map((_, i) => <EventCardSkeleton key={i} />)}</div>
+              <div className="mt-6 hidden grid-cols-4 gap-6 lg:grid">{Array.from({ length: 8 }).map((_, i) => <EventCardLuxSkeleton key={i} />)}</div>
             </>
           ) : upcoming && upcoming.length > 0 ? (
             <>
@@ -111,7 +114,7 @@ export function HomeClient() {
               </div>
               <div className="mt-6 hidden grid-cols-4 gap-6 lg:grid">
                 {upcoming.map((e, i) => (
-                  <EventCard key={e.id} event={e} onToggleFavorite={toggleFavorite} className="fade-up" style={{ ["--i" as string]: i } as never} />
+                  <EventCardLux key={e.id} event={e} onToggleFavorite={toggleFavorite} index={i} />
                 ))}
               </div>
               {state.page < state.lastPage ? (

@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import { ForceTheme } from "@/components/theme/theme-provider";
+import { cn } from "@/lib/cn";
 import FixedBottomBarSpacer from "@/components/layout/fixed-bottom-bar-spacer";
 import { BottomNav } from "./bottom-nav";
 import { PublicFooter } from "./public-footer";
@@ -39,7 +40,10 @@ export function PublicShell({ children }: { children: ReactNode }) {
       <ForceTheme theme="dark" />
       <div className="flex min-h-dvh flex-col bg-background text-foreground">
         {chrome.header !== "none" ? <PublicHeader chrome={chrome.header} /> : null}
-        <main className="flex flex-1 flex-col">{children}</main>
+        {/* No desktop o header "full" é uma ilha fixa flutuando sobre a
+            página — o conteúdo reserva o espaço dela; a home desconta isso
+            no banner (ver HeroBanner) pra arte ficar por baixo. */}
+        <main className={cn("flex flex-1 flex-col", chrome.header === "full" && "lg:pt-24")}>{children}</main>
         {chrome.footer ? <PublicFooter /> : null}
         <FixedBottomBarSpacer />
       </div>

@@ -97,7 +97,7 @@ Evento: a arte do produtor é um banner **818×355** — nunca cortar pra quadra
 - `cn()` de `@/lib/cn` (tokens registrados no tailwind-merge). Token novo → registre lá.
 - Nada de `any` novo; erros com mensagem acionável; sem `console.log` esquecido.
 - Modo mock: `NEXT_PUBLIC_MOCK_API=1` (`.env.local`) responde rotas públicas com `src/mocks/fixtures.ts`. Adicione handlers em `src/mocks/adapter.ts` quando precisar ver uma tela sem backend. Nunca referencie mocks em código de produção fora de `src/lib/axios.ts`.
-- Verificação visual: `npx next dev -p 3000` + screenshot headless (`chrome --headless=new --screenshot --window-size=390,1600 http://localhost:3000/rota`) em **390px e 1440px**, claro **e** escuro no painel. Diga honestamente o que não foi checado.
+- Verificação visual: com o dev server no ar, `node scripts/shot.mjs --url http://localhost:3000/<rota> --w 390 --h 1600 --out <abs>.png` (viewport exato via DevTools Protocol — o Chrome headless não aceita janela < 500px, então `--window-size=390` mente). Opções: `--full`, `--hover x,y`, `--click x,y`, `--wait ms`, `--dark`/`--light`, `--cookie "user={\"userId\":1,\"role\":\"PRODUTOR\",\"nivelProdutor\":2}"` (telas logadas no modo mock). Cheque **390px e 1440px**, claro **e** escuro no painel, e olhe o PNG. Diga honestamente o que não foi checado.
 - Antes de entregar: `npx next build` sem erro de TS (o `ignoreBuildErrors` será removido).
 
 ## 8. Lista do que o dono rejeitou (não repetir)
