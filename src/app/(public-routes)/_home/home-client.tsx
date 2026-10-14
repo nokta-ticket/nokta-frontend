@@ -92,7 +92,7 @@ export function HomeClient() {
       )}
 
       {/* Próximos eventos */}
-      <section className="mt-10 lg:mt-14">
+      <section className="reveal mt-10 lg:mt-14">
         <div className="mx-auto max-w-7xl px-4 lg:px-6">
           <SectionHeader title="Próximos eventos" action={<Link href="/eventos" className="text-sm font-semibold text-brand hover:underline">Buscar</Link>} />
 
@@ -133,7 +133,7 @@ export function HomeClient() {
       </section>
 
       {/* Chamada pra produtores */}
-      <section className="mx-auto mt-14 max-w-7xl px-4 lg:mt-20 lg:px-6">
+      <section className="reveal mx-auto mt-14 max-w-7xl px-4 lg:mt-20 lg:px-6">
         <div className="card-accent relative overflow-hidden rounded-[24px] border border-border bg-surface p-6 lg:flex lg:items-center lg:justify-between lg:p-10">
           <div className="ambient-blob -right-16 -top-16 size-64" aria-hidden />
           <div className="relative">

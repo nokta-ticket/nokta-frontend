@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import type { EventoAPI } from "@/interfaces/events";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
@@ -18,17 +19,30 @@ export function isLastCall(event: Pick<EventoAPI, "ultimoLote" | "percentualVend
   return event.ultimoLote === true || (event.percentualVendido ?? 0) >= LAST_CALL_PERCENT;
 }
 
+/**
+ * Arte do evento. Imagens lazy entram com fade quando terminam de carregar
+ * (em vez de "piscar" sobre o fundo); as `priority` (acima da dobra)
+ * aparecem direto, sem esperar o JS.
+ */
 export function EventPoster({ event, sizes, priority, className }: { event: EventoAPI; sizes: string; priority?: boolean; className?: string }) {
   const cover = resolveThumbnailUrl(event.thumbnails?.[0], MEDIA_FALLBACK) ?? MEDIA_FALLBACK;
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [loaded, setLoaded] = useState(Boolean(priority));
+  // Imagem que já veio do cache antes da hidratação não dispara onLoad.
+  useEffect(() => {
+    if (imgRef.current?.complete) setLoaded(true);
+  }, []);
   return (
     <Image
+      ref={imgRef}
       src={cover}
       alt=""
       fill
       sizes={sizes}
       priority={priority}
       loading={priority ? undefined : "lazy"}
-      className={cn("object-cover", className)}
+      onLoad={() => setLoaded(true)}
+      className={cn("object-cover", !priority && "transition-[opacity,scale] duration-500 ease-out-soft", !priority && !loaded && "scale-[1.02] opacity-0", className)}
       unoptimized
     />
   );

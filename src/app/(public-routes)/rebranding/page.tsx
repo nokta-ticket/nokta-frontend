@@ -38,7 +38,7 @@ const FIXES = [
 
 function PageBlock({ page }: { page: RebrandPage }) {
   return (
-    <article id={page.id} className="grid scroll-mt-24 gap-4">
+    <article id={page.id} className="reveal grid scroll-mt-24 gap-4">
       <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h3 className="text-lg font-semibold tracking-tight text-foreground">{page.name}</h3>
         <code className="rounded-md bg-surface-2 px-2 py-0.5 font-mono text-caption text-muted-foreground [overflow-wrap:anywhere]">{page.route}</code>

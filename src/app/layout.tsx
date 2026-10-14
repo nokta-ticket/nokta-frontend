@@ -53,7 +53,7 @@ export const viewport: Viewport = {
  */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${jakarta.variable} ${anton.variable} dark`} suppressHydrationWarning>
+    <html lang="pt-BR" data-scroll-behavior="smooth" className={`${jakarta.variable} ${anton.variable} dark`} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://api.nokta.live" crossOrigin="use-credentials" />
         <link rel="preconnect" href="https://api.noktatickets.com.br" crossOrigin="use-credentials" />

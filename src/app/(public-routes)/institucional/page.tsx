@@ -163,7 +163,7 @@ export default function InstitucionalPage() {
         </section>
 
         {/* Números */}
-        <section className="mx-auto max-w-7xl px-4 py-12 lg:px-6 lg:py-16" aria-label="Por que a Nokta">
+        <section className="reveal mx-auto max-w-7xl px-4 py-12 lg:px-6 lg:py-16" aria-label="Por que a Nokta">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {NUMBERS.map((n, i) => (
               <Card key={n.label} className="fade-up gap-1 p-5" style={{ ["--i" as string]: i } as never}>
@@ -176,7 +176,7 @@ export default function InstitucionalPage() {
         </section>
 
         {/* Para produtores */}
-        <section id="produtores" className="scroll-mt-20 border-t border-border" aria-labelledby="nk-produtores">
+        <section id="produtores" className="reveal scroll-mt-20 border-t border-border" aria-labelledby="nk-produtores">
           <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 lg:grid-cols-2 lg:items-center lg:gap-16 lg:px-6 lg:py-24">
             <div>
               <p className="text-sm font-semibold text-brand">Para produtores</p>
@@ -194,7 +194,7 @@ export default function InstitucionalPage() {
         </section>
 
         {/* Para bares e casas */}
-        <section id="bares" className="scroll-mt-20 border-t border-border bg-surface/40" aria-labelledby="nk-bares">
+        <section id="bares" className="reveal scroll-mt-20 border-t border-border bg-surface/40" aria-labelledby="nk-bares">
           <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 lg:grid-cols-2 lg:items-center lg:gap-16 lg:px-6 lg:py-24">
             <div className="grid gap-4 lg:order-first">
               <Shot src="/institucional/tela-comandas.webp" alt="Tela Mesas e comandas do painel da Nokta com comandas abertas (demonstração)" width={1800} height={1306} />
@@ -215,7 +215,7 @@ export default function InstitucionalPage() {
         </section>
 
         {/* Gestão */}
-        <section className="border-t border-border" aria-labelledby="nk-gestao">
+        <section className="reveal border-t border-border" aria-labelledby="nk-gestao">
           <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 lg:grid-cols-2 lg:items-center lg:gap-16 lg:px-6 lg:py-24">
             <div>
               <p className="text-sm font-semibold text-brand">Gestão</p>
@@ -242,7 +242,7 @@ export default function InstitucionalPage() {
         </section>
 
         {/* FAQ */}
-        <section id="faq" className="scroll-mt-20 border-t border-border" aria-labelledby="nk-faq">
+        <section id="faq" className="reveal scroll-mt-20 border-t border-border" aria-labelledby="nk-faq">
           <div className="mx-auto max-w-3xl px-4 py-14 lg:px-6 lg:py-24">
             <h2 id="nk-faq" className="text-balance text-center font-display text-[2.25rem] uppercase leading-[0.95] text-foreground lg:text-[3rem]">
               Perguntas frequentes
@@ -252,7 +252,7 @@ export default function InstitucionalPage() {
         </section>
 
         {/* CTA final */}
-        <section className="mx-auto max-w-7xl px-4 pb-16 lg:px-6 lg:pb-24" aria-labelledby="nk-close">
+        <section className="reveal mx-auto max-w-7xl px-4 pb-16 lg:px-6 lg:pb-24" aria-labelledby="nk-close">
           <div className="card-accent relative overflow-hidden rounded-[24px] border border-border bg-surface p-7 lg:flex lg:items-center lg:justify-between lg:p-12">
             <div className="ambient-blob -right-16 -top-16 size-72" aria-hidden />
             <div className="relative max-w-xl">
