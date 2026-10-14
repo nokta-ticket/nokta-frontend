@@ -336,11 +336,15 @@ export default function EventoPageClient() {
     evento.email ||
     evento.instagram;
 
+  // Na tela da lista VIP o botão vira "Convidar amigos" e leva o link da
+  // lista, não o da página com os ingressos à venda.
+  const shareLabel = vipActive ? "Convidar amigos" : "Compartilhar";
   function handleShare() {
+    const url = vipActive ? getPublicTicketsUrl(`/vip/${evento!.slug ?? evento!.id}`) : canonicalEventUrl;
     if (navigator.share) {
-      navigator.share({ title: evento!.nome, url: canonicalEventUrl });
+      navigator.share({ title: evento!.nome, url }).catch(() => {});
     } else {
-      navigator.clipboard?.writeText(canonicalEventUrl);
+      navigator.clipboard?.writeText(url);
       toast.success("Link copiado!");
     }
   }
@@ -437,7 +441,7 @@ export default function EventoPageClient() {
                 <button
                   onClick={handleShare}
                   className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/8 text-white/40 hover:text-white/80 hover:bg-white/15 transition"
-                  aria-label="Compartilhar"
+                  aria-label={shareLabel}
                 >
                   <Share2 size={14} />
                 </button>
@@ -505,7 +509,7 @@ export default function EventoPageClient() {
           className="group flex items-center gap-2 rounded-full px-7 py-2.5 bg-white text-[#111827] text-[12px] font-bold uppercase tracking-[0.14em] shadow-[0_4px_24px_rgba(153,68,204,0.18)] border border-gray-100 hover:shadow-[0_4px_24px_rgba(153,68,204,0.32)] transition-all"
         >
           <Share2 size={13} className="text-[#9944CC]" />
-          Compartilhar
+          {shareLabel}
         </button>
       </div>
 
@@ -561,7 +565,6 @@ export default function EventoPageClient() {
               <VipClaimCard
                 vipKey={vipKey}
                 eventId={Number(evento.id)}
-                eventName={evento.nome}
                 returnPath={`/vip/${evento.slug ?? evento.id}`}
                 onActiveChange={setVipActive}
               />

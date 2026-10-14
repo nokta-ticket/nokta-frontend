@@ -2,13 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, UserPlus } from "lucide-react";
+import { Check } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { LoginModal } from "@/components/auth/login-modal";
 import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { getPublicTicketsUrl } from "@/lib/surfaces";
 import { CpfGate } from "../checkout/_components/cpf-gate";
 
 // Lista VIP dentro da página do evento. Só aparece para quem chegou pelo
@@ -43,15 +42,13 @@ const PRESS = "transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,
 export function VipClaimCard({
   vipKey,
   eventId,
-  eventName,
   returnPath,
   onActiveChange,
 }: {
   /** Endereço do evento (ou o código de uma lista, nos primeiros links). */
   vipKey: string;
   eventId: number;
-  eventName: string;
-  /** Caminho deste link (/vip/<evento>): destino do cadastro e do "Convidar amigos". */
+  /** Caminho deste link (/vip/<evento>): para onde o cadastro devolve a pessoa. */
   returnPath: string;
   /** true enquanto há lista aberta ou nome já colocado: a página esconde os ingressos pagos. */
   onActiveChange?: (active: boolean) => void;
@@ -119,19 +116,6 @@ export function VipClaimCard({
     claim(token);
   };
 
-  const invite = async () => {
-    const url = getPublicTicketsUrl(returnPath);
-    try {
-      if (navigator.share) await navigator.share({ title: `Lista VIP · ${eventName}`, url });
-      else {
-        await navigator.clipboard.writeText(url);
-        toast.success("Link copiado!");
-      }
-    } catch {
-      // Fechar a folha de compartilhamento não é erro.
-    }
-  };
-
   return (
     <div ref={cardRef} id="vip" className="scroll-mt-24 space-y-8">
       {lists.map((lista) => {
@@ -140,26 +124,13 @@ export function VipClaimCard({
         const claiming = claimingToken === lista.token;
         return (
           <section key={lista.token} aria-label={lista.nome || "Lista VIP"}>
-            <div className="flex items-center justify-between gap-3">
+            <div>
               <p className="flex items-center gap-2.5 text-[13px] text-gray-600">
                 <span className="rounded-full bg-[#0F172A] px-3 py-1.5 text-[14px] font-bold tabular-nums text-white">
                   {lista.naLista}/{lista.total}
                 </span>
                 nomes na lista
               </p>
-              <button
-                type="button"
-                onClick={invite}
-                className={cn(
-                  "-mr-2 flex h-11 items-center gap-2 rounded-full px-2 text-[13px] font-semibold text-[#0F172A]",
-                  PRESS,
-                )}
-              >
-                Convidar amigos
-                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 bg-white">
-                  <UserPlus size={16} />
-                </span>
-              </button>
             </div>
 
             {result ? (
