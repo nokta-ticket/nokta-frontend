@@ -25,12 +25,16 @@ const CSP_DIRECTIVES = [
   "img-src 'self' data: https:",
   "font-src 'self' data:",
   "connect-src 'self' https://api.nokta.live https://api.noktatickets.com.br https://*.supabase.co https://api.pagar.me https://3ds-nx-js.stone.com.br https://cloudflareinsights.com https://viacep.com.br https://www.facebook.com https://web.facebook.com https://graph.facebook.com http://localhost:3333",
-  "frame-src https:",
+  // 'self' além de https: — a prévia do cardápio (/cardapio-preview) é um
+  // iframe da própria origem, e em dev a origem é http://localhost.
+  "frame-src 'self' https:",
   "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
-  "upgrade-insecure-requests",
+  // Só em produção: em dev isso forçava o iframe pra https://localhost e o
+  // Chrome bloqueava a prévia.
+  ...(process.env.NODE_ENV === "production" ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
 // 2026-08-13: /cardapio-preview/* é carregada dentro de um <iframe> pela
