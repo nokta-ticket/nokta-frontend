@@ -128,7 +128,11 @@ export function VipClaimCard({
               key={lista.token}
               className={
                 "flex items-center gap-4 rounded-xl border px-4 py-3.5 " +
-                (result ? "border-emerald-200 bg-emerald-50/60" : "border-[#9944CC]/40 bg-violet-50/40")
+                (result
+                  ? "border-emerald-200 bg-emerald-50/60"
+                  : open
+                    ? "border-[#9944CC]/40 bg-violet-50/40"
+                    : "border-gray-200 bg-white")
               }
             >
               {result ? (
@@ -154,11 +158,15 @@ export function VipClaimCard({
                       {lista.nome || "Lista VIP"}
                     </p>
                     <p className="text-[13px] font-bold text-[#9944CC]">Gratuito</p>
-                    <p className="mt-0.5 text-[11px] text-gray-500">
-                      {open
-                        ? `Um por pessoa${lista.ate ? ` · retire até ${formatDeadline(lista.ate)}` : ""}`
-                        : CLOSED_MESSAGE[lista.status as Exclude<VipStatus, "ABERTA">]}
-                    </p>
+                    {open ? (
+                      <p className="mt-0.5 text-[11px] text-gray-500">
+                        Um por pessoa{lista.ate ? ` · retire até ${formatDeadline(lista.ate)}` : ""}
+                      </p>
+                    ) : (
+                      <p className="mt-0.5 text-[11px] font-semibold text-red-600">
+                        {CLOSED_MESSAGE[lista.status as Exclude<VipStatus, "ABERTA">]}
+                      </p>
+                    )}
                   </div>
                   <button
                     type="button"
@@ -166,7 +174,7 @@ export function VipClaimCard({
                     disabled={!open || claimingToken !== null}
                     className="h-11 shrink-0 rounded-lg bg-gradient-to-r from-[#9944CC] to-[#3399FF] px-4 text-[13px] font-bold text-white transition disabled:opacity-40"
                   >
-                    {claimingToken === lista.token ? "Retirando…" : "Pegar VIP"}
+                    {claimingToken === lista.token ? "Retirando…" : lista.status === "ESGOTADA" ? "Esgotado" : "Pegar VIP"}
                   </button>
                 </>
               )}

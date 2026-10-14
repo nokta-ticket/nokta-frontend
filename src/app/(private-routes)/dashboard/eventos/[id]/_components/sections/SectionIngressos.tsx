@@ -640,6 +640,24 @@ export default function SectionIngressos({ event, onRefresh }: SectionProps) {
     toast.success(`${ordinal(lotNum)} Lote duplicado como ${ordinal(newLot)} Lote`)
   }
 
+  const handleRemoveVipList = async (key: string) => {
+    const list = tickets.find((t) => t._key === key)
+    if (!list) return
+    if (!list.id) {
+      setTickets((prev) => prev.filter((t) => t._key !== key))
+      return
+    }
+    try {
+      await api.delete(`/produtor/eventos/${event.id}/lista-vip/${list.id}`)
+      setTickets((prev) => prev.filter((t) => t._key !== key))
+      toast.success("Lista VIP excluída")
+      onRefresh()
+    } catch (err: any) {
+      const msg = err?.response?.data?.message
+      toast.error(Array.isArray(msg) ? msg[0] : (msg || "Não foi possível excluir a lista VIP"))
+    }
+  }
+
   const handleSave = () => {
     if (tickets.length === 0) return toast.error("Adicione pelo menos um ingresso")
     return saveTickets(tickets, "Ingressos salvos com sucesso!")
@@ -790,7 +808,7 @@ export default function SectionIngressos({ event, onRefresh }: SectionProps) {
             lists={vipTickets}
             onCreate={() => { setVipEditingKey(null); setVipDialogOpen(true) }}
             onEdit={(key) => { setVipEditingKey(key); setVipDialogOpen(true) }}
-            onRemove={handleRemoveTicket}
+            onRemove={handleRemoveVipList}
           />
         </div>
       )}

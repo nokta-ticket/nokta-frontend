@@ -9,6 +9,7 @@ import { CheckCircle2, Copy, Crown, Pencil, Plus, Trash2 } from "lucide-react"
 import { toast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
 import { getPublicTicketsUrl } from "@/lib/surfaces"
+import { ConfirmDialog } from "@/components/layout/confirm-dialog"
 import { IngressoLote } from "../types"
 
 // Lista VIP: lote gratuito divulgado por link (story). Não aparece na página
@@ -228,15 +229,19 @@ export function VipListCard({ eventKey, lists, onCreate, onEdit, onRemove }: Vip
                 >
                   <Pencil className="w-4 h-4" />
                 </button>
-                {!list.id && (
-                  <button
-                    onClick={() => onRemove(list._key)}
-                    aria-label="Remover lista VIP"
-                    className="w-9 h-9 rounded-lg flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-50"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
+                <ConfirmDialog
+                  title="Excluir esta lista VIP?"
+                  description="O link para de entregar este VIP. Quem já retirou continua com o ingresso e entra normalmente."
+                  onConfirm={() => onRemove(list._key)}
+                  trigger={
+                    <button
+                      aria-label="Excluir lista VIP"
+                      className="w-9 h-9 rounded-lg flex items-center justify-center text-gray-500 hover:text-red-500 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  }
+                />
               </div>
             </div>
 
