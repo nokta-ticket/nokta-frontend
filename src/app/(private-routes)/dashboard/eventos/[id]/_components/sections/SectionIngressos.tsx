@@ -19,6 +19,7 @@ import { toast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
 import api from "@/lib/axios"
 import { SectionProps, IngressoLote } from "../types"
+import { VipListCard, VipListDialog } from "./VipList"
 
 // ─── Local augmented type ────────────────────────────────────────────────────
 
@@ -556,9 +557,25 @@ export default function SectionIngressos({ event, onRefresh }: SectionProps) {
   const [dialogDeadline, setDialogDeadline] = useState<string | null>(null)
   const [editingKey, setEditingKey]       = useState<string | null>(null)
 
-  const groups       = useMemo(() => groupByLot(tickets), [tickets])
+  // Lista VIP fica fora dos lotes de venda: não aparece na página do evento.
+  const saleTickets  = useMemo(() => tickets.filter((t) => !t.vip), [tickets])
+  const vipTickets   = useMemo(() => tickets.filter((t) => t.vip), [tickets])
+  const groups       = useMemo(() => groupByLot(saleTickets), [saleTickets])
   const maxLotNum    = useMemo(() => groups.length > 0 ? Math.max(...groups.map((g) => g.lotNum)) : 0, [groups])
-  const totalCapacity = useMemo(() => tickets.reduce((a, t) => a + t.quantidade, 0), [tickets])
+  const totalCapacity = useMemo(() => saleTickets.reduce((a, t) => a + t.quantidade, 0), [saleTickets])
+
+  const [vipDialogOpen, setVipDialogOpen] = useState(false)
+  const [vipEditingKey, setVipEditingKey] = useState<string | null>(null)
+  const vipEditing = vipEditingKey ? tickets.find((t) => t._key === vipEditingKey) : undefined
+
+  const handleVipConfirm = (data: IngressoLote) => {
+    if (vipEditingKey) {
+      setTickets((prev) => prev.map((t) => (t._key === vipEditingKey ? { ...data, _key: vipEditingKey } : t)))
+    } else {
+      setTickets((prev) => [...prev, withKey(data)])
+    }
+    setVipEditingKey(null)
+  }
 
   const editingTicket = editingKey ? tickets.find((t) => t._key === editingKey) : undefined
 
@@ -630,6 +647,8 @@ export default function SectionIngressos({ event, onRefresh }: SectionProps) {
           valor:               Number(t.valor),
           disponivelParaVenda: t.disponivelParaVenda,
           dataLimite:          t.dataLimite || null,
+          vip:                 !!t.vip,
+          ...(t.vip && t.vipAte ? { vipAte: t.vipAte } : {}),
         })),
       })
       toast.success("Ingressos salvos com sucesso!")
@@ -754,6 +773,13 @@ export default function SectionIngressos({ event, onRefresh }: SectionProps) {
               onRemoveLot={handleRemoveLot}
             />
           ))}
+
+          <VipListCard
+            lists={vipTickets}
+            onCreate={() => { setVipEditingKey(null); setVipDialogOpen(true) }}
+            onEdit={(key) => { setVipEditingKey(key); setVipDialogOpen(true) }}
+            onRemove={handleRemoveTicket}
+          />
         </div>
       )}
 
@@ -777,6 +803,15 @@ export default function SectionIngressos({ event, onRefresh }: SectionProps) {
         lotNum={dialogLotNum}
         lotDeadline={dialogDeadline}
         onConfirm={handleConfirm}
+      />
+
+      <VipListDialog
+        key={`vip-${vipDialogOpen ? "open" : "closed"}-${vipEditingKey ?? "new"}`}
+        open={vipDialogOpen}
+        onOpenChange={(v) => { setVipDialogOpen(v); if (!v) setVipEditingKey(null) }}
+        initial={vipEditing}
+        eventDate={event.data}
+        onConfirm={handleVipConfirm}
       />
 
       {/* Footer */}

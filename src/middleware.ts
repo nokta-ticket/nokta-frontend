@@ -46,6 +46,7 @@ const publicRoutes = [
   { path: "/eventos", whenAutenticated: "next" },
   { path: "/evento/[id]", whenAutenticated: "next" },
   { path: "/evento/[id]/checkout", whenAutenticated: "next" },
+  { path: "/vip/[id]", whenAutenticated: "next" },
   { path: "/revenda", whenAutenticated: "next" },
   { path: "/revenda/anunciar", whenAutenticated: "next" },
   { path: "/para-produtores", whenAutenticated: "next" },
@@ -110,6 +111,7 @@ const PLATFORM_ONLY_PREFIXES = ["/dashboard", "/produtor", "/admin", "/solicitar
 const TICKETS_ONLY_PREFIXES = [
   "/eventos",
   "/evento",
+  "/vip",
   "/revenda",
   "/favoritos",
   "/meus-ingressos",

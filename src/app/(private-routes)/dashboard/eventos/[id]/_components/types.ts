@@ -21,6 +21,10 @@ export interface IngressoLote {
   valor: number
   disponivelParaVenda: boolean
   dataLimite: string | null
+  /** Lista VIP: gratuito, fora da página do evento, retirado só pelo link até `vipAte` (ISO). */
+  vip?: boolean
+  vipAte?: string | null
+  vipToken?: string | null
 }
 
 export interface EventoData {
