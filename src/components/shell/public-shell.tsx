@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useSelectedLayoutSegment } from "next/navigation";
 import type { ReactNode } from "react";
 import { ForceTheme } from "@/components/theme/theme-provider";
 import { cn } from "@/lib/cn";
@@ -14,12 +14,17 @@ type Chrome = { header: "full" | "minimal" | "none"; bottomNav: boolean; footer:
 // Rotas que desenham o próprio shell (login, dashboard, cardápio público,
 // LP institucional…): nada do shell de bilheteria por cima.
 const CHROMELESS = [/^\/login/, /^\/register/, /^\/recuperar-senha/, /^\/auth\//, /^\/convites/, /^\/descadastro/, /^\/admin/, /^\/dashboard/, /^\/cardapio/, /^\/avaliacao/, /^\/institucional/];
+// Rotas de auth interceptadas pelo slot `@modal` (abrem como card por cima
+// da página atual): a URL vira /login, mas quem está na tela é a página de
+// origem — ela mantém o shell dela.
+const AUTH_MODAL = [/^\/login/, /^\/register/, /^\/recuperar-senha$/];
 // Fluxos focados: só um cabeçalho mínimo com "voltar".
 const MINIMAL = [/^\/evento\/[^/]+\/checkout/, /^\/revenda\/anunciar/];
 // Páginas com barra de ação própria no rodapé (compra, ingresso): sem nav inferior.
 const NO_BOTTOM_NAV = [/^\/evento\//, /^\/vip\//, /^\/revenda\/\d+/, /^\/meus-ingressos\/[^/]+/];
 
-function resolveChrome(pathname: string): Chrome {
+function resolveChrome(pathname: string, authModalOpen: boolean): Chrome {
+  if (authModalOpen && AUTH_MODAL.some((r) => r.test(pathname))) return { header: "full", bottomNav: true, footer: true };
   if (CHROMELESS.some((r) => r.test(pathname))) return { header: "none", bottomNav: false, footer: false };
   if (MINIMAL.some((r) => r.test(pathname))) return { header: "minimal", bottomNav: false, footer: false };
   return { header: "full", bottomNav: !NO_BOTTOM_NAV.some((r) => r.test(pathname)), footer: true };
@@ -33,7 +38,11 @@ function resolveChrome(pathname: string): Chrome {
  */
 export function PublicShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const chrome = resolveChrome(pathname);
+  // Segmento ativo do slot `@modal` do layout público: null (ou o default)
+  // quando nenhuma rota de auth está interceptada.
+  const modalSegment = useSelectedLayoutSegment("modal");
+  const authModalOpen = modalSegment !== null && modalSegment !== "__DEFAULT__";
+  const chrome = resolveChrome(pathname, authModalOpen);
 
   return (
     <>
