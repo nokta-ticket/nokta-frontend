@@ -1,82 +1,74 @@
-import type { Metadata } from "next";
-import { Poppins, Space_Grotesk } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Anton, Plus_Jakarta_Sans } from "next/font/google";
+import { config as faConfig } from "@fortawesome/fontawesome-svg-core";
+import "@fortawesome/fontawesome-svg-core/styles.css";
 import "./globals.css";
-import FooterConditional from "@/components/layout/footer-conditional";
-import FixedBottomBarSpacer from "@/components/layout/fixed-bottom-bar-spacer";
-import { Toaster } from "@/components/ui/toaster";
-import HeaderSwitcher from "@/lib/header-switcher";
 import { AuthProvider } from "@/context/AuthContext";
 import { StepUpProvider } from "@/components/session/step-up-modal";
+import { AppThemeProvider } from "@/components/theme/theme-provider";
+import { AppToaster } from "@/components/ui/toaster";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from "@vercel/analytics/next";
 
-const poppins = Poppins({
-  variable: "--font-poppins",
+// O CSS do FontAwesome é importado acima uma vez — sem isso ele injeta um
+// <style> por ícone em runtime (e os ícones aparecem gigantes antes disso).
+faConfig.autoAddCss = false;
+
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
   subsets: ["latin"],
   display: "swap",
-  weight: ["200", "300", "400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700", "800"],
 });
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
+const anton = Anton({
+  variable: "--font-anton",
   subsets: ["latin"],
   display: "swap",
-  weight: ["300", "400", "500", "600", "700"],
+  weight: "400",
 });
 
 export const metadata: Metadata = {
-  title: "Nokta Tickets",
-  description: "Plataforma oficial da Nokta para eventos e ingressos",
+  title: {
+    default: "Nokta",
+    template: "%s · Nokta",
+  },
+  description: "Os melhores eventos e festas em um só lugar. Compre seus ingressos e viva a experiência Nokta.",
+  applicationName: "Nokta",
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Nokta" },
 };
 
-// Fase 5.3, Etapa 1/2 — este layout NÃO PODE usar nenhuma API dinâmica
-// (headers/cookies/searchParams): qualquer uma delas força TODA a árvore
-// (as três superfícies, já que compartilham o mesmo Root Layout) a
-// renderizar 100% dinâmica no Next.js, impedindo cache real em qualquer
-// rota — inclusive a LP institucional, que não tem motivo pra nunca ser
-// cacheada (ver docs/platform/surfaces.md §18.2/§19). Antes, a Fase 5.1
-// resolvia "pular o header/footer de bilheteria na LP" com `headers()`
-// aqui — funcionalmente correto, mas do jeito mais caro possível.
-//
-// Solução: sempre renderizar a MESMA árvore (nunca decidir por host aqui).
-// A página institucional (única que precisa de header/footer diferente)
-// se sobrepõe ao header/footer genérico com um wrapper `fixed inset-0`
-// (mesmo padrão já usado por dashboard/admin/produtor pra cobrir o shell
-// público — ver dashboard/layout.tsx) — cobertura puramente visual, sem
-// nenhuma decisão de host neste arquivo.
-export default function RootLayout({
-  children,
-  painel: painelSlot,
-}: {
-  children: React.ReactNode;
-  painel?: React.ReactNode;
-}) {
+export const viewport: Viewport = {
+  themeColor: "#0f0f11",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
+/**
+ * Root Layout: só providers. Nenhuma API dinâmica aqui (headers/cookies)
+ * — qualquer uma forçaria TODA a árvore a renderizar dinâmica e mataria o
+ * cache das rotas públicas. O "shell" visual (header, nav inferior,
+ * rodapé, sidebar) é decidido pelos layouts de cada grupo de rotas.
+ */
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${poppins.variable} ${spaceGrotesk.variable}`}>
+    <html lang="pt-BR" className={`${jakarta.variable} ${anton.variable} dark`} suppressHydrationWarning>
       <head>
-        {/* A API fica em outro domínio. Abrir a conexão (DNS + TLS) enquanto o
-            JavaScript ainda está baixando tira esse tempo da primeira chamada,
-            o que pesa em rede móvel. Cada superfície usa só um dos dois hosts;
-            o outro é uma conexão ociosa que o navegador descarta. */}
         <link rel="preconnect" href="https://api.nokta.live" crossOrigin="use-credentials" />
         <link rel="preconnect" href="https://api.noktatickets.com.br" crossOrigin="use-credentials" />
       </head>
-      <body className="bg-white antialiased font-sans" suppressHydrationWarning>
-        <AuthProvider>
-          <StepUpProvider>
-            {painelSlot ?? (
-              <div className="flex min-h-dvh flex-col">
-                <HeaderSwitcher />
-                <main className="flex flex-1 flex-col">{children}</main>
-                <FooterConditional />
-                <FixedBottomBarSpacer />
-              </div>
-            )}
-            <Toaster />
-            <SpeedInsights />
-            <Analytics/>
-          </StepUpProvider>
-        </AuthProvider>
+      <body className="min-h-dvh bg-background font-sans text-foreground antialiased" suppressHydrationWarning>
+        <AppThemeProvider>
+          <AuthProvider>
+            <StepUpProvider>
+              {children}
+              <AppToaster />
+              <SpeedInsights />
+              <Analytics />
+            </StepUpProvider>
+          </AuthProvider>
+        </AppThemeProvider>
       </body>
     </html>
   );

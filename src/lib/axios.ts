@@ -1,6 +1,7 @@
 import axios from "axios";
 import Cookies from "js-cookie";
 import { getApiBaseUrl } from "./surfaces";
+import { installMockAdapter } from "@/mocks/adapter";
 
 // Fase 5: a API é resolvida em runtime a partir do host (app.nokta.live vs
 // noktatickets.com.br) — o mesmo build Vercel atende as duas superfícies,
@@ -22,6 +23,13 @@ const api = axios.create({
   // acessível por JS.
   withCredentials: true,
 });
+
+// Modo sem backend (dev/visual): rotas públicas respondidas por fixtures.
+// A flag é inlinada no build — em produção o bloco vira código morto e o
+// bundler descarta o módulo de mocks.
+if (process.env.NEXT_PUBLIC_MOCK_API === "1") {
+  installMockAdapter(api);
+}
 
 export function getErrorMessage(error: unknown, fallback = "Ocorreu um erro."): string {
   if (axios.isAxiosError(error)) {

@@ -1,49 +1,27 @@
+import { toast as sonner, type ExternalToast } from "sonner";
+
 export type ToastType = "success" | "error" | "info" | "warning";
 
-export interface ToastItem {
-  id: string;
-  type: ToastType;
-  message: string;
-  duration: number;
+type Opts = { duration?: number; description?: string };
+
+function opts(o?: Opts): ExternalToast | undefined {
+  if (!o) return undefined;
+  return { duration: o.duration, description: o.description };
 }
 
-type Listener = (items: ToastItem[]) => void;
-
-const listeners = new Set<Listener>();
-let items: ToastItem[] = [];
-
-function emit() {
-  listeners.forEach((fn) => fn([...items]));
-}
-
-export function subscribe(fn: Listener) {
-  listeners.add(fn);
-  fn([...items]);
-  return () => listeners.delete(fn);
-}
-
-export function dismiss(id: string) {
-  items = items.filter((t) => t.id !== id);
-  emit();
-}
-
-function add(type: ToastType, message: string, duration = 4000) {
-  const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  items = [...items, { id, type, message, duration }];
-  emit();
-  return id;
-}
-
+/**
+ * API única de toast do app (envelopa o Sonner). Mantém a assinatura antiga
+ * (`toast.success(msg, { duration })`) pra todo o código existente continuar
+ * funcionando; o visual vem de `<AppToaster />` (components/ui/toaster.tsx).
+ */
 export const toast = {
-  success: (message: string, opts?: { duration?: number }) =>
-    add("success", message, opts?.duration),
-  error: (message: string, opts?: { duration?: number }) =>
-    add("error", message, opts?.duration),
-  info: (message: string, opts?: { duration?: number }) =>
-    add("info", message, opts?.duration),
-  warning: (message: string, opts?: { duration?: number }) =>
-    add("warning", message, opts?.duration),
+  success: (message: string, o?: Opts) => sonner.success(message, opts(o)),
+  error: (message: string, o?: Opts) => sonner.error(message, opts(o)),
+  info: (message: string, o?: Opts) => sonner.info(message, opts(o)),
+  warning: (message: string, o?: Opts) => sonner.warning(message, opts(o)),
   /** Alias for warning (react-toastify compat) */
-  warn: (message: string, opts?: { duration?: number }) =>
-    add("warning", message, opts?.duration),
+  warn: (message: string, o?: Opts) => sonner.warning(message, opts(o)),
+  loading: (message: string, o?: Opts) => sonner.loading(message, opts(o)),
+  promise: sonner.promise,
+  dismiss: (id?: string | number) => sonner.dismiss(id),
 };

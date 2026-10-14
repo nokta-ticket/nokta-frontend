@@ -1,0 +1,6 @@
+import type { ReactNode } from "react";
+import { PublicShell } from "@/components/shell/public-shell";
+
+export default function PublicRoutesLayout({ children }: { children: ReactNode }) {
+  return <PublicShell>{children}</PublicShell>;
+}

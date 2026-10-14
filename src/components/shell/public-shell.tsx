@@ -1,0 +1,49 @@
+"use client";
+
+import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
+import { ForceTheme } from "@/components/theme/theme-provider";
+import FixedBottomBarSpacer from "@/components/layout/fixed-bottom-bar-spacer";
+import { BottomNav } from "./bottom-nav";
+import { PublicFooter } from "./public-footer";
+import { PublicHeader } from "./public-header";
+
+type Chrome = { header: "full" | "minimal" | "none"; bottomNav: boolean; footer: boolean };
+
+// Rotas que desenham o próprio shell (login, dashboard, cardápio público,
+// LP institucional…): nada do shell de bilheteria por cima.
+const CHROMELESS = [/^\/login/, /^\/register/, /^\/recuperar-senha/, /^\/auth\//, /^\/convites/, /^\/descadastro/, /^\/admin/, /^\/dashboard/, /^\/cardapio/, /^\/avaliacao/, /^\/institucional/];
+// Fluxos focados: só um cabeçalho mínimo com "voltar".
+const MINIMAL = [/^\/evento\/[^/]+\/checkout/, /^\/revenda\/anunciar/];
+// Páginas com barra de ação própria no rodapé (compra, ingresso): sem nav inferior.
+const NO_BOTTOM_NAV = [/^\/evento\//, /^\/vip\//, /^\/revenda\/\d+/, /^\/meus-ingressos\/[^/]+/];
+
+function resolveChrome(pathname: string): Chrome {
+  if (CHROMELESS.some((r) => r.test(pathname))) return { header: "none", bottomNav: false, footer: false };
+  if (MINIMAL.some((r) => r.test(pathname))) return { header: "minimal", bottomNav: false, footer: false };
+  return { header: "full", bottomNav: !NO_BOTTOM_NAV.some((r) => r.test(pathname)), footer: true };
+}
+
+/**
+ * Shell da superfície pública de ingressos (noktatickets.com.br): sempre
+ * tema escuro, cabeçalho, nav inferior no celular e rodapé. Quem decide o
+ * que aparece é a rota (ver listas acima) — nenhuma página precisa
+ * "cobrir" o shell com overlay fixo.
+ */
+export function PublicShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const chrome = resolveChrome(pathname);
+
+  return (
+    <>
+      <ForceTheme theme="dark" />
+      <div className="flex min-h-dvh flex-col bg-background text-foreground">
+        {chrome.header !== "none" ? <PublicHeader chrome={chrome.header} /> : null}
+        <main className="flex flex-1 flex-col">{children}</main>
+        {chrome.footer ? <PublicFooter /> : null}
+        <FixedBottomBarSpacer />
+      </div>
+      {chrome.bottomNav ? <BottomNav /> : null}
+    </>
+  );
+}
