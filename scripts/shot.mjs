@@ -10,7 +10,7 @@
  *   --cookie "user={\"userId\":1,\"role\":\"PRODUTOR\",\"nivelProdutor\":2}"
  *                     grava um cookie antes de navegar (telas logadas no modo mock)
  *   --hover 280,52    move o mouse pra (x,y) antes de capturar (testa :hover)
- *   --click 280,52    clica em (x,y) antes de capturar (abre menus/dialogs)
+ *   --click 280,52    clica em (x,y) antes de capturar; sequência com ";" (280,52;300,400)
  *   --type "neon"     digita no elemento focado (use depois de --click num campo)
  *   --key Enter       tecla única (Enter|Escape|Tab) no elemento focado
  *   --wait 2500       ms extra depois do load (dados do mock chegam com latência)
@@ -132,11 +132,16 @@ try {
     await send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
     await sleep(600);
   }
-  if (args.click) {
-    const [x, y] = args.click.split(",").map(Number);
-    await send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 });
-    await send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 });
-    await sleep(800);
+  // --click "x,y" ou sequência "x,y;x2,y2;…" (800ms entre cliques).
+  if (args.click && args.click !== "true") {
+    for (const pair of args.click.split(";")) {
+      const [x, y] = pair.split(",").map(Number);
+      if (Number.isNaN(x) || Number.isNaN(y)) continue;
+      await send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
+      await send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 });
+      await send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 });
+      await sleep(800);
+    }
   }
   // --type "texto": digita no elemento focado (depois de --click num input).
   if (args.type && args.type !== "true") {

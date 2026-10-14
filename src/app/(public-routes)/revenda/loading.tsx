@@ -1,24 +1,24 @@
-"use client";
-import { ResaleCardSkeleton } from "@/components/ui/skeleton";
+import { ResaleCardSkeleton, Skeleton } from "@/components/ui/skeleton";
 
+/** Mesmo layout da lista de revenda (título, filtro, linhas, coluna lateral). */
 export default function RevendaLoading() {
   return (
-    <div className="min-h-screen animate-fade-in">
-      {/* Hero placeholder */}
-      <div className="bg-gradient-to-br from-primary/10 via-primary-glow/5 to-background py-8 md:py-16">
-        <div className="container px-4 mx-auto text-center space-y-4">
-          <div className="h-10 w-64 rounded-xl bg-muted/70 animate-pulse mx-auto" />
-          <div className="h-5 w-80 rounded-lg bg-muted/50 animate-pulse mx-auto" />
-          <div className="h-12 w-full max-w-md rounded-lg bg-muted/50 animate-pulse mx-auto mt-4" />
-        </div>
+    <div className="mx-auto max-w-7xl px-4 pb-10 pt-4 lg:px-6 lg:pt-8" aria-busy>
+      <Skeleton className="h-8 w-40" />
+      <Skeleton className="mt-3 h-4 w-80 max-w-full" />
+      <div className="mt-6 flex items-center justify-between gap-3">
+        <Skeleton className="h-11 w-full rounded-input sm:max-w-xs md:h-10" />
+        <Skeleton className="hidden h-4 w-28 sm:block" />
       </div>
-      {/* Grid */}
-      <div className="container py-8 px-4 mx-auto">
-        <div className="h-6 w-48 rounded-md bg-muted/70 animate-pulse mb-6" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+      <div className="mt-4 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-10">
+        <div className="space-y-2.5">
           {Array.from({ length: 6 }).map((_, i) => (
             <ResaleCardSkeleton key={i} />
           ))}
+        </div>
+        <div className="mt-10 space-y-4 lg:mt-0">
+          <Skeleton className="h-80 w-full rounded-card" />
+          <Skeleton className="h-36 w-full rounded-card" />
         </div>
       </div>
     </div>

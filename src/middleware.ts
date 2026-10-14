@@ -49,6 +49,10 @@ const publicRoutes = [
   { path: "/vip/[id]", whenAutenticated: "next" },
   { path: "/revenda", whenAutenticated: "next" },
   { path: "/revenda/anunciar", whenAutenticated: "next" },
+  // Ver um anúncio de revenda é público; o login só entra na hora de comprar
+  // (a própria página abre o modal). Antes o middleware mandava pro login
+  // antes mesmo de mostrar o ingresso.
+  { path: "/revenda/[id]", whenAutenticated: "next" },
   { path: "/para-produtores", whenAutenticated: "next" },
   { path: "/auth/callback", whenAutenticated: "next" },
   { path: "/privacidade", whenAutenticated: "next" },

@@ -19,7 +19,11 @@ function read(...segments: string[]) {
 }
 
 describe("checkout — código do promoter é um canal próprio, nunca o mecanismo de cupom", () => {
-  const CHECKOUT_SOURCE = read(APP_DIR, "(public-routes)", "evento", "[id]", "checkout", "page.tsx");
+  // Redesign 2026-10: a lógica do checkout saiu de page.tsx e vive em
+  // _components/ (container + campos de cupom/promoter). Os invariantes
+  // continuam valendo sobre o conjunto.
+  const CHECKOUT_DIR = path.join(APP_DIR, "(public-routes)", "evento", "[id]", "checkout");
+  const CHECKOUT_SOURCE = [read(CHECKOUT_DIR, "_components", "checkout-client.tsx"), read(CHECKOUT_DIR, "_components", "promo-fields.tsx")].join("\n");
 
   it("tem estado e input dedicados a promoterCode, distintos de cupomCodigo", () => {
     expect(CHECKOUT_SOURCE).toMatch(/const \[promoterCode, setPromoterCode\]/);
@@ -51,10 +55,9 @@ describe("checkout — código do promoter é um canal próprio, nunca o mecanis
   });
 
   it("a prévia do código nunca exibe identidade do promoter (nome/email/comissão)", () => {
-    const previewBlock = CHECKOUT_SOURCE.slice(
-      CHECKOUT_SOURCE.indexOf("Código do promoter (opcional)"),
-      CHECKOUT_SOURCE.indexOf("Código do promoter (opcional)") + 1500,
-    );
+    const anchor = CHECKOUT_SOURCE.indexOf('title="Código do promoter"');
+    expect(anchor).toBeGreaterThan(-1);
+    const previewBlock = CHECKOUT_SOURCE.slice(anchor, anchor + 1500);
     expect(previewBlock).not.toMatch(/promoterDisplayName|promoterEmail|commissionCents|comissão/i);
   });
 });

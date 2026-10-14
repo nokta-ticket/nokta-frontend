@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { AlertCircle, CheckCircle2, Shield } from "lucide-react";
+import { useState, type FormEvent } from "react";
+import Link from "next/link";
 import { toast } from "@/lib/toast";
+import api, { getErrorMessage } from "@/lib/axios";
+import { Card } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import api from "@/lib/axios";
+import { Icon } from "@/components/ui/icon";
 
-// ─── Validation ───────────────────────────────────────────────────────────────
+// ─── Validação ───────────────────────────────────────────────────────────────
 
 function validateCPF(raw: string): boolean {
   const d = raw.replace(/\D/g, "");
@@ -30,23 +33,23 @@ function maskCPF(value: string): string {
 }
 
 function birthdateError(date: string): string {
-  if (!date) return "Data obrigatória";
+  if (!date) return "Informe sua data de nascimento";
   const d = new Date(date);
   if (isNaN(d.getTime())) return "Data inválida";
   const age = (Date.now() - d.getTime()) / (365.25 * 24 * 3600 * 1000);
-  if (age < 0) return "Data no futuro";
-  if (age < 14) return "Você deve ter pelo menos 14 anos";
+  if (age < 0) return "A data não pode ser no futuro";
+  if (age < 14) return "Você precisa ter pelo menos 14 anos";
   if (age > 120) return "Data de nascimento inválida";
   return "";
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
+// ─── Componente ──────────────────────────────────────────────────────────────
 
-interface CpfGateProps {
-  onComplete: (cpf: string, dataNascimento: string) => void;
-}
-
-export function CpfGate({ onComplete }: CpfGateProps) {
+/**
+ * Pede CPF + nascimento uma única vez (PUT /auth/me) antes de emitir o
+ * ingresso. Bloqueia o checkout até salvar.
+ */
+export function CpfGate({ onComplete }: { onComplete: (cpf: string, dataNascimento: string) => void }) {
   const [cpf, setCpf] = useState("");
   const [dataNascimento, setDataNascimento] = useState("");
   const [loading, setLoading] = useState(false);
@@ -58,14 +61,9 @@ export function CpfGate({ onComplete }: CpfGateProps) {
   const dateErr = birthdateError(dataNascimento);
   const isValid = cpfValid && !dateErr;
 
-  const cpfErrMsg = cpfTouched
-    ? cpfRaw.length === 0 ? "CPF obrigatório"
-    : cpfRaw.length < 11 ? "CPF incompleto"
-    : !cpfValid ? "CPF inválido — verifique os dígitos"
-    : ""
-    : "";
+  const cpfErrMsg = cpfTouched ? (cpfRaw.length === 0 ? "Informe seu CPF" : cpfRaw.length < 11 ? "CPF incompleto" : !cpfValid ? "CPF inválido — confira os dígitos" : "") : "";
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setCpfTouched(true);
     setDataTouched(true);
@@ -75,102 +73,42 @@ export function CpfGate({ onComplete }: CpfGateProps) {
     try {
       await api.put("/auth/me", { cpf: cpfRaw, dataNascimento });
       onComplete(cpfRaw, dataNascimento);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Erro ao salvar dados. Tente novamente.");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Não deu pra salvar seus dados. Tente de novo."));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-        <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-sm space-y-6">
-          <div className="flex flex-col items-center gap-3 text-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-violet-50">
-              <Shield className="h-7 w-7 text-violet-500" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Quase lá!</h2>
-              <p className="mt-1 text-sm text-gray-500 leading-relaxed">
-                Precisamos do seu CPF e data de nascimento para emitir seu ingresso. Isso só é pedido uma vez.
-              </p>
-            </div>
-          </div>
+    <div className="mx-auto flex min-h-[60vh] max-w-md items-center px-4 py-10">
+      <Card accent className="slide-up w-full p-6 sm:p-8">
+        <h1 className="flex items-center gap-2.5 text-title font-semibold tracking-tight text-foreground">
+          <Icon name="shield" size={20} className="text-brand" />
+          Quase lá!
+        </h1>
+        <p className="mt-2 text-body text-muted-foreground">Precisamos do seu CPF e data de nascimento pra emitir o ingresso no seu nome. É pedido só uma vez.</p>
 
-          <form onSubmit={handleSubmit} noValidate className="space-y-4">
-            {/* CPF */}
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-gray-700">CPF</label>
-              <Input
-                type="text"
-                inputMode="numeric"
-                placeholder="000.000.000-00"
-                value={cpf}
-                onChange={(e) => setCpf(maskCPF(e.target.value))}
-                onBlur={() => setCpfTouched(true)}
-                className={`h-11 rounded-xl transition-colors ${
-                  cpfTouched && !cpfValid && cpf ? "border-red-400 focus-visible:ring-red-400"
-                  : cpfTouched && cpfValid ? "border-green-400 focus-visible:ring-green-400"
-                  : ""
-                }`}
-                maxLength={14}
-                autoComplete="off"
-              />
-              {cpfErrMsg && (
-                <p className="flex items-center gap-1 text-xs text-red-500">
-                  <AlertCircle size={12} /> {cpfErrMsg}
-                </p>
-              )}
-              {cpfTouched && cpfValid && (
-                <p className="flex items-center gap-1 text-xs text-green-600">
-                  <CheckCircle2 size={12} /> CPF válido
-                </p>
-              )}
-            </div>
+        <form onSubmit={handleSubmit} noValidate className="mt-6 space-y-4">
+          <Field label="CPF" htmlFor="cpf-gate-cpf" error={cpfErrMsg || undefined} hint={cpfTouched && cpfValid ? "CPF válido" : undefined}>
+            <Input id="cpf-gate-cpf" inputMode="numeric" autoComplete="off" placeholder="000.000.000-00" maxLength={14} value={cpf} onChange={(e) => setCpf(maskCPF(e.target.value))} onBlur={() => setCpfTouched(true)} aria-invalid={Boolean(cpfErrMsg) || undefined} />
+          </Field>
+          <Field label="Data de nascimento" htmlFor="cpf-gate-birth" error={dataTouched && dateErr ? dateErr : undefined}>
+            <Input id="cpf-gate-birth" type="date" autoComplete="bday" value={dataNascimento} onChange={(e) => setDataNascimento(e.target.value)} onBlur={() => setDataTouched(true)} max={new Date().toISOString().split("T")[0]} aria-invalid={(dataTouched && Boolean(dateErr)) || undefined} />
+          </Field>
+          <Button type="submit" size="full" loading={loading} className="mt-2">
+            Continuar pra compra
+          </Button>
+        </form>
 
-            {/* Data de nascimento */}
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-gray-700">Data de nascimento</label>
-              <Input
-                type="date"
-                value={dataNascimento}
-                onChange={(e) => setDataNascimento(e.target.value)}
-                onBlur={() => setDataTouched(true)}
-                className={`h-11 rounded-xl transition-colors ${
-                  dataTouched && dateErr ? "border-red-400 focus-visible:ring-red-400"
-                  : dataTouched && !dateErr && dataNascimento ? "border-green-400 focus-visible:ring-green-400"
-                  : ""
-                }`}
-                max={new Date().toISOString().split("T")[0]}
-              />
-              {dataTouched && dateErr && (
-                <p className="flex items-center gap-1 text-xs text-red-500">
-                  <AlertCircle size={12} /> {dateErr}
-                </p>
-              )}
-              {dataTouched && !dateErr && dataNascimento && (
-                <p className="flex items-center gap-1 text-xs text-green-600">
-                  <CheckCircle2 size={12} /> Data válida
-                </p>
-              )}
-            </div>
-
-            <Button
-              type="submit"
-              disabled={loading}
-              className="h-11 w-full rounded-xl bg-violet-600 font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
-            >
-              {loading ? "Salvando…" : "Continuar para compra"}
-            </Button>
-          </form>
-
-          <p className="text-center text-xs text-gray-400 leading-relaxed">
-            Seus dados são protegidos conforme a{" "}
-            <a href="/privacidade" className="underline hover:text-gray-600">Política de Privacidade</a>.
-          </p>
-        </div>
-      </div>
+        <p className="mt-5 text-center text-caption text-subtle-foreground">
+          Seus dados são protegidos conforme a{" "}
+          <Link href="/privacidade" className="underline underline-offset-2 hover:text-foreground">
+            Política de Privacidade
+          </Link>
+          .
+        </p>
+      </Card>
     </div>
   );
 }

@@ -1,33 +1,28 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
-import { X, Eye, EyeOff, Loader2 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Field } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/lib/toast";
 import api, { getErrorMessage } from "@/lib/axios";
 
 /**
- * Modal de login/cadastro reutilizável (checkout de evento e página do evento).
- * Mantém o comportamento original: login por e-mail/senha + link para cadastro.
+ * Modal de login reutilizável (checkout do evento e revenda). Mesmo
+ * comportamento de sempre: e-mail + senha, `signIn` com o usuário devolvido
+ * e link pro cadastro. Folha inferior no celular, centralizado no desktop
+ * (herdado do `Dialog`). Quem monta decide quando fecha (`onClose`).
  */
-export function LoginModal({
-  onClose,
-  onSuccess,
-  registerHref = "/register",
-}: {
-  onClose: () => void;
-  onSuccess: () => void;
-  registerHref?: string;
-}) {
+export function LoginModal({ onClose, onSuccess, registerHref = "/register" }: { onClose: () => void; onSuccess: () => void; registerHref?: string }) {
   const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   async function handleLogin(e: FormEvent) {
     e.preventDefault();
@@ -45,52 +40,39 @@ export function LoginModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
-      <div
-        className="relative z-10 w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl px-6 pt-5 pb-8"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* drag handle */}
-        <div className="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-5 sm:hidden" />
-
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-bold text-[17px] text-[#0F172A]">Entre para continuar</h2>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition">
-            <X size={16} />
-          </button>
-        </div>
-
-        <form onSubmit={handleLogin} className="space-y-3">
-          <Input
-            type="email" placeholder="E-mail" value={email}
-            onChange={(e) => setEmail(e.target.value)} required
-            className="h-11 text-[16px] sm:text-[14px]"
-          />
-          <div className="relative">
-            <Input
-              type={showPw ? "text" : "password"} placeholder="Senha" value={password}
-              onChange={(e) => setPassword(e.target.value)} required
-              className="h-11 text-[14px] pr-10"
-            />
-            <button type="button" onClick={() => setShowPw((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-              {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-          <Button type="submit" disabled={loading}
-            className="w-full h-11 font-bold text-[14px] bg-gradient-to-r from-[#9944CC] to-[#3399FF] text-white">
-            {loading ? <Loader2 size={16} className="animate-spin" /> : "Entrar"}
-          </Button>
+    <Dialog open onOpenChange={(open) => (!open && !loading ? onClose() : null)}>
+      <DialogContent size="sm">
+        <DialogHeader>
+          <DialogTitle>Entre pra continuar</DialogTitle>
+          <DialogDescription>Seus ingressos ficam guardados na sua conta.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleLogin} className="flex min-h-0 flex-1 flex-col">
+          <DialogBody className="gap-4">
+            <Field label="E-mail" htmlFor="login-email">
+              <Input id="login-email" type="email" inputMode="email" autoComplete="email" placeholder="voce@exemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
+            </Field>
+            <Field label="Senha" htmlFor="login-password" action={<Link href="/recuperar-senha" className="font-semibold text-brand hover:underline">Esqueci a senha</Link>}>
+              <div className="relative">
+                <Input id="login-password" type={showPw ? "text" : "password"} autoComplete="current-password" placeholder="Sua senha" value={password} onChange={(e) => setPassword(e.target.value)} required className="pr-12" />
+                <button type="button" onClick={() => setShowPw((v) => !v)} aria-label={showPw ? "Ocultar senha" : "Mostrar senha"} className="absolute right-1 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-surface-3 hover:text-foreground">
+                  <Icon name={showPw ? "eye-slash" : "eye"} size={14} />
+                </button>
+              </div>
+            </Field>
+          </DialogBody>
+          <DialogFooter className="flex-col sm:flex-col sm:items-stretch">
+            <Button type="submit" size="full" loading={loading}>
+              Entrar
+            </Button>
+            <p className="pt-1 text-center text-caption text-muted-foreground">
+              Não tem conta?{" "}
+              <Link href={registerHref} className="font-semibold text-brand hover:underline">
+                Criar conta
+              </Link>
+            </p>
+          </DialogFooter>
         </form>
-
-        <p className="mt-4 text-center text-[13px] text-gray-500">
-          Não tem conta?{" "}
-          <button onClick={() => router.push(registerHref)} className="text-[#9944CC] font-semibold hover:underline">
-            Cadastre-se
-          </button>
-        </p>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
