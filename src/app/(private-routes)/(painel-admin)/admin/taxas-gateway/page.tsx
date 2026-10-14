@@ -1,11 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Loader2, Save, AlertCircle } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldGroup } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/cn";
 import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
+import { formatDateTime } from "../_lib/format";
 
 interface GatewayConfig {
   id: number;
@@ -22,21 +29,10 @@ interface GatewayConfig {
   updatedAt: string;
 }
 
-function bpsToPercent(bps: number): string {
-  return (bps / 100).toFixed(2);
-}
-
-function percentToBps(pct: string): number {
-  return Math.round(parseFloat(pct || "0") * 100);
-}
-
-function centsToReais(cents: number): string {
-  return (cents / 100).toFixed(2);
-}
-
-function reaisToCents(reais: string): number {
-  return Math.round(parseFloat(reais || "0") * 100);
-}
+const bpsToPercent = (bps: number) => (bps / 100).toFixed(2);
+const percentToBps = (pct: string) => Math.round(parseFloat(pct || "0") * 100);
+const centsToReais = (cents: number) => (cents / 100).toFixed(2);
+const reaisToCents = (reais: string) => Math.round(parseFloat(reais || "0") * 100);
 
 export default function TaxasGatewayPage() {
   const [loading, setLoading] = useState(true);
@@ -52,9 +48,32 @@ export default function TaxasGatewayPage() {
   const [anticipationRate, setAnticipationRate] = useState("");
   const [settlementDays, setSettlementDays] = useState("");
 
-  useEffect(() => {
-    loadConfig();
+  const loadConfig = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.get<{ config: GatewayConfig | null }>("/admin/taxas-gateway");
+      if (data.config) {
+        const c = data.config;
+        setConfig(c);
+        setPixRate(bpsToPercent(c.pixRateBps));
+        setCardRates(Array.from({ length: 12 }, (_, i) => bpsToPercent(c.cardRateBps?.[i] ?? 0)));
+        setCardFixed(centsToReais(c.cardFixedCents));
+        setMaxInstallments(c.maxInstallments ?? 12);
+        setAccept3dsAttempt(c.accept3dsAttempt ?? false);
+        setWithdrawalFixed(centsToReais(c.withdrawalFixedCents));
+        setAnticipationRate(bpsToPercent(c.anticipationRateBps));
+        setSettlementDays(String(c.settlementDays));
+      }
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Não foi possível carregar as taxas."));
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadConfig();
+  }, [loadConfig]);
 
   function setCardRate(index: number, value: string) {
     setCardRates((prev) => {
@@ -64,33 +83,10 @@ export default function TaxasGatewayPage() {
     });
   }
 
-  async function loadConfig() {
-    setLoading(true);
-    try {
-      const { data } = await api.get("/admin/taxas-gateway");
-      if (data.config) {
-        const c = data.config as GatewayConfig;
-        setConfig(c);
-        setPixRate(bpsToPercent(c.pixRateBps));
-        setCardRates((c.cardRateBps ?? []).map((bps) => bpsToPercent(bps ?? 0)));
-        setCardFixed(centsToReais(c.cardFixedCents));
-        setMaxInstallments(c.maxInstallments ?? 12);
-        setAccept3dsAttempt(c.accept3dsAttempt ?? false);
-        setWithdrawalFixed(centsToReais(c.withdrawalFixedCents));
-        setAnticipationRate(bpsToPercent(c.anticipationRateBps));
-        setSettlementDays(String(c.settlementDays));
-      }
-    } catch (err) {
-      toast.error(getErrorMessage(err, "Erro ao carregar configurações."));
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function handleSave() {
     setSaving(true);
     try {
-      const payload = {
+      await api.put("/admin/taxas-gateway", {
         pixRateBps: percentToBps(pixRate),
         cardRateBps: cardRates.map((r) => percentToBps(r)),
         cardFixedCents: reaisToCents(cardFixed),
@@ -99,179 +95,157 @@ export default function TaxasGatewayPage() {
         withdrawalFixedCents: reaisToCents(withdrawalFixed),
         anticipationRateBps: percentToBps(anticipationRate),
         settlementDays: parseInt(settlementDays, 10),
-      };
-
-      await api.put("/admin/taxas-gateway", payload);
-      toast.success("Taxas atualizadas com sucesso!");
+      });
+      toast.success("Taxas salvas");
       await loadConfig();
     } catch (err) {
-      toast.error(getErrorMessage(err, "Erro ao salvar configurações."));
+      toast.error(getErrorMessage(err, "Não foi possível salvar as taxas."));
     } finally {
       setSaving(false);
     }
   }
 
-  if (loading) {
+  if (loading && !config) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-64" />
+        <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+          <div className="space-y-6">
+            <Skeleton className="h-40 rounded-card" />
+            <Skeleton className="h-72 rounded-card" />
+          </div>
+          <Skeleton className="h-56 rounded-card" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <div>
-        <h1 className="text-2xl font-semibold">Taxas do Gateway</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Configure as taxas de processamento da Pagar.me. Alterações afetam novos checkouts imediatamente.
-        </p>
-      </div>
+    <form
+      className="space-y-6"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void handleSave();
+      }}
+    >
+      <PageHeader
+        title="Taxas do gateway"
+        description="Taxas de processamento da Pagar.me. Alterações valem pra novos checkouts imediatamente."
+        meta={config?.updatedAt ? <span>Última alteração em {formatDateTime(config.updatedAt)}</span> : undefined}
+        actions={
+          <Button type="submit" loading={saving} leftIcon="save">
+            Salvar alterações
+          </Button>
+        }
+      />
 
-      {!config && (
-        <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 p-4 text-amber-800 text-sm">
-          <AlertCircle className="h-5 w-5 shrink-0" />
-          <span>Nenhuma configuração encontrada. Preencha os campos e salve para criar.</span>
-        </div>
-      )}
+      {!config ? <Callout tone="warning" title="Nenhuma configuração encontrada">Preencha os campos e salve pra criar a primeira.</Callout> : null}
 
-      <div className="space-y-6">
-        <Section title="PIX">
-          <Field label="Taxa (%)" value={pixRate} onChange={setPixRate} placeholder="1.09" />
-          <p className="self-end pb-2 text-sm text-gray-500">
-            Sem taxa fixa: a Pagar.me cobra só o percentual sobre o total do Pix.
-          </p>
-        </Section>
+      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Pix</CardTitle>
+                <CardDescription>Sem taxa fixa: a Pagar.me cobra só o percentual sobre o total do Pix.</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-4">
+              <Field label="Taxa" htmlFor="pix-rate" className="max-w-xs">
+                <Input id="pix-rate" type="number" step="0.01" min="0" suffix="%" value={pixRate} onChange={(e) => setPixRate(e.target.value)} placeholder="1.09" />
+              </Field>
+            </CardContent>
+          </Card>
 
-        <div className="rounded-lg border bg-white p-5 space-y-4">
-          <h2 className="text-lg font-medium">Cartão de Crédito</h2>
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Cartão de crédito</CardTitle>
+                <CardDescription>Parcelas acima do máximo não aparecem no checkout.</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-4">
+              <FieldGroup columns={2}>
+                <Field label="Máximo de parcelas oferecidas" htmlFor="max-installments">
+                  <NativeSelect id="max-installments" value={maxInstallments} onChange={(e) => setMaxInstallments(parseInt(e.target.value, 10))}>
+                    {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                      <option key={n} value={n}>
+                        {n}x
+                      </option>
+                    ))}
+                  </NativeSelect>
+                </Field>
+                <Field label="Taxa fixa por transação" htmlFor="card-fixed" hint="Gateway + antifraude.">
+                  <Input id="card-fixed" type="number" step="0.01" min="0" prefix="R$" value={cardFixed} onChange={(e) => setCardFixed(e.target.value)} placeholder="0.99" />
+                </Field>
+              </FieldGroup>
 
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Máximo de parcelas oferecidas ao cliente</label>
-            <select
-              value={maxInstallments}
-              onChange={(e) => setMaxInstallments(parseInt(e.target.value, 10))}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
-            >
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
-                <option key={n} value={n}>{n}x</option>
-              ))}
-            </select>
-            <p className="text-xs text-muted-foreground">
-              Parcelas acima desse limite não aparecem no checkout. (Taxas abaixo ficam desativadas.)
-            </p>
-          </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">Taxa por parcela (%)</p>
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                  {cardRates.map((rate, i) => {
+                    const disabled = i + 1 > maxInstallments;
+                    return (
+                      <Field key={i} label={`${i + 1}x`} htmlFor={`card-rate-${i}`} className={cn(disabled && "opacity-40")}>
+                        <Input id={`card-rate-${i}`} type="number" step="0.01" min="0" suffix="%" value={rate} disabled={disabled} onChange={(e) => setCardRate(i, e.target.value)} placeholder="0.00" />
+                      </Field>
+                    );
+                  })}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          <div className="pt-2 border-t">
-            <p className="text-sm font-medium text-gray-700 mb-3">Taxa por parcela (%)</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {cardRates.map((rate, i) => {
-                const disabled = i + 1 > maxInstallments;
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Autenticação 3DS (cartão)</CardTitle>
+                <CardDescription>Define quais resultados de autenticação 3DS liberam a compra no cartão. O 3DS é obrigatório — cartão sem autenticação válida é sempre bloqueado.</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-3 pt-4 sm:grid-cols-2">
+              {[
+                { value: false, title: "Aceitar apenas Y", detail: "Mais seguro, menor risco de chargeback. Pode reduzir a aprovação de alguns cartões. Padrão recomendado." },
+                { value: true, title: "Aceitar Y e A", detail: "Maior conversão: aceita também tentativas de autenticação registradas (A). Pode aumentar o risco em alguns casos." },
+              ].map((opt) => {
+                const checked = accept3dsAttempt === opt.value;
                 return (
-                  <div key={i} className={`space-y-1 ${disabled ? "opacity-40" : ""}`}>
-                    <label className="text-sm font-medium text-gray-700">{i + 1}x</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={rate}
-                      disabled={disabled}
-                      onChange={(e) => setCardRate(i, e.target.value)}
-                      placeholder="0.00"
-                    />
-                  </div>
+                  <label key={String(opt.value)} className={cn("flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors", checked ? "border-brand bg-brand-soft/60 ring-1 ring-brand-ring" : "border-border hover:border-border-strong")}>
+                    <input type="radio" name="threeds-policy" className="mt-1 size-4 accent-brand" checked={checked} onChange={() => setAccept3dsAttempt(opt.value)} />
+                    <span>
+                      <span className="block text-sm font-semibold text-foreground">{opt.title}</span>
+                      <span className="mt-0.5 block text-caption text-muted-foreground">{opt.detail}</span>
+                    </span>
+                  </label>
                 );
               })}
-            </div>
-          </div>
-
-          <div className="pt-2 border-t">
-            <Field label="Taxa fixa por transação (R$)" value={cardFixed} onChange={setCardFixed} placeholder="0.99" hint="Gateway + Antifraude" />
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
-        <div className="rounded-lg border bg-white p-5 space-y-4">
-          <div>
-            <h2 className="text-lg font-medium">Autenticação 3DS (cartão)</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Define quais resultados de autenticação 3DS liberam a compra no cartão. O 3DS é obrigatório — cartão sem autenticação válida é sempre bloqueado.
-            </p>
-          </div>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Saque e antecipação</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-4">
+              <Field label="Taxa de saque" htmlFor="withdrawal-fixed">
+                <Input id="withdrawal-fixed" type="number" step="0.01" min="0" prefix="R$" value={withdrawalFixed} onChange={(e) => setWithdrawalFixed(e.target.value)} placeholder="3.67" />
+              </Field>
+              <Field label="Antecipação" htmlFor="anticipation-rate">
+                <Input id="anticipation-rate" type="number" step="0.01" min="0" suffix="%" value={anticipationRate} onChange={(e) => setAnticipationRate(e.target.value)} placeholder="2.89" />
+              </Field>
+              <Field label="Prazo de recebimento" htmlFor="settlement-days">
+                <Input id="settlement-days" type="number" step="1" min="0" suffix="dias" value={settlementDays} onChange={(e) => setSettlementDays(e.target.value)} placeholder="15" />
+              </Field>
+            </CardContent>
+          </Card>
 
-          <label className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer ${!accept3dsAttempt ? "border-violet-500 bg-violet-50" : "border-gray-200"}`}>
-            <input type="radio" name="threeds-policy" checked={!accept3dsAttempt} onChange={() => setAccept3dsAttempt(false)} className="mt-1 accent-violet-600" />
-            <div>
-              <p className="text-sm font-medium text-gray-800">Aceitar apenas Y</p>
-              <p className="text-xs text-muted-foreground">Mais seguro, menor risco de chargeback. Pode reduzir a aprovação de alguns cartões. (Padrão recomendado.)</p>
-            </div>
-          </label>
-
-          <label className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer ${accept3dsAttempt ? "border-violet-500 bg-violet-50" : "border-gray-200"}`}>
-            <input type="radio" name="threeds-policy" checked={accept3dsAttempt} onChange={() => setAccept3dsAttempt(true)} className="mt-1 accent-violet-600" />
-            <div>
-              <p className="text-sm font-medium text-gray-800">Aceitar Y e A</p>
-              <p className="text-xs text-muted-foreground">Maior conversão: aceita também tentativas de autenticação registradas (A). Pode aumentar o risco em alguns casos.</p>
-            </div>
-          </label>
+          <Callout tone="info" title="Quem paga o quê">
+            A taxa da Nokta é por workspace (veja em cada um). As taxas daqui são do processamento e valem pra todos os workspaces, pagas pelo comprador.
+          </Callout>
         </div>
-
-        <Section title="Outros">
-          <Field label="Taxa de saque (R$)" value={withdrawalFixed} onChange={setWithdrawalFixed} placeholder="3.67" />
-          <Field label="Antecipação (%)" value={anticipationRate} onChange={setAnticipationRate} placeholder="2.89" />
-          <Field label="Prazo de recebimento (dias)" value={settlementDays} onChange={setSettlementDays} placeholder="15" />
-        </Section>
       </div>
-
-      <div className="flex justify-end pt-4 border-t">
-        <Button onClick={handleSave} disabled={saving} className="bg-violet-600 hover:bg-violet-700">
-          {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-          Salvar alterações
-        </Button>
-      </div>
-
-      {config?.updatedAt && (
-        <p className="text-xs text-muted-foreground text-right">
-          Última atualização: {new Date(config.updatedAt).toLocaleString("pt-BR")}
-        </p>
-      )}
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-lg border bg-white p-5 space-y-4">
-      <h2 className="text-lg font-medium">{title}</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-  hint,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  hint?: string;
-}) {
-  return (
-    <div className="space-y-1">
-      <label className="text-sm font-medium text-gray-700">{label}</label>
-      <Input
-        type="number"
-        step="0.01"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-      />
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-    </div>
+    </form>
   );
 }

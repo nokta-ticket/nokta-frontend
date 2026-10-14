@@ -1,18 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-  AlertCircle,
-  CalendarCheck,
-  DollarSign,
-  RefreshCcw,
-  TicketCheck,
-  User,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { PageState } from "@/components/ui/page-state";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
 import api, { getErrorMessage } from "@/lib/axios";
-import MetricCard from "./_components/metric-card";
+import { RefreshButton } from "../_components/refresh-button";
+import { ADMIN_NAV } from "../_lib/nav";
 import { ChartAreaLinear } from "./_components/chart-area-linear";
 
 interface DashboardData {
@@ -22,115 +19,66 @@ interface DashboardData {
   totalRevenue: number;
 }
 
+const SHORTCUTS = ADMIN_NAV.flatMap((g) => g.items).filter((i) => ["/admin/usuarios", "/admin/workspaces", "/admin/juridico-financeiro", "/admin/pedidos-produtor", "/admin/evidencias", "/admin/ingressos"].includes(i.href));
+
 export default function DashboardAdmin() {
-  const [usersTotal, setUsersTotal] = useState<number>();
-  const [eventsTotal, setEventsTotal] = useState<number>();
-  const [faturamentoTotal, setFaturamentoTotal] = useState<number>();
-  const [ingressosVendidos, setIngressosVendidos] = useState<number>();
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
-  async function getDashboardData() {
-    setLoading(true);
+  const load = useCallback(async () => {
+    setPending(true);
     setError(null);
-
     try {
-      const { data } = await api.get<DashboardData>("/admin/dashboard");
-      setUsersTotal(data.users);
-      setEventsTotal(data.events);
-      setFaturamentoTotal(data.totalRevenue);
-      setIngressosVendidos(data.ticketsSold);
+      const res = await api.get<DashboardData>("/admin/dashboard");
+      setData(res.data);
     } catch (err) {
-      setError(getErrorMessage(err, "Nao foi possivel carregar o dashboard."));
+      setError(getErrorMessage(err, "Não foi possível carregar o dashboard."));
     } finally {
-      setLoading(false);
+      setPending(false);
     }
-  }
-
-  useEffect(() => {
-    void getDashboardData();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="space-y-8">
-        <div>
-          <div className="h-7 w-56 animate-pulse rounded bg-muted" />
-          <div className="mt-2 h-4 w-80 animate-pulse rounded bg-muted" />
-        </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="rounded-2xl border bg-card p-5 shadow-sm">
-              <div className="mb-4 h-4 w-24 animate-pulse rounded bg-muted" />
-              <div className="h-8 w-20 animate-pulse rounded bg-muted" />
-            </div>
-          ))}
-        </div>
-        <div className="rounded-2xl border bg-card p-6 shadow-sm">
-          <div className="mb-4 h-5 w-40 animate-pulse rounded bg-muted" />
-          <div className="h-64 animate-pulse rounded bg-muted" />
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <PageState
-        title="Nao foi possivel carregar o dashboard"
-        description={error}
-        icon={<AlertCircle className="h-8 w-8 text-red-500" />}
-        actionLabel="Tentar novamente"
-        onAction={() => void getDashboardData()}
-      />
-    );
-  }
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">Ola, Administrador</h1>
-        <p className="mt-1 text-muted-foreground">
-          Aqui estao as metricas globais da plataforma:
-        </p>
-      </div>
+    <div className="space-y-6">
+      <PageHeader title="Dashboard" description="Métricas globais da plataforma." actions={<RefreshButton onClick={() => void load()} pending={pending} />} />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          title="Usuarios cadastrados"
-          value={usersTotal?.toString() ?? "--"}
-          icon={<User className="h-5 w-5 text-blue-500" />}
-        />
-        <MetricCard
-          title="Eventos criados"
-          value={eventsTotal?.toString() ?? "--"}
-          icon={<CalendarCheck className="h-5 w-5 text-purple-500" />}
-        />
-        <MetricCard
-          title="Faturamento total"
-          value={`R$ ${
-            faturamentoTotal?.toLocaleString("pt-BR", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            }) || "--"
-          }`}
-          icon={<DollarSign className="h-5 w-5 text-green-600" />}
-        />
-        <MetricCard
-          title="Ingressos vendidos"
-          value={ingressosVendidos?.toString() || "--"}
-          icon={<TicketCheck className="h-5 w-5 text-yellow-500" />}
-        />
-      </div>
+      {error && !data ? (
+        <ErrorState title="Não deu pra carregar o dashboard" description={error} onRetry={() => void load()} />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard label="Usuários cadastrados" icon="users" value={data?.users} loading={!data} className="slide-up" />
+          <StatCard label="Eventos criados" icon="calendar" value={data?.events} loading={!data} className="slide-up [--i:1]" />
+          <StatCard label="Ingressos vendidos" icon="ticket" value={data?.ticketsSold} loading={!data} className="slide-up [--i:2]" />
+          <StatCard label="Faturamento total" icon="sack-dollar" value={data?.totalRevenue} format="currency" loading={!data} className="slide-up [--i:3]" />
+        </div>
+      )}
 
-      <div className="flex justify-end">
-        <Button variant="outline" onClick={() => void getDashboardData()}>
-          <RefreshCcw className="mr-2 h-4 w-4" />
-          Atualizar metricas
-        </Button>
+      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <ChartAreaLinear />
+        <Card>
+          <CardHeader>
+            <CardTitle>Atalhos</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-3">
+            <ul className="divide-y divide-border">
+              {SHORTCUTS.map((item) => (
+                <li key={item.href}>
+                  <Link href={item.href} className="group flex items-center gap-3 py-3 text-sm font-medium text-foreground transition-colors hover:text-brand">
+                    <Icon name={item.icon} size={14} fw className="text-muted-foreground group-hover:text-brand" />
+                    <span className="flex-1">{item.label}</span>
+                    <Icon name="chevron-right" size={11} className="text-subtle-foreground" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       </div>
-
-      <ChartAreaLinear />
     </div>
   );
 }

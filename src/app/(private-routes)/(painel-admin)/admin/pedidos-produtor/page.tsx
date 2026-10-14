@@ -1,254 +1,138 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { AlertCircle, Check, Search, X as XIcon } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { PageState } from "@/components/ui/page-state";
-import { formatarCPF } from "@/lib/formatarCPF";
-import { toPaginate } from "@/lib/pagination";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { SearchInput, useDebouncedValue } from "@/components/ui/search-input";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
+import { RowsSkeleton } from "@/components/ui/skeleton";
+import { Icon } from "@/components/ui/icon";
+import { DataTable, DataTableBody, DataTableCell, DataTableEmpty, DataTableHead, DataTableHeadCell, DataTablePagination, DataTableRow, DataTableShell, DataTableToolbar, MobileCard, MobileCardList } from "@/components/ui/data-table";
 import api, { getErrorMessage } from "@/lib/axios";
-import { Paginate } from "@/interfaces/paginate";
 import { toast } from "@/lib/toast";
-
-interface User {
-  cpf: string;
-  email: string;
-  nome: string;
-}
+import { useAdminList } from "../_hooks/use-admin-list";
+import { RefreshButton } from "../_components/refresh-button";
+import { formatCPF } from "../_lib/format";
 
 interface Pedido {
   id: string;
-  user: User;
+  user: { cpf: string; email: string; nome: string };
 }
 
-interface GetPedido {
-  data: Pedido[];
-  paginate: Paginate;
-}
+type Acao = "aprovar" | "recusar";
 
 const ITEMS_PER_PAGE = 10;
 
+// Status enviado no PUT /admin/solicitacoes/:id.
+const STATUS_BY_ACTION: Record<Acao, number> = { aprovar: 2, recusar: 3 };
+
 export default function PedidosProdutorPage() {
-  const [pedidos, setPedidos] = useState<Pedido[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [paginate, setPaginate] = useState<Paginate>({
-    currentPage: 1,
-    totalPages: 1,
-  });
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debounced = useDebouncedValue(search.trim(), 400);
+  const list = useAdminList<Pedido>("/admin/solicitacoes", { nameOrEmail: debounced || null }, { perPage: ITEMS_PER_PAGE, fallbackError: "Não foi possível carregar as solicitações." });
+  const rows = list.rows ?? [];
+  const [target, setTarget] = useState<{ pedido: Pedido; acao: Acao } | null>(null);
 
-  async function getOrders(page = 1) {
-    setLoading(true);
-    setError(null);
-
+  async function act(pedido: Pedido, acao: Acao) {
     try {
-      const { data } = await api.get<GetPedido>("/admin/solicitacoes", {
-        params: {
-          page,
-          limit: ITEMS_PER_PAGE,
-          nameOrEmail: search.trim() !== "" ? search.trim() : null,
-        },
-      });
-
-      setPedidos(data.data);
-      setPaginate(toPaginate(data.paginate));
+      await api.put(`/admin/solicitacoes/${pedido.id}`, { status: STATUS_BY_ACTION[acao] });
+      toast.success(acao === "aprovar" ? "Pedido aprovado" : "Pedido recusado");
+      await list.reload();
     } catch (err) {
-      setPedidos([]);
-      setPaginate(toPaginate(null));
-      setError(
-        getErrorMessage(err, "Nao foi possivel carregar as solicitacoes.")
-      );
-    } finally {
-      setLoading(false);
+      toast.error(getErrorMessage(err, "Não foi possível processar o pedido."));
     }
   }
 
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-
-    debounceRef.current = setTimeout(
-      () => {
-        void getOrders(1);
-      },
-      search ? 500 : 0
-    );
-
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [search]);
-
-  function castActionToStatus(action: "aprovar" | "recusar") {
-    switch (action) {
-      case "aprovar":
-        return 2;
-      case "recusar":
-        return 3;
-      default:
-        throw new Error("Status nao identificado.");
-    }
-  }
-
-  async function act(id: string, action: "aprovar" | "recusar") {
-    try {
-      const status = castActionToStatus(action);
-      await api.put(`/admin/solicitacoes/${id}`, { status });
-      toast.success(
-        action === "aprovar" ? "Pedido aprovado." : "Pedido recusado."
-      );
-      await getOrders(paginate.currentPage);
-    } catch (err) {
-      toast.error(getErrorMessage(err, "Erro ao processar pedido."));
-    }
-  }
+  const emptyTitle = debounced ? "Nenhuma solicitação pra essa busca" : "Nenhuma solicitação pendente";
+  const actions = (p: Pedido) => (
+    <>
+      <Button variant="subtle" size="icon-sm" aria-label={`Aprovar ${p.user.nome}`} title="Aprovar" className="hover:bg-success-bg hover:text-success" onClick={() => setTarget({ pedido: p, acao: "aprovar" })}>
+        <Icon name="check" size={14} />
+      </Button>
+      <Button variant="subtle" size="icon-sm" aria-label={`Recusar ${p.user.nome}`} title="Recusar" className="hover:bg-danger-bg hover:text-danger" onClick={() => setTarget({ pedido: p, acao: "recusar" })}>
+        <Icon name="close" size={14} />
+      </Button>
+    </>
+  );
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-semibold">Pedidos de produtor</h1>
+      <PageHeader title="Pedidos de produtor" description="Contas pedindo pra virar produtor. Aprovar libera o nível de produtor na hora." />
 
-        <div className="relative w-full sm:w-80">
-          <Search
-            size={18}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-          />
-          <Input
-            placeholder="Buscar por nome ou e-mail"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            className="pl-10"
-          />
-        </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="Pendentes" icon="clipboard-check" value={list.rows ? list.paginate.total : null} hint={debounced ? "Com a busca atual" : "Aguardando decisão"} />
+        <StatCard label="Nesta página" icon="list" value={list.rows ? rows.length : null} />
+        <StatCard label="Com CPF informado" icon="id-card" value={list.rows ? rows.filter((p) => Boolean(p.user.cpf)).length : null} hint="Nesta página" />
       </div>
 
-      <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
-        {error ? (
-          <div className="p-6">
-            <PageState
-              title="Nao foi possivel carregar as solicitacoes"
-              description={error}
-              icon={<AlertCircle className="h-8 w-8 text-red-500" />}
-              actionLabel="Tentar novamente"
-              onAction={() => void getOrders()}
-            />
-          </div>
-        ) : (
-          <Table>
-            <TableHeader className="bg-muted/50">
-              <TableRow>
-                <TableHead className="px-6 py-3">Nome</TableHead>
-                <TableHead className="px-6 py-3">E-mail</TableHead>
-                <TableHead className="px-6 py-3">CPF</TableHead>
-                <TableHead className="px-6 py-3 text-right">Acoes</TableHead>
-              </TableRow>
-            </TableHeader>
+      <DataTableToolbar>
+        <SearchInput value={search} onChange={setSearch} placeholder="Buscar por nome ou e-mail" className="min-w-0 flex-1 basis-full sm:basis-auto sm:max-w-xl" />
+        <RefreshButton onClick={() => void list.reload()} pending={list.loading} className="ml-auto" />
+      </DataTableToolbar>
 
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="px-6 py-6 text-center">
-                    Carregando...
-                  </TableCell>
-                </TableRow>
-              ) : null}
-
-              {!loading && pedidos.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="px-6 py-6 text-center">
-                    {search
-                      ? "Nenhuma solicitacao encontrada para a busca atual."
-                      : "Nenhuma solicitacao pendente no momento."}
-                  </TableCell>
-                </TableRow>
-              ) : null}
-
-              {!loading
-                ? pedidos.map((pedido) => (
-                    <TableRow
-                      key={pedido.id}
-                      className="border-b transition hover:bg-muted/40"
-                    >
-                      <TableCell className="px-6 py-3 font-medium">
-                        {pedido.user.nome}
-                      </TableCell>
-                      <TableCell className="px-6 py-3">
-                        {pedido.user.email}
-                      </TableCell>
-                      <TableCell className="px-6 py-3">
-                        {formatarCPF(pedido.user.cpf)}
-                      </TableCell>
-                      <TableCell className="px-6 py-3">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="bg-green-100 text-green-700 hover:bg-green-200"
-                            onClick={() => void act(pedido.id, "aprovar")}
-                          >
-                            <Check size={16} />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="bg-red-100 text-red-700 hover:bg-red-200"
-                            onClick={() => void act(pedido.id, "recusar")}
-                          >
-                            <XIcon size={16} />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+      {list.error ? (
+        <ErrorState title="Não deu pra carregar as solicitações" description={list.error} onRetry={() => void list.reload()} />
+      ) : list.rows === null ? (
+        <RowsSkeleton rows={6} />
+      ) : (
+        <DataTableShell
+          table={
+            <DataTable>
+              <DataTableHead>
+                <tr>
+                  <DataTableHeadCell>Nome</DataTableHeadCell>
+                  <DataTableHeadCell>E-mail</DataTableHeadCell>
+                  <DataTableHeadCell>CPF</DataTableHeadCell>
+                  <DataTableHeadCell align="right">
+                    <span className="sr-only">Ações</span>
+                  </DataTableHeadCell>
+                </tr>
+              </DataTableHead>
+              <DataTableBody>
+                {rows.length === 0 ? (
+                  <DataTableEmpty colSpan={4} icon="clipboard-check" title={emptyTitle} description="Quando alguém pedir pra virar produtor, aparece aqui." />
+                ) : (
+                  rows.map((p, i) => (
+                    <DataTableRow key={p.id} index={i}>
+                      <DataTableCell className="font-medium">{p.user.nome}</DataTableCell>
+                      <DataTableCell className="text-muted-foreground">{p.user.email}</DataTableCell>
+                      <DataTableCell className="tnum text-muted-foreground">{p.user.cpf ? formatCPF(p.user.cpf) : <span className="text-subtle-foreground">Não informado</span>}</DataTableCell>
+                      <DataTableCell align="right">
+                        <div className="flex justify-end gap-1">{actions(p)}</div>
+                      </DataTableCell>
+                    </DataTableRow>
                   ))
-                : null}
-            </TableBody>
-          </Table>
-        )}
+                )}
+              </DataTableBody>
+            </DataTable>
+          }
+          mobile={
+            rows.length === 0 ? (
+              <EmptyState compact icon="clipboard-check" title={emptyTitle} />
+            ) : (
+              <MobileCardList>
+                {rows.map((p, i) => (
+                  <MobileCard key={p.id} index={i} title={p.user.nome} subtitle={p.user.email} meta={[{ label: "CPF", value: p.user.cpf ? formatCPF(p.user.cpf) : "Não informado", num: true }]} actions={actions(p)} />
+                ))}
+              </MobileCardList>
+            )
+          }
+          footer={<DataTablePagination page={list.page} lastPage={list.paginate.lastPage} total={list.paginate.total} perPage={list.paginate.perPage} noun="solicitações" onPageChange={(p) => void list.goTo(p)} />}
+        />
+      )}
 
-        {!loading && !error && paginate.totalPages > 1 ? (
-          <div className="border-t bg-muted/30 p-4">
-            <Pagination>
-              <PaginationContent className="justify-center gap-4">
-                <PaginationPrevious
-                  onClick={() => void getOrders(paginate.currentPage - 1)}
-                  className={
-                    paginate.currentPage === 1
-                      ? "pointer-events-none opacity-50"
-                      : ""
-                  }
-                />
-                <div className="text-sm font-medium">
-                  Pagina {paginate.currentPage} de {paginate.totalPages}
-                </div>
-                <PaginationNext
-                  onClick={() => void getOrders(paginate.currentPage + 1)}
-                  className={
-                    paginate.currentPage === paginate.totalPages
-                      ? "pointer-events-none opacity-50"
-                      : ""
-                  }
-                />
-              </PaginationContent>
-            </Pagination>
-          </div>
-        ) : null}
-      </div>
+      <ConfirmDialog
+        open={target !== null}
+        onOpenChange={(o) => (!o ? setTarget(null) : null)}
+        title={target?.acao === "aprovar" ? "Aprovar pedido" : "Recusar pedido"}
+        description={target ? (target.acao === "aprovar" ? `${target.pedido.user.nome} passa a ser produtor e pode criar eventos.` : `${target.pedido.user.nome} continua como usuário comum e pode pedir de novo depois.`) : undefined}
+        confirmLabel={target?.acao === "aprovar" ? "Aprovar" : "Recusar"}
+        danger={target?.acao === "recusar"}
+        icon={target?.acao === "aprovar" ? "check-circle" : "x-circle"}
+        onConfirm={() => (target ? act(target.pedido, target.acao) : undefined)}
+      />
     </div>
   );
 }

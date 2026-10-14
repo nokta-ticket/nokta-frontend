@@ -1,10 +1,9 @@
-import { Metadata } from "next";
+import type { Metadata } from "next";
 import CentralDeAjuda from "./_components/central-de-ajuda";
 
 export const metadata: Metadata = {
-  title: "Central de Ajuda | Nokta Tickets",
-  description:
-    "Encontre respostas para as dúvidas mais comuns sobre ingressos, eventos, pagamento e conta, ou fale com a nossa equipe.",
+  title: "Central de ajuda",
+  description: "Respostas pras dúvidas mais comuns sobre ingressos, pagamento, conta e produção de eventos — ou fala com a nossa equipe.",
 };
 
 export default function AjudaPage() {

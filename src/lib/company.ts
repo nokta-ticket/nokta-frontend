@@ -25,6 +25,8 @@ export const COMPANY = {
   phone: { display: "(11) 1331-3212", e164: "+551113313212" },
   emails: {
     support: "suporte@noktatickets.com.br",
+    /** Encarregado de dados (LGPD) — citado na Política de Privacidade. */
+    privacy: "privacidade@noktatickets.com.br",
   },
   sites: {
     tickets: "https://www.noktatickets.com.br",

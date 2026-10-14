@@ -1,27 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AlertCircle } from "lucide-react";
-
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { PageState } from "@/components/ui/page-state";
-import { Paginate } from "@/interfaces/paginate";
-import { toPaginate } from "@/lib/pagination";
-import api, { getErrorMessage } from "@/lib/axios";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { StatusBadge } from "@/components/ui/badge";
+import { ErrorState } from "@/components/ui/empty-state";
+import { RowsSkeleton } from "@/components/ui/skeleton";
+import { DataTablePagination, DataTableToolbar } from "@/components/ui/data-table";
+import { useAdminList } from "../_hooks/use-admin-list";
+import { RefreshButton } from "../_components/refresh-button";
+import { SimpleTable } from "../_components/simple-table";
+import { AUDIT_ACTION_META, ENTITY_LABEL, metaOf } from "../_lib/status-meta";
+import { formatDateTime } from "../_lib/format";
 
 interface AuditLog {
   id: number;
@@ -33,155 +22,67 @@ interface AuditLog {
   createdAt: string;
 }
 
-interface GetAuditResponse {
-  data: AuditLog[];
-  paginate: Paginate;
-}
-
-const ENTITY_LABEL: Record<string, string> = {
-  USER: "Usuário",
-  USER_TICKET: "Ingresso",
-  EVENT: "Evento",
-  ORGANIZATION: "Workspace",
-};
-
 export default function AuditoriaPage() {
-  const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [paginate, setPaginate] = useState<Paginate>({
-    currentPage: 1,
-    totalPages: 1,
-  });
-
-  async function getLogs(page = 1) {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { data } = await api.get<GetAuditResponse>("/admin/auditoria", {
-        params: { page },
-      });
-      setLogs(data.data);
-      setPaginate(toPaginate(data.paginate));
-    } catch (err) {
-      setLogs([]);
-      setPaginate(toPaginate(null));
-      setError(getErrorMessage(err, "Não foi possível carregar a auditoria."));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    void getLogs(1);
-  }, []);
+  const list = useAdminList<AuditLog>("/admin/auditoria", {}, { fallbackError: "Não foi possível carregar a auditoria." });
+  const rows = list.rows ?? [];
+  const admins = new Set(rows.map((l) => l.admin?.email ?? l.admin?.id).filter(Boolean)).size;
+  const destructive = rows.filter((l) => metaOf(AUDIT_ACTION_META, l.action).tone === "danger").length;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Auditoria de Ações</h1>
-      <p className="text-sm text-muted-foreground">
-        Registro de todas as ações administrativas realizadas no painel.
-      </p>
+      <PageHeader title="Auditoria" description="Registro de todas as ações administrativas feitas neste painel." />
 
-      <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
-        {error ? (
-          <div className="p-6">
-            <PageState
-              title="Não foi possível carregar a auditoria"
-              description={error}
-              icon={<AlertCircle className="h-8 w-8 text-red-500" />}
-              actionLabel="Tentar novamente"
-              onAction={() => void getLogs()}
-            />
-          </div>
-        ) : (
-          <Table>
-            <TableHeader className="bg-muted/50">
-              <TableRow>
-                <TableHead className="px-6 py-3">Data</TableHead>
-                <TableHead className="px-6 py-3">Admin</TableHead>
-                <TableHead className="px-6 py-3">Ação</TableHead>
-                <TableHead className="px-6 py-3">Alvo</TableHead>
-                <TableHead className="px-6 py-3">Detalhes</TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="px-6 py-6 text-center">
-                    Carregando...
-                  </TableCell>
-                </TableRow>
-              ) : null}
-
-              {!loading && logs.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="px-6 py-6 text-center">
-                    Nenhuma ação registrada ainda.
-                  </TableCell>
-                </TableRow>
-              ) : null}
-
-              {!loading
-                ? logs.map((log) => (
-                    <TableRow key={log.id} className="border-b">
-                      <TableCell className="px-6 py-3 text-xs text-muted-foreground">
-                        {new Date(log.createdAt).toLocaleString("pt-BR")}
-                      </TableCell>
-                      <TableCell className="px-6 py-3 text-sm">
-                        {log.admin?.email ?? log.admin?.nome ?? "—"}
-                      </TableCell>
-                      <TableCell className="px-6 py-3">
-                        <Badge className="rounded-full bg-violet-100 px-3 py-1 text-xs text-violet-700">
-                          {log.action}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="px-6 py-3 text-sm">
-                        {ENTITY_LABEL[log.entityType] ?? log.entityType} #
-                        {log.entityId}
-                      </TableCell>
-                      <TableCell className="px-6 py-3 text-xs text-muted-foreground">
-                        {log.metadata && Object.keys(log.metadata).length > 0
-                          ? JSON.stringify(log.metadata)
-                          : "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                : null}
-            </TableBody>
-          </Table>
-        )}
-
-        {!loading && !error && paginate.totalPages > 1 ? (
-          <div className="border-t bg-muted/30 p-4">
-            <Pagination>
-              <PaginationContent className="justify-center gap-4">
-                <PaginationPrevious
-                  onClick={() => void getLogs(paginate.currentPage - 1)}
-                  className={
-                    paginate.currentPage === 1
-                      ? "pointer-events-none opacity-50"
-                      : ""
-                  }
-                />
-                <span className="text-sm font-medium">
-                  Página {paginate.currentPage} de {paginate.totalPages}
-                </span>
-                <PaginationNext
-                  onClick={() => void getLogs(paginate.currentPage + 1)}
-                  className={
-                    paginate.currentPage === paginate.totalPages
-                      ? "pointer-events-none opacity-50"
-                      : ""
-                  }
-                />
-              </PaginationContent>
-            </Pagination>
-          </div>
-        ) : null}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="Registros" icon="file-lines" value={list.rows ? list.paginate.total : null} />
+        <StatCard label="Pessoas da equipe agindo" icon="user-shield" value={list.rows ? admins : null} hint="Nesta página" />
+        <StatCard label="Ações críticas" icon="warning" value={list.rows ? destructive : null} hint="Bloqueios e exclusões nesta página" />
       </div>
+
+      <DataTableToolbar>
+        <p className="text-caption text-muted-foreground">Do mais recente pro mais antigo.</p>
+        <RefreshButton onClick={() => void list.reload()} pending={list.loading} className="ml-auto" />
+      </DataTableToolbar>
+
+      {list.error ? (
+        <ErrorState title="Não deu pra carregar a auditoria" description={list.error} onRetry={() => void list.reload()} />
+      ) : list.rows === null ? (
+        <RowsSkeleton rows={8} />
+      ) : (
+        <div className="space-y-4">
+          <SimpleTable
+            columns={["Quando", "Quem", "Ação", "Alvo", "Detalhes"]}
+            empty="Nenhuma ação registrada ainda"
+            emptyIcon="file-lines"
+            maxHeight="calc(100dvh - 17rem)"
+            rowKey={(_, i) => rows[i].id}
+            rows={rows.map((log) => {
+              const meta = metaOf(AUDIT_ACTION_META, log.action);
+              return [
+                <span key="d" className="tnum whitespace-nowrap text-muted-foreground">
+                  {formatDateTime(log.createdAt)}
+                </span>,
+                log.admin?.email ?? log.admin?.nome ?? <span className="text-subtle-foreground">Sistema</span>,
+                <StatusBadge key="a" tone={meta.tone} dot={false}>
+                  {meta.label}
+                </StatusBadge>,
+                <span key="t" className="whitespace-nowrap">
+                  {ENTITY_LABEL[log.entityType] ?? log.entityType} <span className="tnum text-muted-foreground">#{log.entityId}</span>
+                </span>,
+                log.metadata && Object.keys(log.metadata).length > 0 ? (
+                  <span key="m" className="block max-w-md break-all font-mono text-caption text-muted-foreground">
+                    {JSON.stringify(log.metadata)}
+                  </span>
+                ) : (
+                  <span key="m" className="text-subtle-foreground">
+                    —
+                  </span>
+                ),
+              ];
+            })}
+          />
+          <DataTablePagination page={list.page} lastPage={list.paginate.lastPage} total={list.paginate.total} perPage={list.paginate.perPage} noun="registros" onPageChange={(p) => void list.goTo(p)} />
+        </div>
+      )}
     </div>
   );
 }

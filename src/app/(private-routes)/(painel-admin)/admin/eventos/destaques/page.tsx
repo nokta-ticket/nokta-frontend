@@ -1,266 +1,88 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Image from "next/image";
-import { toast } from "@/lib/toast";
-import { Calendar, Star, StarOff } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
+import type { EventoAPI } from "@/interfaces/events";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
 import { Button } from "@/components/ui/button";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { formatarDataCurta } from "@/lib/formatarData";
-import { Paginate } from "@/interfaces/paginate";
-import api from "@/lib/axios";
-import { EventoAPI, GetEvents } from "@/interfaces/events";
-import { MEDIA_FALLBACK, resolveThumbnailUrl } from "@/lib/media";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { ErrorState } from "@/components/ui/empty-state";
+import { RowsSkeleton } from "@/components/ui/skeleton";
+import { DataTablePagination, DataTableToolbar } from "@/components/ui/data-table";
+import api, { getErrorMessage } from "@/lib/axios";
+import { toast } from "@/lib/toast";
+import { useAdminList } from "../../_hooks/use-admin-list";
+import { RefreshButton } from "../../_components/refresh-button";
+import { EventTable } from "../_components/event-table";
 
-type Filtro = "todos" | "ativos" | "inativos" | null;
+type Filtro = "todos" | "ativos" | "inativos" | "destaque";
 
-/* ──────────────────────────── consts ────────────────────────────── */
-const ITEMS_PER_PAGE = 6;
+// `status` do backend: 1 = ativos, 0 = inativos; "destaque" manda `destaque=true` sem status.
+const FILTERS: { value: Filtro; label: string }[] = [
+  { value: "todos", label: "Todos" },
+  { value: "ativos", label: "Ativos" },
+  { value: "inativos", label: "Inativos" },
+  { value: "destaque", label: "Em destaque" },
+];
 
-/* ───────────────────────── componente ───────────────────────────── */
+function paramsFor(filtro: Filtro) {
+  return { status: filtro === "ativos" ? 1 : filtro === "inativos" ? 0 : null, destaque: filtro === "destaque" };
+}
+
 export default function EventosEmDestaquePage() {
-  const [eventos, setEventos] = useState<EventoAPI[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState<Filtro>("todos");
-  const [destaque, setDestaque] = useState(false);
-  const [paginate, setPaginate] = useState<Paginate>({
-    currentPage: 1,
-    totalPages: 1,
-  });
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const list = useAdminList<EventoAPI>("/admin/eventos", paramsFor(filtro), { fallbackError: "Não foi possível carregar os eventos." });
+  const rows = list.rows ?? [];
 
-  function parseFilterValue(str: string | null) {
-    switch (str) {
-      case "todos":
-        return null;
-      case "ativos":
-        return 1;
-      case "inativos":
-        return 0;
-      default:
-        return null;
-    }
-  }
-
-  async function getEvents(page = 1) {
+  /* marcar / remover destaque */
+  async function toggleDestaque(ev: EventoAPI) {
+    const destacar = !ev.destaque;
+    setTogglingId(ev.id);
     try {
-      const res = await api.get<GetEvents>("/admin/eventos", {
-        params: {
-          page,
-          status: parseFilterValue(filtro),
-          destaque: destaque,
-        },
-      });
-
-      const data: EventoAPI[] = res.data.data;
-
-      setPaginate(res.data.paginate);
-      setEventos(data);
-    } catch (err: any) {
-      toast.error(err.message ?? "Falha ao carregar eventos.");
+      await api.put(`/admin/eventos/${ev.id}`, { destaque: destacar });
+      await list.reload();
+      toast.success(destacar ? "Evento colocado em destaque" : "Evento removido do destaque");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Não foi possível atualizar o destaque."));
     } finally {
-      setLoading(false);
+      setTogglingId(null);
     }
   }
-
-  useEffect(() => {
-    getEvents();
-  }, [filtro, destaque]);
-
-  /* ─────────────── marcar / remover destaque ────────────────────── */
-  const toggleDestaque = async (id: string, destacar: boolean) => {
-    try {
-      await api.put(`/admin/eventos/${id}`, { destaque: destacar });
-      await getEvents();
-
-      toast.success(
-        destacar ? "Evento colocado em destaque" : "Evento removido do destaque"
-      );
-    } catch (e: any) {
-      toast.error(e.message || "Falha ao atualizar destaque");
-    }
-  };
 
   return (
-    <section className="mx-auto w-full max-w-[1300px]">
-      {/* topo / filtros */}
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <h1 className="text-2xl font-semibold">Eventos em Destaque</h1>
+    <div className="space-y-6">
+      <PageHeader title="Eventos em destaque" description="Os destacados aparecem primeiro na home da bilheteria." />
 
-        <div>
-          <Button
-            onClick={() => {
-              setFiltro("todos");
-              setDestaque(false);
-            }}
-            variant={filtro === "todos" ? "default" : "outline"}
-            className={`rounded-none rounded-l-lg ${
-              filtro === "todos"
-                ? "bg-violet-600 text-white hover:bg-violet-700"
-                : "text-sm"
-            }`}
-          >
-            Todos
-          </Button>
-          <Button
-            onClick={() => {
-              setFiltro("ativos");
-              setDestaque(false);
-            }}
-            variant={filtro === "ativos" ? "default" : "outline"}
-            className={`rounded-none ${
-              filtro === "ativos"
-                ? "bg-violet-600 text-white hover:bg-violet-700"
-                : "text-sm"
-            }`}
-          >
-            Ativos
-          </Button>
-          <Button
-            onClick={() => {
-              setFiltro("inativos");
-              setDestaque(false);
-            }}
-            variant={filtro === "inativos" ? "default" : "outline"}
-            className={`rounded-none ${
-              filtro === "inativos"
-                ? "bg-violet-600 text-white hover:bg-violet-700"
-                : "text-sm"
-            }`}
-          >
-            Inativos
-          </Button>
-          <Button
-            onClick={() => {
-              setFiltro(null);
-              setDestaque(true);
-            }}
-            variant={destaque === true ? "default" : "outline"}
-            className={`rounded-none rounded-r-lg ${
-              destaque === true
-                ? "bg-violet-600 text-white hover:bg-violet-700"
-                : "text-sm"
-            }`}
-          >
-            Destaque
-          </Button>
-        </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="Eventos" icon="calendar" value={list.rows ? list.paginate.total : null} hint={filtro !== "todos" ? "Com o filtro atual" : "Cadastrados na plataforma"} />
+        <StatCard label="Em destaque" icon="star" value={list.rows ? rows.filter((e) => e.destaque).length : null} hint="Nesta página" />
+        <StatCard label="Ativos" icon="check-circle" value={list.rows ? rows.filter((e) => e.ativo).length : null} hint="Nesta página" />
       </div>
 
-      {/* listagem */}
-      {loading ? (
-        <p className="py-20 text-center">Carregando…</p>
-      ) : eventos.length === 0 ? (
-        <p className="py-20 text-center text-muted-foreground">
-          Nenhum evento encontrado.
-        </p>
+      <DataTableToolbar>
+        <div className="scrollbar-hide max-w-full overflow-x-auto">
+          <SegmentedControl value={filtro} onChange={setFiltro} options={FILTERS} size="sm" />
+        </div>
+        <RefreshButton onClick={() => void list.reload()} pending={list.loading} className="ml-auto" />
+      </DataTableToolbar>
+
+      {list.error ? (
+        <ErrorState title="Não deu pra carregar os eventos" description={list.error} onRetry={() => void list.reload()} />
+      ) : list.rows === null ? (
+        <RowsSkeleton rows={6} />
       ) : (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3">
-          {eventos.map((ev) => (
-            <div
-              key={ev.id}
-              className="rounded-xl border bg-white shadow-sm transition hover:-translate-y-[2px] hover:shadow-md"
-            >
-              <div className="relative aspect-[16/9] w-full">
-                <Image
-                  src={resolveThumbnailUrl(ev.thumbnails?.[0], MEDIA_FALLBACK) ?? MEDIA_FALLBACK}
-                  alt={ev.nome}
-                  fill
-                  sizes="100%"
-                  className="rounded-t-xl object-cover"
-                />
-              </div>
-
-              {/* conteúdo */}
-              <div className="flex flex-col p-4">
-                <p className="flex items-center gap-1 text-sm font-medium text-violet-500">
-                  <Calendar className="h-4 w-4" />
-                  {formatarDataCurta(ev.data)}
-                </p>
-
-                <h2 className="mt-1 text-base font-semibold">{ev.nome}</h2>
-                <p className="text-sm text-muted-foreground">
-                  {ev.endereco?.logradouro}, {ev.endereco?.numero} -{" "}
-                  {ev.endereco?.localidade}
-                </p>
-
-                <div className="mt-2">
-                  <Badge
-                    className={
-                      ev.ativo
-                        ? "bg-emerald-100 px-3 py-1 text-emerald-700"
-                        : "bg-gray-200 px-3 py-1 text-gray-600"
-                    }
-                  >
-                    {ev.ativo ? "Ativo" : "Inativo"}
-                  </Badge>
-                </div>
-
-                <Button
-                  variant={ev.destaque ? "destructive" : "outline"}
-                  className="mt-4 w-full"
-                  onClick={() => toggleDestaque(ev.id, !ev.destaque)}
-                >
-                  {ev.destaque ? (
-                    <>
-                      <StarOff className="mr-2 h-4 w-4" />
-                      Remover&nbsp;dos&nbsp;Destaques
-                    </>
-                  ) : (
-                    <>
-                      <Star className="mr-2 h-4 w-4" />
-                      Colocar&nbsp;em&nbsp;Destaque
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
+        <EventTable
+          rows={rows}
+          emptyTitle="Nenhum evento com esse filtro"
+          action={(ev) => (
+            <Button variant={ev.destaque ? "outline" : "secondary"} size="sm" leftIcon={ev.destaque ? "star-outline" : "star"} loading={togglingId === ev.id} onClick={() => void toggleDestaque(ev)}>
+              {ev.destaque ? "Remover destaque" : "Destacar"}
+            </Button>
+          )}
+          footer={<DataTablePagination page={list.page} lastPage={list.paginate.lastPage} total={list.paginate.total} perPage={list.paginate.perPage} noun="eventos" onPageChange={(p) => void list.goTo(p)} />}
+        />
       )}
-
-      {/* paginação */}
-      {paginate.totalPages > 1 && (
-        <div className="mt-10 flex justify-center">
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  className={
-                    paginate.currentPage === 1
-                      ? "pointer-events-none opacity-50"
-                      : "cursor-pointer"
-                  }
-                  onClick={() => getEvents(paginate.currentPage - 1)}
-                />
-              </PaginationItem>
-
-              <PaginationItem>
-                <span className="text-sm px-2">
-                  Página {paginate.currentPage} de {paginate.totalPages}
-                </span>
-              </PaginationItem>
-
-              <PaginationItem>
-                <PaginationNext
-                  className={
-                    paginate.currentPage === paginate.totalPages
-                      ? "pointer-events-none opacity-50"
-                      : "cursor-pointer"
-                  }
-                  onClick={() => getEvents(paginate.currentPage + 1)}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
-      )}
-    </section>
+    </div>
   );
 }

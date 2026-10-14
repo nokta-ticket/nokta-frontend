@@ -1,146 +1,65 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
-import Cookies from "js-cookie";
-import {
-  Ban,
-  LogOut,
-  Pencil,
-  Save,
-  ShieldCheck,
-  User,
-  Mail,
-  Phone,
-  CreditCard,
-  CalendarDays,
-  Shield,
-  Ticket,
-  ShoppingCart,
-  Trash2,
-  X,
-} from "lucide-react";
-
-import { Badge } from "@/components/ui/badge";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Callout } from "@/components/ui/callout";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DetailGrid, DetailItem, NOT_INFORMED } from "@/components/ui/detail-list";
+import { Field, FieldGroup } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
+import { useStaffRole } from "../../../_lib/staff-role";
+import { USER_ROLE_META, metaOf } from "../../../_lib/status-meta";
+import { formatCPF, formatDate, formatDateUTC, formatPhone, toDateInput } from "../../../_lib/format";
+import { TypedConfirmDialog } from "../../../_components/typed-confirm-dialog";
+import type { AdminUser } from "./types";
 
-interface TabDadosGeraisProps {
-  user: any;
-  onRefresh: () => void;
+type FormState = { nome: string; sobrenome: string; email: string; cpf: string; telefone: string; dataNascimento: string };
+
+function toForm(user: AdminUser): FormState {
+  return { nome: user.nome ?? "", sobrenome: user.sobrenome ?? "", email: user.email ?? "", cpf: user.cpf ?? "", telefone: user.telefone ?? "", dataNascimento: toDateInput(user.dataNascimento) };
 }
 
-function getUserRole(): string | null {
-  try {
-    const raw = Cookies.get("user");
-    if (!raw) return null;
-    return JSON.parse(raw).role ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function formatDateBR(value: string | null | undefined): string {
-  if (!value) return "—";
-  try {
-    return new Date(value).toLocaleDateString("pt-BR");
-  } catch {
-    return "—";
-  }
-}
-
-function formatDateInput(value: string | null | undefined): string {
-  if (!value) return "";
-  try {
-    return new Date(value).toISOString().split("T")[0];
-  } catch {
-    return "";
-  }
-}
-
-const ROLE_LABELS: Record<string, string> = {
-  COMUM: "Usuário",
-  PRODUTOR: "Produtor",
-  ADMIN: "Administrador",
-  SUPER_ADMIN: "Super Admin",
-  SUPPORT: "Suporte",
-};
-
-export default function TabDadosGerais({ user, onRefresh }: TabDadosGeraisProps) {
+export default function TabDadosGerais({ user, onRefresh }: { user: AdminUser; onRefresh: () => void }) {
   const router = useRouter();
-  const role = getUserRole();
-  const isSuperAdmin = role === "SUPER_ADMIN";
-  const isSupport = role === "SUPPORT";
+  const { isSuperAdmin, isSupport } = useStaffRole();
 
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    nome: user.nome ?? "",
-    sobrenome: user.sobrenome ?? "",
-    email: user.email ?? "",
-    cpf: user.cpf ?? "",
-    telefone: user.telefone ?? "",
-    dataNascimento: formatDateInput(user.dataNascimento),
-  });
+  const [form, setForm] = useState<FormState>(() => toForm(user));
 
   const [blockOpen, setBlockOpen] = useState(false);
   const [blockReason, setBlockReason] = useState("");
-  const [blockLoading, setBlockLoading] = useState(false);
-
   const [sessionOpen, setSessionOpen] = useState(false);
-  const [sessionLoading, setSessionLoading] = useState(false);
-
   const [statusOpen, setStatusOpen] = useState(false);
-  const [statusLoading, setStatusLoading] = useState(false);
-
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState("");
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
   function startEdit() {
-    setForm({
-      nome: user.nome ?? "",
-      sobrenome: user.sobrenome ?? "",
-      email: user.email ?? "",
-      cpf: user.cpf ?? "",
-      telefone: user.telefone ?? "",
-      dataNascimento: formatDateInput(user.dataNascimento),
-    });
+    setForm(toForm(user));
     setEditing(true);
   }
 
   async function handleSave() {
     setSaving(true);
     try {
-      const payload: any = {};
+      const payload: Partial<Record<keyof FormState, string | null>> = {};
       if (form.nome !== (user.nome ?? "")) payload.nome = form.nome;
       if (form.sobrenome !== (user.sobrenome ?? "")) payload.sobrenome = form.sobrenome;
       if (form.email !== (user.email ?? "")) payload.email = form.email;
       if (form.cpf !== (user.cpf ?? "")) payload.cpf = form.cpf;
       if (form.telefone !== (user.telefone ?? "")) payload.telefone = form.telefone;
-
-      const origDate = formatDateInput(user.dataNascimento);
-      if (form.dataNascimento !== origDate) {
-        payload.dataNascimento = form.dataNascimento || null;
-      }
+      if (form.dataNascimento !== toDateInput(user.dataNascimento)) payload.dataNascimento = form.dataNascimento || null;
 
       if (Object.keys(payload).length === 0) {
-        toast.error("Nenhuma alteração detectada.");
+        toast.info("Nenhuma alteração pra salvar.");
         return;
       }
 
       await api.put(`/admin/usuarios/${user.id}`, payload);
-      toast.success("Dados atualizados com sucesso!");
+      toast.success("Dados salvos");
       setEditing(false);
       onRefresh();
     } catch (err) {
@@ -151,366 +70,224 @@ export default function TabDadosGerais({ user, onRefresh }: TabDadosGeraisProps)
   }
 
   async function handleToggleBlock() {
-    setBlockLoading(true);
     try {
-      const payload: any = { bloqueado: !user.bloqueado };
+      const payload: { bloqueado: boolean; motivo?: string } = { bloqueado: !user.bloqueado };
       if (!user.bloqueado && blockReason.trim()) payload.motivo = blockReason.trim();
       await api.patch(`/admin/usuarios/${user.id}/bloqueio`, payload);
       toast.success(user.bloqueado ? "Usuário desbloqueado" : "Usuário bloqueado");
-      setBlockOpen(false);
       setBlockReason("");
       onRefresh();
     } catch (err) {
       toast.error(getErrorMessage(err, "Não foi possível alterar o bloqueio."));
-    } finally {
-      setBlockLoading(false);
     }
   }
 
   /**
-   * Ativa/desativa a conta (`PATCH /admin/usuarios/:id/status`).
-   *
-   * O endpoint sempre existiu no backend (AdminService.updateUserStatus, com
-   * auditoria via logAdminAction) mas nunca teve UI — o painel só EXIBIA
-   * "Ativo/Inativo" sem permitir mudar. Sem isto, uma conta que não recebeu
-   * o código de confirmação (WhatsApp indisponível, número empresarial que
-   * não recebe, operadora bloqueando) ficava presa em `ativo: false` para
-   * sempre, e a única saída era escrever no banco à mão — exatamente o que
-   * um painel administrativo existe para evitar.
-   *
-   * Distinto de bloquear: bloqueio é punitivo (`bloqueado`, com motivo);
-   * status é o "a conta terminou o cadastro?" que o login exige.
+   * Ativa/desativa a conta (`PATCH /admin/usuarios/:id/status`). Distinto de
+   * bloquear: bloqueio é punitivo (com motivo); status é o "a conta terminou
+   * o cadastro?" que o login exige — serve pra destravar quem não recebeu o
+   * código de confirmação por WhatsApp.
    */
   async function handleToggleStatus() {
-    setStatusLoading(true);
     try {
       await api.patch(`/admin/usuarios/${user.id}/status`, { ativo: !user.ativo });
       toast.success(user.ativo ? "Conta desativada" : "Conta ativada");
-      setStatusOpen(false);
       onRefresh();
     } catch (err) {
       toast.error(getErrorMessage(err, "Não foi possível alterar o status da conta."));
-    } finally {
-      setStatusLoading(false);
     }
   }
 
   async function handleInvalidateSessions() {
-    setSessionLoading(true);
     try {
       await api.post(`/admin/usuarios/${user.id}/invalidar-sessoes`);
-      toast.success("Sessões invalidadas com sucesso");
-      setSessionOpen(false);
+      toast.success("Sessões invalidadas");
       onRefresh();
     } catch (err) {
       toast.error(getErrorMessage(err, "Não foi possível invalidar as sessões."));
-    } finally {
-      setSessionLoading(false);
     }
   }
 
   async function handleDeleteCompletely() {
-    if (deleteConfirmEmail.trim().toLowerCase() !== (user.email ?? "").toLowerCase()) return;
-    setDeleteLoading(true);
     try {
       await api.delete(`/admin/usuarios/${user.id}/completo`);
       toast.success("Conta excluída completamente.");
       router.push("/admin/usuarios");
     } catch (err) {
       toast.error(getErrorMessage(err, "Não foi possível excluir esta conta."));
-    } finally {
-      setDeleteLoading(false);
     }
   }
 
-  const editableFields = [
-    { key: "nome", label: "Nome", icon: User, type: "text" },
-    { key: "sobrenome", label: "Sobrenome", icon: User, type: "text" },
-    { key: "email", label: "Email", icon: Mail, type: "email" },
-    { key: "telefone", label: "Telefone", icon: Phone, type: "tel" },
-    { key: "cpf", label: "CPF", icon: CreditCard, type: "text" },
-    { key: "dataNascimento", label: "Data de nascimento", icon: CalendarDays, type: "date" },
-  ];
-
-  const readonlyFields = [
-    { label: "Data de cadastro", value: formatDateBR(user.createdAt), icon: CalendarDays },
-  ];
+  const role = metaOf(USER_ROLE_META, user.role);
 
   return (
-    <div className="space-y-6">
-      {/* Botão editar (só SUPER_ADMIN) */}
-      {isSuperAdmin && !editing && (
-        <div className="flex justify-end">
-          <Button variant="outline" onClick={startEdit} className="border-violet-600 text-violet-600 hover:bg-violet-50">
-            <Pencil className="mr-2 h-4 w-4" />
-            Editar dados
-          </Button>
-        </div>
-      )}
-
-      {editing && (
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setEditing(false)}>
-            <X className="mr-2 h-4 w-4" />
-            Cancelar
-          </Button>
-          <Button onClick={handleSave} disabled={saving} className="bg-violet-600 text-white hover:bg-violet-700">
-            <Save className="mr-2 h-4 w-4" />
-            {saving ? "Salvando..." : "Salvar"}
-          </Button>
-        </div>
-      )}
-
-      {/* Grid de dados */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {editableFields.map((field) => (
-          <div key={field.key} className="rounded-lg border bg-white p-4 shadow-sm">
-            <p className="mb-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <field.icon className="h-3.5 w-3.5" />
-              {field.label}
-            </p>
+    <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div>
+              <CardTitle>Dados da conta</CardTitle>
+              {isSuperAdmin ? <CardDescription>Só o super admin edita os dados cadastrais.</CardDescription> : null}
+            </div>
+            {isSuperAdmin && !editing ? (
+              <Button variant="outline" size="sm" leftIcon="edit" onClick={startEdit}>
+                Editar
+              </Button>
+            ) : null}
+          </CardHeader>
+          <CardContent className="pt-4">
             {editing ? (
-              <Input
-                type={field.type}
-                value={(form as any)[field.key] ?? ""}
-                onChange={(e) => setForm((f) => ({ ...f, [field.key]: e.target.value }))}
-                className="h-9 text-sm"
-              />
+              <form
+                className="space-y-5"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void handleSave();
+                }}
+              >
+                <FieldGroup columns={2}>
+                  <Field label="Nome" htmlFor="u-nome">
+                    <Input id="u-nome" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
+                  </Field>
+                  <Field label="Sobrenome" htmlFor="u-sobrenome">
+                    <Input id="u-sobrenome" value={form.sobrenome} onChange={(e) => setForm((f) => ({ ...f, sobrenome: e.target.value }))} />
+                  </Field>
+                  <Field label="E-mail" htmlFor="u-email">
+                    <Input id="u-email" type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
+                  </Field>
+                  <Field label="Telefone" htmlFor="u-telefone">
+                    <Input id="u-telefone" type="tel" value={form.telefone} onChange={(e) => setForm((f) => ({ ...f, telefone: e.target.value }))} />
+                  </Field>
+                  <Field label="CPF" htmlFor="u-cpf">
+                    <Input id="u-cpf" inputMode="numeric" value={form.cpf} onChange={(e) => setForm((f) => ({ ...f, cpf: e.target.value }))} />
+                  </Field>
+                  <Field label="Data de nascimento" htmlFor="u-nascimento">
+                    <Input id="u-nascimento" type="date" value={form.dataNascimento} onChange={(e) => setForm((f) => ({ ...f, dataNascimento: e.target.value }))} />
+                  </Field>
+                </FieldGroup>
+                <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                  <Button type="button" variant="ghost" onClick={() => setEditing(false)} disabled={saving}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" loading={saving} leftIcon="save">
+                    Salvar
+                  </Button>
+                </div>
+              </form>
             ) : (
-              <p className="text-sm font-medium break-all">
-                {field.key === "dataNascimento"
-                  ? formatDateBR(user.dataNascimento)
-                  : (user[field.key] ?? "—")}
-              </p>
+              <DetailGrid columns={3}>
+                <DetailItem label="Nome" icon="user" value={user.nome} />
+                <DetailItem label="Sobrenome" icon="user" value={user.sobrenome} />
+                <DetailItem label="E-mail" icon="mail" value={user.email} />
+                <DetailItem label="Telefone" icon="phone" value={user.telefone ? formatPhone(user.telefone) : null} />
+                <DetailItem label="CPF" icon="id-card" mono value={user.cpf ? formatCPF(user.cpf) : null} />
+                <DetailItem label="Nascimento" icon="cake" value={user.dataNascimento ? formatDateUTC(user.dataNascimento) : null} />
+                <DetailItem label="Cadastro" icon="calendar" value={user.createdAt ? formatDate(user.createdAt) : null} />
+                <DetailItem label="Tipo da conta" icon="shield" value={role.label} />
+                <DetailItem label="Nível produtor" icon="megaphone" value={user.nivelProdutor != null ? `N${user.nivelProdutor}` : null} />
+              </DetailGrid>
             )}
-          </div>
-        ))}
+          </CardContent>
+        </Card>
 
-        {readonlyFields.map((field) => (
-          <div key={field.label} className="rounded-lg border bg-white p-4 shadow-sm">
-            <p className="mb-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <field.icon className="h-3.5 w-3.5" />
-              {field.label}
-            </p>
-            <p className="text-sm font-medium">{field.value}</p>
-          </div>
-        ))}
-
-        {/* Tipo da conta */}
-        <div className="rounded-lg border bg-white p-4 shadow-sm">
-          <p className="mb-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Shield className="h-3.5 w-3.5" />
-            Tipo da conta
-          </p>
-          <Badge className="mt-0.5 rounded-full bg-violet-100 px-3 py-1 text-xs text-violet-700">
-            {ROLE_LABELS[user.role] ?? user.role ?? "—"}
-          </Badge>
-        </div>
-
-        {/* Status */}
-        <div className="rounded-lg border bg-white p-4 shadow-sm">
-          <p className="mb-1.5 text-xs text-muted-foreground">Status</p>
-          <Badge
-            className={`mt-0.5 rounded-full px-3 py-1 text-xs ${
-              user.ativo ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
-            }`}
-          >
-            {user.ativo ? "Ativo" : "Inativo"}
-          </Badge>
-        </div>
-
-        {/* Nível produtor */}
-        {user.nivelProdutor != null && (
-          <div className="rounded-lg border bg-white p-4 shadow-sm">
-            <p className="mb-1.5 text-xs text-muted-foreground">Nível produtor</p>
-            <p className="text-sm font-medium">N{user.nivelProdutor}</p>
-          </div>
-        )}
-
-        {/* Qtd ingressos */}
-        <div className="rounded-lg border bg-white p-4 shadow-sm">
-          <p className="mb-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Ticket className="h-3.5 w-3.5" />
-            Qtd ingressos
-          </p>
-          <p className="text-sm font-medium">{user.qtdIngressos ?? 0}</p>
-        </div>
-
-        {/* Qtd compras */}
-        <div className="rounded-lg border bg-white p-4 shadow-sm">
-          <p className="mb-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <ShoppingCart className="h-3.5 w-3.5" />
-            Qtd compras
-          </p>
-          <p className="text-sm font-medium">{user.qtdCompras ?? 0}</p>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Atividade</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <DetailGrid columns={2}>
+              <DetailItem label="Ingressos" icon="ticket" value={user.qtdIngressos != null ? user.qtdIngressos.toLocaleString("pt-BR") : NOT_INFORMED} />
+              <DetailItem label="Compras" icon="cart" value={user.qtdCompras != null ? user.qtdCompras.toLocaleString("pt-BR") : NOT_INFORMED} />
+            </DetailGrid>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Motivo do bloqueio */}
-      {user.bloqueado && user.bloqueadoMotivo && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          <strong>Motivo do bloqueio:</strong> {user.bloqueadoMotivo}
-        </div>
-      )}
+      <div className="space-y-6">
+        {user.bloqueado ? (
+          <Callout tone="danger" title="Conta bloqueada">
+            {user.bloqueadoMotivo ? `Motivo: ${user.bloqueadoMotivo}` : "Nenhum motivo registrado."}
+          </Callout>
+        ) : null}
 
-      {/* Ações admin */}
-      {!isSupport && (
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Button
-            variant="outline"
-            onClick={() => setStatusOpen(true)}
-            className={user.ativo
-              ? "border-amber-600 text-amber-600 hover:bg-amber-50"
-              : "border-emerald-600 text-emerald-600 hover:bg-emerald-50"
-            }
-          >
-            {user.ativo ? <X className="mr-2 h-4 w-4" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
-            {user.ativo ? "Desativar conta" : "Ativar conta"}
-          </Button>
+        {!isSupport ? (
+          <Card>
+            <CardHeader>
+              <div>
+                <CardTitle>Ações</CardTitle>
+                <CardDescription>Tudo fica registrado na auditoria.</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2 pt-4">
+              <Button variant="outline" leftIcon={user.ativo ? "x-circle" : "check-circle"} className="justify-start" onClick={() => setStatusOpen(true)}>
+                {user.ativo ? "Desativar conta" : "Ativar conta"}
+              </Button>
+              <Button variant={user.bloqueado ? "outline" : "destructive-soft"} leftIcon={user.bloqueado ? "lock-open" : "ban"} className="justify-start" onClick={() => setBlockOpen(true)}>
+                {user.bloqueado ? "Desbloquear conta" : "Bloquear conta"}
+              </Button>
+              <Button variant="outline" leftIcon="logout" className="justify-start" onClick={() => setSessionOpen(true)}>
+                Invalidar sessões
+              </Button>
+              {isSuperAdmin ? (
+                <Button variant="destructive-soft" leftIcon="trash" className="justify-start" onClick={() => setDeleteOpen(true)}>
+                  Excluir conta
+                </Button>
+              ) : null}
+            </CardContent>
+          </Card>
+        ) : (
+          <Callout tone="neutral" title="Só consulta">
+            Contas de suporte não alteram usuários.
+          </Callout>
+        )}
+      </div>
 
-          <Button
-            variant="outline"
-            onClick={() => { setBlockReason(""); setBlockOpen(true); }}
-            className={user.bloqueado
-              ? "border-emerald-600 text-emerald-600 hover:bg-emerald-50"
-              : "border-red-600 text-red-600 hover:bg-red-50"
-            }
-          >
-            {user.bloqueado ? <ShieldCheck className="mr-2 h-4 w-4" /> : <Ban className="mr-2 h-4 w-4" />}
-            {user.bloqueado ? "Desbloquear conta" : "Bloquear conta"}
-          </Button>
+      <ConfirmDialog
+        open={statusOpen}
+        onOpenChange={setStatusOpen}
+        title={user.ativo ? "Desativar conta" : "Ativar conta"}
+        description={user.ativo ? "O usuário não vai conseguir entrar até a conta ser ativada de novo." : "A conta volta a permitir login — use quando o cadastro foi feito mas a confirmação por WhatsApp não pôde ser concluída."}
+        confirmLabel={user.ativo ? "Desativar" : "Ativar"}
+        danger={user.ativo}
+        icon={user.ativo ? "x-circle" : "check-circle"}
+        onConfirm={handleToggleStatus}
+      />
 
-          <Button
-            variant="outline"
-            onClick={() => setSessionOpen(true)}
-            className="border-violet-600 text-violet-600 hover:bg-violet-50"
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Invalidar sessões
-          </Button>
+      <ConfirmDialog
+        open={blockOpen}
+        onOpenChange={(o) => {
+          setBlockOpen(o);
+          if (!o) setBlockReason("");
+        }}
+        title={user.bloqueado ? "Desbloquear conta" : "Bloquear conta"}
+        description={user.bloqueado ? "O usuário volta a acessar a plataforma." : "O usuário é impedido de entrar imediatamente."}
+        confirmLabel={user.bloqueado ? "Desbloquear" : "Bloquear"}
+        danger={!user.bloqueado}
+        icon={user.bloqueado ? "lock-open" : "ban"}
+        onConfirm={handleToggleBlock}
+      >
+        {!user.bloqueado ? (
+          <Field label="Motivo" optional htmlFor="block-reason">
+            <Input id="block-reason" placeholder="Ex.: suspeita de fraude" value={blockReason} onChange={(e) => setBlockReason(e.target.value)} />
+          </Field>
+        ) : null}
+      </ConfirmDialog>
 
-          {isSuperAdmin && (
-            <Button
-              variant="outline"
-              onClick={() => { setDeleteConfirmEmail(""); setDeleteOpen(true); }}
-              className="border-red-700 text-red-700 hover:bg-red-50"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Excluir conta
-            </Button>
-          )}
-        </div>
-      )}
+      <ConfirmDialog open={sessionOpen} onOpenChange={setSessionOpen} title="Invalidar todas as sessões" description="Todas as sessões ativas são encerradas e o usuário precisa entrar de novo." confirmLabel="Invalidar" icon="logout" onConfirm={handleInvalidateSessions} />
 
-      {/* Dialog ativar/desativar conta */}
-      <Dialog open={statusOpen} onOpenChange={setStatusOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{user.ativo ? "Desativar conta" : "Ativar conta"}</DialogTitle>
-            <DialogDescription>
-              {user.ativo
-                ? "O usuário não conseguirá mais fazer login até a conta ser ativada de novo."
-                : "A conta passará a permitir login normalmente — use quando o cadastro foi feito mas a confirmação por WhatsApp não pôde ser concluída. A ação fica registrada na auditoria."}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setStatusOpen(false)}>Cancelar</Button>
-            <Button
-              onClick={() => void handleToggleStatus()}
-              disabled={statusLoading}
-              className={user.ativo ? "bg-amber-600 text-white hover:bg-amber-700" : "bg-emerald-600 text-white hover:bg-emerald-700"}
-            >
-              {statusLoading ? "Processando..." : user.ativo ? "Confirmar desativação" : "Confirmar ativação"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog bloqueio */}
-      <Dialog open={blockOpen} onOpenChange={setBlockOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{user.bloqueado ? "Desbloquear conta" : "Bloquear conta"}</DialogTitle>
-            <DialogDescription>
-              {user.bloqueado
-                ? "O usuário poderá acessar a plataforma novamente."
-                : "O usuário será impedido de fazer login imediatamente."}
-            </DialogDescription>
-          </DialogHeader>
-          {!user.bloqueado && (
-            <div className="py-2">
-              <label className="mb-1.5 block text-sm font-medium">Motivo (opcional)</label>
-              <Input placeholder="Informe o motivo..." value={blockReason} onChange={(e) => setBlockReason(e.target.value)} />
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBlockOpen(false)}>Cancelar</Button>
-            <Button
-              onClick={() => void handleToggleBlock()}
-              disabled={blockLoading}
-              className={user.bloqueado ? "bg-emerald-600 text-white hover:bg-emerald-700" : "bg-red-600 text-white hover:bg-red-700"}
-            >
-              {blockLoading ? "Processando..." : user.bloqueado ? "Confirmar desbloqueio" : "Confirmar bloqueio"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog invalidar sessões */}
-      <Dialog open={sessionOpen} onOpenChange={setSessionOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Invalidar todas as sessões</DialogTitle>
-            <DialogDescription>
-              Todas as sessões ativas serão encerradas. O usuário precisará fazer login novamente.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSessionOpen(false)}>Cancelar</Button>
-            <Button
-              onClick={() => void handleInvalidateSessions()}
-              disabled={sessionLoading}
-              className="bg-violet-600 text-white hover:bg-violet-700"
-            >
-              {sessionLoading ? "Processando..." : "Confirmar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog excluir conta completamente */}
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="text-red-700">Excluir conta permanentemente</DialogTitle>
-            <DialogDescription>
-              Apaga a conta, os pedidos e ingressos dela e as organizações das quais é dona, com tudo dentro
-              (eventos, cardápio, comandas, financeiro, equipe). Não tem volta, mas o histórico completo fica guardado em Contas excluídas. A exclusão só é recusada se
-              apagaria ingressos que hoje pertencem a outras contas.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-2">
-            <label className="mb-1.5 block text-sm font-medium">
-              Digite <span className="font-semibold">{user.email}</span> para confirmar
-            </label>
-            <Input
-              placeholder="E-mail da conta..."
-              value={deleteConfirmEmail}
-              onChange={(e) => setDeleteConfirmEmail(e.target.value)}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancelar</Button>
-            <Button
-              onClick={() => void handleDeleteCompletely()}
-              disabled={deleteLoading || deleteConfirmEmail.trim().toLowerCase() !== (user.email ?? "").toLowerCase()}
-              className="bg-red-700 text-white hover:bg-red-800 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {deleteLoading ? "Excluindo..." : "Excluir permanentemente"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <TypedConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Excluir conta permanentemente"
+        description="Apaga a conta, os pedidos e ingressos dela e as organizações das quais é dona, com tudo dentro (eventos, cardápio, comandas, financeiro, equipe). Não tem volta, mas o histórico completo fica guardado em Contas excluídas. A exclusão só é recusada se apagaria ingressos que hoje pertencem a outras contas."
+        expected={user.email ?? ""}
+        label={
+          <>
+            Digite <span className="font-semibold">{user.email}</span> pra confirmar
+          </>
+        }
+        placeholder="E-mail da conta"
+        onConfirm={handleDeleteCompletely}
+      />
     </div>
   );
 }

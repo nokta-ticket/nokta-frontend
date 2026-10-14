@@ -1,33 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AlertCircle, Check, X as XIcon, Lock, Unlock, Search } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Callout } from "@/components/ui/callout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
+import { Field } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { RowsSkeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { PageState } from "@/components/ui/page-state";
+import { DataTable, DataTableBody, DataTableCell, DataTableEmpty, DataTableHead, DataTableHeadCell, DataTableRow, DataTableShell, DataTableToolbar, MobileCard, MobileCardList } from "@/components/ui/data-table";
 import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import { useStepUp } from "@/components/session/step-up-modal";
 import { STEP_UP_TOKEN_HEADER } from "@/services/step-up";
+import { RefreshButton } from "../_components/refresh-button";
+import { formatDate, fullName } from "../_lib/format";
 
 interface PendingProfile {
   organizationId: number;
@@ -41,48 +35,50 @@ interface PendingProfile {
   representative: { nome: string; sobrenome: string | null; email: string };
 }
 
+interface ApproveResponse {
+  recipient?: { attempted?: boolean; created?: boolean; error?: string | null };
+}
+
 export default function JuridicoFinanceiroPage() {
-  const [profiles, setProfiles] = useState<PendingProfile[]>([]);
+  const [profiles, setProfiles] = useState<PendingProfile[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<number | null>(null);
+  const [approveTarget, setApproveTarget] = useState<PendingProfile | null>(null);
   const [rejectTarget, setRejectTarget] = useState<PendingProfile | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const { data } = await api.get<PendingProfile[]>("/admin/legal-financial-profiles/pending");
-      setProfiles(data);
+      setProfiles(Array.isArray(data) ? data : []);
     } catch (err) {
       setProfiles([]);
       setError(getErrorMessage(err, "Não foi possível carregar a fila de revisão."));
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   async function approve(profile: PendingProfile) {
     setActingId(profile.organizationId);
     try {
-      const { data } = await api.post(`/admin/legal-financial-profiles/${profile.organizationId}/approve`);
+      const { data } = await api.post<ApproveResponse>(`/admin/legal-financial-profiles/${profile.organizationId}/approve`);
       if (data?.recipient?.attempted) {
-        if (data.recipient.created) {
-          toast.success(`Organização aprovada e recebedor criado na Pagar.me.`);
-        } else {
-          toast.success(`Organização aprovada. O recebedor ainda não pôde ser criado: ${data.recipient.error ?? "conta bancária pendente"}.`);
-        }
+        if (data.recipient.created) toast.success("Organização aprovada e recebedor criado na Pagar.me.");
+        else toast.success(`Organização aprovada. O recebedor ainda não pôde ser criado: ${data.recipient.error ?? "conta bancária pendente"}.`);
       } else {
         toast.success("Organização aprovada. O recebedor será criado quando a conta bancária for cadastrada.");
       }
       await load();
     } catch (err) {
-      toast.error(getErrorMessage(err, "Erro ao aprovar organização."));
+      toast.error(getErrorMessage(err, "Não foi possível aprovar a organização."));
     } finally {
       setActingId(null);
     }
@@ -95,141 +91,169 @@ export default function JuridicoFinanceiroPage() {
     }
     setActingId(rejectTarget.organizationId);
     try {
-      await api.post(`/admin/legal-financial-profiles/${rejectTarget.organizationId}/reject`, {
-        reason: rejectReason.trim(),
-      });
+      await api.post(`/admin/legal-financial-profiles/${rejectTarget.organizationId}/reject`, { reason: rejectReason.trim() });
       toast.success("Organização rejeitada.");
       setRejectTarget(null);
       setRejectReason("");
       await load();
     } catch (err) {
-      toast.error(getErrorMessage(err, "Erro ao rejeitar organização."));
+      toast.error(getErrorMessage(err, "Não foi possível rejeitar a organização."));
     } finally {
       setActingId(null);
     }
   }
 
+  const rows = profiles ?? [];
+  const companies = rows.filter((p) => p.legalType === "COMPANY").length;
+
+  const actions = (p: PendingProfile) => (
+    <>
+      <Button variant="subtle" size="icon-sm" aria-label={`Aprovar ${p.organization.nome}`} title="Aprovar" className="hover:bg-success-bg hover:text-success" disabled={actingId === p.organizationId} onClick={() => setApproveTarget(p)}>
+        <Icon name="check" size={14} />
+      </Button>
+      <Button variant="subtle" size="icon-sm" aria-label={`Rejeitar ${p.organization.nome}`} title="Rejeitar" className="hover:bg-danger-bg hover:text-danger" disabled={actingId === p.organizationId} onClick={() => setRejectTarget(p)}>
+        <Icon name="close" size={14} />
+      </Button>
+    </>
+  );
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Dados jurídicos e financeiros</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Organizações aguardando revisão do documento (CPF/CNPJ) enviado. Ao aprovar, o recebedor na Pagar.me é
-          criado automaticamente se a conta bancária já estiver cadastrada.
-        </p>
+      <PageHeader title="Jurídico e financeiro" description="Organizações aguardando revisão do documento (CPF/CNPJ). Ao aprovar, o recebedor na Pagar.me é criado automaticamente se a conta bancária já estiver cadastrada." />
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="Aguardando revisão" icon="scale" value={profiles ? rows.length : null} />
+        <StatCard label="Pessoas jurídicas" icon="building" value={profiles ? companies : null} />
+        <StatCard label="Pessoas físicas" icon="user" value={profiles ? rows.length - companies : null} />
       </div>
 
-      <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
-        {error ? (
-          <div className="p-6">
-            <PageState
-              title="Não foi possível carregar a fila"
-              description={error}
-              icon={<AlertCircle className="h-8 w-8 text-red-500" />}
-              actionLabel="Tentar novamente"
-              onAction={() => void load()}
-            />
-          </div>
-        ) : (
-          <Table>
-            <TableHeader className="bg-muted/50">
-              <TableRow>
-                <TableHead className="px-6 py-3">Organização</TableHead>
-                <TableHead className="px-6 py-3">Tipo</TableHead>
-                <TableHead className="px-6 py-3">Nome legal</TableHead>
-                <TableHead className="px-6 py-3">Documento</TableHead>
-                <TableHead className="px-6 py-3">Representante</TableHead>
-                <TableHead className="px-6 py-3 text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
+      <DataTableToolbar>
+        <p className="text-caption text-muted-foreground">Da mais antiga pra mais recente.</p>
+        <RefreshButton onClick={() => void load()} pending={loading} className="ml-auto" />
+      </DataTableToolbar>
 
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="px-6 py-6 text-center">
-                    Carregando...
-                  </TableCell>
-                </TableRow>
-              ) : null}
-
-              {!loading && profiles.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="px-6 py-6 text-center">
-                    Nenhuma organização pendente de revisão no momento.
-                  </TableCell>
-                </TableRow>
-              ) : null}
-
-              {!loading
-                ? profiles.map((profile) => (
-                    <TableRow key={profile.organizationId} className="border-b transition hover:bg-muted/40">
-                      <TableCell className="px-6 py-3 font-medium">{profile.organization.nome}</TableCell>
-                      <TableCell className="px-6 py-3">
-                        <Badge variant="outline">{profile.legalType === "INDIVIDUAL" ? "Pessoa física" : "Pessoa jurídica"}</Badge>
-                      </TableCell>
-                      <TableCell className="px-6 py-3">{profile.legalName}</TableCell>
-                      <TableCell className="px-6 py-3 font-mono text-xs">
-                        {profile.documentLast4 ? `***${profile.documentLast4}` : "—"}
-                      </TableCell>
-                      <TableCell className="px-6 py-3">
-                        <div>{profile.representative.nome} {profile.representative.sobrenome ?? ""}</div>
-                        <div className="text-xs text-muted-foreground">{profile.representative.email}</div>
-                      </TableCell>
-                      <TableCell className="px-6 py-3">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="bg-green-100 text-green-700 hover:bg-green-200"
-                            disabled={actingId === profile.organizationId}
-                            onClick={() => void approve(profile)}
-                            title="Aprovar"
-                          >
-                            <Check size={16} />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="bg-red-100 text-red-700 hover:bg-red-200"
-                            disabled={actingId === profile.organizationId}
-                            onClick={() => setRejectTarget(profile)}
-                            title="Rejeitar"
-                          >
-                            <XIcon size={16} />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+      {error ? (
+        <ErrorState title="Não deu pra carregar a fila" description={error} onRetry={() => void load()} />
+      ) : profiles === null ? (
+        <RowsSkeleton rows={5} />
+      ) : (
+        <DataTableShell
+          maxHeight="none"
+          table={
+            <DataTable>
+              <DataTableHead>
+                <tr>
+                  <DataTableHeadCell>Organização</DataTableHeadCell>
+                  <DataTableHeadCell>Tipo</DataTableHeadCell>
+                  <DataTableHeadCell>Nome legal</DataTableHeadCell>
+                  <DataTableHeadCell>Documento</DataTableHeadCell>
+                  <DataTableHeadCell>Representante</DataTableHeadCell>
+                  <DataTableHeadCell>Enviado</DataTableHeadCell>
+                  <DataTableHeadCell align="right">
+                    <span className="sr-only">Ações</span>
+                  </DataTableHeadCell>
+                </tr>
+              </DataTableHead>
+              <DataTableBody>
+                {rows.length === 0 ? (
+                  <DataTableEmpty colSpan={7} icon="scale" title="Nenhuma organização pendente de revisão" description="Quando um produtor enviar o documento, aparece aqui." />
+                ) : (
+                  rows.map((p, i) => (
+                    <DataTableRow key={p.organizationId} index={i}>
+                      <DataTableCell>
+                        <p className="font-medium">{p.organization.nome}</p>
+                        <p className="tnum text-caption text-muted-foreground">#{p.organizationId}</p>
+                      </DataTableCell>
+                      <DataTableCell>
+                        <StatusBadge tone="neutral" dot={false}>
+                          {p.legalType === "INDIVIDUAL" ? "Pessoa física" : "Pessoa jurídica"}
+                        </StatusBadge>
+                      </DataTableCell>
+                      <DataTableCell>
+                        <p>{p.legalName}</p>
+                        {p.tradeName ? <p className="text-caption text-muted-foreground">{p.tradeName}</p> : null}
+                      </DataTableCell>
+                      <DataTableCell className="font-mono text-caption">{p.documentLast4 ? `•••${p.documentLast4}` : <span className="text-subtle-foreground">Não informado</span>}</DataTableCell>
+                      <DataTableCell>
+                        <p>{fullName(p.representative.nome, p.representative.sobrenome)}</p>
+                        <p className="text-caption text-muted-foreground">{p.representative.email}</p>
+                      </DataTableCell>
+                      <DataTableCell className="tnum text-muted-foreground">{formatDate(p.createdAt)}</DataTableCell>
+                      <DataTableCell align="right">
+                        <div className="flex justify-end gap-1">{actions(p)}</div>
+                      </DataTableCell>
+                    </DataTableRow>
                   ))
-                : null}
-            </TableBody>
-          </Table>
-        )}
-      </div>
+                )}
+              </DataTableBody>
+            </DataTable>
+          }
+          mobile={
+            rows.length === 0 ? (
+              <EmptyState compact icon="scale" title="Nenhuma organização pendente de revisão" />
+            ) : (
+              <MobileCardList>
+                {rows.map((p, i) => (
+                  <MobileCard
+                    key={p.organizationId}
+                    index={i}
+                    title={p.organization.nome}
+                    subtitle={p.legalName}
+                    badge={
+                      <StatusBadge tone="neutral" dot={false}>
+                        {p.legalType === "INDIVIDUAL" ? "PF" : "PJ"}
+                      </StatusBadge>
+                    }
+                    meta={[
+                      { label: "Documento", value: p.documentLast4 ? `•••${p.documentLast4}` : "Não informado", num: true },
+                      { label: "Enviado", value: formatDate(p.createdAt), num: true },
+                      { label: "Representante", value: fullName(p.representative.nome, p.representative.sobrenome) },
+                      { label: "E-mail", value: p.representative.email },
+                    ]}
+                    actions={actions(p)}
+                  />
+                ))}
+              </MobileCardList>
+            )
+          }
+        />
+      )}
 
-      <Dialog open={!!rejectTarget} onOpenChange={(open) => !open && setRejectTarget(null)}>
+      <ConfirmDialog
+        open={approveTarget !== null}
+        onOpenChange={(o) => (!o ? setApproveTarget(null) : null)}
+        title={`Aprovar ${approveTarget?.organization.nome ?? "organização"}`}
+        description="O documento é marcado como verificado e, se a conta bancária já estiver cadastrada, o recebedor é criado na Pagar.me agora."
+        confirmLabel="Aprovar"
+        icon="check-circle"
+        onConfirm={() => (approveTarget ? approve(approveTarget) : undefined)}
+      />
+
+      <Dialog
+        open={rejectTarget !== null}
+        onOpenChange={(open) => {
+          if (actingId !== null) return;
+          if (!open) {
+            setRejectTarget(null);
+            setRejectReason("");
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Rejeitar {rejectTarget?.organization.nome}</DialogTitle>
+            <DialogDescription>Explique o motivo — a organização usa isso pra corrigir e reenviar os dados.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              Explique o motivo — a organização usará isso para corrigir e reenviar os dados.
-            </p>
-            <Textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Ex.: documento ilegível, dígito verificador do CNPJ não confere, nome legal não corresponde ao documento enviado…"
-              rows={4}
-            />
-          </div>
+          <DialogBody>
+            <Field label="Motivo" htmlFor="reject-reason" required hint="Pelo menos 10 caracteres.">
+              <Textarea id="reject-reason" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Ex.: documento ilegível, dígito verificador do CNPJ não confere, nome legal não corresponde ao documento enviado…" rows={4} />
+            </Field>
+          </DialogBody>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setRejectTarget(null)}>Cancelar</Button>
-            <Button
-              variant="destructive"
-              disabled={actingId === rejectTarget?.organizationId}
-              onClick={() => void reject()}
-            >
+            <Button variant="ghost" onClick={() => setRejectTarget(null)} disabled={actingId !== null}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" disabled={rejectReason.trim().length < 10} loading={actingId !== null && actingId === rejectTarget?.organizationId} onClick={() => void reject()}>
               Confirmar rejeição
             </Button>
           </DialogFooter>
@@ -300,9 +324,7 @@ function RecipientBlockSection() {
         organizationId: overview.organizationId,
         actionParams: { organizationId: overview.organizationId },
         title: nextBlocked ? "Bloquear recebedor" : "Desbloquear recebedor",
-        description: nextBlocked
-          ? "A organização deixará de conseguir vender e sacar imediatamente."
-          : "A organização volta a conseguir vender e sacar imediatamente — confirme que a suspeita/pendência foi resolvida.",
+        description: nextBlocked ? "A organização deixará de conseguir vender e sacar imediatamente." : "A organização volta a conseguir vender e sacar imediatamente — confirme que a suspeita/pendência foi resolvida.",
         preview: [
           { label: "Organização", value: overview.organizationName },
           { label: "Recipient", value: overview.hasRecipient ? "Cadastrado" : "Não cadastrado" },
@@ -310,11 +332,7 @@ function RecipientBlockSection() {
         ],
       });
 
-      await api.patch(
-        `/admin/organizations/${overview.organizationId}/recipient-block`,
-        { blocked: nextBlocked, reason: reason.trim() },
-        { headers: { [STEP_UP_TOKEN_HEADER]: stepUpToken } },
-      );
+      await api.patch(`/admin/organizations/${overview.organizationId}/recipient-block`, { blocked: nextBlocked, reason: reason.trim() }, { headers: { [STEP_UP_TOKEN_HEADER]: stepUpToken } });
       toast.success(nextBlocked ? "Recebedor bloqueado." : "Recebedor desbloqueado.");
       setActionOpen(false);
       setReason("");
@@ -330,86 +348,75 @@ function RecipientBlockSection() {
   }
 
   return (
-    <div className="space-y-4 rounded-xl border bg-white p-6 shadow-sm">
-      <div>
-        <h2 className="text-lg font-semibold">Bloqueio de recebedor</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Bloqueia ou desbloqueia o recebedor Pagar.me de uma organização — nenhuma venda ou saque acontece enquanto
-          bloqueado. Exige verificação por Authenticator, mesmo com sessão válida.
-        </p>
-      </div>
-
-      <div className="flex items-end gap-2">
-        <div className="flex-1 max-w-xs space-y-1.5">
-          <Label>ID da organização</Label>
-          <Input
-            value={organizationIdInput}
-            onChange={(e) => setOrganizationIdInput(e.target.value.replace(/\D/g, ""))}
-            onKeyDown={(e) => e.key === "Enter" && void search()}
-            placeholder="Ex.: 1038"
-            inputMode="numeric"
-          />
+    <Card accent>
+      <CardHeader>
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <Icon name="lock" size={15} />
+            Bloqueio de recebedor
+          </CardTitle>
+          <CardDescription>Bloqueia ou desbloqueia o recebedor Pagar.me de uma organização — nenhuma venda ou saque acontece enquanto bloqueado. Exige verificação por Authenticator, mesmo com sessão válida.</CardDescription>
         </div>
-        <Button variant="outline" onClick={() => void search()} disabled={loading}>
-          <Search size={16} className="mr-2" />
-          Buscar
-        </Button>
-      </div>
-
-      {overview ? (
-        <div className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="font-medium">{overview.organizationName}</p>
-            <p className="text-xs text-muted-foreground">
-              Recipient: {overview.hasRecipient ? (overview.recipientStatus ?? "cadastrado") : "não cadastrado"}
-            </p>
-            {overview.recipientBlocked ? (
-              <p className="mt-1 text-xs text-red-600">
-                Bloqueado{overview.recipientBlockedReason ? ` — ${overview.recipientBlockedReason}` : ""}
-              </p>
-            ) : null}
-          </div>
-          <Button
-            variant={overview.recipientBlocked ? "outline" : "destructive"}
-            onClick={() => setActionOpen(true)}
-          >
-            {overview.recipientBlocked ? <Unlock size={16} className="mr-2" /> : <Lock size={16} className="mr-2" />}
-            {overview.recipientBlocked ? "Desbloquear" : "Bloquear"}
+      </CardHeader>
+      <CardContent className="space-y-4 pt-4">
+        <form
+          className="flex flex-col gap-2 sm:flex-row sm:items-end"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void search();
+          }}
+        >
+          <Field label="ID da organização" htmlFor="recipient-org" className="sm:max-w-xs sm:flex-1">
+            <Input id="recipient-org" leftIcon="hashtag" value={organizationIdInput} onChange={(e) => setOrganizationIdInput(e.target.value.replace(/\D/g, ""))} placeholder="Ex.: 1038" inputMode="numeric" />
+          </Field>
+          <Button type="submit" variant="outline" leftIcon="search" loading={loading}>
+            Buscar
           </Button>
-        </div>
-      ) : null}
+        </form>
 
-      <Dialog open={actionOpen} onOpenChange={(open) => !open && setActionOpen(false)}>
+        {overview ? (
+          <div className="surface-inset flex flex-col gap-3 rounded-xl p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="font-medium text-foreground">{overview.organizationName}</p>
+              <p className="mt-1 flex flex-wrap items-center gap-2 text-caption text-muted-foreground">
+                <span>Recipient:</span>
+                {overview.hasRecipient ? <StatusBadge tone="success">{overview.recipientStatus ?? "cadastrado"}</StatusBadge> : <StatusBadge tone="neutral">não cadastrado</StatusBadge>}
+                {overview.recipientBlocked ? <StatusBadge tone="danger">Bloqueado</StatusBadge> : null}
+              </p>
+              {overview.recipientBlocked && overview.recipientBlockedReason ? <p className="mt-1 text-caption text-danger">{overview.recipientBlockedReason}</p> : null}
+            </div>
+            <Button variant={overview.recipientBlocked ? "outline" : "destructive"} leftIcon={overview.recipientBlocked ? "lock-open" : "lock"} onClick={() => setActionOpen(true)}>
+              {overview.recipientBlocked ? "Desbloquear" : "Bloquear"}
+            </Button>
+          </div>
+        ) : (
+          <Callout tone="neutral">Busque a organização pelo ID pra ver o estado real do recebedor antes de agir.</Callout>
+        )}
+      </CardContent>
+
+      <Dialog open={actionOpen} onOpenChange={(open) => (!open && !submitting ? setActionOpen(false) : null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
               {overview?.recipientBlocked ? "Desbloquear" : "Bloquear"} recebedor — {overview?.organizationName}
             </DialogTitle>
-            <DialogDescription>
-              {overview?.recipientBlocked
-                ? "A organização volta a conseguir vender e sacar imediatamente."
-                : "A organização deixa de conseguir vender e sacar imediatamente."}
-            </DialogDescription>
+            <DialogDescription>{overview?.recipientBlocked ? "A organização volta a conseguir vender e sacar imediatamente." : "A organização deixa de conseguir vender e sacar imediatamente."}</DialogDescription>
           </DialogHeader>
-          <div className="space-y-1.5">
-            <Label>Motivo (obrigatório)</Label>
-            <Textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="Ex.: suspeita de fraude confirmada, chargeback rate acima do limite…"
-              rows={4}
-            />
-          </div>
+          <DialogBody>
+            <Field label="Motivo" htmlFor="recipient-reason" required hint="Pelo menos 10 caracteres. Fica registrado na auditoria.">
+              <Textarea id="recipient-reason" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ex.: suspeita de fraude confirmada, chargeback rate acima do limite…" rows={4} />
+            </Field>
+          </DialogBody>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setActionOpen(false)} disabled={submitting}>
               Cancelar
             </Button>
-            <Button variant={overview?.recipientBlocked ? "default" : "destructive"} onClick={() => void confirmToggle()} disabled={submitting}>
-              {submitting ? "Confirmando…" : "Continuar"}
+            <Button variant={overview?.recipientBlocked ? "primary" : "destructive"} onClick={() => void confirmToggle()} loading={submitting} disabled={reason.trim().length < 10}>
+              Continuar
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </Card>
   );
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { COMPANY } from "@/lib/company";
 import InstitucionalPage, { metadata } from "./page";
 
 /**
@@ -36,22 +37,30 @@ describe("landing institucional — destinos dos CTAs", () => {
 
   it("Criar conta leva pro cadastro empresarial (register com ctx=produtor), nunca pro login público da bilheteria", () => {
     render(<InstitucionalPage />);
-    const links = screen.getAllByRole("link", { name: /^Criar (minha )?conta$/ });
+    const links = screen.getAllByRole("link", { name: /^Criar conta( grátis)?$/ });
     expect(links.length).toBeGreaterThan(0);
     for (const link of links) {
       expect(link.getAttribute("href")).toBe("https://app.nokta.live/register?ctx=produtor");
     }
   });
 
-  it("Bilheteria no rodapé leva pro host público de ingressos", () => {
+  it("Bilheteria e Ver eventos levam pro host público de ingressos", () => {
     render(<InstitucionalPage />);
-    const link = screen.getByRole("link", { name: "Bilheteria" });
-    expect(link.getAttribute("href")).toBe("https://www.noktatickets.com.br/");
+    for (const name of ["Bilheteria", /^Ver eventos$/]) {
+      const link = screen.getByRole("link", { name });
+      expect(link.getAttribute("href")).toBe("https://www.noktatickets.com.br/");
+    }
   });
 
-  it("Contato no rodapé institucional usa um destino real (mailto), nunca um link morto", () => {
+  it("Contato no rodapé institucional usa o e-mail de suporte oficial (mailto), nunca um link morto", () => {
     render(<InstitucionalPage />);
     const contato = screen.getByRole("link", { name: "Contato" });
-    expect(contato.getAttribute("href")).toBe("mailto:contato@noktatickets.com.br");
+    expect(contato.getAttribute("href")).toBe(`mailto:${COMPANY.emails.support}`);
+  });
+
+  it("rodapé identifica a empresa com razão social e CNPJ oficiais", () => {
+    render(<InstitucionalPage />);
+    expect(screen.getAllByText(new RegExp(COMPANY.cnpj)).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(new RegExp(COMPANY.legalName.replace(".", "\\."))).length).toBeGreaterThan(0);
   });
 });

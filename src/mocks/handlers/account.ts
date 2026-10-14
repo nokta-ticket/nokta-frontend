@@ -14,12 +14,16 @@ export function hasMockSession(): boolean {
   return typeof document !== "undefined" && /(^|;\s*)user=/.test(document.cookie);
 }
 
-function mockRole(): "COMUM" | "PRODUTOR" {
+type MockRole = "COMUM" | "PRODUTOR" | "ADMIN" | "SUPER_ADMIN" | "SUPPORT";
+const STAFF_ROLES: MockRole[] = ["ADMIN", "SUPER_ADMIN", "SUPPORT"];
+
+function mockRole(): MockRole {
   if (typeof document === "undefined") return "COMUM";
   const raw = document.cookie.split(";").map((c) => c.trim()).find((c) => c.startsWith("user="));
   try {
     const parsed = JSON.parse(decodeURIComponent(raw?.slice(5) ?? "{}"));
-    return parsed.role === "PRODUTOR" ? "PRODUTOR" : "COMUM";
+    if (parsed.role === "PRODUTOR" || STAFF_ROLES.includes(parsed.role)) return parsed.role;
+    return "COMUM";
   } catch {
     return "COMUM";
   }
@@ -29,6 +33,10 @@ let mockFotoPerfil: string | null = null;
 
 export function mockUser() {
   const role = mockRole();
+  if (STAFF_ROLES.includes(role)) {
+    // Staff do admin: o AuthContext só usa nome/sobrenome/e-mail pra esses papéis.
+    return { id: 99, nome: "Admin", sobrenome: "Nokta", email: "admin@nokta.live", role, nivelProdutor: null, sessionExpiresAt: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString() };
+  }
   return {
     id: 1,
     nome: "Vitor",

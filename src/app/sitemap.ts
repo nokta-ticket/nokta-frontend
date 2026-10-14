@@ -20,5 +20,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: getMarketingUrl("/"), lastModified, changeFrequency: "monthly", priority: 1 },
     { url: getMarketingUrl("/termos"), lastModified, changeFrequency: "yearly", priority: 0.3 },
     { url: getMarketingUrl("/privacidade"), lastModified, changeFrequency: "yearly", priority: 0.3 },
+    { url: getMarketingUrl("/politica-de-cancelamento"), lastModified, changeFrequency: "yearly", priority: 0.3 },
   ];
 }

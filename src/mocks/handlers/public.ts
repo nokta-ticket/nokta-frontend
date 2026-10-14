@@ -10,18 +10,18 @@ const MAX_SEM_JUROS = 1;
 
 /** Descoberta pública: home, lista, detalhe do evento, revenda (leitura). */
 export const publicHandlers: MockHandler[] = [
-  { test: /\/eventos\/destaques$/, handle: () => ({ data: MOCK_EVENTS.filter((e) => e.destaque) }) },
-  { test: /\/eventos\/ativos$/, handle: () => ({ data: MOCK_EVENTS }) },
+  { test: /\/api\/eventos\/destaques$/, handle: () => ({ data: MOCK_EVENTS.filter((e) => e.destaque) }) },
+  { test: /\/api\/eventos\/ativos$/, handle: () => ({ data: MOCK_EVENTS }) },
   // Favoritos da conta (formato resumido da API). Sem sessão fictícia: 401.
   {
-    test: /\/eventos\/favoritos$/,
+    test: /\/api\/eventos\/favoritos$/,
     handle: () => (hasMockSession() ? { data: MOCK_EVENTS.slice(0, 5).map((e) => ({ eventoId: e.id, slug: e.slug, nome: e.nome, data: e.data, local: e.local, thumbnailUrl: e.thumbnails[0]?.url ?? null })) } : unauthorized()),
   },
   // Favoritar/desfavoritar: o front é otimista, aqui só confirma.
-  { test: /\/eventos\/[^/]+\/favoritos$/, method: "patch", handle: () => ({ data: { ok: true } }) },
-  { test: /\/eventos\/favoritos\/[^/]+$/, method: "delete", handle: () => ({ data: { ok: true } }) },
+  { test: /\/api\/eventos\/[^/]+\/favoritos$/, method: "patch", handle: () => ({ data: { ok: true } }) },
+  { test: /\/api\/eventos\/favoritos\/[^/]+$/, method: "delete", handle: () => ({ data: { ok: true } }) },
   {
-    test: /\/eventos$/,
+    test: /\/api\/eventos$/,
     handle: ({ params }) => {
       const q = (params.name ?? params.q ?? "").toLowerCase();
       const items = q ? MOCK_EVENTS.filter((e) => `${e.nome} ${e.local} ${e.endereco.localidade}`.toLowerCase().includes(q)) : MOCK_EVENTS;
@@ -29,11 +29,11 @@ export const publicHandlers: MockHandler[] = [
     },
   },
   {
-    test: /\/eventos\/([^/]+)\/ingressos$/,
+    test: /\/api\/eventos\/([^/]+)\/ingressos$/,
     handle: ({ url }) => ({ data: { data: mockTickets(decodeURIComponent(url.pathname.split("/").at(-2) ?? "")) } }),
   },
   {
-    test: /\/eventos\/[^/]+$/,
+    test: /\/api\/eventos\/[^/]+$/,
     handle: ({ url }) => {
       const ev = mockEventDetails(decodeURIComponent(url.pathname.split("/").at(-1) ?? ""));
       return ev ? { data: ev } : notFound("Evento não encontrado");

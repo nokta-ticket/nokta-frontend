@@ -1,114 +1,141 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { Zap, Shield, BarChart3, Ticket, Users, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { FaqList } from "@/components/ui/faq";
+import { Icon, type IconName } from "@/components/ui/icon";
+import { COMPANY } from "@/lib/company";
 
-const BENEFITS = [
-  {
-    icon: Zap,
-    title: "Ative em minutos",
-    description: "Crie sua conta de produtor automaticamente. Sem burocracia inicial para começar.",
-  },
-  {
-    icon: Shield,
-    title: "Pagamentos seguros",
-    description: "Repasses via PIX com verificação de identidade para garantir segurança para todos.",
-  },
-  {
-    icon: BarChart3,
-    title: "Métricas em tempo real",
-    description: "Acompanhe vendas, receita e engajamento do seu evento em um painel completo.",
-  },
-  {
-    icon: Ticket,
-    title: "Gestão de ingressos",
-    description: "Crie lotes, defina preços, datas limite e valide ingressos no dia do evento.",
-  },
-  {
-    icon: Users,
-    title: "Todos os tipos de evento",
-    description: "Festas, shows, workshops, esportes — a plataforma se adapta ao seu evento.",
-  },
+export const metadata: Metadata = {
+  title: "Para produtores",
+  description: "Crie seu evento, venda ingressos com Pix e cartão, controle a portaria pelo celular e receba direto na sua conta. Sem mensalidade.",
+};
+
+const BENEFITS: { icon: IconName; title: string; text: string }[] = [
+  { icon: "bolt", title: "Ative em minutos", text: "Crie sua conta de produtor e publique o primeiro evento hoje. Sem burocracia pra começar." },
+  { icon: "ticket", title: "Lotes, cupons e meia", text: "Monte os lotes, defina preços e datas de virada, e valide tudo na portaria pelo celular." },
+  { icon: "credit-card", title: "Pix e cartão parcelado", text: "O comprador paga como preferir. A taxa de serviço aparece às claras no checkout." },
+  { icon: "qr", title: "QR pelo WhatsApp", text: "O ingresso chega antes do evento no número verificado do comprador — sem app pra baixar." },
+  { icon: "megaphone", title: "Promoters e convidados", text: "Link próprio pra cada promoter, lista de convidados e cortesias controladas." },
+  { icon: "chart-line", title: "Números em tempo real", text: "Vendas, receita e check-ins num painel que funciona no celular." },
 ];
 
+const STEPS = [
+  { title: "Crie a conta", text: "Nome do projeto, telefone e aceite dos termos de produtor." },
+  { title: "Publique o evento", text: "Banner, lotes, local e horário. Ingressos pagos pedem a verificação de identidade." },
+  { title: "Venda e receba", text: "Acompanhe as vendas e saque o saldo liberado direto pra sua conta." },
+];
 
+const FAQ = [
+  { q: "Quanto custa?", a: "Não tem mensalidade. A taxa de serviço da plataforma é cobrada por ingresso vendido e exibida ao comprador no momento da compra." },
+  { q: "Quando recebo o repasse?", a: "O saldo fica separado por evento, entre liberado, em custódia e em saque. O repasse é feito via Pix pra conta cadastrada, descontadas as taxas vigentes." },
+  { q: "Posso vender evento gratuito?", a: "Sim. Eventos gratuitos e rascunhos podem ser criados assim que a conta de produtor é ativada; pra ingressos pagos é preciso concluir a verificação de identidade." },
+  { q: "Como funciona a portaria?", a: "O QR do comprador é lido pelo celular da equipe, com o status de cada ingresso na hora. Cada pessoa da equipe acessa só o que o papel dela permite." },
+];
+
+/** LP pra produtores dentro do site de ingressos — vive no shell público (header/footer vêm de lá). */
 export default function ParaProdutoresPage() {
   return (
-    <main className="min-h-screen bg-white">
+    <div className="pb-8">
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#0f0c29] via-[#302b63] to-[#24243e] text-white">
-        <div className="mx-auto max-w-5xl px-4 py-24 text-center">
-          <span className="mb-4 inline-block rounded-full bg-violet-500/20 px-4 py-1 text-sm font-medium text-violet-300">
-            Para produtores
-          </span>
-          <h1 className="mt-4 text-4xl font-extrabold leading-tight sm:text-5xl">
-            Crie e venda seus eventos
-            <br />
-            <span className="text-violet-400">sem complicação</span>
-          </h1>
-          <p className="mx-auto mt-6 max-w-xl text-lg text-gray-300">
-            A Nokta é a plataforma que conecta produtores de eventos com seu público.
-            Ative sua conta em minutos e comece hoje.
-          </p>
-          <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Link
-              href="/register?ctx=produtor"
-              className="flex items-center gap-2 rounded-full bg-violet-600 px-8 py-3.5 text-sm font-semibold text-white shadow-lg transition hover:bg-violet-700"
-            >
-              Criar conta de produtor <ArrowRight size={16} />
-            </Link>
-            <Link
-              href="/login?ctx=produtor"
-              className="rounded-full border border-white/20 px-8 py-3.5 text-sm font-semibold text-white transition hover:bg-white/10"
-            >
-              Já tenho conta
-            </Link>
+      <section className="relative overflow-hidden" aria-labelledby="pp-title">
+        <div className="absolute inset-0 bg-[radial-gradient(800px_circle_at_90%_-20%,color-mix(in_oklab,var(--brand)_36%,transparent),transparent_60%),radial-gradient(600px_circle_at_0%_100%,color-mix(in_oklab,var(--brand)_16%,transparent),transparent_60%)]" aria-hidden />
+        <div className="grain absolute inset-0" aria-hidden />
+        <div className="hero-fade absolute inset-0" aria-hidden />
+        <div className="relative mx-auto max-w-7xl px-4 pb-12 pt-10 lg:px-6 lg:pb-20 lg:pt-20">
+          <div className="max-w-2xl">
+            <p className="slide-up mb-4 inline-flex items-center gap-2 rounded-pill bg-white/10 px-3.5 py-1.5 text-caption font-semibold uppercase tracking-wider text-white backdrop-blur-md">
+              <span className="size-1.5 rounded-full bg-brand" aria-hidden />
+              Para produtores
+            </p>
+            <h1 id="pp-title" className="slide-up [--i:1] text-balance font-display text-hero uppercase text-white">
+              Crie seu evento com a gente
+            </h1>
+            <p className="slide-up [--i:2] mt-5 max-w-lg text-pretty text-lg leading-relaxed text-white/80">Venda ingressos, controle a portaria pelo celular e receba direto na sua conta. Sem mensalidade.</p>
+            <div className="slide-up [--i:3] mt-8 flex flex-col gap-3 sm:flex-row">
+              <Button asChild variant="primary" shape="pill" size="lg" className="w-full sm:w-auto">
+                <Link href="/register?ctx=produtor">
+                  Criar conta de produtor
+                  <Icon name="arrow-right" size={14} />
+                </Link>
+              </Button>
+              <Button asChild variant="contrast" shape="pill" size="lg" className="w-full sm:w-auto">
+                <Link href="/login?ctx=produtor">Já tenho conta</Link>
+              </Button>
+            </div>
           </div>
         </div>
-
-        {/* Decorative gradient */}
-        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent" />
       </section>
 
-      {/* Benefits */}
-      <section className="mx-auto max-w-5xl px-4 py-20">
-        <h2 className="mb-12 text-center text-3xl font-bold text-gray-900">
-          Tudo que você precisa para seu evento
+      {/* Benefícios */}
+      <section className="mx-auto max-w-7xl px-4 py-12 lg:px-6 lg:py-16" aria-labelledby="pp-beneficios">
+        <h2 id="pp-beneficios" className="text-balance font-display text-[2rem] uppercase leading-none text-foreground lg:text-[2.75rem]">
+          Tudo que o seu evento precisa
         </h2>
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {BENEFITS.map((b) => (
-            <div key={b.title} className="flex gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-violet-100">
-                <b.icon className="text-violet-600" size={22} />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">{b.title}</h3>
-                <p className="mt-1 text-sm text-gray-500">{b.description}</p>
-              </div>
-            </div>
+        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {BENEFITS.map((b, i) => (
+            <Card key={b.title} glow className="fade-up gap-2 p-5" style={{ ["--i" as string]: i } as never}>
+              <Icon name={b.icon} size={20} className="text-brand" />
+              <p className="mt-1 text-[15px] font-semibold text-foreground">{b.title}</p>
+              <p className="text-body text-muted-foreground">{b.text}</p>
+            </Card>
           ))}
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="px-4 py-20 text-center">
-        <h2 className="text-3xl font-bold text-gray-900">Pronto para começar?</h2>
-        <p className="mx-auto mt-4 max-w-md text-gray-500">
-          Crie sua conta em menos de 2 minutos e seu primeiro evento ainda hoje.
-        </p>
-        <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-          <Link
-            href="/register?ctx=produtor"
-            className="flex items-center gap-2 rounded-full bg-violet-600 px-8 py-3.5 text-sm font-semibold text-white shadow-lg transition hover:bg-violet-700"
-          >
-            Criar conta de produtor <ArrowRight size={16} />
-          </Link>
-          <Link
-            href="/login?ctx=produtor"
-            className="rounded-full border border-gray-200 px-8 py-3.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-          >
-            Já tenho conta
-          </Link>
+      {/* Como funciona */}
+      <section className="border-y border-border bg-surface/40" aria-labelledby="pp-passos">
+        <div className="mx-auto max-w-7xl px-4 py-12 lg:px-6 lg:py-16">
+          <h2 id="pp-passos" className="text-balance font-display text-[2rem] uppercase leading-none text-foreground lg:text-[2.75rem]">
+            Do cadastro ao saque em três passos
+          </h2>
+          <ol className="mt-8 grid gap-4 lg:grid-cols-3">
+            {STEPS.map((s, i) => (
+              <li key={s.title} className="fade-up flex gap-4 rounded-card border border-border bg-surface p-5 shadow-card" style={{ ["--i" as string]: i } as never}>
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-bold text-brand-foreground">{i + 1}</span>
+                <div>
+                  <p className="text-[15px] font-semibold text-foreground">{s.title}</p>
+                  <p className="mt-1 text-body text-muted-foreground">{s.text}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
-    </main>
+
+      {/* FAQ */}
+      <section className="mx-auto max-w-3xl px-4 py-12 lg:px-6 lg:py-16" aria-labelledby="pp-faq">
+        <h2 id="pp-faq" className="text-balance text-center font-display text-[2rem] uppercase leading-none text-foreground lg:text-[2.75rem]">
+          Dúvidas de quem produz
+        </h2>
+        <FaqList items={FAQ} name="pp-faq" className="mt-8" />
+        <p className="mt-6 text-center text-body text-muted-foreground">
+          Ficou alguma dúvida? Fala com a gente em{" "}
+          <a href={`mailto:${COMPANY.emails.support}`} className="font-semibold text-brand underline-offset-4 hover:underline">
+            {COMPANY.emails.support}
+          </a>
+          .
+        </p>
+      </section>
+
+      {/* CTA final */}
+      <section className="mx-auto max-w-7xl px-4 lg:px-6" aria-labelledby="pp-cta">
+        <div className="card-accent relative overflow-hidden rounded-[24px] border border-border bg-surface p-6 lg:flex lg:items-center lg:justify-between lg:p-10">
+          <div className="ambient-blob -right-16 -top-16 size-64" aria-hidden />
+          <div className="relative">
+            <h2 id="pp-cta" className="text-balance font-display text-[2rem] uppercase leading-none text-foreground lg:text-[2.75rem]">
+              Pronto pra começar?
+            </h2>
+            <p className="mt-3 max-w-md text-body text-muted-foreground">Crie sua conta em menos de 2 minutos e publique seu primeiro evento ainda hoje.</p>
+          </div>
+          <Button asChild variant="primary" shape="pill" size="lg" className="relative mt-6 w-full sm:w-auto lg:mt-0">
+            <Link href="/register?ctx=produtor">
+              Quero produzir
+              <Icon name="arrow-right" size={14} />
+            </Link>
+          </Button>
+        </div>
+      </section>
+    </div>
   );
 }

@@ -1,35 +1,22 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { AlertCircle, Eye, Search } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { Badge } from "@/components/ui/badge";
+import { useRouter } from "next/navigation";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
+import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { PageState } from "@/components/ui/page-state";
-import { Paginate } from "@/interfaces/paginate";
-import { toPaginate } from "@/lib/pagination";
-import api, { getErrorMessage } from "@/lib/axios";
-import {
-  MODULE_LABEL,
-  WorkspaceStageBadge,
-  WorkspaceStatusBadge,
-  stageInfo,
-} from "./_components/workspace-labels";
+import { SearchInput, useDebouncedValue } from "@/components/ui/search-input";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
+import { RowsSkeleton } from "@/components/ui/skeleton";
+import { Icon } from "@/components/ui/icon";
+import { DataTable, DataTableBody, DataTableCell, DataTableEmpty, DataTableHead, DataTableHeadCell, DataTablePagination, DataTableRow, DataTableShell, DataTableToolbar, MobileCard, MobileCardList } from "@/components/ui/data-table";
+import { useAdminList } from "../_hooks/use-admin-list";
+import { RefreshButton } from "../_components/refresh-button";
+import { formatDate, fullName } from "../_lib/format";
+import { MODULE_LABEL, WorkspaceStageBadge, WorkspaceStatusBadge, stageInfo } from "./_components/workspace-labels";
 
 type StageFilter = "" | "SEM_WORKSPACE" | "EM_ANDAMENTO" | "CONCLUIDO" | "BLOQUEADO";
 
@@ -53,243 +40,172 @@ interface WorkspaceRow {
   eventsCount: number;
 }
 
-interface GetWorkspacesResponse {
-  data: WorkspaceRow[];
-  paginate: Paginate;
-}
-
-const filters: { label: string; value: StageFilter }[] = [
-  { label: "Todos", value: "" },
-  { label: "Sem workspace", value: "SEM_WORKSPACE" },
-  { label: "Em andamento", value: "EM_ANDAMENTO" },
-  { label: "Concluídos", value: "CONCLUIDO" },
-  { label: "Bloqueados", value: "BLOQUEADO" },
+const FILTERS: { value: StageFilter; label: string }[] = [
+  { value: "", label: "Todos" },
+  { value: "SEM_WORKSPACE", label: "Sem workspace" },
+  { value: "EM_ANDAMENTO", label: "Em andamento" },
+  { value: "CONCLUIDO", label: "Concluídos" },
+  { value: "BLOQUEADO", label: "Bloqueados" },
 ];
 
+function rowHref(row: WorkspaceRow): string {
+  return row.kind === "lead" ? `/admin/usuarios/${row.owner?.id}` : `/admin/workspaces/${row.id}`;
+}
+
 export default function WorkspacesPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [etapa, setEtapa] = useState<StageFilter>("");
-  const [rows, setRows] = useState<WorkspaceRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [paginate, setPaginate] = useState<Paginate>({ currentPage: 1, totalPages: 1 });
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debounced = useDebouncedValue(search.trim(), 400);
 
-  async function load(page = 1) {
-    setLoading(true);
-    setError(null);
-    try {
-      const { data } = await api.get<GetWorkspacesResponse>("/admin/workspaces", {
-        params: {
-          page,
-          etapa: etapa || null,
-          search: search.trim() !== "" ? search.trim() : null,
-        },
-      });
-      setRows(data.data);
-      setPaginate(toPaginate(data.paginate));
-    } catch (err) {
-      setRows([]);
-      setPaginate(toPaginate(null));
-      setError(getErrorMessage(err, "Não foi possível carregar os workspaces."));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => void load(1), search ? 500 : 0);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [etapa, search]);
+  const list = useAdminList<WorkspaceRow>("/admin/workspaces", { etapa: etapa || null, search: debounced || null }, { fallbackError: "Não foi possível carregar os workspaces." });
+  const rows = list.rows ?? [];
+  const concluded = rows.filter((r) => r.etapa === "CONCLUIDO").length;
+  const blocked = rows.filter((r) => r.kind === "workspace" && r.status !== "ACTIVE").length;
+  const emptyTitle = debounced ? "Nada encontrado pra essa busca" : "Nada encontrado com esse filtro";
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-semibold">Workspaces</h1>
+      <PageHeader title="Workspaces" description="Funil de criação: da conta nova ao workspace operando." />
 
-        <div className="relative w-full sm:w-96">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <Input
-            placeholder="Buscar por nome, link, documento ou e-mail"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="No funil" icon="building" value={list.rows ? list.paginate.total : null} hint={etapa || debounced ? "Com o filtro atual" : "Contas e workspaces"} />
+        <StatCard label="Onboarding concluído" icon="check-circle" value={list.rows ? concluded : null} hint="Nesta página" />
+        <StatCard label="Bloqueados" icon="ban" value={list.rows ? blocked : null} hint="Nesta página" />
+      </div>
+
+      <DataTableToolbar>
+        <SearchInput value={search} onChange={setSearch} placeholder="Buscar por nome, link, documento ou e-mail" className="min-w-0 flex-1 basis-full sm:basis-auto sm:max-w-xl" />
+        <div className="scrollbar-hide max-w-full overflow-x-auto">
+          <SegmentedControl value={etapa} onChange={setEtapa} options={FILTERS} size="sm" />
         </div>
-      </div>
+        <RefreshButton onClick={() => void list.reload()} pending={list.loading} className="ml-auto" />
+      </DataTableToolbar>
 
-      <div className="flex flex-wrap gap-2">
-        {filters.map((option) => (
-          <Button
-            key={option.label}
-            onClick={() => setEtapa(option.value)}
-            variant={etapa === option.value ? "default" : "outline"}
-            className={etapa === option.value ? "bg-violet-600 text-white hover:bg-violet-700" : "text-sm"}
-          >
-            {option.label}
-          </Button>
-        ))}
-      </div>
-
-      <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
-        {error ? (
-          <div className="p-6">
-            <PageState
-              title="Não foi possível carregar os workspaces"
-              description={error}
-              icon={<AlertCircle className="h-8 w-8 text-red-500" />}
-              actionLabel="Tentar novamente"
-              onAction={() => void load()}
-            />
-          </div>
-        ) : (
-          <Table>
-            <TableHeader className="bg-muted/50">
-              <TableRow>
-                <TableHead className="px-6 py-3">Workspace</TableHead>
-                <TableHead className="px-6 py-3">Dono</TableHead>
-                <TableHead className="px-6 py-3">Etapa</TableHead>
-                <TableHead className="px-6 py-3">Módulos</TableHead>
-                <TableHead className="px-6 py-3 text-center">Equipe</TableHead>
-                <TableHead className="px-6 py-3 text-center">Eventos</TableHead>
-                <TableHead className="px-6 py-3">Criado em</TableHead>
-                <TableHead className="px-6 py-3 text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="px-6 py-6 text-center">
-                    Carregando...
-                  </TableCell>
-                </TableRow>
-              ) : null}
-
-              {!loading && rows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="px-6 py-6 text-center">
-                    {search ? "Nada encontrado para a busca atual." : "Nada encontrado com o filtro selecionado."}
-                  </TableCell>
-                </TableRow>
-              ) : null}
-
-              {!loading
-                ? rows.map((row) => {
+      {list.error ? (
+        <ErrorState title="Não deu pra carregar os workspaces" description={list.error} onRetry={() => void list.reload()} />
+      ) : list.rows === null ? (
+        <RowsSkeleton rows={8} />
+      ) : (
+        <DataTableShell
+          table={
+            <DataTable>
+              <DataTableHead>
+                <tr>
+                  <DataTableHeadCell>Workspace</DataTableHeadCell>
+                  <DataTableHeadCell>Dono</DataTableHeadCell>
+                  <DataTableHeadCell>Etapa</DataTableHeadCell>
+                  <DataTableHeadCell>Módulos</DataTableHeadCell>
+                  <DataTableHeadCell align="right">Equipe</DataTableHeadCell>
+                  <DataTableHeadCell align="right">Eventos</DataTableHeadCell>
+                  <DataTableHeadCell>Criado em</DataTableHeadCell>
+                  <DataTableHeadCell align="right" width={72}>
+                    <span className="sr-only">Ações</span>
+                  </DataTableHeadCell>
+                </tr>
+              </DataTableHead>
+              <DataTableBody>
+                {rows.length === 0 ? (
+                  <DataTableEmpty colSpan={8} icon="building" title={emptyTitle} />
+                ) : (
+                  rows.map((row, i) => {
                     const isLead = row.kind === "lead";
-                    const ownerName =
-                      `${row.owner?.nome ?? ""} ${row.owner?.sobrenome ?? ""}`.trim() || "Sem nome";
-                    const href = isLead ? `/admin/usuarios/${row.owner?.id}` : `/admin/workspaces/${row.id}`;
-                    const blocked = !isLead && row.status !== "ACTIVE";
-
+                    const ownerName = fullName(row.owner?.nome, row.owner?.sobrenome);
+                    const blockedRow = !isLead && row.status !== "ACTIVE";
+                    const href = rowHref(row);
                     return (
-                      <TableRow
-                        key={`${row.kind}-${isLead ? row.owner?.id : row.id}`}
-                        className="border-b transition hover:bg-muted/40"
-                      >
-                        <TableCell className="px-6 py-3">
+                      <DataTableRow key={`${row.kind}-${isLead ? row.owner?.id : row.id}`} index={i} onClick={() => router.push(href)}>
+                        <DataTableCell>
                           {isLead ? (
-                            <span className="text-sm text-muted-foreground">Ainda não criou o workspace</span>
+                            <span className="text-muted-foreground">Ainda não criou o workspace</span>
                           ) : (
-                            <div className="flex flex-col">
-                              <span className="font-medium">{row.nome}</span>
-                              <span className="text-xs text-muted-foreground">
+                            <>
+                              <p className="font-medium">{row.nome}</p>
+                              <p className="text-caption text-muted-foreground">
                                 #{row.id} · {row.slug ?? "sem link"} · {row.tipo}
-                              </span>
-                            </div>
+                              </p>
+                            </>
                           )}
-                        </TableCell>
-
-                        <TableCell className="px-6 py-3">
+                        </DataTableCell>
+                        <DataTableCell stopPropagation>
                           {row.owner ? (
-                            <Link
-                              href={`/admin/usuarios/${row.owner.id}`}
-                              className="flex flex-col hover:text-violet-600"
-                            >
-                              <span>{ownerName}</span>
-                              <span className="text-xs text-muted-foreground">{row.owner.email}</span>
+                            <Link href={`/admin/usuarios/${row.owner.id}`} className="block hover:text-brand">
+                              <span className="block">{ownerName}</span>
+                              <span className="block text-caption text-muted-foreground">{row.owner.email}</span>
                             </Link>
                           ) : (
-                            "—"
+                            <span className="text-subtle-foreground">Sem dono</span>
                           )}
-                        </TableCell>
-
-                        <TableCell className="px-6 py-3">
+                        </DataTableCell>
+                        <DataTableCell>
                           <div className="flex flex-col items-start gap-1">
                             <div className="flex flex-wrap gap-1">
                               <WorkspaceStageBadge etapa={row.etapa} />
-                              {blocked && row.status ? <WorkspaceStatusBadge status={row.status} /> : null}
+                              {blockedRow && row.status ? <WorkspaceStatusBadge status={row.status} /> : null}
                             </div>
-                            {row.etapa !== "CONCLUIDO" ? (
-                              <span className="text-xs text-muted-foreground">{stageInfo(row.etapa).detail}</span>
-                            ) : null}
+                            {row.etapa !== "CONCLUIDO" ? <span className="text-caption text-muted-foreground">{stageInfo(row.etapa).detail}</span> : null}
                           </div>
-                        </TableCell>
-
-                        <TableCell className="px-6 py-3">
+                        </DataTableCell>
+                        <DataTableCell>
                           <div className="flex flex-wrap gap-1">
                             {row.modules.length === 0 ? (
-                              <span className="text-xs text-muted-foreground">—</span>
+                              <span className="text-subtle-foreground">Nenhum</span>
                             ) : (
                               row.modules.map((m) => (
-                                <Badge
-                                  key={m}
-                                  className="rounded-full bg-violet-100 px-3 py-1 text-xs text-violet-700"
-                                >
+                                <StatusBadge key={m} tone="brand" dot={false}>
                                   {MODULE_LABEL[m] ?? m}
-                                </Badge>
+                                </StatusBadge>
                               ))
                             )}
                           </div>
-                        </TableCell>
-
-                        <TableCell className="px-6 py-3 text-center">{isLead ? "—" : row.membersCount}</TableCell>
-                        <TableCell className="px-6 py-3 text-center">{isLead ? "—" : row.eventsCount}</TableCell>
-                        <TableCell className="px-6 py-3">
-                          {new Date(row.createdAt).toLocaleDateString("pt-BR")}
-                        </TableCell>
-
-                        <TableCell className="px-6 py-3 text-right">
-                          <Link
-                            href={href}
-                            aria-label={isLead ? `Ver a conta de ${ownerName}` : `Ver detalhes de ${row.nome}`}
-                          >
-                            <Button size="icon">
-                              <Eye className="h-4 w-4 text-white" />
-                            </Button>
-                          </Link>
-                        </TableCell>
-                      </TableRow>
+                        </DataTableCell>
+                        <DataTableCell num>{isLead ? <span className="text-subtle-foreground">—</span> : row.membersCount}</DataTableCell>
+                        <DataTableCell num>{isLead ? <span className="text-subtle-foreground">—</span> : row.eventsCount}</DataTableCell>
+                        <DataTableCell className="tnum text-muted-foreground">{formatDate(row.createdAt)}</DataTableCell>
+                        <DataTableCell align="right" stopPropagation>
+                          <Button asChild variant="subtle" size="icon-sm" aria-label={isLead ? `Ver a conta de ${ownerName}` : `Ver ${row.nome}`}>
+                            <Link href={href}>
+                              <Icon name="chevron-right" size={12} />
+                            </Link>
+                          </Button>
+                        </DataTableCell>
+                      </DataTableRow>
                     );
                   })
-                : null}
-            </TableBody>
-          </Table>
-        )}
-
-        {!loading && !error && paginate.totalPages > 1 ? (
-          <div className="border-t bg-muted/30 p-4">
-            <Pagination>
-              <PaginationContent className="justify-center gap-4">
-                <PaginationPrevious
-                  onClick={() => void load(paginate.currentPage - 1)}
-                  className={paginate.currentPage === 1 ? "pointer-events-none opacity-50" : ""}
-                />
-                <span className="text-sm font-medium">
-                  Página {paginate.currentPage} de {paginate.totalPages}
-                </span>
-                <PaginationNext
-                  onClick={() => void load(paginate.currentPage + 1)}
-                  className={paginate.currentPage === paginate.totalPages ? "pointer-events-none opacity-50" : ""}
-                />
-              </PaginationContent>
-            </Pagination>
-          </div>
-        ) : null}
-      </div>
+                )}
+              </DataTableBody>
+            </DataTable>
+          }
+          mobile={
+            rows.length === 0 ? (
+              <EmptyState compact icon="building" title={emptyTitle} />
+            ) : (
+              <MobileCardList>
+                {rows.map((row, i) => {
+                  const isLead = row.kind === "lead";
+                  return (
+                    <MobileCard
+                      key={`${row.kind}-${isLead ? row.owner?.id : row.id}`}
+                      index={i}
+                      href={rowHref(row)}
+                      title={isLead ? "Ainda não criou o workspace" : row.nome}
+                      subtitle={row.owner ? `${fullName(row.owner.nome, row.owner.sobrenome)} · ${row.owner.email}` : undefined}
+                      badge={<WorkspaceStageBadge etapa={row.etapa} />}
+                      meta={[
+                        { label: "Módulos", value: row.modules.length ? row.modules.map((m) => MODULE_LABEL[m] ?? m).join(", ") : "Nenhum" },
+                        { label: "Criado em", value: formatDate(row.createdAt), num: true },
+                        { label: "Equipe", value: isLead ? "—" : row.membersCount, num: true },
+                        { label: "Eventos", value: isLead ? "—" : row.eventsCount, num: true },
+                      ]}
+                    />
+                  );
+                })}
+              </MobileCardList>
+            )
+          }
+          footer={<DataTablePagination page={list.page} lastPage={list.paginate.lastPage} total={list.paginate.total} perPage={list.paginate.perPage} noun="registros" onPageChange={(p) => void list.goTo(p)} />}
+        />
+      )}
     </div>
   );
 }

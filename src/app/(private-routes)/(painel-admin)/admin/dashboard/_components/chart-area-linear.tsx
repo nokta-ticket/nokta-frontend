@@ -1,124 +1,93 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AlertCircle } from "lucide-react";
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  ChartConfig,
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import { PageState } from "@/components/ui/page-state";
+import { useCallback, useEffect, useState } from "react";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from "recharts";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorState, EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import api, { getErrorMessage } from "@/lib/axios";
+import { RefreshButton } from "../../_components/refresh-button";
 
-type LinhaAPI = { mes: string; total: number };
+type Ponto = { mes: string; total: number };
 
-const chartConfig: ChartConfig = {
-  total: {
-    label: "Eventos criados",
-    color: "var(--chart-1)",
-  },
-};
+function ChartTip({ active, payload, label }: TooltipProps<number, string>) {
+  if (!active || !payload?.length) return null;
+  const value = Number(payload[0].value ?? 0);
+  return (
+    <div className="rounded-xl border border-border bg-surface px-3 py-2 text-caption shadow-2">
+      <p className="font-semibold text-foreground">{label}</p>
+      <p className="mt-0.5 flex items-center gap-1.5 text-muted-foreground">
+        <span className="size-2 rounded-full bg-chart-1" aria-hidden />
+        {value.toLocaleString("pt-BR")} {value === 1 ? "evento criado" : "eventos criados"}
+      </p>
+    </div>
+  );
+}
 
+/** Eventos criados por mês (`GET /admin/dashboard/eventos-mensais` → `{ months: { [mês]: total } }`). */
 export function ChartAreaLinear() {
-  const [data, setData] = useState<LinhaAPI[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<Ponto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
-  async function getMonthlyData() {
-    setLoading(true);
+  const load = useCallback(async () => {
+    setPending(true);
     setError(null);
-
     try {
-      const res = await api.get("/admin/dashboard/eventos-mensais");
-      const months: Record<string, number> = res.data.months;
-      const monthsData = Object.keys(months).map((label) => ({
-        mes: label,
-        total: months[label],
-      }));
-
-      setData(monthsData);
+      const res = await api.get<{ months: Record<string, number> }>("/admin/dashboard/eventos-mensais");
+      const months = res.data.months ?? {};
+      setData(Object.keys(months).map((mes) => ({ mes, total: months[mes] })));
     } catch (err) {
       setData([]);
-      setError(
-        getErrorMessage(err, "Nao foi possivel carregar a evolucao de eventos.")
-      );
+      setError(getErrorMessage(err, "Não foi possível carregar a evolução de eventos."));
     } finally {
-      setLoading(false);
+      setPending(false);
     }
-  }
-
-  useEffect(() => {
-    void getMonthlyData();
   }, []);
 
-  const footerRange = () => {
-    if (data.length === 0) return "--";
-    return `${data[0].mes} - ${data[data.length - 1].mes}`;
-  };
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const total = data?.reduce((acc, p) => acc + p.total, 0) ?? 0;
+  const range = data && data.length > 0 ? `${data[0].mes} – ${data[data.length - 1].mes}` : null;
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Evolucao de eventos</CardTitle>
-        <CardDescription>
-          Total de eventos postados nos ultimos 6 meses
-        </CardDescription>
+        <div>
+          <CardTitle>Eventos criados por mês</CardTitle>
+          <CardDescription>
+            {range ? `${range} · ${total.toLocaleString("pt-BR")} no período` : "Últimos 6 meses"}
+          </CardDescription>
+        </div>
+        <RefreshButton onClick={() => void load()} pending={pending} />
       </CardHeader>
-
-      <CardContent>
-        {loading ? (
-          <div className="h-64 animate-pulse rounded bg-muted" />
+      <CardContent className="pt-3">
+        {data === null ? (
+          <Skeleton className="h-64 w-full rounded-xl" />
         ) : error ? (
-          <PageState
-            title="Nao foi possivel carregar o grafico"
-            description={error}
-            icon={<AlertCircle className="h-8 w-8 text-red-500" />}
-            actionLabel="Tentar novamente"
-            onAction={() => void getMonthlyData()}
-          />
+          <ErrorState title="Não deu pra carregar o gráfico" description={error} onRetry={() => void load()} />
         ) : data.length === 0 ? (
-          <PageState
-            title="Sem dados suficientes"
-            description="Os eventos mensais aparecerao aqui conforme a plataforma receber novos cadastros."
-          />
+          <EmptyState compact icon="chart-line" title="Sem dados suficientes" description="Os eventos por mês aparecem aqui conforme a plataforma receber novos cadastros." />
         ) : (
-          <>
-            <ChartContainer config={chartConfig}>
-              <AreaChart data={data} margin={{ left: 12, right: 12 }}>
-                <CartesianGrid vertical={false} />
-                <XAxis
-                  dataKey="mes"
-                  tickLine={false}
-                  axisLine={false}
-                  tickMargin={8}
-                  tickFormatter={(value: string) => value.slice(0, 3)}
-                />
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent indicator="dot" hideLabel />}
-                />
-                <Area
-                  dataKey="total"
-                  type="linear"
-                  fill="var(--color-total)"
-                  fillOpacity={0.4}
-                  stroke="var(--color-total)"
-                />
+          <div className="h-64 w-full text-caption">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data} margin={{ left: 0, right: 8, top: 8, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="admin-eventos-fill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" />
+                <XAxis dataKey="mes" tickLine={false} axisLine={false} tickMargin={10} tick={{ fill: "var(--muted-foreground)", fontSize: 12 }} tickFormatter={(v: string) => v.slice(0, 3)} />
+                <YAxis allowDecimals={false} width={32} tickLine={false} axisLine={false} tick={{ fill: "var(--subtle-foreground)", fontSize: 11 }} />
+                <Tooltip cursor={{ stroke: "var(--border-strong)", strokeWidth: 1 }} content={<ChartTip />} />
+                <Area dataKey="total" type="monotone" stroke="var(--chart-1)" strokeWidth={2} fill="url(#admin-eventos-fill)" activeDot={{ r: 5, fill: "var(--chart-1)", stroke: "var(--surface)", strokeWidth: 2 }} />
               </AreaChart>
-            </ChartContainer>
-            <div className="mt-4 text-sm text-muted-foreground">
-              {footerRange()}
-            </div>
-          </>
+            </ResponsiveContainer>
+          </div>
         )}
       </CardContent>
     </Card>
