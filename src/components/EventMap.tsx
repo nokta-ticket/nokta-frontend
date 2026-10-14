@@ -1,14 +1,16 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from "react";
+import type { Map as LeafletMap } from "leaflet";
 // Importado estaticamente (não injetado via <link> de CDN): o CSP do site
 // só libera style-src 'self' — um <link> pra unpkg.com é bloqueado pelo
 // navegador (erro de console, silencioso pro usuário), e a Promise que
 // esperava o evento 'load' do <link> nunca resolvia, deixando o mapa
 // vazio pra sempre em produção. Next.js empacota este CSS como parte do
 // próprio bundle (mesma origem), sem depender de CDN externa.
-import 'leaflet/dist/leaflet.css';
-import api from '@/lib/axios';
+import "leaflet/dist/leaflet.css";
+import api from "@/lib/axios";
+import { Icon } from "@/components/ui/icon";
 
 interface EventMapProps {
   address: string;
@@ -16,31 +18,36 @@ interface EventMapProps {
   lng?: number;
   /** Altura em px do mapa — default 180 (usado na página de evento). A Home pública do Venue usa um valor menor (mapa ilustrativo ao lado do endereço). */
   height?: number;
-  /** Default true. Desligar em mapas pequenos/ilustrativos — os botões (28px cada) dominam um mapa de ~90px de altura. */
+  /** Default true. Desligar em mapas pequenos/ilustrativos — os botões dominam um mapa de ~90px de altura. */
   showZoomControls?: boolean;
 }
 
+/**
+ * Mapa estático (Leaflet + tiles escuros da Carto) com um marcador no
+ * endereço. Não arrasta nem dá zoom com a roda — é ilustrativo; os botões
+ * de zoom são os únicos controles.
+ */
 export function EventMap({ address, lat, lng, height = 180, showZoomControls = true }: EventMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<any>(null);
+  const mapRef = useRef<LeafletMap | null>(null);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     let cancelled = false;
     let resizeObserver: ResizeObserver | null = null;
 
-    import('leaflet').then((L) => {
+    import("leaflet").then((L) => {
       if (cancelled || !containerRef.current || mapRef.current) return;
 
       // Ícones do marker servidos pelo próprio domínio (/leaflet/*.png),
       // nunca unpkg.com — mesmo motivo do CSS: bloqueados pelo CSP em
       // produção (img-src aceita https: amplo, mas evitar dependência de
       // CDN externa que já causou um bug real aqui).
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
+      delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
       L.Icon.Default.mergeOptions({
-        iconUrl: '/leaflet/marker-icon.png',
-        iconRetinaUrl: '/leaflet/marker-icon-2x.png',
-        shadowUrl: '/leaflet/marker-shadow.png',
+        iconUrl: "/leaflet/marker-icon.png",
+        iconRetinaUrl: "/leaflet/marker-icon-2x.png",
+        shadowUrl: "/leaflet/marker-shadow.png",
       });
 
       const initMap = (coords: [number, number]) => {
@@ -56,14 +63,8 @@ export function EventMap({ address, lat, lng, height = 180, showZoomControls = t
           attributionControl: false,
         });
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-          maxZoom: 20,
-        }).addTo(map);
-
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom: 20 }).addTo(map);
         L.marker(coords).addTo(map);
-
-        // Botões de zoom customizados já estão no JSX — expõe métodos
-        (containerRef.current as any)._leafletMap = map;
         mapRef.current = map;
 
         // invalidateSize() recalcula o viewport se o container mudar de
@@ -84,11 +85,9 @@ export function EventMap({ address, lat, lng, height = 180, showZoomControls = t
         // Access-Control-Allow-Origin, e o fetch é bloqueado por CORS
         // silenciosamente, sem erro visível: o mapa fica vazio pra sempre).
         api
-          .get<{ lat: number | null; lng: number | null }>('/geocoding', { params: { address } })
+          .get<{ lat: number | null; lng: number | null }>("/geocoding", { params: { address } })
           .then(({ data }) => {
-            if (data.lat !== null && data.lng !== null) {
-              initMap([data.lat, data.lng]);
-            }
+            if (data.lat !== null && data.lng !== null) initMap([data.lat, data.lng]);
           })
           .catch(() => {});
       }
@@ -104,26 +103,19 @@ export function EventMap({ address, lat, lng, height = 180, showZoomControls = t
     };
   }, [address, lat, lng]);
 
-  const zoomIn  = () => mapRef.current?.zoomIn();
-  const zoomOut = () => mapRef.current?.zoomOut();
-
   return (
-    <div className="relative" style={{ height }}>
-      <div ref={containerRef} style={{ height: '100%', width: '100%' }} />
+    <div className="relative bg-surface-2" style={{ height }}>
+      <div ref={containerRef} className="size-full" />
 
-      {/* Botões de zoom */}
       {showZoomControls ? (
-        <div className="absolute top-2 right-2 flex flex-col gap-px z-[999]">
-          <button
-            onClick={zoomIn}
-            className="h-7 w-7 flex items-center justify-center rounded-t-lg bg-white shadow text-gray-700 hover:bg-gray-50 text-base font-bold leading-none transition"
-            aria-label="Zoom in"
-          >+</button>
-          <button
-            onClick={zoomOut}
-            className="h-7 w-7 flex items-center justify-center rounded-b-lg bg-white shadow text-gray-700 hover:bg-gray-50 text-base font-bold leading-none transition"
-            aria-label="Zoom out"
-          >−</button>
+        <div className="absolute right-2 top-2 z-[999] flex flex-col overflow-hidden rounded-lg border border-border bg-surface/95 shadow-thumb backdrop-blur-sm">
+          <button type="button" onClick={() => mapRef.current?.zoomIn()} aria-label="Aproximar" className="flex size-8 items-center justify-center text-foreground transition-colors hover:bg-surface-2">
+            <Icon name="plus" size={12} />
+          </button>
+          <span className="h-px bg-border" aria-hidden />
+          <button type="button" onClick={() => mapRef.current?.zoomOut()} aria-label="Afastar" className="flex size-8 items-center justify-center text-foreground transition-colors hover:bg-surface-2">
+            <Icon name="minus" size={12} />
+          </button>
         </div>
       ) : null}
     </div>

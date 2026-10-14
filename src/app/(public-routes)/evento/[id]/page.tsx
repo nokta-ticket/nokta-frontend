@@ -34,8 +34,9 @@ export async function generateMetadata({
   const { id } = await params;
   const evento = await getEventForMetadata(id);
 
+  // O layout raiz já aplica o template "%s · Nokta".
   if (!evento) {
-    return { title: "Evento — Nokta Tickets" };
+    return { title: "Evento" };
   }
 
   const title = evento.nome;
@@ -48,7 +49,7 @@ export async function generateMetadata({
   const url = getPublicTicketsUrl(`/evento/${evento.slug ?? evento.id}`);
 
   return {
-    title: `${title} — Nokta Tickets`,
+    title,
     description,
     alternates: { canonical: url },
     openGraph: {

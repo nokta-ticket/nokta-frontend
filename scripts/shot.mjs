@@ -11,6 +11,8 @@
  *                     grava um cookie antes de navegar (telas logadas no modo mock)
  *   --hover 280,52    move o mouse pra (x,y) antes de capturar (testa :hover)
  *   --click 280,52    clica em (x,y) antes de capturar (abre menus/dialogs)
+ *   --type "neon"     digita no elemento focado (use depois de --click num campo)
+ *   --key Enter       tecla única (Enter|Escape|Tab) no elemento focado
  *   --wait 2500       ms extra depois do load (dados do mock chegam com latência)
  *   --dark/--light    força o tema via classe no <html> (painel)
  */
@@ -134,6 +136,19 @@ try {
     const [x, y] = args.click.split(",").map(Number);
     await send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", clickCount: 1 });
     await send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", clickCount: 1 });
+    await sleep(800);
+  }
+  // --type "texto": digita no elemento focado (depois de --click num input).
+  if (args.type && args.type !== "true") {
+    await send("Input.insertText", { text: args.type });
+    await sleep(900);
+  }
+  // --key Enter|Escape|Tab: tecla única no elemento focado.
+  if (args.key && args.key !== "true") {
+    const key = args.key;
+    const code = key === "Enter" ? 13 : key === "Escape" ? 27 : key === "Tab" ? 9 : 0;
+    await send("Input.dispatchKeyEvent", { type: "keyDown", key, code, windowsVirtualKeyCode: code, nativeVirtualKeyCode: code });
+    await send("Input.dispatchKeyEvent", { type: "keyUp", key, code, windowsVirtualKeyCode: code, nativeVirtualKeyCode: code });
     await sleep(800);
   }
 

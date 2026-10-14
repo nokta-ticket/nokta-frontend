@@ -74,19 +74,23 @@ describe("middleware — cruzamento entre as três superfícies", () => {
     expect(html).toContain("https://app.nokta.live/admin/dashboard");
   });
 
-  it("Fase 5.2, Etapa 7: dashboard em app.nokta.live sem cookie auxiliar nenhum termina no login, nunca renderiza o dashboard", async () => {
-    // 1º hop: sem authToken e sem publicRoute pra /dashboard/inicio, o
-    // middleware manda pra "/" (REDIRECT_WHEN_NOT_AUTHENTICATION_ROUTE).
-    const firstHop = await middleware(buildRequest("https://app.nokta.live/dashboard/inicio"));
-    expect(firstHop.status).toBe(307);
-    const firstLocation = firstHop.headers.get("location") ?? "";
-    expect(firstLocation).not.toContain("/dashboard");
+  it("Fase 5.2, Etapa 7: dashboard em app.nokta.live sem cookie auxiliar nenhum vai direto pro login (com `redirect` de volta), nunca renderiza o dashboard", async () => {
+    // Sem authToken e sem publicRoute pra /dashboard/inicio, o middleware
+    // manda pro /login guardando o destino em `redirect` (2026-10: antes
+    // caía na home sem explicação — parecia um clique morto).
+    const res = await middleware(buildRequest("https://app.nokta.live/dashboard/inicio?aba=x"));
+    expect(res.status).toBe(307);
+    const location = new URL(res.headers.get("location") ?? "", "https://app.nokta.live");
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("redirect")).toBe("/dashboard/inicio?aba=x");
+  });
 
-    // 2º hop: seguindo esse redirect, "/" em app.nokta.live (sem authToken)
-    // vai pro login — nunca pro dashboard.
-    const secondHop = await middleware(buildRequest(new URL(firstLocation, "https://app.nokta.live").toString()));
-    expect(secondHop.status).toBe(307);
-    expect(secondHop.headers.get("location")).toContain("/login");
+  it("rota protegida da bilheteria sem sessão também vai pro login com `redirect` (o 'Ingressos' da nav inferior)", async () => {
+    const res = await middleware(buildRequest("https://www.noktatickets.com.br/meus-ingressos"));
+    expect(res.status).toBe(307);
+    const location = new URL(res.headers.get("location") ?? "", "https://www.noktatickets.com.br");
+    expect(location.pathname).toBe("/login");
+    expect(location.searchParams.get("redirect")).toBe("/meus-ingressos");
   });
 });
 

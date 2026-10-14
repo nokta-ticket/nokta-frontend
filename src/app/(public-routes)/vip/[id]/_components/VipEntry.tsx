@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import api, { getErrorMessage } from "@/lib/axios";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import EventoPageClient from "../../../evento/[id]/_components/EventoPageClient";
+import { EventoSkeleton } from "../../../evento/[id]/_components/evento-skeleton";
 
 // Confere o endereço antes de abrir a página do evento: os primeiros links
 // usavam o código da lista, e um evento renomeado muda de endereço. Nos dois
@@ -38,19 +41,22 @@ export function VipEntry() {
 
   if (state === "ready") return <EventoPageClient />;
 
-  return (
-    <div className="flex min-h-[60vh] items-center justify-center px-4">
-      {state === "error" ? (
-        <div className="max-w-sm text-center">
-          <h1 className="text-lg font-semibold text-gray-900">Lista VIP indisponível</h1>
-          <p className="mt-1 text-sm text-gray-500">{message}</p>
-          <Link href="/eventos" className="mt-4 inline-block text-sm font-semibold text-primary">
-            Ver eventos
-          </Link>
-        </div>
-      ) : (
-        <p className="text-sm text-gray-500">Abrindo o evento…</p>
-      )}
-    </div>
-  );
+  if (state === "error") {
+    return (
+      <div className="mx-auto w-full max-w-md px-4 py-16">
+        <EmptyState
+          icon="crown"
+          title="Lista VIP indisponível"
+          description={message}
+          action={
+            <Button asChild variant="contrast" shape="pill">
+              <Link href="/eventos">Ver eventos</Link>
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
+
+  return <EventoSkeleton />;
 }

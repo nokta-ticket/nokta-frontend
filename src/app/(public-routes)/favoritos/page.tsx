@@ -1,28 +1,16 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import Cookies from 'js-cookie';
-import Image from 'next/image';
-import Link from 'next/link';
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination';
-import { AspectRatio } from '@/components/ui/aspect-ratio';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { PageState } from '@/components/ui/page-state';
-import { Calendar, Heart, Search } from 'lucide-react';
-import api, { getErrorMessage } from '@/lib/axios';
-import { toast } from '@/lib/toast';
-import { formatarDataCurta } from '@/lib/formatarData';
-import { resolveMediaUrl } from '@/lib/media';
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import Cookies from "js-cookie";
+import api, { getErrorMessage } from "@/lib/axios";
+import { toast } from "@/lib/toast";
+import type { EventoAPI } from "@/interfaces/events";
+import { Button } from "@/components/ui/button";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
+import { SearchInput } from "@/components/ui/search-input";
+import { EventCard, EventCardSkeleton, EventRow, EventRowSkeleton } from "@/components/events/event-card";
 
-const PLACEHOLDER = '/placeholder.png';
 const ITEMS_PER_PAGE = 40;
 
 type FavoriteEvent = {
@@ -36,21 +24,33 @@ type FavoriteEvent = {
 
 function uniqById(items: FavoriteEvent[]) {
   const seen = new Set<string>();
-
   return items.filter((item) => {
-    if (seen.has(item.eventoId)) {
-      return false;
-    }
-
+    if (seen.has(item.eventoId)) return false;
     seen.add(item.eventoId);
     return true;
   });
 }
 
+/** O favorito vem resumido da API; vira o formato dos cards de evento. */
+function toEvento(f: FavoriteEvent): EventoAPI {
+  return {
+    id: f.eventoId,
+    slug: f.slug,
+    nome: f.nome,
+    data: f.data,
+    horario: "",
+    local: f.local,
+    thumbnails: f.thumbnailUrl ? [{ url: f.thumbnailUrl }] : [],
+    endereco: { cep: "", logradouro: "", bairro: "", localidade: "", numero: "", uf: "" },
+    ativo: true,
+    isFavorite: true,
+  };
+}
+
 export default function FavoritosPage() {
   const [favorites, setFavorites] = useState<FavoriteEvent[]>([]);
   const [page, setPage] = useState(1);
-  const [term, setTerm] = useState('');
+  const [term, setTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [requiresLogin, setRequiresLogin] = useState(false);
@@ -58,7 +58,7 @@ export default function FavoritosPage() {
   async function loadFavorites() {
     // Fase 5: sessão é cookie HttpOnly (ilegível por JS) — "user" é o sinal
     // local de "provavelmente autenticado" (ver AuthContext).
-    const token = Cookies.get('user');
+    const token = Cookies.get("user");
 
     if (!token) {
       setRequiresLogin(true);
@@ -72,11 +72,10 @@ export default function FavoritosPage() {
       setLoading(true);
       setError(null);
       setRequiresLogin(false);
-
-      const response = await api.get<FavoriteEvent[]>('/eventos/favoritos');
+      const response = await api.get<FavoriteEvent[]>("/eventos/favoritos");
       setFavorites(uniqById(response.data));
     } catch (err) {
-      setError(getErrorMessage(err, 'Nao foi possivel carregar os favoritos.'));
+      setError(getErrorMessage(err, "Não foi possível carregar os favoritos."));
     } finally {
       setLoading(false);
     }
@@ -87,39 +86,24 @@ export default function FavoritosPage() {
   }, []);
 
   const filteredFavorites = useMemo(() => {
-    if (!term.trim()) {
-      return favorites;
-    }
-
-    const normalizedTerm = term.toLowerCase();
-
-    return favorites.filter(
-      (favorite) =>
-        favorite.nome.toLowerCase().includes(normalizedTerm) ||
-        favorite.local.toLowerCase().includes(normalizedTerm),
-    );
+    const normalizedTerm = term.trim().toLowerCase();
+    if (!normalizedTerm) return favorites;
+    return favorites.filter((favorite) => favorite.nome.toLowerCase().includes(normalizedTerm) || favorite.local.toLowerCase().includes(normalizedTerm));
   }, [favorites, term]);
 
   const totalPages = Math.max(1, Math.ceil(filteredFavorites.length / ITEMS_PER_PAGE));
-  const pageItems = filteredFavorites.slice(
-    (page - 1) * ITEMS_PER_PAGE,
-    page * ITEMS_PER_PAGE,
-  );
+  const visible = filteredFavorites.slice(0, page * ITEMS_PER_PAGE);
 
   useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
-    }
+    if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
   async function unfavorite(eventId: string) {
-    // Fase 5: sessão é cookie HttpOnly (ilegível por JS) — "user" é o sinal
-    // local de "provavelmente autenticado" (ver AuthContext).
-    const token = Cookies.get('user');
+    const token = Cookies.get("user");
 
     if (!token) {
       setRequiresLogin(true);
-      toast.warn('Faca login para gerenciar favoritos.');
+      toast.warn("Faça login para gerenciar favoritos.");
       return;
     }
 
@@ -132,163 +116,105 @@ export default function FavoritosPage() {
 
     try {
       await api.delete(`/eventos/favoritos/${eventId}`);
-      toast.success('Favorito removido com sucesso.');
+      toast.success("Removido dos favoritos.");
     } catch (err) {
-      toast.error(
-        getErrorMessage(err, 'Nao foi possivel remover dos favoritos.'),
-      );
-
+      toast.error(getErrorMessage(err, "Não foi possível remover dos favoritos."));
       if (removedFavorite) {
-        setFavorites((current) => uniqById([...current, removedFavorite!]));
+        const restored = removedFavorite;
+        setFavorites((current) => uniqById([...current, restored]));
       }
     }
   }
 
-  return (
-    <section className="mx-auto mt-8 w-full max-w-[1300px] px-4 sm:px-6 lg:px-8">
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Meus Favoritos</h1>
+  const events = visible.map(toEvento);
+  const showSearch = !loading && !requiresLogin && !error && favorites.length > 0;
 
-        {!requiresLogin ? (
-          <div className="relative hidden w-full max-w-sm md:block">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={term}
-              onChange={(event) => {
-                setTerm(event.target.value);
-                setPage(1);
-              }}
-              placeholder="Pesquisar favoritos"
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 pl-9 text-sm"
-            />
-          </div>
-        ) : null}
-      </div>
+  return (
+    <div className="mx-auto w-full max-w-7xl px-4 pb-28 pt-4 lg:px-6 lg:pt-8">
+      <h1 className="font-display text-[2rem] uppercase leading-none text-foreground lg:text-display">Favoritos</h1>
+      {showSearch ? (
+        <SearchInput
+          id="busca-favoritos"
+          value={term}
+          onChange={(value) => {
+            setTerm(value);
+            setPage(1);
+          }}
+          placeholder="Buscar nos favoritos"
+          className="mt-4 lg:max-w-2xl [&_button]:right-3 [&_input]:h-14 [&_input]:rounded-pill [&_input]:bg-surface [&_input]:pl-12 [&_input]:text-base [&_input]:shadow-card [&_svg]:left-5 [&_svg]:text-base"
+        />
+      ) : null}
 
       {loading ? (
-        <p className="py-20 text-center text-sm text-muted-foreground">
-          Carregando favoritos...
-        </p>
+        <>
+          <div className="mt-6 space-y-2.5 lg:hidden">{Array.from({ length: 4 }).map((_, i) => <EventRowSkeleton key={i} />)}</div>
+          <div className="mt-8 hidden grid-cols-4 gap-6 lg:grid">{Array.from({ length: 4 }).map((_, i) => <EventCardSkeleton key={i} />)}</div>
+        </>
       ) : requiresLogin ? (
-        <PageState
-          title="Entre para ver seus favoritos"
-          description="Os eventos favoritados ficam salvos na sua conta e podem ser acessados daqui."
-          actionLabel="Ir para login"
-          onAction={() => {
-            window.location.href = '/login';
-          }}
+        <EmptyState
+          icon="heart"
+          title="Entre pra ver seus favoritos"
+          description="Os rolês que você salvar ficam guardados na sua conta."
+          action={
+            <Button asChild variant="contrast" shape="pill">
+              <Link href="/login">Entrar</Link>
+            </Button>
+          }
+          className="mt-6"
         />
       ) : error ? (
-        <PageState
-          title="Nao foi possivel carregar os favoritos"
-          description={error}
-          actionLabel="Tentar novamente"
-          onAction={() => {
-            void loadFavorites();
-          }}
-        />
-      ) : pageItems.length === 0 ? (
-        <PageState
-          title={term ? 'Nenhum favorito encontrado' : 'Voce ainda nao favoritou eventos'}
-          description={
-            term
-              ? 'Tente outro termo de busca ou limpe o filtro para ver todos os seus favoritos.'
-              : 'Quando voce favoritar um evento na vitrine, ele passa a aparecer aqui.'
+        <ErrorState title="Não deu pra carregar os favoritos" description={error} onRetry={() => void loadFavorites()} className="mt-6" />
+      ) : events.length === 0 ? (
+        <EmptyState
+          icon="heart-outline"
+          title={term ? "Nenhum favorito com esse nome" : "Você ainda não salvou nenhum rolê"}
+          description={term ? "Tenta outro termo ou limpa a busca." : "Toca no coração de um evento e ele aparece aqui."}
+          action={
+            term ? (
+              <Button
+                variant="outline"
+                shape="pill"
+                onClick={() => {
+                  setTerm("");
+                  setPage(1);
+                }}
+              >
+                Limpar busca
+              </Button>
+            ) : (
+              <Button asChild variant="contrast" shape="pill">
+                <Link href="/eventos">Explorar eventos</Link>
+              </Button>
+            )
           }
-          actionLabel={term ? 'Limpar busca' : 'Ver eventos'}
-          onAction={() => {
-            if (term) {
-              setTerm('');
-              setPage(1);
-              return;
-            }
-
-            window.location.href = '/eventos';
-          }}
+          className="mt-6"
         />
       ) : (
-        <div className="flex flex-wrap gap-4">
-          {pageItems.map((event) => (
-            <Card
-              key={event.eventoId}
-              className="flex w-[400px] flex-col overflow-hidden pt-0 transition-transform duration-300 hover:scale-105 hover:shadow-xl"
-            >
-              <AspectRatio ratio={16 / 9} className="relative">
-                <Image
-                  src={resolveMediaUrl(event.thumbnailUrl, PLACEHOLDER) ?? PLACEHOLDER}
-                  alt={event.nome}
-                  fill
-                  sizes="(max-width:768px)100vw,(max-width:1024px)50vw,400px"
-                  className="object-cover"
-                  loading="lazy"
-                  unoptimized
-                />
-
-                <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-md bg-white/80 px-2 py-1 text-xs font-semibold text-black backdrop-blur-sm">
-                  <Calendar className="h-3.5 w-3.5" />
-                  {formatarDataCurta(event.data)}
-                </div>
-
-                <button
-                  onClick={(currentEvent) => {
-                    currentEvent.stopPropagation();
-                    void unfavorite(event.eventoId);
-                  }}
-                  aria-label="Remover dos favoritos"
-                  className="absolute right-2 top-2 rounded-full bg-white/80 p-1 transition hover:scale-110 backdrop-blur-sm"
-                >
-                  <Heart className="h-5 w-5" fill="#ef4444" stroke="#ef4444" />
-                </button>
-              </AspectRatio>
-
-              <CardContent className="px-4 pt-3">
-                <h2 className="text-md font-semibold leading-tight">{event.nome}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{event.local}</p>
-              </CardContent>
-
-              <CardFooter className="px-4 pb-4">
-                <Button
-                  asChild
-                  className="w-full border border-violet-500 bg-transparent text-violet-500 transition-colors hover:bg-violet-600 hover:text-white"
-                >
-                  <Link href={`/evento/${event.slug ?? event.eventoId}`}>Ver Ingressos</Link>
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+        <>
+          <p className="mt-6 text-sm text-muted-foreground tnum">
+            {filteredFavorites.length} {filteredFavorites.length === 1 ? "evento salvo" : "eventos salvos"}
+          </p>
+          <div className="mt-4 space-y-2.5 lg:hidden">
+            {events.map((e, i) => (
+              <div key={e.id} className="row-in" style={{ ["--i" as string]: i % 12 } as React.CSSProperties}>
+                <EventRow event={e} onToggleFavorite={(id) => void unfavorite(id)} />
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 hidden grid-cols-4 gap-6 lg:grid">
+            {events.map((e, i) => (
+              <EventCard key={e.id} event={e} onToggleFavorite={(id) => void unfavorite(id)} className="fade-up" style={{ ["--i" as string]: i % 8 } as React.CSSProperties} />
+            ))}
+          </div>
+          {page < totalPages ? (
+            <div className="mt-8 flex justify-center">
+              <Button variant="outline" size="lg" shape="pill" onClick={() => setPage((p) => p + 1)}>
+                Mostrar mais
+              </Button>
+            </div>
+          ) : null}
+        </>
       )}
-
-      {!loading && !requiresLogin && !error && filteredFavorites.length > 0 && totalPages > 1 ? (
-        <div className="mb-16 mt-10 flex justify-center">
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  onClick={() => setPage((current) => Math.max(current - 1, 1))}
-                  className={page === 1 ? 'pointer-events-none opacity-50' : ''}
-                />
-              </PaginationItem>
-              {Array.from({ length: totalPages }).map((_, index) => (
-                <PaginationItem key={index + 1}>
-                  <PaginationLink
-                    isActive={page === index + 1}
-                    onClick={() => setPage(index + 1)}
-                  >
-                    {index + 1}
-                  </PaginationLink>
-                </PaginationItem>
-              ))}
-              <PaginationItem>
-                <PaginationNext
-                  onClick={() => setPage((current) => Math.min(current + 1, totalPages))}
-                  className={page === totalPages ? 'pointer-events-none opacity-50' : ''}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
-      ) : null}
-    </section>
+    </div>
   );
 }

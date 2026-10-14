@@ -1,120 +1,48 @@
 "use client";
 
-import "keen-slider/keen-slider.min.css";
-import { useKeenSlider } from "keen-slider/react";
-import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { isSalesClosed } from "@/lib/event-sales";
 import Image from "next/image";
 import Link from "next/link";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import type { EventDetails } from "@/interfaces/events";
+import api from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import { useAuth } from "@/context/AuthContext";
-import { LoginModal } from "@/components/auth/login-modal";
-import {
-  CalendarDays,
-  Clock,
-  Info,
-  MapPin,
-  Ticket,
-  Share2,
-  ChevronLeft,
-  ChevronRight,
-  X,
-  Navigation,
-  ExternalLink,
-} from "lucide-react";
-import { EventProgramJourney, ProgramItem } from "@/components/EventProgramJourney";
-import dynamic from "next/dynamic";
-const EventMap = dynamic(() => import("@/components/EventMap").then(m => m.EventMap), { ssr: false, loading: () => <div style={{ height: 180 }} className="bg-gray-100 animate-pulse" /> });
-import { InstagramIcon } from "@/components/icons/InstagramIcon";
-import { EnvelopeIcon } from "@/components/icons/EnvelopeIcon";
-import { WhatsappIcon } from "@/components/icons/WhatsappIcon";
-import { CircleLIcon } from "@/components/icons/CircleLIcon";
-import { AgeRestrictionIcon } from "@/components/icons/AgeRestrictionIcon";
-import { CancellationIcon } from "@/components/icons/CancellationIcon";
-import { CouponIcon } from "@/components/icons/CouponIcon";
-import { Button } from "@/components/ui/button";
-import {
-  Sheet, SheetTrigger, SheetContent, SheetHeader, SheetTitle,
-} from "@/components/ui/sheet";
-import api from "@/lib/axios";
-import { EventDetails } from "@/interfaces/events";
-import { AutoplayPlugin, cn } from "@/lib/utils";
-import { resolveThumbnailUrl } from "@/lib/media";
+import { isSalesClosed } from "@/lib/event-sales";
+import { cityLabel, formatEventDate, formatTime } from "@/lib/format";
+import { MEDIA_FALLBACK, resolveThumbnailUrl } from "@/lib/media";
 import { getPublicTicketsUrl } from "@/lib/surfaces";
 import { promoterTrackingApi } from "@/services/promoters";
+import { LoginModal } from "@/components/auth/login-modal";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Icon, type IconName } from "@/components/ui/icon";
+import { SectionHeader } from "@/components/ui/section-header";
+import { StatusBadge } from "@/components/ui/badge";
+import { EventBanner } from "./event-banner";
+import { EventContact, EventPolicies } from "./event-info";
+import { EventLocation } from "./event-location";
+import { EventProgram, parseProgramacao } from "./event-program";
+import { DEFAULT_INSTALLMENT_RULES, calcTaxa, maxInstallmentLabel, type InstallmentRules, type Ticket } from "./event-pricing";
+import { EventoSkeleton } from "./evento-skeleton";
+import { InstallmentsSheet, type InstallmentRow } from "./installments-sheet";
+import { ClosedCallout, PurchaseSummary, TicketPanel, type ClosedReason, type CouponState, type PurchaseState } from "./ticket-panel";
 import { VipClaimCard } from "./VipClaimCard";
 
-function formatDate(raw: string) {
-  if (!raw) return "—";
-  const d = new Date(raw);
-  if (isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("pt-BR", {
-    weekday: "long", day: "2-digit", month: "long", year: "numeric", timeZone: "UTC",
-  });
+function Chip({ icon, children }: { icon: IconName; children: React.ReactNode }) {
+  return (
+    <span className="inline-flex max-w-full items-center gap-1.5 rounded-pill bg-surface-2 px-3 py-1.5 text-caption font-medium text-foreground">
+      <Icon name={icon} size={11} className="shrink-0 text-muted-foreground" />
+      <span className="truncate">{children}</span>
+    </span>
+  );
 }
 
-function formatDatePill(raw: string) {
-  if (!raw) return { weekday: "—", day: "—", month: "—" };
-  const d = new Date(raw);
-  if (isNaN(d.getTime())) return { weekday: "—", day: "—", month: "—" };
-  return {
-    weekday: d.toLocaleDateString("pt-BR", { weekday: "short", timeZone: "UTC" }).toUpperCase().replace(".", ""),
-    day: d.toLocaleDateString("pt-BR", { day: "2-digit", timeZone: "UTC" }),
-    month: d.toLocaleDateString("pt-BR", { month: "short", timeZone: "UTC" }).toUpperCase().replace(".", ""),
-  };
-}
-
-function formatTime(raw: string) {
-  if (!raw) return "";
-  const str = typeof raw === "string" ? raw : String(raw);
-  const timeMatch = str.match(/(\d{2}):(\d{2})/);
-  if (timeMatch) return `${timeMatch[1]}:${timeMatch[2]}`;
-  const d = new Date(str);
-  if (!isNaN(d.getTime())) {
-    return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
-  }
-  return "";
-}
-
-type PolicyModal = 'meiaEntrada' | 'cancelamento' | null;
-
-type Ticket = {
-  id: number;
-  nome: string;
-  lote: number;
-  tipo: number;
-  valor: number;
-  quantidade: number;
-  disponivelParaVenda: boolean;
-  dataLimite?: string | null;
-};
-
-function formatTicketDate(raw?: string | null) {
-  if (!raw) return null;
-  const d = new Date(raw);
-  if (isNaN(d.getTime())) return null;
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
-}
-
-function calcTaxa(valor: number, percent: number) { return Math.round(valor * percent) / 100; }
-
-// Espelha o cálculo do backend (gross-up + split em centavos)
-function calcInstallmentCents(
-  subtotalCents: number,
-  n: number,
-  maxSemJuros: number,
-  cardRateBps: number[],
-  cardFixedCents: number,
-): number {
-  const isSemJuros = n <= maxSemJuros;
-  if (isSemJuros) return Math.floor(subtotalCents / n);
-  const rateBps = cardRateBps[n - 1] ?? 0;
-  const rate = rateBps / 10000;
-  const total = Math.round((subtotalCents + cardFixedCents) / (1 - rate));
-  return Math.floor(total / n);
-}
-
+/**
+ * Página do evento (também renderizada em /vip/<slug>, em modo lista VIP).
+ * Celular: banner inteiro, título, chips, lotes em linhas e barra fixa de
+ * compra. Desktop: conteúdo à esquerda, card de compra sticky à direita.
+ */
 export default function EventoPageClient() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
@@ -123,8 +51,8 @@ export default function EventoPageClient() {
   const { isAuthenticated } = useAuth();
   // Link da lista VIP: /vip/<evento> (esta mesma página). `?vip=` é o formato
   // dos primeiros links e continua aceito.
-  const isVipRoute = pathname.startsWith('/vip/');
-  const vipKey = isVipRoute ? String(id) : searchParams.get('vip');
+  const isVipRoute = pathname.startsWith("/vip/");
+  const vipKey = isVipRoute ? String(id) : searchParams.get("vip");
   const [evento, setEvento] = useState<EventDetails | null>(null);
   const [loading, setLoading] = useState(true);
   // Relógio da tela: reavalia o fim das vendas sem precisar recarregar (quem
@@ -134,51 +62,39 @@ export default function EventoPageClient() {
     const t = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(t);
   }, []);
-  const [currentSlide, setSlide] = useState(0);
-  const [policyModal, setPolicyModal] = useState<PolicyModal>(null);
   const [showLoginModal, setShowLoginModal] = useState(false);
-  const [routeOpen, setRouteOpen] = useState(false);
   const [allTickets, setTickets] = useState<Ticket[]>([]);
   // Quem chegou pelo link da lista VIP e ainda pode retirar (ou já retirou)
   // não vê os lotes pagos: ao lado de uma entrada gratuita eles só confundem.
-  const [vipActive, setVipActive] = useState(() => pathname.startsWith('/vip/') || !!searchParams.get('vip'));
+  const [vipActive, setVipActive] = useState(() => pathname.startsWith("/vip/") || !!searchParams.get("vip"));
   const tickets = vipActive ? [] : allTickets;
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const [couponOpen, setCouponOpen] = useState(false);
-  const [couponCode, setCouponCode] = useState('');
+  const [couponCode, setCouponCode] = useState("");
   const [couponLoading, setCouponLoading] = useState(false);
-  const [couponError, setCouponError] = useState('');
+  const [couponError, setCouponError] = useState("");
   const [couponApplied, setCouponApplied] = useState<{ code: string; desconto: number } | null>(null);
-  const [maxSemJuros, setMaxSemJuros] = useState(0);
-  const [maxParcelas, setMaxParcelas] = useState(12);
-  const [cardRateBps, setCardRateBps] = useState<number[]>([]);
-  const [cardFixedCents, setCardFixedCents] = useState(0);
+  const [rules, setRules] = useState<InstallmentRules>(DEFAULT_INSTALLMENT_RULES);
   const [parcelasSheet, setParcelasSheet] = useState(false);
-  const [parcelasData, setParcelasData] = useState<{ n: number; installmentCents: number; totalCents: number; semJuros: boolean }[]>([]);
+  const [parcelasData, setParcelasData] = useState<InstallmentRow[]>([]);
   const [parcelasLoading, setParcelasLoading] = useState(false);
-
-  const [sliderRef, instRef] = useKeenSlider<HTMLDivElement>(
-    { loop: true, slideChanged(s) { setSlide(s.track.details.rel); } },
-    [AutoplayPlugin]
-  );
 
   useEffect(() => {
     if (!id) return;
-    Promise.all([
-      api.get<EventDetails>(`/eventos/${id}`),
-      api.get(`/eventos/${id}/ingressos`),
-      api.get('/pagamento/info-parcelas').catch(() => ({ data: { maxParcelasSemJuros: 0 } })),
-    ])
+    Promise.all([api.get<EventDetails>(`/eventos/${id}`), api.get(`/eventos/${id}/ingressos`), api.get("/pagamento/info-parcelas").catch(() => ({ data: { maxParcelasSemJuros: 0 } }))])
       .then(([evtRes, ingRes, parcelasRes]) => {
         setEvento(evtRes.data);
-        const raw: Ticket[] = (ingRes.data as any).data ?? ingRes.data ?? [];
-        setTickets(raw.map(t => ({ ...t, valor: Number(t.valor) })));
-        setMaxSemJuros(parcelasRes.data.maxParcelasSemJuros ?? 0);
-        setMaxParcelas(parcelasRes.data.maxParcelas ?? 12);
-        setCardRateBps(parcelasRes.data.cardRateBps ?? []);
-        setCardFixedCents(parcelasRes.data.cardFixedCents ?? 0);
+        const payload = ingRes.data as { data?: Ticket[] } | Ticket[];
+        const raw: Ticket[] = Array.isArray(payload) ? payload : (payload.data ?? []);
+        setTickets(raw.map((t) => ({ ...t, valor: Number(t.valor) })));
+        setRules({
+          maxSemJuros: parcelasRes.data.maxParcelasSemJuros ?? 0,
+          maxParcelas: parcelasRes.data.maxParcelas ?? 12,
+          cardRateBps: parcelasRes.data.cardRateBps ?? [],
+          cardFixedCents: parcelasRes.data.cardFixedCents ?? 0,
+        });
       })
-      .catch((err: any) => toast.error(err.message ?? 'Erro ao carregar evento.'))
+      .catch((err: unknown) => toast.error(err instanceof Error && err.message ? err.message : "Erro ao carregar evento."))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -189,19 +105,19 @@ export default function EventoPageClient() {
   // que o clique aconteceu e seguimos renderizando a página canônica normal.
   useEffect(() => {
     if (!id) return;
-    const ref = searchParams.get('ref');
+    const ref = searchParams.get("ref");
     if (!ref) return;
 
     promoterTrackingApi
       .resolveLink(ref, String(id), {
-        utmSource: searchParams.get('utm_source') ?? undefined,
-        utmMedium: searchParams.get('utm_medium') ?? undefined,
-        utmCampaign: searchParams.get('utm_campaign') ?? undefined,
+        utmSource: searchParams.get("utm_source") ?? undefined,
+        utmMedium: searchParams.get("utm_medium") ?? undefined,
+        utmCampaign: searchParams.get("utm_campaign") ?? undefined,
       })
       .catch(() => {});
 
     const cleanParams = new URLSearchParams(searchParams.toString());
-    ['ref', 'utm_source', 'utm_medium', 'utm_campaign'].forEach((key) => cleanParams.delete(key));
+    ["ref", "utm_source", "utm_medium", "utm_campaign"].forEach((key) => cleanParams.delete(key));
     const query = cleanParams.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -223,46 +139,11 @@ export default function EventoPageClient() {
   }
 
   function changeQty(ticketId: number, delta: number, max: number) {
-    setQuantities(prev => {
+    setQuantities((prev) => {
       const cur = prev[ticketId] ?? 0;
       const next = Math.min(max, Math.max(0, cur + delta));
       return { ...prev, [ticketId]: next };
     });
-  }
-
-  const totalSelecionado = Object.values(quantities).reduce((a, b) => a + b, 0);
-
-  const totalValor = tickets.reduce((sum, tk) => {
-    const qty = quantities[tk.id] ?? 0;
-    return sum + precoComDesconto(tk.valor) * qty;
-  }, 0);
-  // Taxa de serviço do workspace dono do evento (10% quando a API não informa).
-  const taxaPercent = evento?.taxaServicoPercent ?? 10;
-  const totalComTaxa = totalValor + calcTaxa(totalValor, taxaPercent);
-  const totalSubtotalCents = Math.round(totalComTaxa * 100);
-  const totalParcelado = (calcInstallmentCents(totalSubtotalCents, maxParcelas, maxSemJuros, cardRateBps, cardFixedCents) / 100).toFixed(2).replace('.', ',');
-
-  async function handleAplicarCupom() {
-    if (!couponCode.trim()) return;
-    setCouponLoading(true);
-    setCouponError('');
-    try {
-      const res = await api.post('/cupons/validar', { codigo: couponCode.trim(), eventoId: id });
-      const data = res.data;
-      setCouponApplied({ code: couponCode.trim().toUpperCase(), desconto: Number(data.desconto ?? data.percentual ?? 0) });
-      setCouponOpen(false);
-      toast.success(`Cupom ${couponCode.trim().toUpperCase()} aplicado!`);
-    } catch {
-      setCouponError('Cupom inválido ou expirado.');
-    } finally {
-      setCouponLoading(false);
-    }
-  }
-
-  function handleRemoverCupom() {
-    setCouponApplied(null);
-    setCouponCode('');
-    setCouponError('');
   }
 
   function precoComDesconto(valor: number) {
@@ -270,25 +151,59 @@ export default function EventoPageClient() {
     return valor * (1 - couponApplied.desconto / 100);
   }
 
-  if (loading) {
+  const totalSelecionado = Object.values(quantities).reduce((a, b) => a + b, 0);
+  const totalValor = tickets.reduce((sum, tk) => sum + precoComDesconto(tk.valor) * (quantities[tk.id] ?? 0), 0);
+  // Taxa de serviço do workspace dono do evento (10% quando a API não informa).
+  const taxaPercent = evento?.taxaServicoPercent ?? 10;
+  const totalComTaxa = totalValor + calcTaxa(totalValor, taxaPercent);
+
+  async function handleAplicarCupom() {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    setCouponError("");
+    try {
+      const res = await api.post("/cupons/validar", { codigo: couponCode.trim(), eventoId: id });
+      const data = res.data;
+      setCouponApplied({ code: couponCode.trim().toUpperCase(), desconto: Number(data.desconto ?? data.percentual ?? 0) });
+      setCouponOpen(false);
+      toast.success(`Cupom ${couponCode.trim().toUpperCase()} aplicado!`);
+    } catch {
+      setCouponError("Cupom inválido ou expirado.");
+    } finally {
+      setCouponLoading(false);
+    }
+  }
+
+  function handleRemoverCupom() {
+    setCouponApplied(null);
+    setCouponCode("");
+    setCouponError("");
+  }
+
+  if (loading) return <EventoSkeleton />;
+
+  if (!evento) {
     return (
-      <div className="max-w-[1400px] mx-auto p-10 text-center text-muted-foreground">
-        Carregando…
+      <div className="mx-auto w-full max-w-md px-4 py-16">
+        <EmptyState
+          icon="ticket"
+          title="Evento não encontrado"
+          description="Esse link pode ter mudado ou o evento saiu do ar."
+          action={
+            <Button asChild variant="contrast" shape="pill">
+              <Link href="/eventos">Ver eventos</Link>
+            </Button>
+          }
+        />
       </div>
     );
   }
 
-  if (!evento) return null;
-
-  const thumbs = (evento.thumbnails ?? [])
-    .map((t) => resolveThumbnailUrl(t, "") ?? "")
-    .filter(Boolean);
-
-  const datePill = formatDatePill(evento.data);
-  const dateStr = formatDate(evento.data);
+  const thumbs = (evento.thumbnails ?? []).map((t) => resolveThumbnailUrl(t, "") ?? "").filter(Boolean);
+  const images = thumbs.length > 0 ? thumbs : [MEDIA_FALLBACK];
   const timeStr = formatTime(evento.horario);
+  const city = cityLabel(evento.endereco);
   const addr = evento.endereco;
-  const checkoutHref = `/evento/${evento.slug ?? evento.id}/checkout`;
   // Sempre o slug persistido no banco (nunca gerado no frontend a partir do
   // nome) — e sempre a URL canônica absoluta, nunca window.location.href:
   // quem chegou pela URL antiga com id (link velho, compartilhamento
@@ -305,855 +220,191 @@ export default function EventoPageClient() {
   // Vendas encerram 2h antes do início (mesma regra do backend, que recusa a
   // reserva). Sem isto a tela deixava escolher ingresso e ir até o pagamento.
   const vendasEncerradas = !isEncerrado && isSalesClosed(evento, now);
-
-  // Seleção de ingressos fica na própria página (celular e computador). No
-  // computador ela não existia: "Comprar ingresso" mandava para um checkout
-  // vazio, sem nenhum ingresso escolhido.
-  function scrollToTickets() {
-    document.getElementById("ingressos")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-  function continueToCheckout() {
-    if (totalSelecionado === 0 || vendasEncerradas) return;
-    // Gate de login logo ao continuar (antes do checkout).
-    if (!isAuthenticated) { setShowLoginModal(true); return; }
-    router.push(buildCheckoutUrl());
-  }
+  const closedReason: ClosedReason = isCancelled ? "cancelado" : isEventPast ? "encerrado" : vendasEncerradas ? "vendas" : null;
 
   function buildCheckoutUrl() {
     const base = `/evento/${evento!.slug ?? evento!.id}/checkout`;
     const selected = Object.entries(quantities).filter(([, qty]) => qty > 0);
     if (selected.length === 0) return base;
     const params = new URLSearchParams();
-    params.set('items', selected.map(([tid, qty]) => `${tid}:${qty}`).join(','));
-    if (couponApplied) params.set('cupom', couponApplied.code);
+    params.set("items", selected.map(([tid, qty]) => `${tid}:${qty}`).join(","));
+    if (couponApplied) params.set("cupom", couponApplied.code);
     return `${base}?${params.toString()}`;
   }
-  const hasInfos =
-    evento.classificacaoEtaria ||
-    evento.politicaMeiaEntrada ||
-    evento.politicaCancelamento ||
-    evento.whatsapp ||
-    evento.email ||
-    evento.instagram;
+
+  function continueToCheckout() {
+    if (totalSelecionado === 0 || closedReason) return;
+    // Gate de login logo ao continuar (antes do checkout).
+    if (!isAuthenticated) {
+      setShowLoginModal(true);
+      return;
+    }
+    router.push(buildCheckoutUrl());
+  }
 
   function handleShare() {
     if (navigator.share) {
-      navigator.share({ title: evento!.nome, url: canonicalEventUrl });
+      navigator.share({ title: evento!.nome, url: canonicalEventUrl }).catch(() => {});
     } else {
       navigator.clipboard?.writeText(canonicalEventUrl);
       toast.success("Link copiado!");
     }
   }
 
+  const coupon: CouponState = {
+    applied: couponApplied,
+    open: couponOpen,
+    code: couponCode,
+    loading: couponLoading,
+    error: couponError,
+    onOpen: () => setCouponOpen(true),
+    onClose: () => {
+      setCouponOpen(false);
+      setCouponError("");
+    },
+    onCodeChange: (code) => {
+      setCouponCode(code);
+      setCouponError("");
+    },
+    onApply: handleAplicarCupom,
+    onRemove: handleRemoverCupom,
+  };
+
+  const purchase: PurchaseState = {
+    totalSelecionado,
+    totalValor,
+    totalComTaxa,
+    parcelaLabel: maxInstallmentLabel(totalComTaxa, rules),
+    closedReason,
+    onOpenInstallments: openParcelasSheet,
+    onContinue: continueToCheckout,
+  };
+
+  const statusBadge = isCancelled ? (
+    <StatusBadge tone="danger">Cancelado</StatusBadge>
+  ) : isEventPast ? (
+    <StatusBadge tone="neutral">Encerrado</StatusBadge>
+  ) : vendasEncerradas ? (
+    <StatusBadge tone="warning">Vendas encerradas</StatusBadge>
+  ) : null;
+
+  const programItems = parseProgramacao(evento.programacao ?? "");
+  const hasPolicies = Boolean(evento.classificacaoEtaria || evento.politicaMeiaEntrada || evento.politicaCancelamento);
+  const hasContact = Boolean(evento.whatsapp || evento.email || evento.instagram);
+
   return (
-    <main className="min-h-screen bg-[#F8F8FA]">
-
-      {/* ── HERO ─────────────────────────────────────────────────── */}
-      <section className="w-full sm:px-6 lg:px-8 sm:pt-6 max-w-[1440px] mx-auto">
-        <div className="relative sm:rounded-3xl overflow-hidden shadow-xl">
-
-          {/*
-           * O keen-slider fica invisível (slides vazios) — apenas para
-           * avançar currentSlide via AutoplayPlugin e via setas manuais.
-           * A altura do hero é definida aqui.
-           */}
-          <div
-            ref={sliderRef}
-            className="keen-slider h-[245px] sm:h-[280px] md:h-[340px] lg:h-[360px]"
-          >
-            {thumbs.map((_, i) => (
-              <div key={i} className="keen-slider__slide" />
-            ))}
-          </div>
-
-          {/* ── Mobile: imagem limpa sem blur ──────────────────── */}
-          {thumbs.length > 0 ? (
-            <div className="sm:hidden absolute inset-0">
-              <Image src={thumbs[currentSlide]} alt={evento.nome} fill className="object-cover" priority unoptimized />
-            </div>
-          ) : (
-            <div className="sm:hidden absolute inset-0 bg-gradient-to-br from-violet-900 via-indigo-900 to-blue-900" />
-          )}
-
-          {/* ── Desktop: fundo desfocado + overlays ────────────── */}
-          <div className="hidden sm:block absolute inset-0 overflow-hidden">
-            {thumbs.length > 0 ? (
-              <Image src={thumbs[currentSlide]} alt="" fill className="object-cover scale-110 blur-md brightness-[0.50] saturate-120" priority unoptimized />
-            ) : (
-              <div className="absolute inset-0 bg-gradient-to-br from-violet-900 via-indigo-900 to-blue-900" />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/58 via-black/20 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-tr from-violet-950/20 via-transparent to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/18" />
-          </div>
-
-          {/* ── Camada 2: conteúdo principal (oculto no mobile — infos ficam abaixo) */}
-          <div className="absolute inset-0 z-10 hidden sm:flex items-center px-14 lg:px-16 gap-10">
-
-            {/* Esquerda: informações do evento */}
-            <div className="flex-1 min-w-0">
-              {/* Nome do evento */}
-              <h1 className="text-[2.1rem] lg:text-[2.55rem] font-extrabold text-white leading-[1.1] tracking-tight drop-shadow-xl mb-5 sm:mb-6 max-w-[520px]">
-                {evento.nome}
-              </h1>
-
-              {/* Meta info — itens empilhados, espaçamento elegante */}
-              <div className="flex flex-col gap-2.5 mb-7 sm:mb-8">
-                <span className="flex items-center gap-2.5 text-[13px] text-white/90 font-medium">
-                  <CalendarDays size={14} className="text-violet-300 shrink-0" />
-                  <span className="capitalize">{dateStr}</span>
-                </span>
-                {timeStr && (
-                  <span className="flex items-center gap-2.5 text-[13px] text-white/90 font-medium">
-                    <Clock size={14} className="text-violet-300 shrink-0" />
-                    {timeStr}h
-                  </span>
-                )}
-                {addr && (
-                  <span className="flex items-center gap-2.5 text-[13px] text-white/90 font-medium">
-                    <MapPin size={14} className="text-violet-300 shrink-0" />
-                    {addr.logradouro}, {addr.numero} · {addr.localidade}/{addr.uf}
-                  </span>
-                )}
-              </div>
-
-              {/* CTAs */}
-              <div className="flex items-center gap-3.5">
-                {vipActive ? (
-                  <Button onClick={() => document.getElementById("vip")?.scrollIntoView({ behavior: "smooth", block: "center" })} className="bg-gradient-to-r from-[#9944CC] to-[#3399FF] hover:brightness-110 text-white font-bold px-8 h-12 gap-2 text-[15px] shadow-xl shadow-violet-900/40 transition-all rounded-xl">
-                    <Ticket size={16} />
-                    Pegar VIP
-                  </Button>
-                ) : isEncerrado || vendasEncerradas ? (
-                  <Button disabled className="bg-gray-500 text-white font-bold px-8 h-12 gap-2 text-[15px] rounded-xl cursor-not-allowed opacity-70">
-                    {isCancelled ? "Evento Cancelado" : isEncerrado ? "Evento Encerrado" : "Vendas encerradas"}
-                  </Button>
-                ) : (
-                  <Button onClick={tickets.length > 0 ? scrollToTickets : () => router.push(checkoutHref)} className="bg-gradient-to-r from-[#9944CC] to-[#3399FF] hover:brightness-110 text-white font-bold px-8 h-12 gap-2 text-[15px] shadow-xl shadow-violet-900/40 transition-all rounded-xl">
-                      <Ticket size={16} />
-                      Comprar ingresso
-                    </Button>
-                )}
-                <button
-                  onClick={handleShare}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/8 text-white/40 hover:text-white/80 hover:bg-white/15 transition"
-                  aria-label="Compartilhar"
-                >
-                  <Share2 size={14} />
-                </button>
-              </div>
-            </div>
-
-            {/* Direita: poster/imagem do evento — oculto em mobile */}
-            {thumbs.length > 0 && (
-              <div className="hidden sm:block shrink-0">
-                <div className="relative w-[130px] aspect-[3/4] sm:w-[160px] md:w-[195px] lg:w-[215px] rounded-[1.1rem] overflow-hidden shadow-[0_16px_60px_rgba(0,0,0,0.50)] ring-1 ring-white/18">
-                  <Image
-                    src={thumbs[currentSlide]}
-                    alt={evento.nome}
-                    fill
-                    className="object-cover"
-                    priority
-                    unoptimized
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ── Setas do carrossel — bordas do hero, não sobre o conteúdo ── */}
-          {thumbs.length > 1 && (
-            <>
-              <button
-                onClick={() => instRef.current?.prev()}
-                className="absolute left-0.5 top-1/2 -translate-y-1/2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-black/20 text-white/40 hover:bg-black/45 hover:text-white transition"
-                aria-label="Anterior"
-              >
-                <ChevronLeft size={14} />
-              </button>
-              <button
-                onClick={() => instRef.current?.next()}
-                className="absolute right-0.5 top-1/2 -translate-y-1/2 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-black/20 text-white/40 hover:bg-black/45 hover:text-white transition"
-                aria-label="Próximo"
-              >
-                <ChevronRight size={14} />
-              </button>
-
-              {/* Dots — centro inferior */}
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">
-                {thumbs.map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => instRef.current?.moveToIdx(idx)}
-                    aria-label={`Slide ${idx + 1}`}
-                    className={cn(
-                      "h-1 rounded-full transition-all duration-300",
-                      currentSlide === idx ? "w-4 bg-white" : "w-1 bg-white/35 hover:bg-white/65"
-                    )}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-      </section>
-
-      {/* ── Botão Compartilhar mobile — metade dentro/fora do hero ── */}
-      <div className="sm:hidden flex justify-center -mt-5 relative z-10">
-        <button
-          onClick={handleShare}
-          className="group flex items-center gap-2 rounded-full px-7 py-2.5 bg-white text-[#111827] text-[12px] font-bold uppercase tracking-[0.14em] shadow-[0_4px_24px_rgba(153,68,204,0.18)] border border-gray-100 hover:shadow-[0_4px_24px_rgba(153,68,204,0.32)] transition-all"
-        >
-          <Share2 size={13} className="text-[#9944CC]" />
-          Compartilhar
-        </button>
+    <div className="relative pb-10">
+      {/* Desktop: o pôster desfocado atrás do topo, como um palco. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 hidden h-[520px] overflow-hidden lg:block" aria-hidden>
+        <Image src={images[0]} alt="" fill sizes="100vw" unoptimized className="scale-110 object-cover blur-3xl brightness-[0.35] saturate-150" />
+        <div className="grain absolute inset-0" />
+        <div className="hero-fade absolute inset-0" />
       </div>
 
-      {/* ── INFO MOBILE (abaixo do hero) ─────────────────────────── */}
-      <div className="sm:hidden px-4 pt-5 pb-2">
-        {/* Nome do evento */}
-        <h1
-          className="font-bold leading-[1.1] text-transparent bg-clip-text bg-gradient-to-r from-[#7B2FBE] via-[#9944CC] to-[#3399FF] mb-3 whitespace-nowrap overflow-hidden"
-          style={{
-            fontSize:
-              evento.nome.length <= 16 ? '1.7rem'
-              : evento.nome.length <= 22 ? '1.4rem'
-              : evento.nome.length <= 30 ? '1.15rem'
-              : '0.95rem',
-          }}
-        >
-          {evento.nome}
-        </h1>
-
-        {/* Linha divisória sutil */}
-        <div className="h-px w-12 bg-gradient-to-r from-[#9944CC] to-[#3399FF] rounded-full mb-3" />
-
-        {/* Data e local */}
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2.5">
-            <CalendarDays size={14} className="text-[#9944CC] shrink-0" />
-            <span className="text-[13px] font-semibold text-[#374151] capitalize">
-              {dateStr}{timeStr ? <span className="text-gray-400 font-normal"> · {timeStr}h</span> : ''}
-            </span>
-          </div>
-          {addr && (
-            <div className="flex items-center gap-2.5">
-              <MapPin size={14} className="text-[#9944CC] shrink-0" />
-              <span className="text-[13px] font-semibold text-[#374151]">
-                {addr.logradouro}, {addr.numero}
-                <span className="text-gray-400 font-normal"> · {addr.localidade}/{addr.uf}</span>
-              </span>
+      <div className="relative mx-auto w-full max-w-6xl px-4 pt-2 lg:px-6 lg:pt-8">
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_380px] lg:grid-rows-[auto_1fr] lg:gap-x-10">
+          {/* Banner + título */}
+          <header className="lg:col-start-1 lg:row-start-1">
+            <EventBanner images={images} alt={evento.nome} badge={statusBadge} />
+            <div className="mt-5 flex items-start gap-3 px-1">
+              <div className="min-w-0 flex-1">
+                <h1 className="font-display text-[2rem] uppercase leading-[0.95] text-foreground lg:text-[2.75rem]">{evento.nome}</h1>
+                <p className="mt-2 text-[15px] font-semibold text-brand lg:text-lg">{formatEventDate(evento.data) || "Data a confirmar"}</p>
+              </div>
+              <Button variant="outline" size="icon" shape="pill" aria-label="Compartilhar evento" onClick={handleShare} className="size-11 shrink-0 bg-surface/60 backdrop-blur-md">
+                <Icon name="share" size={15} />
+              </Button>
             </div>
-          )}
+            <div className="mt-3 flex flex-wrap gap-2 px-1">
+              {evento.local || city ? (
+                <Chip icon="map-pin">
+                  {evento.local}
+                  {evento.local && city ? " · " : ""}
+                  {city}
+                </Chip>
+              ) : null}
+              {timeStr ? <Chip icon="clock">Abre às {timeStr}</Chip> : null}
+              {evento.classificacaoEtaria ? <Chip icon="id-card">{evento.classificacaoEtaria}</Chip> : null}
+            </div>
+          </header>
+
+          {/* Compra (ou lista VIP): sticky no desktop */}
+          <aside className="mt-8 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:mt-0">
+            <div className="space-y-4 lg:sticky lg:top-[88px]">
+              {vipKey ? <VipClaimCard vipKey={vipKey} eventId={Number(evento.id)} returnPath={`/vip/${evento.slug ?? evento.id}`} onActiveChange={setVipActive} /> : null}
+              {tickets.length > 0 ? <TicketPanel id="ingressos" tickets={tickets} quantities={quantities} onChangeQty={changeQty} taxaPercent={taxaPercent} rules={rules} precoComDesconto={precoComDesconto} coupon={coupon} purchase={purchase} /> : null}
+              {tickets.length === 0 && !vipKey && closedReason ? <ClosedCallout reason={closedReason} /> : null}
+              {tickets.length === 0 && !vipKey && !closedReason ? <EmptyState compact icon="ticket" title="Ingressos em breve" description="O produtor ainda não abriu as vendas por aqui." /> : null}
+              <Button variant="outline" size="full" shape="pill" leftIcon="share" onClick={handleShare} className="hidden lg:inline-flex">
+                Compartilhar evento
+              </Button>
+            </div>
+          </aside>
+
+          {/* Conteúdo */}
+          <div className="mt-10 space-y-10 lg:col-start-1 lg:row-start-2">
+            {evento.descricao ? (
+              <section>
+                <SectionHeader title="Sobre o evento" />
+                <p className="mt-3 whitespace-pre-line text-body leading-relaxed text-muted-foreground lg:text-[15px]">{evento.descricao}</p>
+              </section>
+            ) : null}
+
+            <section>
+              <SectionHeader title="Programação" />
+              <div className="mt-4">
+                <EventProgram items={programItems} />
+              </div>
+            </section>
+
+            {hasPolicies || evento.info ? (
+              <section>
+                <SectionHeader title="Informações" />
+                <div className="mt-4 space-y-4">
+                  <EventPolicies evento={evento} />
+                  {evento.info ? <p className="whitespace-pre-line text-body leading-relaxed text-muted-foreground lg:text-[15px]">{evento.info}</p> : null}
+                </div>
+              </section>
+            ) : null}
+
+            {addr ? (
+              <section>
+                <SectionHeader title="Local" />
+                <div className="mt-4">
+                  <EventLocation local={evento.local} addr={addr} />
+                </div>
+              </section>
+            ) : null}
+
+            {hasContact ? (
+              <section>
+                <SectionHeader title="Fale com o organizador" />
+                <div className="mt-4">
+                  <EventContact evento={evento} />
+                </div>
+              </section>
+            ) : null}
+          </div>
         </div>
       </div>
 
-      {/* ── CONTEÚDO ─────────────────────────────────────────────── */}
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-12 pb-16">
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-x-12 gap-y-10">
-
-          {/* ── COLUNA PRINCIPAL (2/3) ─────────────────────────── */}
-          <div className="lg:col-span-2 space-y-10">
-
-            {/* Lista VIP: só para quem chegou pelo link do produtor (?vip=) */}
-            {vipKey && (
-              <VipClaimCard
-                vipKey={vipKey}
-                eventId={Number(evento.id)}
-                returnPath={`/vip/${evento.slug ?? evento.id}`}
-                onActiveChange={setVipActive}
-              />
-            )}
-
-            {/* ── Seleção de Ingressos (mobile only) ────────────── */}
-            {tickets.length > 0 && (
-              <div id="ingressos" className="scroll-mt-24">
-                <SectionLabel>{vendasEncerradas ? "Ingressos" : "Escolha uma opção"}</SectionLabel>
-                {vendasEncerradas ? (
-                  <p className="mt-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-[13px] text-gray-700">
-                    <span className="font-bold text-[#0F172A]">Vendas encerradas.</span> As vendas terminam 2 horas antes do início do evento.
-                  </p>
-                ) : null}
-
-                <div className="mt-3 flex flex-col gap-3">
-                  {tickets.map((tk) => {
-                    const qty = quantities[tk.id] ?? 0;
-                    const valorFinal = precoComDesconto(tk.valor);
-                    const taxa = calcTaxa(valorFinal, taxaPercent);
-                    const limitDate = formatTicketDate(tk.dataLimite);
-                    const isGratuito = valorFinal === 0;
-                    // Lote sem unidades restantes: mostra "Esgotado" em vez de só travar o "+".
-                    const esgotado = tk.disponivelParaVenda && tk.quantidade <= 0;
-                    const disponivel = tk.disponivelParaVenda && !esgotado && !vendasEncerradas;
-                    const subtotalCents = Math.round((valorFinal + taxa) * 100);
-                    const parcelaMaxStr = (calcInstallmentCents(subtotalCents, maxParcelas, maxSemJuros, cardRateBps, cardFixedCents) / 100).toFixed(2).replace('.', ',');
-
-                    return (
-                      <div
-                        key={tk.id}
-                        className={cn(
-                          'rounded-xl border px-4 py-3.5 flex items-center gap-4 transition',
-                          qty > 0 ? 'border-[#9944CC]/40 bg-violet-50/40' : 'border-gray-200 bg-white',
-                          !disponivel && 'opacity-60'
-                        )}
-                      >
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-bold text-[#0F172A] uppercase leading-snug mb-1">
-                            {tk.nome}
-                          </p>
-                          {isGratuito ? (
-                            <p className="text-[13px] font-bold text-[#9944CC]">Gratuito</p>
-                          ) : (
-                            <>
-                              <p className="text-[13px] font-bold text-[#0F172A]">
-                                {couponApplied && (
-                                  <span className="line-through text-gray-400 font-normal text-[12px] mr-1">
-                                    R$ {tk.valor.toFixed(2).replace('.', ',')}
-                                  </span>
-                                )}
-                                R$ {valorFinal.toFixed(2).replace('.', ',')}
-                                <span className="text-gray-400 font-normal text-[12px]">
-                                  {' '}(+{taxa.toFixed(2).replace('.', ',')} taxa)
-                                </span>
-                              </p>
-                              {valorFinal >= 60 && (
-                                maxSemJuros > 0 ? (
-                                  <>
-                                    <p className="text-[12px] font-semibold text-emerald-600">em até {maxSemJuros}x sem juros</p>
-                                    <p className="text-[11px] text-gray-400 flex items-center gap-1">
-                                      ou {maxParcelas}x R$ {parcelaMaxStr}
-                                      <button type="button" onClick={() => openParcelasSheet(valorFinal + taxa)} className="inline-flex">
-                                        <Info size={12} className="text-black hover:opacity-70 transition-opacity" />
-                                      </button>
-                                    </p>
-                                  </>
-                                ) : (
-                                  <div className="leading-tight">
-                                    <p className="text-[12px] font-semibold text-emerald-600">Parcelamento disponível em até</p>
-                                    <p className="text-[11px] text-gray-400 flex items-center gap-1">
-                                      {maxParcelas}x R$ {parcelaMaxStr}
-                                      <button type="button" onClick={() => openParcelasSheet(valorFinal + taxa)} className="inline-flex">
-                                        <Info size={12} className="text-black hover:opacity-70 transition-opacity" />
-                                      </button>
-                                    </p>
-                                  </div>
-                                )
-                              )}
-                            </>
-                          )}
-                          {limitDate && (
-                            <p className="text-[11px] text-gray-400 mt-0.5 italic">Vendas até {limitDate}</p>
-                          )}
-                          {esgotado ? (
-                            <p className="text-[11px] font-semibold text-red-600 mt-0.5">Esgotado</p>
-                          ) : !disponivel && (
-                            <p className="text-[11px] font-semibold text-gray-400 mt-0.5">Não iniciado</p>
-                          )}
-                        </div>
-
-                        {/* Seletor de quantidade */}
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            onClick={() => changeQty(tk.id, -1, tk.quantidade)}
-                            disabled={qty === 0 || !disponivel}
-                            className="h-8 w-8 rounded-full border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-25 flex items-center justify-center transition text-gray-600 font-bold text-lg shadow-sm"
-                          >−</button>
-                          <span className="w-5 text-center text-[14px] font-semibold text-[#0F172A]">{qty}</span>
-                          <button
-                            onClick={() => changeQty(tk.id, 1, tk.quantidade)}
-                            disabled={!disponivel}
-                            className="h-8 w-8 rounded-full bg-gradient-to-br from-[#B44FE8] to-[#22AAFF] hover:brightness-110 disabled:opacity-30 flex items-center justify-center transition text-white font-bold text-lg shadow-md shadow-violet-300"
-                          >+</button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Computador: total + continuar logo abaixo dos lotes (no
-                    celular esse papel é da barra fixa do rodapé). */}
-                <div className="mt-4 hidden items-center justify-between gap-4 lg:flex">
-                  <p className="text-[13px] text-gray-600">
-                    {totalSelecionado > 0
-                      ? `${totalSelecionado} ingresso${totalSelecionado > 1 ? 's' : ''} selecionado${totalSelecionado > 1 ? 's' : ''}`
-                      : vendasEncerradas
-                        ? ''
-                        : 'Escolha a quantidade de cada ingresso.'}
-                  </p>
-                  <button
-                    disabled={totalSelecionado === 0 || vendasEncerradas}
-                    onClick={continueToCheckout}
-                    className={cn(
-                      'rounded-xl px-8 py-3 text-[15px] font-bold text-white transition',
-                      totalSelecionado > 0 && !vendasEncerradas
-                        ? 'bg-gradient-to-r from-[#9944CC] to-[#3399FF] hover:brightness-110 shadow-lg shadow-violet-200'
-                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    )}
-                  >
-                    {vendasEncerradas ? 'Vendas encerradas' : 'Continuar'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {tickets.length > 0 && <div className="h-px bg-gradient-to-r from-[#9944CC]/20 via-[#D86CFA]/10 to-transparent" />}
-
-            {/* Sobre o evento — bloco editorial com barra lateral */}
-            {evento.descricao && (
-              <div>
-                <SectionLabel>Sobre o evento</SectionLabel>
-                <p className="mt-2 pl-[13px] text-[14px] text-gray-600 leading-[1.85] whitespace-pre-line">
-                  {evento.descricao}
-                </p>
-              </div>
-            )}
-
-            <div className="h-px bg-gradient-to-r from-[#9944CC]/20 via-[#D86CFA]/10 to-transparent" />
-
-            {/* Programação */}
-            <EventProgramJourney items={parseProgramacao(evento.programacao ?? '')} ctaHref={vipActive ? "#vip" : tickets.length > 0 ? "#ingressos" : checkoutHref} />
-
-            {/* Info extra */}
-            {evento.info && (
-              <>
-                <div className="h-px bg-gradient-to-r from-[#9944CC]/20 via-[#D86CFA]/10 to-transparent" />
-                <div>
-                  <SectionLabel>Informações gerais</SectionLabel>
-                  <p className="text-[15px] text-gray-700 whitespace-pre-line leading-[1.85] mt-2">
-                    {evento.info}
-                  </p>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* ── SIDEBAR (1/3) ──────────────────────────────────── */}
-          <div className="space-y-4">
-
-            {/* Card: Data e local — oculto no mobile (redundante com a seção
-                INFO MOBILE logo abaixo do hero, que já mostra data/hora/local) */}
-            <div className="hidden sm:block bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="flex items-center gap-4 px-5 py-4">
-                <div className="flex flex-col items-center shrink-0 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5 min-w-[54px]">
-                  <span className="text-[9px] font-bold text-gray-400 tracking-widest leading-none uppercase">
-                    {datePill.weekday}
-                  </span>
-                  <span className="text-[2rem] font-black text-violet-700 leading-none tabular-nums mt-1">
-                    {datePill.day}
-                  </span>
-                  <span className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase">
-                    {datePill.month}
-                  </span>
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 capitalize leading-snug">{dateStr}</p>
-                  <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5">
-                    <Clock size={11} className="text-gray-400 shrink-0" />
-                    Abertura às {timeStr}h
-                  </p>
-                </div>
-              </div>
-
-              {addr && (
-                <>
-                  <div className="h-px bg-gray-100 mx-4" />
-                  <div className="flex items-start gap-3 px-5 py-4">
-                    <MapPin size={14} className="text-gray-400 shrink-0 mt-0.5" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 leading-snug">
-                        {addr.logradouro}, {addr.numero}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {addr.bairro && `${addr.bairro} · `}{addr.localidade}, {addr.uf}
-                      </p>
-                      {addr.cep && (
-                        <p className="text-[11px] text-gray-300 mt-0.5">CEP {addr.cep}</p>
-                      )}
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Card: Informações */}
-            {(evento.classificacaoEtaria || evento.politicaMeiaEntrada || evento.politicaCancelamento) && (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-5 pt-4 pb-2.5 border-b border-gray-100">
-                  <p className="text-[11px] font-semibold text-gray-400 tracking-widest uppercase">
-                    Informações do evento
-                  </p>
-                </div>
-                <div className="divide-y divide-gray-100">
-                  {evento.classificacaoEtaria && (
-                    <div className="flex items-center gap-3 px-3 py-3.5">
-                      <div className="h-7 w-7 flex items-center justify-center shrink-0">
-                        {/18/i.test(evento.classificacaoEtaria)
-                          ? <AgeRestrictionIcon size={22} className="text-[#111827]" />
-                          : <CircleLIcon size={22} className="text-[#111827]" />
-                        }
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[11px] text-gray-400 leading-none mb-1">Classificação etária</p>
-                        <p className="text-[13px] font-bold text-[#111827]">{evento.classificacaoEtaria}</p>
-                      </div>
-                    </div>
-                  )}
-                  {evento.politicaMeiaEntrada && (
-                    <button
-                      onClick={() => setPolicyModal('meiaEntrada')}
-                      className="w-full flex items-center gap-3 px-3 py-3.5 text-left hover:bg-gray-50 transition"
-                    >
-                      <div className="h-7 w-7 flex items-center justify-center shrink-0">
-                        <CouponIcon size={22} className="text-[#111827]" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[11px] text-gray-400 leading-none mb-1">Meia entrada</p>
-                        <p className="text-[13px] font-bold text-[#111827]">Regras disponíveis para este evento</p>
-                      </div>
-                      <span className="text-[12px] font-semibold text-[#6D3BFF] shrink-0 flex items-center gap-0.5">
-                        Ver mais <ChevronRight size={13} className="mt-px" />
-                      </span>
-                    </button>
-                  )}
-                  {evento.politicaCancelamento && (
-                    <button
-                      onClick={() => setPolicyModal('cancelamento')}
-                      className="w-full flex items-center gap-3 px-3 py-3.5 text-left hover:bg-gray-50 transition"
-                    >
-                      <div className="h-7 w-7 flex items-center justify-center shrink-0">
-                        <CancellationIcon size={22} className="text-[#111827]" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[11px] text-gray-400 leading-none mb-1">Cancelamento</p>
-                        <p className="text-[13px] font-bold text-[#111827]">Política definida pelo organizador</p>
-                      </div>
-                      <span className="text-[12px] font-semibold text-[#6D3BFF] shrink-0 flex items-center gap-0.5">
-                        Ver mais <ChevronRight size={13} className="mt-px" />
-                      </span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Modal de políticas — z-[60]: precisa ficar ACIMA da barra fixa
-                de compra (data-fixed-bottom-purchase-bar, z-50). Mesmo z-index
-                entre irmãos no DOM é desempatado pela ordem de declaração, e a
-                barra fixa vem depois — sem isso o modal renderiza por baixo
-                dela perto do rodapé. */}
-            {policyModal && (
-              <div
-                className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center"
-                onClick={() => setPolicyModal(null)}
-              >
-                {/* overlay */}
-                <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
-                {/* sheet */}
-                <div
-                  className="relative z-10 w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl px-6 pt-5 pb-8 sm:pb-6 mx-0 sm:mx-4"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {/* drag handle mobile */}
-                  <div className="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-5 sm:hidden" />
-                  <div className="flex items-start justify-between mb-4">
-                    <h3 className="text-[15px] font-bold text-[#111827]">
-                      {policyModal === 'meiaEntrada' ? 'Política de meia entrada' : 'Política de cancelamento'}
-                    </h3>
-                    <button
-                      onClick={() => setPolicyModal(null)}
-                      className="ml-4 shrink-0 p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                  <p className="text-[13.5px] text-[#374151] leading-relaxed whitespace-pre-line">
-                    {policyModal === 'meiaEntrada' ? evento.politicaMeiaEntrada : evento.politicaCancelamento}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Card: Contato */}
-            {(evento.whatsapp || evento.email || evento.instagram) && (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-5 pt-4 pb-2 border-b border-gray-100">
-                  <p className="text-[11px] font-semibold text-gray-400 tracking-wide uppercase">
-                    Fale com o organizador
-                  </p>
-                </div>
-                <div className="px-5 py-3.5 space-y-2.5">
-                  {evento.whatsapp && (
-                    <a
-                      href={`https://wa.me/${evento.whatsapp.replace(/\D/g, "")}`}
-                      target="_blank" rel="noreferrer"
-                      className="flex items-center gap-3 text-sm text-gray-700 hover:text-violet-700 transition group"
-                    >
-                      <WhatsappIcon size={16} className="shrink-0 text-gray-900 group-hover:text-violet-600 transition" />
-                      <span className="font-medium">WhatsApp</span>
-                    </a>
-                  )}
-                  {evento.email && (
-                    <a
-                      href={`mailto:${evento.email}`}
-                      className="flex items-center gap-3 text-sm text-gray-700 hover:text-violet-700 transition group"
-                    >
-                      <EnvelopeIcon size={16} className="shrink-0 text-gray-900 group-hover:text-violet-600 transition" />
-                      <span className="font-medium truncate">{evento.email}</span>
-                    </a>
-                  )}
-                  {evento.instagram && (
-                    <a
-                      href={`https://instagram.com/${evento.instagram.replace("@", "")}`}
-                      target="_blank" rel="noreferrer"
-                      className="flex items-center gap-3 text-sm text-gray-700 hover:text-violet-700 transition group"
-                    >
-                      <InstagramIcon size={16} className="shrink-0 text-gray-900 group-hover:text-violet-600 transition" />
-                      <span className="font-medium">{evento.instagram}</span>
-                    </a>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Card: Localização */}
-            {addr && (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                <div className="px-5 pt-4 pb-2.5 border-b border-gray-100">
-                  <p className="text-[11px] font-semibold text-gray-400 tracking-widest uppercase">
-                    Localização
-                  </p>
-                </div>
-
-                {/* Mapa Leaflet + OpenStreetMap — isolate cria um stacking
-                    context próprio: o leaflet.css usa z-index internos de
-                    até 1000 (panes, controles) sem nenhum isolamento
-                    próprio, então sem isto esses valores competiam
-                    diretamente com outros elementos posicionados da página
-                    (ex.: a barra fixa de compra, z-50) e venciam ao rolar
-                    até a seção do mapa. */}
-                <div className="relative isolate cursor-pointer" onClick={() => setRouteOpen(true)}>
-                  <EventMap
-                    address={`${addr.logradouro}, ${addr.numero}, ${addr.bairro ?? ''}, ${addr.localidade}, ${addr.uf}`}
-                  />
-                  {/* overlay apenas para capturar clique — não cobre os botões de zoom */}
-                  <div className="absolute inset-0 z-[998]" style={{ right: 40 }} onClick={() => setRouteOpen(true)} />
-                </div>
-
-                {/* Endereço + botão */}
-                <div className="flex items-center justify-between gap-3 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="text-[12px] font-semibold text-[#111827] truncate">
-                      {addr.logradouro}, {addr.numero}
-                    </p>
-                    <p className="text-[11px] text-gray-400 truncate">
-                      {addr.bairro && `${addr.bairro} · `}{addr.localidade}, {addr.uf}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setRouteOpen(true)}
-                    className="shrink-0 flex items-center gap-1.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-[12px] font-semibold px-3.5 py-2 transition"
-                  >
-                    <Navigation size={13} />
-                    Ver rota
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Modal de rotas — z-[60], mesmo motivo do modal de políticas
-                acima: precisa ficar acima da barra fixa de compra (z-50). */}
-            {routeOpen && addr && (
-              <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center" onClick={() => setRouteOpen(false)}>
-                <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
-                <div
-                  className="relative z-10 w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl px-5 pt-5 pb-8 sm:pb-6 mx-0 sm:mx-4"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-5 sm:hidden" />
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-[15px] font-bold text-[#111827]">Como você vai chegar?</h3>
-                    <button onClick={() => setRouteOpen(false)} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition">
-                      <X size={16} />
-                    </button>
-                  </div>
-                  <p className="text-[12px] text-gray-400 mb-4 leading-snug">
-                    {addr.logradouro}, {addr.numero} · {addr.localidade}, {addr.uf}
-                  </p>
-                  <div className="space-y-2.5">
-                    {[
-                      {
-                        label: 'Google Maps',
-                        color: 'bg-white border border-gray-200 text-[#111827]',
-                        href: `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${addr.logradouro}, ${addr.numero}, ${addr.localidade}, ${addr.uf}`)}`,
-                      },
-                      {
-                        label: 'Waze',
-                        color: 'bg-white border border-gray-200 text-[#111827]',
-                        href: `https://waze.com/ul?q=${encodeURIComponent(`${addr.logradouro}, ${addr.numero}, ${addr.localidade}, ${addr.uf}`)}`,
-                      },
-                      {
-                        label: 'Uber',
-                        color: 'bg-white border border-gray-200 text-[#111827]',
-                        href: `https://m.uber.com/ul/?action=setPickup&dropoff[formatted_address]=${encodeURIComponent(`${addr.logradouro}, ${addr.numero}, ${addr.localidade}, ${addr.uf}`)}`,
-                      },
-                      {
-                        label: '99',
-                        color: 'bg-white border border-gray-200 text-[#111827]',
-                        href: `https://99app.com`,
-                      },
-                    ].map(({ label, color, href }) => (
-                      <a
-                        key={label}
-                        href={href}
-                        target="_blank"
-                        rel="noreferrer"
-                        className={cn('flex items-center justify-between w-full rounded-xl px-4 py-3 text-[13px] font-semibold transition hover:bg-gray-50', color)}
-                      >
-                        {label}
-                        <ExternalLink size={13} className="text-gray-400" />
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-      </div>
-
-      {/* ── Sticky bottom: cupom + botão comprar (mobile) ──────── */}
-      {tickets.length > 0 && (
-        <div
-          data-fixed-bottom-purchase-bar=""
-          className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-white/95 backdrop-blur border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] px-4 pt-2.5"
-          style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
-        >
-
-          {/* Total */}
-          {totalSelecionado > 0 && (
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="text-[14px] font-bold text-[#0F172A]">
-                Total <span className="text-[15px]">R$ {totalValor.toFixed(2).replace('.', ',')}</span>
-              </span>
-              <span className="text-[12px] text-gray-400 flex items-center gap-1">
-                {maxSemJuros > 0
-                  ? `ou ${maxParcelas}x R$ ${totalParcelado}`
-                  : `Parcele em até ${maxParcelas}x R$ ${totalParcelado}`}
-                <button type="button" onClick={() => openParcelasSheet(totalComTaxa)} className="inline-flex">
-                  <Info size={12} className="text-black hover:opacity-70 transition-opacity" />
-                </button>
-              </span>
-            </div>
-          )}
-
-          {/* Cupom aplicado */}
+      {/* Barra fixa de compra (celular). O shell reserva o espaço dela depois do footer. */}
+      {tickets.length > 0 ? (
+        <div data-fixed-bottom-purchase-bar="" className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-3 backdrop-blur-md lg:hidden">
           {couponApplied ? (
-            <div className="flex items-center justify-between mb-2.5 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
-              <div className="flex items-center gap-1.5 text-[12px] text-emerald-700 font-semibold">
-                <CouponIcon size={13} />
-                {couponApplied.code} · {couponApplied.desconto}% de desconto
-              </div>
-              <button onClick={handleRemoverCupom} className="text-gray-400 hover:text-gray-600 transition">
-                <X size={14} />
-              </button>
-            </div>
-          ) : couponOpen ? (
-            /* Input de cupom */
             <div className="mb-2.5">
-              <div className="flex gap-2">
-                <input
-                  autoFocus
-                  value={couponCode}
-                  onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError(''); }}
-                  onKeyDown={e => e.key === 'Enter' && handleAplicarCupom()}
-                  placeholder="Digite o cupom"
-                  className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-[16px] sm:text-[13px] font-medium focus:outline-none focus:border-[#9944CC] focus:ring-1 focus:ring-[#9944CC]/30 uppercase placeholder:normal-case placeholder:text-gray-400"
-                />
-                <button
-                  onClick={handleAplicarCupom}
-                  disabled={couponLoading || !couponCode.trim()}
-                  className="px-4 py-2 rounded-lg bg-gradient-to-r from-[#9944CC] to-[#3399FF] text-white text-[12px] font-bold disabled:opacity-50 transition hover:brightness-110"
-                >
-                  {couponLoading ? '...' : 'Aplicar'}
-                </button>
-                <button onClick={() => { setCouponOpen(false); setCouponError(''); }} className="text-gray-400 hover:text-gray-600 transition">
-                  <X size={16} />
-                </button>
-              </div>
-              {couponError && <p className="text-[11px] text-red-500 mt-1 pl-1">{couponError}</p>}
+              <StatusBadge tone="success">
+                {couponApplied.code} · {couponApplied.desconto}% off
+              </StatusBadge>
             </div>
-          ) : (
-            /* Botão abrir cupom */
-            <button
-              onClick={() => setCouponOpen(true)}
-              className="flex items-center gap-1.5 text-[12px] text-[#9944CC] font-semibold mb-2.5 w-full justify-center hover:underline"
-            >
-              <CouponIcon size={14} />
-              Inserir cupom de desconto
-            </button>
-          )}
-
-          <button
-            disabled={totalSelecionado === 0 || vendasEncerradas}
-            onClick={continueToCheckout}
-            className={cn(
-              'block w-full py-3.5 rounded-xl font-bold text-[15px] text-white transition',
-              totalSelecionado > 0 && !vendasEncerradas
-                ? 'bg-gradient-to-r from-[#9944CC] to-[#3399FF] hover:brightness-110 shadow-lg shadow-violet-200'
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-            )}
-          >
-            {vendasEncerradas
-              ? 'Vendas encerradas'
-              : totalSelecionado > 0
-                ? `Continuar · ${totalSelecionado} ingresso${totalSelecionado > 1 ? 's' : ''}`
-                : 'Selecione um ingresso'}
-          </button>
+          ) : null}
+          <PurchaseSummary purchase={purchase} layout="bar" />
         </div>
-      )}
+      ) : null}
 
-      <Sheet open={parcelasSheet} onOpenChange={setParcelasSheet}>
-        <SheetContent side="bottom" className="rounded-t-2xl max-h-[70vh] overflow-y-auto">
-          <SheetHeader className="pb-3">
-            <SheetTitle className="text-lg">Opções de parcelamento</SheetTitle>
-          </SheetHeader>
+      <InstallmentsSheet open={parcelasSheet} onOpenChange={setParcelasSheet} rows={parcelasData} loading={parcelasLoading} />
 
-          {parcelasLoading ? (
-            <div className="flex justify-center py-8">
-              <div className="h-6 w-6 animate-spin rounded-full border-2 border-violet-600 border-t-transparent" />
-            </div>
-          ) : (
-            <>
-              <div className="space-y-1">
-                {parcelasData.map((p) => (
-                  <div
-                    key={p.n}
-                    className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-gray-50"
-                  >
-                    <span className="text-sm font-medium text-gray-800">
-                      {p.n}x de{' '}
-                      <span className="font-semibold">
-                        R$ {(p.installmentCents / 100).toFixed(2).replace('.', ',')}
-                      </span>
-                    </span>
-                    {p.semJuros && (
-                      <span className="text-xs text-emerald-600 font-medium">sem juros</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-              <p className="text-[12px] font-medium text-black text-center pt-3 pb-4 border-t mt-2">
-                Valores já incluem taxa de serviço e processamento.
-              </p>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
-
-      {showLoginModal && (
+      {showLoginModal ? (
         <LoginModal
           onClose={() => setShowLoginModal(false)}
           onSuccess={() => {
@@ -1161,64 +412,7 @@ export default function EventoPageClient() {
             router.push(buildCheckoutUrl());
           }}
         />
-      )}
-    </main>
-  );
-}
-
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex items-start gap-2.5 mb-3">
-      <span className="mt-1 h-5 w-[3px] shrink-0 rounded-full bg-gradient-to-b from-[#7C3AED] to-[#2D8CFF]" />
-      <h2 className="text-lg font-bold text-[#0F172A]">{children}</h2>
+      ) : null}
     </div>
   );
 }
-
-// ── Programação helpers ───────────────────────────────────────────
-
-function parseProgramacao(raw: string): ProgramItem[] {
-  if (!raw.trim()) return [];
-  const LABELS_RE = /Abertura|Warm[- ]?up|Atração|Atracao|Headliner|Encerramento/i;
-
-  function labelToType(s: string): ProgramItem["type"] {
-    const t = s.toLowerCase().replace(/[-\s]/g, "");
-    if (t.includes("headliner")) return "headliner";
-    if (t.includes("warmup")) return "warmup";
-    if (t.includes("abertura")) return "opening";
-    if (t.includes("encerramento")) return "closing";
-    return "artist";
-  }
-
-  function autoType(text: string): ProgramItem["type"] {
-    const t = text.toLowerCase();
-    if (t.includes("headliner")) return "headliner";
-    if (t.includes("warm")) return "warmup";
-    if (t.includes("abertura") || t.includes("portão") || t.includes("portao")) return "opening";
-    if (t.includes("encerramento")) return "closing";
-    return "artist";
-  }
-
-  return raw
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const timeMatch = line.match(/^(\d{1,2}:\d{2})\s*[—–\-]+\s*/);
-      const time = timeMatch ? timeMatch[1] : "";
-      const rest = timeMatch ? line.slice(timeMatch[0].length).trim() : line;
-
-      const endMatch = rest.match(/^(.+?)\s*[—–\-]+\s*([^—–\-]+)$/);
-      if (endMatch && LABELS_RE.test(endMatch[2].trim())) {
-        return { time, title: endMatch[1].trim(), subtitle: endMatch[2].trim(), type: labelToType(endMatch[2].trim()) };
-      }
-
-      const startMatch = rest.match(/^([^—–\-]+?)\s*[—–\-]+\s*(.+)$/);
-      if (startMatch && LABELS_RE.test(startMatch[1].trim())) {
-        return { time, title: startMatch[2].trim(), subtitle: startMatch[1].trim(), type: labelToType(startMatch[1].trim()) };
-      }
-
-      return { time, title: rest, type: autoType(rest) };
-    });
-}
-

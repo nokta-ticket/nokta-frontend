@@ -2,11 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { LoginModal } from "@/components/auth/login-modal";
 import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
+import { StatusBadge, type Tone } from "@/components/ui/badge";
 import { CpfGate } from "../checkout/_components/cpf-gate";
 
 // Lista VIP dentro da página do evento. Só aparece para quem chegou pelo
@@ -27,10 +30,17 @@ interface VipListResponse {
   listas: VipList[];
 }
 
+const STATUS_META: Record<VipStatus, { label: string; tone: Tone }> = {
+  ABERTA: { label: "Aberta", tone: "success" },
+  ENCERRADA: { label: "Encerrada", tone: "neutral" },
+  ESGOTADA: { label: "Esgotada", tone: "danger" },
+  INDISPONIVEL: { label: "Indisponível", tone: "warning" },
+};
+
 const CLOSED_MESSAGE: Record<Exclude<VipStatus, "ABERTA">, string> = {
-  ENCERRADA: "Prazo encerrado",
-  ESGOTADA: "Esgotado",
-  INDISPONIVEL: "Indisponível no momento",
+  ENCERRADA: "O prazo pra retirar acabou.",
+  ESGOTADA: "Todos os VIPs já foram retirados.",
+  INDISPONIVEL: "Indisponível no momento.",
 };
 
 function formatDeadline(iso: string): string {
@@ -117,71 +127,53 @@ export function VipClaimCard({
 
   return (
     <div ref={cardRef} id="vip" className="scroll-mt-24">
-      <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Lista VIP</p>
+      <h2 className="mb-3 text-title font-semibold tracking-tight text-foreground lg:hidden">Lista VIP</h2>
+      <Card accent className="overflow-hidden">
+        <div className="hidden items-center justify-between px-5 pt-5 lg:flex">
+          <h2 className="text-lg font-semibold tracking-tight text-foreground">Lista VIP</h2>
+          <Icon name="crown" size={16} className="text-brand" />
+        </div>
 
-      <div className="mt-3 flex flex-col gap-3">
-        {lists.map((lista) => {
-          const result = results[lista.token];
-          const open = lista.status === "ABERTA";
-          return (
-            <div
-              key={lista.token}
-              className={
-                "flex items-center gap-4 rounded-xl border px-4 py-3.5 " +
-                (result
-                  ? "border-emerald-200 bg-emerald-50/60"
-                  : open
-                    ? "border-[#9944CC]/40 bg-violet-50/40"
-                    : "border-gray-200 bg-white")
-              }
-            >
-              {result ? (
-                <>
-                  <CheckCircle2 className="h-6 w-6 shrink-0 text-emerald-600" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-bold text-[#0F172A]">
-                      {result === "claimed" ? "Seu VIP está garantido" : "Você já retirou este VIP"}
-                    </p>
-                    <p className="text-[12px] text-gray-600">O QR code está em Meus ingressos.</p>
+        <ul className="divide-y divide-border lg:mt-3 lg:border-t lg:border-border">
+          {lists.map((lista) => {
+            const result = results[lista.token];
+            const open = lista.status === "ABERTA";
+            const meta = STATUS_META[lista.status];
+            return (
+              <li key={lista.token} className="px-4 py-4 lg:px-5">
+                {result ? (
+                  <div className="flex items-center gap-3">
+                    <Icon name="check-circle" size={22} className="shrink-0 text-success" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[15px] font-semibold leading-snug text-foreground">{result === "claimed" ? "Seu VIP está garantido" : "Você já retirou este VIP"}</p>
+                      <p className="mt-0.5 text-caption text-muted-foreground">O QR code está em Meus ingressos.</p>
+                    </div>
+                    <Button asChild variant="contrast" size="sm" shape="pill" className="shrink-0">
+                      <Link href="/meus-ingressos">Ver ingresso</Link>
+                    </Button>
                   </div>
-                  <Link
-                    href="/meus-ingressos"
-                    className="shrink-0 rounded-lg bg-[#0F172A] px-3.5 py-2.5 text-[13px] font-bold text-white"
-                  >
-                    Ver ingresso
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <div className="min-w-0 flex-1">
-                    <p className="mb-1 text-[13px] font-bold uppercase leading-snug text-[#0F172A]">
-                      {lista.nome || "Lista VIP"}
-                    </p>
-                    <p className="text-[13px] font-bold text-[#9944CC]">Gratuito</p>
-                    {open ? (
-                      <p className="mt-0.5 text-[11px] text-gray-500">
-                        Um por pessoa{lista.ate ? ` · retire até ${formatDeadline(lista.ate)}` : ""}
-                      </p>
-                    ) : (
-                      <p className="mt-0.5 text-[11px] font-semibold text-red-600">
-                        {CLOSED_MESSAGE[lista.status as Exclude<VipStatus, "ABERTA">]}
-                      </p>
-                    )}
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-[15px] font-semibold leading-snug text-foreground">{lista.nome || "Lista VIP"}</p>
+                        <StatusBadge tone={meta.tone} pulse={open}>
+                          {meta.label}
+                        </StatusBadge>
+                      </div>
+                      <p className="mt-1 text-sm font-semibold text-brand">Gratuito</p>
+                      <p className="mt-0.5 text-caption text-muted-foreground">{open ? `Um por pessoa${lista.ate ? ` · retire até ${formatDeadline(lista.ate)}` : ""}` : CLOSED_MESSAGE[lista.status as Exclude<VipStatus, "ABERTA">]}</p>
+                    </div>
+                    <Button shape="pill" onClick={() => handleClick(lista.token)} disabled={!open || claimingToken !== null} loading={claimingToken === lista.token} className="h-11 shrink-0 px-5">
+                      {lista.status === "ESGOTADA" ? "Esgotado" : "Pegar VIP"}
+                    </Button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleClick(lista.token)}
-                    disabled={!open || claimingToken !== null}
-                    className="h-11 shrink-0 rounded-lg bg-gradient-to-r from-[#9944CC] to-[#3399FF] px-4 text-[13px] font-bold text-white transition disabled:opacity-40"
-                  >
-                    {claimingToken === lista.token ? "Retirando…" : lista.status === "ESGOTADA" ? "Esgotado" : "Pegar VIP"}
-                  </button>
-                </>
-              )}
-            </div>
-          );
-        })}
-      </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </Card>
 
       {pending?.step === "login" && (
         <LoginModal
@@ -196,7 +188,7 @@ export function VipClaimCard({
       )}
 
       {pending?.step === "cpf" && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-white">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-background">
           <CpfGate
             onComplete={(cpf) => {
               const { token } = pending;

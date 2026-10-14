@@ -1,5 +1,5 @@
-import { EventoDetailSkeleton } from "@/components/ui/skeleton";
+import { EventoSkeleton } from "./_components/evento-skeleton";
 
 export default function EventoLoading() {
-  return <EventoDetailSkeleton />;
+  return <EventoSkeleton />;
 }

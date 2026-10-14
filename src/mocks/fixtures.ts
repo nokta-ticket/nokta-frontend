@@ -94,12 +94,32 @@ export function mockEventDetails(slugOrId: string): EventDetails | null {
 export function mockTickets(eventId: string) {
   const s = SEEDS.find((x) => String(x.id) === eventId || x.slug === eventId);
   const soldOutFirst = (s?.percentualVendido ?? 0) >= 80;
+  // A página busca pelo slug: o id do lote sai do seed (não de Number(slug) = NaN,
+  // que fazia todos os lotes dividirem a mesma quantidade).
+  const base = (s?.id ?? 0) * 10;
   return [
-    { id: Number(eventId) * 10 + 1, nome: "Pista — 1º lote", lote: 1, tipo: 1, valor: 60, quantidade: soldOutFirst ? 0 : 120, disponivelParaVenda: true, dataLimite: null },
-    { id: Number(eventId) * 10 + 2, nome: "Pista — 2º lote", lote: 2, tipo: 1, valor: 80, quantidade: 300, disponivelParaVenda: true, dataLimite: null },
-    { id: Number(eventId) * 10 + 3, nome: "Pista — Meia-entrada", lote: 2, tipo: 2, valor: 40, quantidade: 80, disponivelParaVenda: true, dataLimite: null },
-    { id: Number(eventId) * 10 + 4, nome: "Camarote Open Bar", lote: 1, tipo: 1, valor: 220, quantidade: 40, disponivelParaVenda: true, dataLimite: null },
+    { id: base + 1, nome: "Pista — 1º lote", lote: 1, tipo: 1, valor: 60, quantidade: soldOutFirst ? 0 : 120, disponivelParaVenda: true, dataLimite: null },
+    { id: base + 2, nome: "Pista — 2º lote", lote: 2, tipo: 1, valor: 80, quantidade: 300, disponivelParaVenda: true, dataLimite: null },
+    { id: base + 3, nome: "Pista — Meia-entrada", lote: 2, tipo: 2, valor: 40, quantidade: 80, disponivelParaVenda: true, dataLimite: null },
+    { id: base + 4, nome: "Camarote Open Bar", lote: 1, tipo: 1, valor: 220, quantidade: 40, disponivelParaVenda: true, dataLimite: null },
   ];
+}
+
+export type MockVipStatus = "ABERTA" | "ENCERRADA" | "ESGOTADA" | "INDISPONIVEL";
+
+/**
+ * Lista VIP do link `/vip/<slug>` (ou do código da lista nos primeiros
+ * links). Uma lista de cada estado pra ver todos os visuais do VipClaimCard.
+ */
+export function mockVipLists(key: string) {
+  const s = SEEDS.find((x) => x.slug === key || String(x.id) === key || `vip-${x.slug}` === key);
+  if (!s) return null;
+  const listas: { token: string; nome: string | null; ate: string | null; status: MockVipStatus }[] = [
+    { token: `vip-${s.id}-aberta`, nome: "Lista do produtor", ate: new Date(Date.now() + 2 * DAY).toISOString(), status: "ABERTA" },
+    { token: `vip-${s.id}-encerrada`, nome: "Lista imprensa", ate: new Date(Date.now() - DAY).toISOString(), status: "ENCERRADA" },
+    { token: `vip-${s.id}-esgotada`, nome: "Aniversariantes do mês", ate: null, status: "ESGOTADA" },
+  ];
+  return { evento: { id: s.id, nome: s.nome, slug: s.slug, thumbnail: posterUrl(s.poster) }, listas };
 }
 
 export const MOCK_RESALES = MOCK_EVENTS.slice(0, 5).map((e, i) => ({

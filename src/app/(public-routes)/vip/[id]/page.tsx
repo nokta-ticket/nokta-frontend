@@ -22,7 +22,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   } catch {
     evento = null;
   }
-  if (!evento) return { title: "Lista VIP — Nokta Tickets" };
+  // O layout raiz já aplica o template "%s · Nokta".
+  if (!evento) return { title: "Lista VIP" };
 
   const title = `Lista VIP · ${evento.nome}`;
   const description = `Retire seu VIP para ${evento.nome} na Nokta Tickets.`;
@@ -30,7 +31,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const url = getPublicTicketsUrl(`/vip/${evento.slug ?? evento.id}`);
 
   return {
-    title: `${title} — Nokta Tickets`,
+    title,
     description,
     alternates: { canonical: url },
     openGraph: {
