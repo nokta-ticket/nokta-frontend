@@ -754,7 +754,7 @@ export const dashboardHandlers: MockHandler[] = [
       ok({
         restricted: false,
         readyToOperate: false,
-        progress: 0.7,
+        progress: 70, // 0–100 (o checklist antigo usava `width: ${progress}%`)
         profile: setupProfile,
         requiredItems: [
           { key: "location", label: "Criar a primeira unidade", done: true, route: "/dashboard/configuracoes?tab=unidades" },

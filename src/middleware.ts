@@ -393,7 +393,10 @@ export async function middleware(request: NextRequest) {
 
   const publicRoute =
     publicRoutes.find((route) => matchDynamicRoute(path, route.path)) ??
-    (enforcedSurface === "MARKETING" && matchDynamicRoute(path, ORG_SLUG_HOME_ROUTE.path)
+    // Em dev sem separação de hosts (localhost puro) a home do estabelecimento
+    // também precisa abrir sem login — senão não dá pra ver/testar a página.
+    // (nunca uma rota protegida conhecida de 1 segmento, ex. /meus-ingressos).
+    ((enforcedSurface === "MARKETING" || (!isSurfaceEnforced(hostname) && !matchesAnyPrefix(path, [...PLATFORM_ONLY_PREFIXES, ...TICKETS_ONLY_PREFIXES]))) && matchDynamicRoute(path, ORG_SLUG_HOME_ROUTE.path)
       ? ORG_SLUG_HOME_ROUTE
       : undefined);
 

@@ -136,82 +136,36 @@ function DesktopNav({ scrolled }: { scrolled: boolean }) {
 /**
  * Cabeçalho do celular. Logo à esquerda; à direita a conta (pílula
  * "Entrar" de vidro ou avatar com anel rosa). Busca e navegação ficam na
- * barra inferior. Fora da home ganha o "voltar".
- *
- * DEV: `?hv=1|2|3|4` troca a variante visual pra comparar (some em produção).
+ * barra inferior. Fora da home ganha o "voltar". Transparente no topo,
+ * vidro escuro ao rolar.
  */
-function MobileHeader({ isHome, scrolled, isAuthenticated, isAuthResolved, onBack, onSearch }: { isHome: boolean; scrolled: boolean; isAuthenticated: boolean; isAuthResolved: boolean; onBack: () => void; onSearch: () => void }) {
-  const [variant, setVariant] = useState(1);
-  useEffect(() => {
-    if (process.env.NODE_ENV === "production") return;
-    const v = Number(new URLSearchParams(window.location.search).get("hv"));
-    if (v >= 1 && v <= 4) setVariant(v);
-  }, []);
-
-  const account = !isAuthResolved ? (
-    <span className="size-10 rounded-full bg-white/[0.06]" aria-hidden />
-  ) : isAuthenticated ? (
-    <Link href="/perfil" aria-label="Minha conta" className="press rounded-full ring-2 ring-brand/70 ring-offset-2 ring-offset-background">
-      <Avatar />
-    </Link>
-  ) : variant === 2 ? (
-    <Link href="/login" aria-label="Entrar" className="press relative flex size-10 items-center justify-center rounded-full bg-white/[0.07] text-foreground ring-1 ring-white/10 backdrop-blur-md">
-      <Icon name="user" size={15} />
-      <span className="absolute right-0.5 top-0.5 size-2 rounded-full bg-brand ring-2 ring-background" />
-    </Link>
-  ) : variant === 4 ? (
-    <Link href="/login" className="btn-lift inline-flex h-9 items-center gap-1.5 rounded-pill bg-brand px-4 text-[13px] font-bold text-brand-foreground">
-      Entrar
-    </Link>
-  ) : (
-    <Link href="/login" className="press inline-flex h-9 items-center gap-2 rounded-pill bg-white/[0.07] pl-1.5 pr-3.5 text-[13px] font-semibold text-foreground ring-1 ring-white/10 backdrop-blur-md">
-      <span className="flex size-6 items-center justify-center rounded-full bg-brand text-brand-foreground">
-        <Icon name="user" size={10} />
-      </span>
-      Entrar
-    </Link>
-  );
-
-  const back = !isHome ? (
-    <button type="button" onClick={onBack} aria-label="Voltar" className="relative flex size-10 items-center justify-center rounded-full bg-white/[0.06] text-foreground ring-1 ring-white/10 transition-colors hover:bg-surface-2">
-      <Icon name="arrow-left" size={16} />
-    </button>
-  ) : null;
-
-  if (variant === 3) {
-    // Gandaya: logo centralizada, conta à esquerda, busca à direita.
-    return (
-      <header className={cn("sticky top-0 z-40 pt-safe transition-[background-color,box-shadow] duration-300 lg:hidden", scrolled ? "bg-background/80 shadow-[0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl" : "bg-transparent")}>
-        <div className="relative grid h-16 grid-cols-[1fr_auto_1fr] items-center px-4">
-          <div className="flex items-center">{back ?? (isAuthenticated ? account : <Link href="/login" aria-label="Entrar" className="press flex size-10 items-center justify-center rounded-full bg-white/[0.06] text-foreground ring-1 ring-white/10"><Icon name="user" size={15} /></Link>)}</div>
-          <Link href="/" aria-label="Início" className="press">
-            <BrandLogo height={30} />
-          </Link>
-          <div className="flex justify-end">
-            <button type="button" onClick={onSearch} aria-label="Buscar" className="press flex size-10 items-center justify-center rounded-full bg-white/[0.06] text-foreground ring-1 ring-white/10">
-              <Icon name="search" size={15} />
-            </button>
-          </div>
-        </div>
-      </header>
-    );
-  }
-
+function MobileHeader({ isHome, scrolled, isAuthenticated, isAuthResolved, onBack }: { isHome: boolean; scrolled: boolean; isAuthenticated: boolean; isAuthResolved: boolean; onBack: () => void }) {
   return (
-    <header className={cn("sticky top-0 z-40 pt-safe transition-[background-color,box-shadow] duration-300 lg:hidden", scrolled ? "bg-background/80 shadow-[0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl" : "bg-transparent")}>
-      <div className="relative flex h-16 items-center gap-2.5 overflow-hidden px-5">
-        <div aria-hidden className={cn("pointer-events-none absolute -left-8 -top-20 size-44 rounded-full bg-brand/25 blur-3xl transition-opacity duration-500", scrolled ? "opacity-0" : "opacity-100")} />
-        {back}
-        <Link href="/" aria-label="Início" className="press relative">
-          <BrandLogo height={isHome ? 32 : 26} />
+    <header className={cn("sticky top-0 z-40 pt-safe transition-[background-color,box-shadow] duration-300 lg:hidden", scrolled ? "bg-background/80 shadow-[0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl" : "bg-background")}>
+      <div className="flex h-16 items-center gap-2.5 px-5">
+        {!isHome ? (
+          <button type="button" onClick={onBack} aria-label="Voltar" className="press -ml-1 flex size-10 items-center justify-center rounded-full bg-white/[0.06] text-foreground ring-1 ring-white/10">
+            <Icon name="arrow-left" size={16} />
+          </button>
+        ) : null}
+        <Link href="/" aria-label="Início" className="press">
+          <BrandLogo height={isHome ? 30 : 26} />
         </Link>
-        <div className="relative ml-auto flex items-center gap-2">
-          {variant === 2 ? (
-            <button type="button" onClick={onSearch} aria-label="Buscar" className="press flex size-10 items-center justify-center rounded-full bg-white/[0.07] text-foreground ring-1 ring-white/10 backdrop-blur-md">
-              <Icon name="search" size={15} />
-            </button>
-          ) : null}
-          {account}
+        <div className="ml-auto flex items-center">
+          {!isAuthResolved ? (
+            <span className="h-9 w-[92px] rounded-pill bg-white/[0.06]" aria-hidden />
+          ) : isAuthenticated ? (
+            <Link href="/perfil" aria-label="Minha conta" className="press rounded-full ring-2 ring-brand/70 ring-offset-2 ring-offset-background">
+              <Avatar />
+            </Link>
+          ) : (
+            <Link href="/login" className="press inline-flex h-9 items-center gap-2 rounded-pill bg-white/[0.07] pl-1.5 pr-3.5 text-[13px] font-semibold text-foreground ring-1 ring-white/10">
+              <span className="flex size-6 items-center justify-center rounded-full bg-brand text-brand-foreground">
+                <Icon name="user" size={10} />
+              </span>
+              Entrar
+            </Link>
+          )}
         </div>
       </div>
     </header>
@@ -297,7 +251,7 @@ export function PublicHeader({ chrome = "full", title }: { chrome?: HeaderChrome
 
   return (
     <>
-      <MobileHeader isHome={isHome} scrolled={scrolled} isAuthenticated={isAuthenticated} isAuthResolved={isAuthResolved} onBack={() => router.back()} onSearch={openSearch} />
+      <MobileHeader isHome={isHome} scrolled={scrolled} isAuthenticated={isAuthenticated} isAuthResolved={isAuthResolved} onBack={() => router.back()} />
 
       {/* desktop: ilha flutuante */}
       <header className="pointer-events-none fixed inset-x-0 top-0 z-40 hidden lg:block">
