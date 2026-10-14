@@ -29,7 +29,7 @@ function TicketGroupCard({ item, count, past, index }: { item: UserTicket; count
     <Link href={`/meus-ingressos/${item.id}`} className={cn("fade-up press group block", past && "opacity-80")} style={{ ["--i" as string]: index } as React.CSSProperties}>
       <div className={cn("relative aspect-video overflow-hidden rounded-card bg-surface-2 shadow-card", past && "grayscale")}>
         {cover ? (
-          <Image src={cover} alt="" fill sizes="(max-width:1024px) 100vw, 33vw" className="object-cover transition-transform duration-500 ease-out-soft group-hover:scale-[1.04]" unoptimized />
+          <Image src={cover} alt="" fill priority={index === 0} sizes="(max-width:1024px) 100vw, 33vw" className="object-cover transition-transform duration-500 ease-out-soft group-hover:scale-[1.04]" unoptimized />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-subtle-foreground">
             <Icon name="ticket" size={34} />
