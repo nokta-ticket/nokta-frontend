@@ -422,7 +422,7 @@ export default function EventoPageClient() {
                 {vipActive ? (
                   <Button onClick={() => document.getElementById("vip")?.scrollIntoView({ behavior: "smooth", block: "center" })} className="bg-gradient-to-r from-[#9944CC] to-[#3399FF] hover:brightness-110 text-white font-bold px-8 h-12 gap-2 text-[15px] shadow-xl shadow-violet-900/40 transition-all rounded-xl">
                     <Ticket size={16} />
-                    Pegar VIP
+                    Colocar nome na lista
                   </Button>
                 ) : isEncerrado || vendasEncerradas ? (
                   <Button disabled className="bg-gray-500 text-white font-bold px-8 h-12 gap-2 text-[15px] rounded-xl cursor-not-allowed opacity-70">
@@ -561,6 +561,7 @@ export default function EventoPageClient() {
               <VipClaimCard
                 vipKey={vipKey}
                 eventId={Number(evento.id)}
+                eventName={evento.nome}
                 returnPath={`/vip/${evento.slug ?? evento.id}`}
                 onActiveChange={setVipActive}
               />

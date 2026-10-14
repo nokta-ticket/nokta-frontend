@@ -2,16 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2 } from "lucide-react";
+import { Check, UserPlus } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { LoginModal } from "@/components/auth/login-modal";
 import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
+import { getPublicTicketsUrl } from "@/lib/surfaces";
 import { CpfGate } from "../checkout/_components/cpf-gate";
 
 // Lista VIP dentro da página do evento. Só aparece para quem chegou pelo
-// link do produtor (`/vip/nome-do-evento`): o lote não existe na lista
-// pública de ingressos.
+// link do produtor (`/vip/nome-do-evento`): a lista não existe entre os
+// ingressos à venda. Quem coloca o nome recebe o ingresso com QR na conta.
 
 type VipStatus = "ABERTA" | "ENCERRADA" | "ESGOTADA" | "INDISPONIVEL";
 
@@ -20,6 +22,8 @@ interface VipList {
   nome: string | null;
   ate: string | null;
   status: VipStatus;
+  naLista: number;
+  total: number;
 }
 
 interface VipListResponse {
@@ -27,10 +31,10 @@ interface VipListResponse {
   listas: VipList[];
 }
 
-const CLOSED_MESSAGE: Record<Exclude<VipStatus, "ABERTA">, string> = {
-  ENCERRADA: "Prazo encerrado",
-  ESGOTADA: "Esgotado",
-  INDISPONIVEL: "Indisponível no momento",
+const CLOSED_LABEL: Record<Exclude<VipStatus, "ABERTA">, string> = {
+  ENCERRADA: "Lista encerrada",
+  ESGOTADA: "Lista esgotada",
+  INDISPONIVEL: "Lista indisponível",
 };
 
 function formatDeadline(iso: string): string {
@@ -41,25 +45,30 @@ function formatDeadline(iso: string): string {
   return `${day} às ${time}`;
 }
 
+// Mesma curva de saída em tudo que responde ao toque.
+const PRESS = "transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97]";
+
 export function VipClaimCard({
   vipKey,
   eventId,
+  eventName,
   returnPath,
   onActiveChange,
 }: {
   /** Endereço do evento (ou o código de uma lista, nos primeiros links). */
   vipKey: string;
   eventId: number;
-  /** Para onde o cadastro devolve a pessoa. */
+  eventName: string;
+  /** Caminho deste link (/vip/<evento>): destino do cadastro e do "Convidar amigos". */
   returnPath: string;
-  /** true enquanto há VIP para retirar ou já retirado: a página esconde os lotes pagos. */
+  /** true enquanto há lista aberta ou nome já colocado: a página esconde os ingressos pagos. */
   onActiveChange?: (active: boolean) => void;
 }) {
   const { isAuthenticated, user } = useAuth();
   const [lists, setLists] = useState<VipList[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [claimingToken, setClaimingToken] = useState<string | null>(null);
-  /** Lista que a pessoa tentou retirar e ficou esperando login ou CPF. */
+  /** Lista em que a pessoa tocou e ficou esperando login ou CPF. */
   const [pending, setPending] = useState<{ token: string; step: "login" | "cpf" } | null>(null);
   const [results, setResults] = useState<Record<string, "claimed" | "already">>({});
   const cardRef = useRef<HTMLDivElement>(null);
@@ -81,14 +90,14 @@ export function VipClaimCard({
     };
   }, [vipKey, eventId]);
 
-  // Enquanto o link carrega conta como ativo, para os lotes pagos não
+  // Enquanto o link carrega conta como ativo, para os ingressos pagos não
   // piscarem na tela antes de sumir.
   const active = !loaded || lists.some((l) => l.status === "ABERTA" || results[l.token]);
   useEffect(() => {
     onActiveChange?.(active);
   }, [active, onActiveChange]);
 
-  // Quem chegou pelo link veio buscar o VIP: a página rola até ele.
+  // Quem chegou pelo link veio pela lista: a página rola até ela.
   useEffect(() => {
     if (lists.length > 0) cardRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [lists.length]);
@@ -98,10 +107,13 @@ export function VipClaimCard({
     try {
       const res = await api.post<{ claimed: boolean; alreadyClaimed: boolean }>(`/lista-vip/${token}/retirar`);
       setResults((prev) => ({ ...prev, [token]: res.data.alreadyClaimed ? "already" : "claimed" }));
+      if (res.data.claimed) {
+        setLists((prev) => prev.map((l) => (l.token === token ? { ...l, naLista: l.naLista + 1 } : l)));
+      }
     } catch (err: unknown) {
       const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
       if (code === "CPF_REQUIRED") setPending({ token, step: "cpf" });
-      else toast.error(getErrorMessage(err, "Não foi possível retirar o VIP. Tente de novo."));
+      else toast.error(getErrorMessage(err, "Não foi possível colocar seu nome na lista. Tente de novo."));
     } finally {
       setClaimingToken(null);
     }
@@ -115,73 +127,96 @@ export function VipClaimCard({
     claim(token);
   };
 
-  return (
-    <div ref={cardRef} id="vip" className="scroll-mt-24">
-      <p className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Lista VIP</p>
+  const invite = async () => {
+    const url = getPublicTicketsUrl(returnPath);
+    try {
+      if (navigator.share) await navigator.share({ title: `Lista VIP · ${eventName}`, url });
+      else {
+        await navigator.clipboard.writeText(url);
+        toast.success("Link copiado!");
+      }
+    } catch {
+      // Fechar a folha de compartilhamento não é erro.
+    }
+  };
 
-      <div className="mt-3 flex flex-col gap-3">
-        {lists.map((lista) => {
-          const result = results[lista.token];
-          const open = lista.status === "ABERTA";
-          return (
-            <div
-              key={lista.token}
-              className={
-                "flex items-center gap-4 rounded-xl border px-4 py-3.5 " +
-                (result
-                  ? "border-emerald-200 bg-emerald-50/60"
-                  : open
-                    ? "border-[#9944CC]/40 bg-violet-50/40"
-                    : "border-gray-200 bg-white")
-              }
-            >
-              {result ? (
-                <>
-                  <CheckCircle2 className="h-6 w-6 shrink-0 text-emerald-600" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-bold text-[#0F172A]">
-                      {result === "claimed" ? "Seu VIP está garantido" : "Você já retirou este VIP"}
-                    </p>
-                    <p className="text-[12px] text-gray-600">O QR code está em Meus ingressos.</p>
-                  </div>
-                  <Link
-                    href="/meus-ingressos"
-                    className="shrink-0 rounded-lg bg-[#0F172A] px-3.5 py-2.5 text-[13px] font-bold text-white"
-                  >
-                    Ver ingresso
-                  </Link>
-                </>
-              ) : (
-                <>
-                  <div className="min-w-0 flex-1">
-                    <p className="mb-1 text-[13px] font-bold uppercase leading-snug text-[#0F172A]">
-                      {lista.nome || "Lista VIP"}
-                    </p>
-                    <p className="text-[13px] font-bold text-[#9944CC]">Gratuito</p>
-                    {open ? (
-                      <p className="mt-0.5 text-[11px] text-gray-500">
-                        Um por pessoa{lista.ate ? ` · retire até ${formatDeadline(lista.ate)}` : ""}
-                      </p>
-                    ) : (
-                      <p className="mt-0.5 text-[11px] font-semibold text-red-600">
-                        {CLOSED_MESSAGE[lista.status as Exclude<VipStatus, "ABERTA">]}
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleClick(lista.token)}
-                    disabled={!open || claimingToken !== null}
-                    className="h-11 shrink-0 rounded-lg bg-gradient-to-r from-[#9944CC] to-[#3399FF] px-4 text-[13px] font-bold text-white transition disabled:opacity-40"
-                  >
-                    {claimingToken === lista.token ? "Retirando…" : lista.status === "ESGOTADA" ? "Esgotado" : "Pegar VIP"}
-                  </button>
-                </>
-              )}
+  return (
+    <div ref={cardRef} id="vip" className="scroll-mt-24 space-y-8">
+      {lists.map((lista) => {
+        const result = results[lista.token];
+        const open = lista.status === "ABERTA";
+        const claiming = claimingToken === lista.token;
+        return (
+          <section key={lista.token} aria-label={lista.nome || "Lista VIP"}>
+            <div className="mb-1 flex items-start gap-2.5">
+              <span className="mt-1 h-5 w-[3px] shrink-0 rounded-full bg-gradient-to-b from-[#7C3AED] to-[#2D8CFF]" />
+              <h2 className="text-lg font-bold text-[#0F172A]">{lista.nome || "Lista VIP"}</h2>
             </div>
-          );
-        })}
-      </div>
+            <p className="pl-[13px] text-[13px] leading-relaxed text-gray-600">
+              Entrada gratuita, um nome por pessoa.
+              {open && lista.ate ? ` Aberta até ${formatDeadline(lista.ate)}.` : ""}
+            </p>
+
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <p className="flex items-center gap-2.5 text-[13px] text-gray-600">
+                <span className="rounded-full bg-[#0F172A] px-3 py-1.5 text-[14px] font-bold tabular-nums text-white">
+                  {lista.naLista}/{lista.total}
+                </span>
+                nomes na lista
+              </p>
+              <button
+                type="button"
+                onClick={invite}
+                className={cn(
+                  "-mr-2 flex h-11 items-center gap-2 rounded-full px-2 text-[13px] font-semibold text-[#0F172A]",
+                  PRESS,
+                )}
+              >
+                Convidar amigos
+                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-300 bg-white">
+                  <UserPlus size={16} />
+                </span>
+              </button>
+            </div>
+
+            {result ? (
+              <div className="vip-confirm mt-4 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3.5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+                  <Check size={18} strokeWidth={3} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14px] font-bold text-[#0F172A]">
+                    {result === "claimed" ? "Seu nome está na lista" : "Seu nome já estava na lista"}
+                  </p>
+                  <p className="text-[12px] text-emerald-900/80">O ingresso com QR code está na sua conta.</p>
+                </div>
+                <Link
+                  href="/meus-ingressos"
+                  className={cn("shrink-0 rounded-xl bg-[#0F172A] px-3.5 py-2.5 text-[13px] font-bold text-white", PRESS)}
+                >
+                  Ver ingresso
+                </Link>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleClick(lista.token)}
+                disabled={!open || claimingToken !== null}
+                className={cn(
+                  "mt-4 h-[52px] w-full rounded-2xl text-[15px] font-bold",
+                  open
+                    ? "bg-gradient-to-r from-[#9944CC] to-[#3399FF] text-white shadow-lg shadow-violet-900/15"
+                    : "bg-gray-200 text-gray-600",
+                  open && PRESS,
+                  claiming && "opacity-80",
+                )}
+              >
+                {claiming ? "Colocando seu nome…" : open ? "Colocar nome na lista" : CLOSED_LABEL[lista.status as Exclude<VipStatus, "ABERTA">]}
+              </button>
+            )}
+          </section>
+        );
+      })}
 
       {pending?.step === "login" && (
         <LoginModal

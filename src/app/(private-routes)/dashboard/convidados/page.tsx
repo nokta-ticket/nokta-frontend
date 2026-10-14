@@ -18,9 +18,10 @@ import { BlockSkeleton } from "../_components/states/loading-state";
 import { guestsApi, type Guest } from "@/services/guests";
 import { InviteGuestDialog } from "./_components/invite-guest-dialog";
 import { ReservationGuestsSection } from "./_components/reservation-guests-section";
+import { VipListsSection } from "./_components/vip-lists-section";
 
-type EventoOption = { id: number; nome: string };
-type Mode = "evento" | "reserva";
+type EventoOption = { id: number; nome: string; data?: string };
+type Mode = "vip" | "evento" | "reserva";
 
 // UserTicketStatus: 1=NOT_VALIDATED 2=VALIDATED 3=IN_RESALE 4=TRANSFERRED
 const STATUS_BADGE: Record<number, { label: string; className: string }> = {
@@ -31,8 +32,11 @@ const STATUS_BADGE: Record<number, { label: string; className: string }> = {
 };
 
 /**
- * Convidados (GUEST_LISTS). Dois modos, sem relação entre si:
- * - Evento: cortesia de bilheteria (UserTicket real, exige conta Nokta) —
+ * Convidados (GUEST_LISTS). Três modos, sem relação entre si:
+ * - Lista VIP: lista de nomes com entrada gratuita, divulgada por link
+ *   (/vip/<evento>); quem coloca o nome recebe o ingresso na conta — ver
+ *   services/vip-lists.ts.
+ * - Cortesias: cortesia de bilheteria (UserTicket real, exige conta Nokta) —
  *   ver services/guests.ts / tickets/guests no backend.
  * - Reserva: lista de nomes de uma reserva/mesa do Venue, sem exigir conta
  *   nem QR — ver services/venue-reservations.ts (listGuests/addGuest/...) /
@@ -43,7 +47,7 @@ export default function ConvidadosPage() {
   const { currentOrg, loadingOrgs, activeModuleKeys } = useOrganizations();
   const { guard } = useRequireWorkspace();
   const hasVenue = activeModuleKeys.includes("venue");
-  const [mode, setMode] = useState<Mode>("evento");
+  const [mode, setMode] = useState<Mode>("vip");
 
   const [eventos, setEventos] = useState<EventoOption[]>([]);
   const [loadingEventos, setLoadingEventos] = useState(true);
@@ -110,20 +114,23 @@ export default function ConvidadosPage() {
   }, [selectedEventId]);
 
   const description =
-    mode === "evento"
-      ? "Envie cortesias para os seus eventos — o convidado recebe o ingresso na própria conta, com QR code."
-      : "Monte a lista de quem vai comparecer numa reserva — sem exigir conta na Nokta.";
+    mode === "vip"
+      ? "Divulgue o link da lista VIP e veja quem colocou o nome. Cada pessoa recebe o ingresso com QR code na conta."
+      : mode === "evento"
+        ? "Envie cortesias para os seus eventos. O convidado recebe o ingresso na própria conta, com QR code."
+        : "Monte a lista de quem vai comparecer numa reserva, sem exigir conta na Nokta.";
 
-  const modeSwitcher = hasVenue ? (
+  const modeSwitcher = (
     <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
       <TabsList>
-        <TabsTrigger value="evento">Evento</TabsTrigger>
-        <TabsTrigger value="reserva">Reserva</TabsTrigger>
+        <TabsTrigger value="vip">Lista VIP</TabsTrigger>
+        <TabsTrigger value="evento">Cortesias</TabsTrigger>
+        {hasVenue ? <TabsTrigger value="reserva">Reserva</TabsTrigger> : null}
       </TabsList>
     </Tabs>
-  ) : null;
+  );
 
-  if (loadingOrgs || (mode === "evento" && loadingEventos)) {
+  if (loadingOrgs || (mode !== "reserva" && loadingEventos)) {
     return (
       <PageContainer>
         <PageHeader title="Convidados" description={description} actions={modeSwitcher} />
@@ -169,8 +176,44 @@ export default function ConvidadosPage() {
         <PageHeader title="Convidados" description={description} actions={modeSwitcher} />
         <EmptyState
           title="Nenhum evento disponível"
-          description="Crie um evento (mesmo em rascunho) para poder convidar pessoas com cortesia."
+          description="Crie um evento (mesmo em rascunho) para montar a lista VIP ou enviar cortesias."
         />
+      </PageContainer>
+    );
+  }
+
+  const eventSelect = (
+    <Select value={selectedEventId ? String(selectedEventId) : undefined} onValueChange={(v) => setSelectedEventId(Number(v))}>
+      <SelectTrigger className="w-56">
+        <SelectValue placeholder="Evento" />
+      </SelectTrigger>
+      <SelectContent>
+        {eventos.map((ev) => (
+          <SelectItem key={ev.id} value={String(ev.id)}>
+            {ev.nome}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  if (mode === "vip") {
+    const selected = eventos.find((ev) => ev.id === selectedEventId);
+    return (
+      <PageContainer>
+        <PageHeader
+          title="Convidados"
+          description={description}
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              {modeSwitcher}
+              {eventSelect}
+            </div>
+          }
+        />
+        {selectedEventId !== null ? (
+          <VipListsSection key={selectedEventId} eventId={selectedEventId} eventDate={selected?.data} />
+        ) : null}
       </PageContainer>
     );
   }
@@ -183,21 +226,7 @@ export default function ConvidadosPage() {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {modeSwitcher}
-            <Select
-              value={selectedEventId ? String(selectedEventId) : undefined}
-              onValueChange={(v) => setSelectedEventId(Number(v))}
-            >
-              <SelectTrigger className="w-56">
-                <SelectValue placeholder="Evento" />
-              </SelectTrigger>
-              <SelectContent>
-                {eventos.map((ev) => (
-                  <SelectItem key={ev.id} value={String(ev.id)}>
-                    {ev.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {eventSelect}
             <Button onClick={() => setInviteOpen(true)} disabled={selectedEventId === null}>
               <UserPlus size={16} /> Convidar
             </Button>

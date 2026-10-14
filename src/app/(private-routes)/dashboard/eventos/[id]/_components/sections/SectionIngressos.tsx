@@ -19,7 +19,6 @@ import { toast } from "@/lib/toast"
 import { cn } from "@/lib/utils"
 import api from "@/lib/axios"
 import { SectionProps, IngressoLote } from "../types"
-import { VipListCard, VipListDialog } from "./VipList"
 
 // ─── Local augmented type ────────────────────────────────────────────────────
 
@@ -546,15 +545,16 @@ type Tab = typeof TABS[number]
 
 export default function SectionIngressos({ event, onRefresh }: SectionProps) {
   const [activeTab, setActiveTab] = useState<Tab>("lotes")
+  // Lista VIP não é ingresso à venda: é criada e acompanhada em Convidados.
   const [tickets, setTickets] = useState<TicketWithKey[]>(() =>
-    (event.ingressos ?? []).map(withKey),
+    (event.ingressos ?? []).filter((t) => !t.vip).map(withKey),
   )
   const [saving, setSaving] = useState(false)
 
   // Depois de salvar, o evento é recarregado: a lista local precisa pegar
   // os ids e o link da lista VIP que o servidor acabou de gerar.
   useEffect(() => {
-    setTickets((event.ingressos ?? []).map(withKey))
+    setTickets((event.ingressos ?? []).filter((t) => !t.vip).map(withKey))
   }, [event.ingressos])
 
   // Dialog state
@@ -563,26 +563,9 @@ export default function SectionIngressos({ event, onRefresh }: SectionProps) {
   const [dialogDeadline, setDialogDeadline] = useState<string | null>(null)
   const [editingKey, setEditingKey]       = useState<string | null>(null)
 
-  // Lista VIP fica fora dos lotes de venda: não aparece na página do evento.
-  const saleTickets  = useMemo(() => tickets.filter((t) => !t.vip), [tickets])
-  const vipTickets   = useMemo(() => tickets.filter((t) => t.vip), [tickets])
-  const groups       = useMemo(() => groupByLot(saleTickets), [saleTickets])
+  const groups       = useMemo(() => groupByLot(tickets), [tickets])
   const maxLotNum    = useMemo(() => groups.length > 0 ? Math.max(...groups.map((g) => g.lotNum)) : 0, [groups])
-  const totalCapacity = useMemo(() => saleTickets.reduce((a, t) => a + t.quantidade, 0), [saleTickets])
-
-  const [vipDialogOpen, setVipDialogOpen] = useState(false)
-  const [vipEditingKey, setVipEditingKey] = useState<string | null>(null)
-  const vipEditing = vipEditingKey ? tickets.find((t) => t._key === vipEditingKey) : undefined
-
-  // A lista VIP é salva na hora: o link só existe depois de gravada.
-  const handleVipConfirm = (data: IngressoLote) => {
-    const next = vipEditingKey
-      ? tickets.map((t) => (t._key === vipEditingKey ? { ...data, _key: vipEditingKey } : t))
-      : [...tickets, withKey(data)]
-    setTickets(next)
-    setVipEditingKey(null)
-    void saveTickets(next, "Lista VIP salva. O link já pode ser copiado.")
-  }
+  const totalCapacity = useMemo(() => tickets.reduce((a, t) => a + t.quantidade, 0), [tickets])
 
   const editingTicket = editingKey ? tickets.find((t) => t._key === editingKey) : undefined
 
@@ -640,24 +623,6 @@ export default function SectionIngressos({ event, onRefresh }: SectionProps) {
     toast.success(`${ordinal(lotNum)} Lote duplicado como ${ordinal(newLot)} Lote`)
   }
 
-  const handleRemoveVipList = async (key: string) => {
-    const list = tickets.find((t) => t._key === key)
-    if (!list) return
-    if (!list.id) {
-      setTickets((prev) => prev.filter((t) => t._key !== key))
-      return
-    }
-    try {
-      await api.delete(`/produtor/eventos/${event.id}/lista-vip/${list.id}`)
-      setTickets((prev) => prev.filter((t) => t._key !== key))
-      toast.success("Lista VIP excluída")
-      onRefresh()
-    } catch (err: any) {
-      const msg = err?.response?.data?.message
-      toast.error(Array.isArray(msg) ? msg[0] : (msg || "Não foi possível excluir a lista VIP"))
-    }
-  }
-
   const handleSave = () => {
     if (tickets.length === 0) return toast.error("Adicione pelo menos um ingresso")
     return saveTickets(tickets, "Ingressos salvos com sucesso!")
@@ -676,8 +641,6 @@ export default function SectionIngressos({ event, onRefresh }: SectionProps) {
           valor:               Number(t.valor),
           disponivelParaVenda: t.disponivelParaVenda,
           dataLimite:          t.dataLimite || null,
-          vip:                 !!t.vip,
-          ...(t.vip && t.vipAte ? { vipAte: t.vipAte } : {}),
         })),
       })
       toast.success(successMessage)
@@ -803,13 +766,6 @@ export default function SectionIngressos({ event, onRefresh }: SectionProps) {
             />
           ))}
 
-          <VipListCard
-            eventKey={String(event.slug ?? event.id)}
-            lists={vipTickets}
-            onCreate={() => { setVipEditingKey(null); setVipDialogOpen(true) }}
-            onEdit={(key) => { setVipEditingKey(key); setVipDialogOpen(true) }}
-            onRemove={handleRemoveVipList}
-          />
         </div>
       )}
 
@@ -833,15 +789,6 @@ export default function SectionIngressos({ event, onRefresh }: SectionProps) {
         lotNum={dialogLotNum}
         lotDeadline={dialogDeadline}
         onConfirm={handleConfirm}
-      />
-
-      <VipListDialog
-        key={`vip-${vipDialogOpen ? "open" : "closed"}-${vipEditingKey ?? "new"}`}
-        open={vipDialogOpen}
-        onOpenChange={(v) => { setVipDialogOpen(v); if (!v) setVipEditingKey(null) }}
-        initial={vipEditing}
-        eventDate={event.data}
-        onConfirm={handleVipConfirm}
       />
 
       {/* Footer */}
