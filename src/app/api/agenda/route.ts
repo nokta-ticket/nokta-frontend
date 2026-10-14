@@ -7,10 +7,13 @@ import { citiesFrom, citySlug, getAgenda } from "@/lib/agenda";
  *   Vercel; não existe em localhost). Sem cidade conhecida, devolve o Brasil.
  * - `?cidade=<slug>`: escolha da pessoa no seletor.
  * - `?cidade=brasil`: tudo.
+ * - `?q=`: filtra por nome, local ou cidade (busca). `?limit=` até 60.
  * Devolve também a cidade detectada pelo IP (`ipCity`), mesmo quando ela não
  * tem eventos na agenda: a home usa pra filtrar os eventos da própria Nokta.
  */
 export const dynamic = "force-dynamic";
+
+const norm = (v: string) => citySlug(v).replace(/-/g, " ").trim();
 
 function ipCity(req: NextRequest): { slug: string; name: string } | null {
   const raw = req.headers.get("x-vercel-ip-city");
@@ -30,7 +33,12 @@ export async function GET(req: NextRequest) {
   if (wanted === "auto") city = fromIp && cities.some((c) => c.slug === fromIp.slug) ? fromIp : null;
   else if (wanted !== "brasil") city = cities.find((c) => c.slug === wanted) ?? { slug: wanted, name: wanted };
 
-  const events = (city ? all.filter((e) => e.city && citySlug(e.city) === city.slug) : all).slice(0, 12);
+  const q = norm(req.nextUrl.searchParams.get("q") ?? "");
+  const limit = Math.min(Math.max(Number(req.nextUrl.searchParams.get("limit")) || 12, 1), 60);
+  const events = all
+    .filter((e) => !city || (e.city && citySlug(e.city) === city.slug))
+    .filter((e) => !q || norm(`${e.name} ${e.venue ?? ""} ${e.city ?? ""}`).includes(q))
+    .slice(0, limit);
 
   return NextResponse.json(
     { city, ipCity: fromIp, cities, events },

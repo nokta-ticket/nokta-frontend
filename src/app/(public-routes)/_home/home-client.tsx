@@ -15,25 +15,10 @@ import { EmptyState } from "@/components/ui/empty-state";
 import type { AgendaEvent } from "@/lib/agenda/types";
 import { citySlug } from "@/lib/agenda/city";
 import { CityPicker, type CityOption } from "@/components/home/city-picker";
+import { readSavedCity, saveCity } from "@/lib/city-preference";
 import { AgendaCard } from "../agenda/_components/agenda-card";
 
 type Geo = { city: CityOption | null; ipCity: CityOption | null; cities: CityOption[]; events: AgendaEvent[] };
-
-const CITY_KEY = "nk_city";
-function readSavedCity(): string | null {
-  try {
-    return localStorage.getItem(CITY_KEY);
-  } catch {
-    return null;
-  }
-}
-function saveCity(slug: string) {
-  try {
-    localStorage.setItem(CITY_KEY, slug);
-  } catch {
-    // Sem armazenamento (aba anônima): vale só nesta visita.
-  }
-}
 
 type State = {
   featured: EventoAPI[] | null;
