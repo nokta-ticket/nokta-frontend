@@ -22,7 +22,9 @@ export function HeroBanner() {
       {/* -mt-24 desconta o espaço do header fixo (ver PublicShell) pra a
           arte correr por baixo da ilha flutuante. */}
       <div className="grain relative -mt-24 min-h-[680px] overflow-hidden">
-        <Image src="/hero/producers-wide.jpg" alt="" fill priority sizes="100vw" className="object-cover object-center" />
+        {/* sizes: no celular a seção está escondida (lg:block) — 1px evita o
+            aviso do next/image e não baixa a arte grande à toa. */}
+        <Image src="/hero/producers-wide.jpg" alt="" fill priority sizes="(max-width: 1023px) 1px, 100vw" className="object-cover object-center" />
         <div className="absolute inset-0 bg-gradient-to-r from-background/85 via-background/35 to-transparent" />
         <div className="hero-fade absolute inset-0" />
         <div className="relative mx-auto flex min-h-[680px] max-w-7xl items-center px-6 pt-24">

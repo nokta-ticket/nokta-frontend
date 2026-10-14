@@ -15,6 +15,7 @@
  *   --key Enter       tecla única (Enter|Escape|Tab) no elemento focado
  *   --wait 2500       ms extra depois do load (dados do mock chegam com latência)
  *   --dark/--light    força o tema via classe no <html> (painel)
+ *   --console         imprime erros/avisos do console da página (o "N Issues" do Next)
  */
 import { spawn } from "node:child_process";
 import { mkdtempSync, writeFileSync, rmSync, existsSync } from "node:fs";
@@ -109,6 +110,15 @@ try {
 
   await send("Page.enable");
   await send("Network.enable");
+  // --console: imprime erros/avisos do console e exceções da página no final.
+  const consoleLog = [];
+  if (args.console) {
+    await send("Runtime.enable");
+    listeners.set("Runtime.consoleAPICalled", (p) => {
+      if (p.type === "error" || p.type === "warning") consoleLog.push(`[${p.type}] ${p.args.map((a) => a.value ?? a.description ?? "").join(" ").slice(0, 600)}`);
+    });
+    listeners.set("Runtime.exceptionThrown", (p) => consoleLog.push(`[exception] ${p.exceptionDetails?.exception?.description ?? p.exceptionDetails?.text ?? ""}`.slice(0, 600)));
+  }
   await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: width < 768 });
   if (width < 768) await send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
 
@@ -168,6 +178,10 @@ try {
   const shot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: Boolean(args.full), ...(clip ? { clip } : {}) });
   writeFileSync(out, Buffer.from(shot.data, "base64"));
   console.log(`ok ${out} (${width}x${clip ? clip.height : height})`);
+  if (args.console) {
+    const relevant = consoleLog.filter((l) => !/va\.vercel-scripts|Content Security Policy|Download the React DevTools/.test(l));
+    console.log(relevant.length ? `console (${relevant.length}):\n${relevant.join("\n")}` : "console: limpo");
+  }
   ws.close();
 } catch (e) {
   console.error("FALHOU:", e.message);
