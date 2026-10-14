@@ -17,24 +17,6 @@ export function EventCardSkeleton() {
   );
 }
 
-export function EventoDetailSkeleton() {
-  return (
-    <div className="mx-auto max-w-6xl px-4 py-4 lg:px-6">
-      <Skeleton className="aspect-[818/355] w-full rounded-[20px]" />
-      <div className="mt-5 space-y-3">
-        <Skeleton className="h-8 w-3/4" />
-        <Skeleton className="h-4 w-1/2" />
-        <Skeleton className="h-4 w-1/3" />
-      </div>
-      <div className="mt-8 space-y-2.5">
-        <Skeleton className="h-20 w-full rounded-card" />
-        <Skeleton className="h-20 w-full rounded-card" />
-        <Skeleton className="h-20 w-full rounded-card" />
-      </div>
-    </div>
-  );
-}
-
 export function ResaleCardSkeleton() {
   return (
     <div className="flex items-center gap-3.5 rounded-card bg-surface p-2.5">
