@@ -11,6 +11,7 @@ import {
   Star,
   Ticket,
   Users,
+  UserCog,
   UserX
 } from "lucide-react";
 import { ReactNode } from "react";
@@ -31,6 +32,11 @@ export const sidebarLinks: SidebarLink[] = [
     label: "Usuários",
     icon: <Users size={16} />,
     href: "/admin/usuarios",
+  },
+  {
+    label: "Equipe",
+    icon: <UserCog size={16} />,
+    href: "/admin/equipe",
   },
   {
     label: "Contas excluídas",
