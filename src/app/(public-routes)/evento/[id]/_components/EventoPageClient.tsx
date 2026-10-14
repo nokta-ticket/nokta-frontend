@@ -43,6 +43,7 @@ import { AutoplayPlugin, cn } from "@/lib/utils";
 import { resolveThumbnailUrl } from "@/lib/media";
 import { getPublicTicketsUrl } from "@/lib/surfaces";
 import { promoterTrackingApi } from "@/services/promoters";
+import { VipClaimCard } from "./VipClaimCard";
 
 function formatDate(raw: string) {
   if (!raw) return "—";
@@ -120,6 +121,7 @@ export default function EventoPageClient() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { isAuthenticated } = useAuth();
+  const vipToken = searchParams.get('vip');
   const [evento, setEvento] = useState<EventDetails | null>(null);
   const [loading, setLoading] = useState(true);
   // Relógio da tela: reavalia o fim das vendas sem precisar recarregar (quem
@@ -541,6 +543,11 @@ export default function EventoPageClient() {
 
           {/* ── COLUNA PRINCIPAL (2/3) ─────────────────────────── */}
           <div className="lg:col-span-2 space-y-10">
+
+            {/* Lista VIP: só para quem chegou pelo link do produtor (?vip=) */}
+            {vipToken && (
+              <VipClaimCard token={vipToken} eventId={Number(evento.id)} eventPath={`/evento/${evento.slug ?? evento.id}`} />
+            )}
 
             {/* ── Seleção de Ingressos (mobile only) ────────────── */}
             {tickets.length > 0 && (

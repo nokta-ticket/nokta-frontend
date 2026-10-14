@@ -107,8 +107,8 @@ export function VipListDialog({ open, onOpenChange, initial, eventDate, onConfir
             {isEditing ? "Editar lista VIP" : "Nova lista VIP"}
           </DialogTitle>
           <p className="text-[12px] text-gray-500 mt-1 text-left">
-            Entrada gratuita por link. A pessoa abre o link, entra na conta e o ingresso com QR code fica em
-            Meus ingressos. Um por pessoa.
+            Entrada gratuita por link. O link abre a página do evento com o VIP para retirar; a pessoa entra na
+            conta e o ingresso com QR code fica em Meus ingressos. Um por pessoa.
           </p>
         </DialogHeader>
 
