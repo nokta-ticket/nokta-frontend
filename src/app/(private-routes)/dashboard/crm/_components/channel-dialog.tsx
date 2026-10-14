@@ -102,7 +102,7 @@ export function ChannelDialog({
         [
           "Pode receber divulgação",
           eligible ? "ok" : !address || state.reason === "OPTED_OUT" || state.reason === "SUPPRESSED" ? "na" : "no",
-          eligible ? (state.legalBasis === "CONSENT" ? "Autorizou receber" : "É cliente seu") : state.reason === "NO_CONSENT" ? "Ainda não autorizou" : "—",
+          eligible ? (state.legalBasis === "CONSENT" ? "Autorizou receber" : "Tem ingresso de evento seu") : state.reason === "NO_CONSENT" ? "Ainda não autorizou" : "—",
         ],
       ]
     : [];

@@ -36,7 +36,7 @@ export type CrmPermissions = ReturnType<typeof useCrmPermissions>;
 
 /** Critério único de "pode receber", dito do mesmo jeito em toda a tela. */
 export const ELIGIBILITY_RULE =
-  "Conta só quem pode receber divulgação sua naquele canal: tem o endereço, não pediu para sair, não está bloqueado e autorizou ou já é seu cliente. Ter e-mail ou telefone cadastrado não basta.";
+  "Conta quem pode receber divulgação sua naquele canal: tem o endereço, não pediu para sair e não está bloqueado. Quem comprou, pegou VIP, foi convidado ou recebeu ingresso de um evento seu recebe até pedir para sair. Contato de planilha depende do que foi declarado na importação.";
 
 export function ReadOnlyNote({ children }: { children: string }) {
   return <p className="rounded-[14px] bg-[#faf8ff] px-4 py-3 text-[13.5px] leading-relaxed text-[#3a3746]">{children}</p>;
@@ -80,7 +80,7 @@ export function channelStatus(channel: CrmChannel, state: CrmChannelState): { to
   if (state.eligible) {
     return state.legalBasis === "CONSENT"
       ? { tone: "ok", short: "Autorizou", detail: "Autorizou receber suas mensagens por este canal." }
-      : { tone: "ok", short: "Pode receber", detail: "É cliente seu: pode receber sua divulgação, sempre com a opção de sair." };
+      : { tone: "ok", short: "Pode receber", detail: "Tem ingresso de evento seu: pode receber sua divulgação, sempre com a opção de sair." };
   }
   if (state.reason === "NO_ADDRESS") {
     return { tone: "off", short: channel === "EMAIL" ? "Sem e-mail" : "Sem telefone", detail: channel === "EMAIL" ? "Não há e-mail cadastrado." : "Não há telefone cadastrado." };
@@ -89,7 +89,7 @@ export function channelStatus(channel: CrmChannel, state: CrmChannelState): { to
     return {
       tone: "off",
       short: "Não autorizou",
-      detail: channel === "WHATSAPP" ? "No WhatsApp só recebe quem autorizou. Registre a autorização quando a pessoa pedir." : "Ainda não autorizou receber e-mail seu.",
+      detail: "Veio de planilha sem autorização declarada. Registre a autorização quando a pessoa pedir.",
     };
   }
   if (state.suppressionReason === "MANUAL_BLOCK") return { tone: "out", short: "Bloqueado", detail: "Você bloqueou este contato. Dá para desbloquear quando quiser." };

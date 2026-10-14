@@ -157,7 +157,7 @@ export function VipListDialog({ open, onOpenChange, initial, eventDate, onConfir
         <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/40">
           <Button onClick={handleConfirm} className="w-full h-11 gap-2 rounded-xl text-[13px] font-semibold">
             <CheckCircle2 className="w-4 h-4" />
-            {isEditing ? "Concluir" : "Adicionar lista VIP"}
+            {isEditing ? "Salvar lista VIP" : "Criar lista VIP e gerar link"}
           </Button>
         </div>
       </DialogContent>
@@ -249,7 +249,7 @@ export function VipListCard({ lists, onCreate, onEdit, onRemove }: VipListCardPr
               </div>
             ) : (
               <p className="text-[12px] text-gray-500">
-                Salve as alterações para gerar o link desta lista.
+                O link aparece assim que a lista for salva.
               </p>
             )}
           </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useEffect, useState, useMemo } from "react"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog"
@@ -551,6 +551,12 @@ export default function SectionIngressos({ event, onRefresh }: SectionProps) {
   )
   const [saving, setSaving] = useState(false)
 
+  // Depois de salvar, o evento é recarregado: a lista local precisa pegar
+  // os ids e o link da lista VIP que o servidor acabou de gerar.
+  useEffect(() => {
+    setTickets((event.ingressos ?? []).map(withKey))
+  }, [event.ingressos])
+
   // Dialog state
   const [dialogOpen, setDialogOpen]       = useState(false)
   const [dialogLotNum, setDialogLotNum]   = useState(1)
@@ -568,13 +574,14 @@ export default function SectionIngressos({ event, onRefresh }: SectionProps) {
   const [vipEditingKey, setVipEditingKey] = useState<string | null>(null)
   const vipEditing = vipEditingKey ? tickets.find((t) => t._key === vipEditingKey) : undefined
 
+  // A lista VIP é salva na hora: o link só existe depois de gravada.
   const handleVipConfirm = (data: IngressoLote) => {
-    if (vipEditingKey) {
-      setTickets((prev) => prev.map((t) => (t._key === vipEditingKey ? { ...data, _key: vipEditingKey } : t)))
-    } else {
-      setTickets((prev) => [...prev, withKey(data)])
-    }
+    const next = vipEditingKey
+      ? tickets.map((t) => (t._key === vipEditingKey ? { ...data, _key: vipEditingKey } : t))
+      : [...tickets, withKey(data)]
+    setTickets(next)
     setVipEditingKey(null)
+    void saveTickets(next, "Lista VIP salva. O link já pode ser copiado.")
   }
 
   const editingTicket = editingKey ? tickets.find((t) => t._key === editingKey) : undefined
@@ -633,12 +640,16 @@ export default function SectionIngressos({ event, onRefresh }: SectionProps) {
     toast.success(`${ordinal(lotNum)} Lote duplicado como ${ordinal(newLot)} Lote`)
   }
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (tickets.length === 0) return toast.error("Adicione pelo menos um ingresso")
+    return saveTickets(tickets, "Ingressos salvos com sucesso!")
+  }
+
+  const saveTickets = async (list: TicketWithKey[], successMessage: string) => {
     setSaving(true)
     try {
       await api.put(`/produtor/eventos/${event.id}`, {
-        ingressos: tickets.map(({ _key, ...t }) => ({
+        ingressos: list.map(({ _key, ...t }) => ({
           ...(t.id ? { id: t.id } : {}),
           nome:                t.nome,
           tipo:                t.tipo,
@@ -651,7 +662,7 @@ export default function SectionIngressos({ event, onRefresh }: SectionProps) {
           ...(t.vip && t.vipAte ? { vipAte: t.vipAte } : {}),
         })),
       })
-      toast.success("Ingressos salvos com sucesso!")
+      toast.success(successMessage)
       onRefresh()
     } catch (err: any) {
       const msg = err?.response?.data?.message
