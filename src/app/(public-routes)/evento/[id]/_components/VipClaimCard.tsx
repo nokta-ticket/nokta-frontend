@@ -37,14 +37,6 @@ const CLOSED_LABEL: Record<Exclude<VipStatus, "ABERTA">, string> = {
   INDISPONIVEL: "Lista indisponível",
 };
 
-function formatDeadline(iso: string): string {
-  const d = new Date(iso);
-  const zone = "America/Sao_Paulo";
-  const day = d.toLocaleDateString("pt-BR", { timeZone: zone, day: "2-digit", month: "2-digit" });
-  const time = d.toLocaleTimeString("pt-BR", { timeZone: zone, hour: "2-digit", minute: "2-digit" });
-  return `${day} às ${time}`;
-}
-
 // Mesma curva de saída em tudo que responde ao toque.
 const PRESS = "transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97]";
 
@@ -148,12 +140,7 @@ export function VipClaimCard({
         const claiming = claimingToken === lista.token;
         return (
           <section key={lista.token} aria-label={lista.nome || "Lista VIP"}>
-            <p className="text-[13px] leading-relaxed text-gray-600">
-              Entrada gratuita, um nome por pessoa.
-              {open && lista.ate ? ` Aberta até ${formatDeadline(lista.ate)}.` : ""}
-            </p>
-
-            <div className="mt-4 flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-3">
               <p className="flex items-center gap-2.5 text-[13px] text-gray-600">
                 <span className="rounded-full bg-[#0F172A] px-3 py-1.5 text-[14px] font-bold tabular-nums text-white">
                   {lista.naLista}/{lista.total}
