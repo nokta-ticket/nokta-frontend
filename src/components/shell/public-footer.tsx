@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BrandLogo } from "@/components/brand/brand-logo";
 import { Icon } from "@/components/ui/icon";
+import { COMPANY, LEGAL_LINE } from "@/lib/company";
 
 const COLUMNS = [
   { title: "Explorar", links: [{ label: "Eventos", href: "/eventos" }, { label: "Revenda oficial", href: "/revenda" }, { label: "Para produtores", href: "/para-produtores" }] },
@@ -15,13 +16,16 @@ export function PublicFooter() {
         <div className="grid gap-10 lg:grid-cols-[1.4fr_repeat(3,1fr)]">
           <div className="space-y-4">
             <BrandLogo height={30} />
-            <p className="max-w-xs text-body text-muted-foreground">Os melhores eventos e festas em um só lugar. Compre, revenda e viva a experiência Nokta.</p>
+            <p className="flex max-w-xs items-start gap-2 text-body text-muted-foreground">
+              <BrandLogo variant="bolt" height={16} className="mt-1 text-brand" />
+              <span>Os melhores eventos e festas em um só lugar. Compre, revenda e viva a experiência Nokta.</span>
+            </p>
             <div className="flex items-center gap-2">
-              <a href="https://instagram.com/nokta.live" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="flex size-9 items-center justify-center rounded-full bg-surface-2 text-foreground transition-colors hover:bg-surface-3">
+              <a href={COMPANY.social.instagram} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="flex size-9 items-center justify-center rounded-full bg-surface-2 text-foreground transition-colors hover:bg-surface-3">
                 <Icon name="instagram" size={16} />
               </a>
-              <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" className="flex size-9 items-center justify-center rounded-full bg-surface-2 text-foreground transition-colors hover:bg-surface-3">
-                <Icon name="whatsapp" size={16} />
+              <a href={`mailto:${COMPANY.emails.support}`} aria-label="E-mail de suporte" className="flex size-9 items-center justify-center rounded-full bg-surface-2 text-foreground transition-colors hover:bg-surface-3">
+                <Icon name="mail" size={15} />
               </a>
             </div>
           </div>
@@ -40,9 +44,16 @@ export function PublicFooter() {
             </div>
           ))}
         </div>
-        <div className="mt-10 flex flex-col gap-2 border-t border-border pt-6 text-caption text-subtle-foreground sm:flex-row sm:items-center sm:justify-between">
-          <span>© {new Date().getFullYear()} Nokta. Todos os direitos reservados.</span>
-          <span>Feito com ♥ para quem vive a noite.</span>
+        <div className="mt-10 space-y-2 border-t border-border pt-6 text-caption text-subtle-foreground">
+          <p>{LEGAL_LINE}</p>
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              © {new Date().getFullYear()} {COMPANY.tradeName}. Todos os direitos reservados.
+            </span>
+            <a href={`mailto:${COMPANY.emails.support}`} className="transition-colors hover:text-foreground">
+              {COMPANY.emails.support}
+            </a>
+          </div>
         </div>
       </div>
     </footer>

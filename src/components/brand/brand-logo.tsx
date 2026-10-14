@@ -1,11 +1,14 @@
 import { cn } from "@/lib/cn";
 
-type Variant = "tickets" | "nokta";
+type Variant = "tickets" | "nokta" | "bolt";
 
 const SOURCES: Record<Variant, { src: string; ratio: number; label: string }> = {
-  // viewBox 782x283 nos dois arquivos
+  // viewBox 782x283 nos dois lettering
   tickets: { src: "/brand/nokta-tickets-white.svg", ratio: 782 / 283, label: "Nokta Tickets" },
   nokta: { src: "/brand/nokta-logotype.svg", ratio: 782 / 283, label: "Nokta" },
+  // O raio do "K" — símbolo da marca (viewBox 51.2x129.6). Use como ícone,
+  // favicon, marcador de destaque, loader.
+  bolt: { src: "/brand/nokta-bolt.svg", ratio: 51.2 / 129.6, label: "Nokta" },
 };
 
 /**
