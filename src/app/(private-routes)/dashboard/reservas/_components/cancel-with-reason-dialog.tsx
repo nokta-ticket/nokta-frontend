@@ -2,50 +2,37 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-export function CancelWithReasonDialog({
-  open,
-  onOpenChange,
-  title,
-  loading,
-  onConfirm,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  title: string;
-  loading: boolean;
-  onConfirm: (reason: string) => void;
-}) {
+/** Cancelamento que exige motivo (reserva, entrada na fila) — nunca `window.confirm`. */
+export function CancelWithReasonDialog({ open, onOpenChange, title, description = "O motivo fica registrado no histórico.", loading, onConfirm }: { open: boolean; onOpenChange: (v: boolean) => void; title: string; description?: string; loading: boolean; onConfirm: (reason: string) => void }) {
   const [reason, setReason] = useState("");
 
-  // Radix só chama onOpenChange em fechamentos internos — resetar ao abrir precisa de useEffect(open).
+  // Radix só chama onOpenChange em fechamentos internos — reset reage a `open`.
   useEffect(() => {
     if (open) setReason("");
   }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent size="sm">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-2">
-          <Label htmlFor="cancel-reason">Motivo</Label>
-          <Textarea id="cancel-reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
-        </div>
+        <DialogBody>
+          <Field label="Motivo" htmlFor="cancel-reason">
+            <Textarea id="cancel-reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ex.: cliente remarcou pra amanhã" autoFocus />
+          </Field>
+        </DialogBody>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
             Voltar
           </Button>
-          <Button
-            variant="destructive"
-            disabled={loading || !reason.trim()}
-            onClick={() => onConfirm(reason.trim())}
-          >
-            {loading ? "Cancelando…" : "Confirmar cancelamento"}
+          <Button variant="destructive" disabled={!reason.trim()} loading={loading} onClick={() => onConfirm(reason.trim())}>
+            Confirmar cancelamento
           </Button>
         </DialogFooter>
       </DialogContent>

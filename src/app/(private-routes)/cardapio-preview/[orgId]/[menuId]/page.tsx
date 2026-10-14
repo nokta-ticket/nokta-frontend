@@ -2,33 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { UtensilsCrossed } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { MenuView } from "@/components/venue-menu/menu-view";
 import { venueMenuApi } from "@/services/venue-menu";
 import type { PublicMenuResponse } from "@/services/venue-menu-public";
 
 /**
- * Documento próprio para o preview do cardápio (`MenuPreviewPhone`, montado
- * dentro de um `<iframe>`) — nunca renderizado fora dele.
- *
- * Existe porque `MenuView` usa breakpoints Tailwind (`md:`/`lg:`, ~40
- * ocorrências) que reagem à largura REAL da janela do navegador, não à
- * largura visual de um elemento com `transform: scale()` — a tentativa
- * anterior (escalar o MenuView dentro do bezel via CSS) ficava com o
- * conteúdo "espremido" em telas de desktop largas, porque os estilos
- * `md:`/`lg:` disparavam mesmo a área visual real sendo ~278px (relatado
- * pelo usuário com print comparando ao vivo vs preview). Um `<iframe>` tem
- * sua PRÓPRIA janela de renderização, com a largura que o `width` do
- * elemento define de verdade — os breakpoints passam a reagir a essa
- * largura real, exatamente como um celular de verdade. Sem `transform` no
- * ancestral (diferente da tentativa anterior), `sticky` volta a funcionar
- * normalmente — nenhum motivo pra `disableSticky` aqui.
- *
- * Fora de dashboard/ de propósito: precisa de layout "nu" (sem sidebar/
- * topbar), mas ainda autenticado (dentro de (private-routes), protegido
- * pelo middleware via PLATFORM_ONLY_PREFIXES). Usa `api` (axios) direto em
- * vez do hook useVenueMenuPreview (React Query) porque o QueryClientProvider
- * só existe dentro do layout do dashboard, que esta rota não usa.
+ * Preview do cardápio montado dentro de um `<iframe>` pelo painel (nunca
+ * renderizado fora dele). Um iframe tem a própria janela, então os
+ * breakpoints do MenuView reagem à largura real do bezel — como num celular.
+ * Fora de dashboard/ de propósito (layout nu, mas autenticado pelo
+ * middleware). Usa `api` direto: o QueryClientProvider só existe no painel.
  */
 export default function CardapioPreviewFramePage() {
   const params = useParams<{ orgId: string; menuId: string }>();
@@ -60,21 +45,25 @@ export default function CardapioPreviewFramePage() {
 
   if (loading) {
     return (
-      <div className="space-y-3 bg-[#e9e9ec] p-4">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="h-16 animate-pulse rounded-xl bg-black/5" />
-        ))}
+      <div className="min-h-dvh bg-background">
+        <Skeleton className="aspect-[430/190] w-full rounded-none" />
+        <div className="-mt-10 flex items-end gap-4 px-4">
+          <Skeleton className="size-20 rounded-full ring-4 ring-background" />
+          <Skeleton className="mb-2 h-6 w-40" />
+        </div>
+        <div className="space-y-2.5 px-4 pt-8">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-28 rounded-card" />
+          ))}
+        </div>
       </div>
     );
   }
 
   if (!data || (data.menu.categories.length === 0 && data.menu.highlights.length === 0)) {
     return (
-      <div className="flex h-dvh flex-col items-center justify-center gap-2 bg-[#e9e9ec] px-6 text-center">
-        <UtensilsCrossed size={28} className="text-black/20" />
-        <p className="text-xs text-muted-foreground">
-          Adicione categorias e produtos para ver o preview do cardápio.
-        </p>
+      <div className="flex min-h-dvh items-center justify-center bg-background px-6">
+        <EmptyState compact icon="utensils" title="Cardápio vazio" description="Adicione categorias e produtos pra ver o preview." className="w-full" />
       </div>
     );
   }

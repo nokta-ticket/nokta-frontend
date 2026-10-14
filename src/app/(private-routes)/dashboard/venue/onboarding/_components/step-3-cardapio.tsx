@@ -2,37 +2,18 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, Circle } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldGroup } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
 import { venueMenuApi } from "@/services/venue-menu";
 import type { VenueSetupStatus } from "@/services/venue-setup";
+import { ReadyRow, StepNav } from "./step-nav";
 
-function ReadyRow({ done, label }: { done: boolean; label: string }) {
-  return (
-    <div className="flex items-center gap-2 text-sm">
-      {done ? <CheckCircle2 size={16} className="text-emerald-600" /> : <Circle size={16} className="text-black/25" />}
-      <span className={done ? "text-black/50 line-through" : "text-black/85"}>{label}</span>
-    </div>
-  );
-}
-
-export function Step3Cardapio({
-  orgId,
-  status,
-  onNext,
-  onBack,
-}: {
-  orgId: number;
-  status: VenueSetupStatus;
-  onNext: () => void;
-  onBack: () => void;
-}) {
+export function Step3Cardapio({ orgId, status, onNext, onBack }: { orgId: number; status: VenueSetupStatus; onNext: () => void; onBack: () => void }) {
   const qc = useQueryClient();
   const [menuNome, setMenuNome] = useState("Cardápio principal");
   const [categoriaNome, setCategoriaNome] = useState("Bebidas");
@@ -66,33 +47,38 @@ export function Step3Cardapio({
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Status atual</CardTitle>
+          <div>
+            <CardTitle>Cardápio</CardTitle>
+            <CardDescription>O cardápio publicado alimenta a operação e a página pública do estabelecimento.</CardDescription>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-1.5">
-          <ReadyRow done={publishedMenu} label="Cardápio publicado" />
-          <ReadyRow done={activeProduct} label="Produto ativo com variação válida" />
+        <CardContent className="pt-2">
+          <ul>
+            <ReadyRow done={publishedMenu || created} label="Cardápio publicado" />
+            <ReadyRow done={activeProduct} label="Produto ativo com variação válida" hint="Cadastre ao menos um produto com preço no Cardápio." />
+          </ul>
         </CardContent>
       </Card>
 
       {!publishedMenu && !created ? (
-        <Card>
+        <Card accent>
           <CardHeader>
-            <CardTitle>Criar cardápio rapidamente</CardTitle>
-            <CardDescription>Cria o cardápio principal, já publicado, com uma primeira categoria.</CardDescription>
+            <div>
+              <CardTitle>Criar cardápio rapidamente</CardTitle>
+              <CardDescription>Cria o cardápio principal, já publicado, com a primeira categoria.</CardDescription>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Nome do cardápio</Label>
-                <Input value={menuNome} onChange={(e) => setMenuNome(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Primeira categoria</Label>
-                <Input value={categoriaNome} onChange={(e) => setCategoriaNome(e.target.value)} />
-              </div>
-            </div>
-            <Button variant="outline" onClick={handleQuickCreate} disabled={creating}>
-              {creating ? "Criando…" : "Criar cardápio e categoria"}
+            <FieldGroup columns={2}>
+              <Field label="Nome do cardápio" htmlFor="setup-menu">
+                <Input id="setup-menu" value={menuNome} onChange={(e) => setMenuNome(e.target.value)} />
+              </Field>
+              <Field label="Primeira categoria" htmlFor="setup-categoria">
+                <Input id="setup-categoria" value={categoriaNome} onChange={(e) => setCategoriaNome(e.target.value)} placeholder="Bebidas, Drinks, Porções…" />
+              </Field>
+            </FieldGroup>
+            <Button leftIcon="magic" onClick={handleQuickCreate} loading={creating}>
+              Criar cardápio e categoria
             </Button>
           </CardContent>
         </Card>
@@ -100,8 +86,10 @@ export function Step3Cardapio({
 
       <Card>
         <CardHeader>
-          <CardTitle>Produtos</CardTitle>
-          <CardDescription>Cadastre produtos, variações e preços no Cardápio.</CardDescription>
+          <div>
+            <CardTitle>Produtos</CardTitle>
+            <CardDescription>Produtos, variações (tamanho, dose) e preços são cadastrados na tela de Cardápio.</CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <Button variant="outline" asChild>
@@ -110,12 +98,7 @@ export function Step3Cardapio({
         </CardContent>
       </Card>
 
-      <div className="flex justify-between">
-        <Button variant="ghost" onClick={onBack}>
-          Voltar
-        </Button>
-        <Button onClick={onNext}>Continuar</Button>
-      </div>
+      <StepNav onBack={onBack} onNext={onNext} />
     </div>
   );
 }

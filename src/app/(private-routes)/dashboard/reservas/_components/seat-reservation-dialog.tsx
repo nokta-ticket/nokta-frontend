@@ -3,29 +3,17 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import type { VenueReservation } from "@/services/venue-reservations";
 import { useVenueReservationMutations } from "../_hooks/use-venue-reservations";
 import { AvailabilityPicker } from "./availability-picker";
 
-export function SeatReservationDialog({
-  orgId,
-  locationId,
-  reservation,
-  open,
-  onOpenChange,
-}: {
-  orgId: number;
-  locationId: number;
-  reservation: VenueReservation | null;
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-}) {
+/** "Dar entrada": sentar a reserva abre uma comanda na(s) mesa(s) escolhida(s) e leva pra Operação. */
+export function SeatReservationDialog({ orgId, locationId, reservation, open, onOpenChange }: { orgId: number; locationId: number; reservation: VenueReservation | null; open: boolean; onOpenChange: (v: boolean) => void }) {
   const { seat } = useVenueReservationMutations(orgId, locationId);
   const router = useRouter();
-
   const [tableIds, setTableIds] = useState<number[]>([]);
   const [primaryTableId, setPrimaryTableId] = useState<number | undefined>();
 
@@ -58,14 +46,14 @@ export function SeatReservationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>Dar entrada — {reservation.publicCode}</DialogTitle>
+          <DialogTitle>Dar entrada — {reservation.customerName}</DialogTitle>
+          <DialogDescription>
+            Reserva {reservation.publicCode} · {reservation.partySize} {reservation.partySize === 1 ? "pessoa" : "pessoas"}. A comanda abre na mesa escolhida.
+          </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
-          <p className="text-sm text-black/60">
-            {reservation.customerName} · {reservation.partySize} pessoa(s)
-          </p>
+        <DialogBody>
           <AvailabilityPicker
             orgId={orgId}
             locationId={locationId}
@@ -79,13 +67,13 @@ export function SeatReservationDialog({
               setPrimaryTableId(primary);
             }}
           />
-        </div>
+        </DialogBody>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={seat.isPending}>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={seat.isPending}>
             Cancelar
           </Button>
-          <Button disabled={seat.isPending || tableIds.length === 0} onClick={handleSeat}>
-            {seat.isPending ? "Abrindo…" : "Confirmar entrada"}
+          <Button size="lg" disabled={tableIds.length === 0} loading={seat.isPending} leftIcon="door" onClick={handleSeat}>
+            Confirmar entrada
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -2,51 +2,53 @@
 
 import { useOrganizations } from "@/context/OrganizationContext";
 import { useVenueAccess } from "@/context/VenueAccessContext";
-import { PageContainer } from "../_components/page/page-container";
-import { PageHeader } from "../_components/page/page-header";
-import { EmptyState } from "../_components/states/empty-state";
-import { BlockSkeleton } from "../_components/states/loading-state";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AvaliacoesList } from "./_components/avaliacoes-list";
+
+const TITLE = "Avaliações";
 
 export default function AvaliacoesPage() {
   const { currentOrg, loadingOrgs } = useOrganizations();
   const { can, loading: loadingAccess } = useVenueAccess();
 
-  const description = "Veja o que os clientes acharam da experiência no seu estabelecimento.";
-
   if (loadingOrgs || loadingAccess) {
     return (
-      <PageContainer>
-        <PageHeader title="Avaliações" description={description} />
-        <BlockSkeleton className="h-96" />
-      </PageContainer>
+      <div className="space-y-6">
+        <PageHeader title={TITLE} />
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Skeleton className="h-28 rounded-card" />
+          <Skeleton className="h-28 rounded-card" />
+          <Skeleton className="h-28 rounded-card" />
+        </div>
+        <Skeleton className="h-80 rounded-card" />
+      </div>
     );
   }
 
   if (!currentOrg) {
     return (
-      <PageContainer>
-        <PageHeader title="Avaliações" description={description} />
-        <EmptyState title="Nenhuma organização selecionada" description="Selecione uma organização para ver as avaliações." />
-      </PageContainer>
+      <div className="space-y-6">
+        <PageHeader title={TITLE} />
+        <EmptyState icon="building" title="Nenhuma organização selecionada" description="Escolha uma organização no menu lateral pra ver as avaliações." />
+      </div>
     );
   }
 
   if (!can("venue.reviews.view")) {
     return (
-      <PageContainer>
-        <PageHeader title="Avaliações" description={description} />
-        <EmptyState title="Sem acesso" description="Você não tem permissão para ver as avaliações desta organização." />
-      </PageContainer>
+      <div className="space-y-6">
+        <PageHeader title={TITLE} />
+        <EmptyState icon="lock" title="Sem acesso às avaliações" description="Peça ao responsável pela organização a permissão de ver avaliações." />
+      </div>
     );
   }
 
-  const canManage = can("venue.reviews.manage");
-
   return (
-    <PageContainer>
-      <PageHeader title="Avaliações" description={description} />
-      <AvaliacoesList orgId={currentOrg.id} canManage={canManage} />
-    </PageContainer>
+    <div className="space-y-6">
+      <PageHeader title={TITLE} description="O que os clientes acharam, direto do link público de avaliação." />
+      <AvaliacoesList orgId={currentOrg.id} canManage={can("venue.reviews.manage")} />
+    </div>
   );
 }

@@ -1,72 +1,57 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
-import { Plus, Wallet } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Callout } from "@/components/ui/callout";
+import { DataTable, DataTableBody, DataTableCell, DataTableEmpty, DataTableHead, DataTableHeadCell, DataTableRow, DataTableShell, MobileCard, MobileCardList } from "@/components/ui/data-table";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Field } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { SectionHeader } from "@/components/ui/section-header";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatCard } from "@/components/ui/stat-card";
+import { StatusBadge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { cn } from "@/lib/cn";
 import { getErrorMessage } from "@/lib/axios";
+import { formatBRLCents } from "@/lib/format";
 import { toast } from "@/lib/toast";
-import { centsToBRL } from "@/services/venue-menu";
-import {
-  VENUE_CASH_MOVEMENT_TYPE_LABEL,
-  VENUE_PAYMENT_METHOD_LABEL,
-  type VenueCashMovementType,
-  type VenueCashRegister,
-} from "@/services/venue-operation";
-import {
-  useVenueCashRegisterMutations,
-  useVenueCashRegisters,
-  useVenueCashSession,
-  useVenueCashSessionMutations,
-} from "../_hooks/use-venue-cash";
-import { MoneyField } from "../../cardapio/_components/money-field";
-import { ConfirmDialog } from "../../cardapio/_components/confirm-dialog";
-import { EmptyState } from "../../_components/states/empty-state";
-import { TableSkeleton } from "../../_components/states/loading-state";
+import { VENUE_CASH_MOVEMENT_TYPE_LABEL, VENUE_PAYMENT_METHOD_LABEL, type VenueCashMovementType, type VenueCashRegister, type VenueCashSession, type VenuePaymentMethod } from "@/services/venue-operation";
+import { useVenueCashRegisterMutations, useVenueCashRegisters, useVenueCashSession, useVenueCashSessionMutations, useVenueCashSessions } from "../_hooks/use-venue-cash";
+import { formatClock, formatDay, formatElapsed } from "../_lib/time";
+import { MoneyInput } from "./money-input";
+import { PAYMENT_METHOD_ICON } from "./payment-dialog";
 
-function RegisterFormDialog({
-  open,
-  onOpenChange,
-  onSubmit,
-  loading,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  onSubmit: (nome: string) => void;
-  loading: boolean;
-}) {
+const MOVEMENT_OPTIONS = (Object.keys(VENUE_CASH_MOVEMENT_TYPE_LABEL) as VenueCashMovementType[]).map((value) => ({ value, label: VENUE_CASH_MOVEMENT_TYPE_LABEL[value] }));
+const MOVEMENT_IN: Record<VenueCashMovementType, boolean> = { SUPPLY: true, ADJUSTMENT: true, WITHDRAWAL: false, EXPENSE: false };
+
+function RegisterFormDialog({ open, onOpenChange, onSubmit, loading }: { open: boolean; onOpenChange: (v: boolean) => void; onSubmit: (nome: string) => void; loading: boolean }) {
   const [nome, setNome] = useState("");
   useEffect(() => {
     if (open) setNome("");
   }, [open]);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Novo caixa</DialogTitle></DialogHeader>
-        <div className="space-y-2">
-          <Label htmlFor="caixa-nome">Nome</Label>
-          <Input id="caixa-nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Caixa principal, Caixa bar" />
-        </div>
+      <DialogContent size="sm">
+        <DialogHeader>
+          <DialogTitle>Novo caixa</DialogTitle>
+          <DialogDescription>Um caixa por ponto de cobrança (balcão, bar, salão).</DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <Field label="Nome" htmlFor="caixa-nome">
+            <Input id="caixa-nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Caixa principal, Caixa do bar" autoFocus />
+          </Field>
+        </DialogBody>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancelar</Button>
-          <Button disabled={loading || !nome.trim()} onClick={() => onSubmit(nome.trim())}>
-            {loading ? "Salvando…" : "Salvar"}
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
+            Cancelar
+          </Button>
+          <Button disabled={!nome.trim()} loading={loading} onClick={() => onSubmit(nome.trim())}>
+            Salvar
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -74,17 +59,7 @@ function RegisterFormDialog({
   );
 }
 
-function OpenSessionDialog({
-  register,
-  onOpenChange,
-  orgId,
-  locationId,
-}: {
-  register: VenueCashRegister | null;
-  onOpenChange: (v: boolean) => void;
-  orgId: number;
-  locationId: number;
-}) {
+function OpenSessionDialog({ register, onOpenChange, orgId, locationId }: { register: VenueCashRegister | null; onOpenChange: (v: boolean) => void; orgId: number; locationId: number }) {
   const { open } = useVenueCashSessionMutations(orgId, locationId);
   const [openingCents, setOpeningCents] = useState(0);
 
@@ -95,30 +70,38 @@ function OpenSessionDialog({
 
   return (
     <Dialog open={register !== null} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Abrir caixa — {register?.nome}</DialogTitle></DialogHeader>
-        <div className="space-y-2">
-          <MoneyField label="Valor inicial (fundo de troco)" cents={openingCents} onChange={setOpeningCents} />
-          <p className="text-xs text-black/50">
-            Quanto em dinheiro já está na gaveta antes da primeira venda — normalmente o troco deixado no fechamento anterior. Pode deixar R$ 0,00 se não usam fundo fixo.
-          </p>
-        </div>
+      <DialogContent size="sm">
+        <DialogHeader>
+          <DialogTitle>Abrir {register?.nome ?? "caixa"}</DialogTitle>
+          <DialogDescription>Informe o troco que já está na gaveta antes da primeira venda.</DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <Field label="Fundo de troco" htmlFor="caixa-abertura" hint="Pode deixar R$ 0,00 se não usam fundo fixo.">
+            <MoneyInput id="caixa-abertura" cents={openingCents} onChange={setOpeningCents} autoFocus />
+          </Field>
+        </DialogBody>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={open.isPending}>Cancelar</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={open.isPending}>
+            Cancelar
+          </Button>
           <Button
-            disabled={open.isPending}
+            loading={open.isPending}
+            leftIcon="lock-open"
             onClick={() => {
               if (!register) return;
               open.mutate(
                 { registerId: register.id, payload: { openingAmountCents: openingCents } },
                 {
-                  onSuccess: () => { toast.success("Caixa aberto."); onOpenChange(false); },
+                  onSuccess: () => {
+                    toast.success("Caixa aberto.");
+                    onOpenChange(false);
+                  },
                   onError: (err) => toast.error(getErrorMessage(err, "Não foi possível abrir o caixa.")),
                 },
               );
             }}
           >
-            {open.isPending ? "Abrindo…" : "Abrir caixa"}
+            Abrir caixa
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -126,17 +109,7 @@ function OpenSessionDialog({
   );
 }
 
-function MovementDialog({
-  sessionId,
-  onOpenChange,
-  orgId,
-  locationId,
-}: {
-  sessionId: number | null;
-  onOpenChange: (v: boolean) => void;
-  orgId: number;
-  locationId: number;
-}) {
+function MovementDialog({ sessionId, onOpenChange, orgId, locationId }: { sessionId: number | null; onOpenChange: (v: boolean) => void; orgId: number; locationId: number }) {
   const { addMovement } = useVenueCashSessionMutations(orgId, locationId);
   const [type, setType] = useState<VenueCashMovementType>("SUPPLY");
   const [amountCents, setAmountCents] = useState(0);
@@ -152,42 +125,44 @@ function MovementDialog({
 
   return (
     <Dialog open={sessionId !== null} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Movimentação de caixa</DialogTitle></DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Tipo</Label>
-            <Select value={type} onValueChange={(v) => setType(v as VenueCashMovementType)}>
-              <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {Object.entries(VENUE_CASH_MOVEMENT_TYPE_LABEL).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <MoneyField label="Valor" cents={amountCents} onChange={setAmountCents} />
-          <div className="space-y-2">
-            <Label htmlFor="mov-motivo">Motivo</Label>
-            <Textarea id="mov-motivo" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
-          </div>
-        </div>
+      <DialogContent size="sm">
+        <DialogHeader>
+          <DialogTitle>Movimentação de caixa</DialogTitle>
+          <DialogDescription>Suprimento e ajuste entram na gaveta; retirada e despesa saem.</DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <Field label="Tipo">
+            <SegmentedControl fullWidth size="sm" value={type} onChange={setType} options={MOVEMENT_OPTIONS} />
+          </Field>
+          <Field label="Valor" htmlFor="mov-valor">
+            <MoneyInput id="mov-valor" cents={amountCents} onChange={setAmountCents} />
+          </Field>
+          <Field label="Motivo" htmlFor="mov-motivo">
+            <Textarea id="mov-motivo" rows={2} className="min-h-20" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ex.: sangria pra troco do bar" />
+          </Field>
+        </DialogBody>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={addMovement.isPending}>Cancelar</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={addMovement.isPending}>
+            Cancelar
+          </Button>
           <Button
-            disabled={addMovement.isPending || !reason.trim() || amountCents === 0}
+            disabled={!reason.trim() || amountCents === 0}
+            loading={addMovement.isPending}
             onClick={() => {
               if (!sessionId) return;
               addMovement.mutate(
                 { sessionId, payload: { type, amountCents, reason: reason.trim() } },
                 {
-                  onSuccess: () => { toast.success("Movimentação registrada."); onOpenChange(false); },
+                  onSuccess: () => {
+                    toast.success("Movimentação registrada.");
+                    onOpenChange(false);
+                  },
                   onError: (err) => toast.error(getErrorMessage(err, "Não foi possível registrar a movimentação.")),
                 },
               );
             }}
           >
-            {addMovement.isPending ? "Salvando…" : "Registrar"}
+            Registrar
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -195,19 +170,7 @@ function MovementDialog({
   );
 }
 
-function CloseSessionDialog({
-  sessionId,
-  expectedCents,
-  onOpenChange,
-  orgId,
-  locationId,
-}: {
-  sessionId: number | null;
-  expectedCents: number;
-  onOpenChange: (v: boolean) => void;
-  orgId: number;
-  locationId: number;
-}) {
+function CloseSessionDialog({ sessionId, expectedCents, onOpenChange, orgId, locationId }: { sessionId: number | null; expectedCents: number; onOpenChange: (v: boolean) => void; orgId: number; locationId: number }) {
   const { close } = useVenueCashSessionMutations(orgId, locationId);
   const [countedCents, setCountedCents] = useState(expectedCents);
   const difference = countedCents - expectedCents;
@@ -219,31 +182,53 @@ function CloseSessionDialog({
 
   return (
     <Dialog open={sessionId !== null} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Fechar caixa</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <p className="text-sm text-black/60">Esperado: <span className="font-semibold text-gray-900">{centsToBRL(expectedCents)}</span></p>
-          <MoneyField label="Dinheiro contado" cents={countedCents} onChange={setCountedCents} />
-          <p className={`text-sm font-medium ${difference === 0 ? "text-emerald-600" : "text-amber-600"}`}>
-            Diferença: {centsToBRL(difference)}
-          </p>
-        </div>
+      <DialogContent size="sm">
+        <DialogHeader>
+          <DialogTitle>Fechar caixa</DialogTitle>
+          <DialogDescription>Conte o dinheiro da gaveta e confira com o esperado.</DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="surface-inset rounded-xl px-4 py-3">
+              <p className="text-micro font-semibold uppercase tracking-[0.08em] text-subtle-foreground">Esperado</p>
+              <p className="mt-1 text-lg font-semibold text-foreground tnum">{formatBRLCents(expectedCents)}</p>
+            </div>
+            <div className="surface-inset rounded-xl px-4 py-3">
+              <p className="text-micro font-semibold uppercase tracking-[0.08em] text-subtle-foreground">Diferença</p>
+              <p className={cn("mt-1 text-lg font-semibold tnum", difference === 0 ? "text-money-in" : difference < 0 ? "text-money-out" : "text-money-pending")}>
+                {difference > 0 ? "+" : ""}
+                {formatBRLCents(difference)}
+              </p>
+            </div>
+          </div>
+          <Field label="Dinheiro contado" htmlFor="caixa-contado">
+            <MoneyInput id="caixa-contado" cents={countedCents} onChange={setCountedCents} autoFocus />
+          </Field>
+          {difference !== 0 ? <Callout tone="warning">A diferença fica registrada na sessão. Confira sangrias e trocos antes de confirmar.</Callout> : null}
+        </DialogBody>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={close.isPending}>Cancelar</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={close.isPending}>
+            Cancelar
+          </Button>
           <Button
-            disabled={close.isPending}
+            variant={difference === 0 ? "primary" : "destructive"}
+            loading={close.isPending}
+            leftIcon="lock"
             onClick={() => {
               if (!sessionId) return;
               close.mutate(
                 { sessionId, payload: { countedCashCents: countedCents } },
                 {
-                  onSuccess: () => { toast.success("Caixa fechado."); onOpenChange(false); },
+                  onSuccess: () => {
+                    toast.success("Caixa fechado.");
+                    onOpenChange(false);
+                  },
                   onError: (err) => toast.error(getErrorMessage(err, "Não foi possível fechar o caixa.")),
                 },
               );
             }}
           >
-            {close.isPending ? "Fechando…" : "Confirmar fechamento"}
+            Confirmar fechamento
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -251,225 +236,273 @@ function CloseSessionDialog({
   );
 }
 
-/** Corpo comum (aberto/fechado) compartilhado pelo painel único e pelo card de grid — nunca duas versões divergentes do mesmo estado. */
-function RegisterBody({
-  orgId,
-  locationId,
-  register,
-  compact,
-}: {
-  orgId: number;
-  locationId: number;
-  register: VenueCashRegister;
-  /** Card de grid (2+ caixas): mais denso, sem repetir explicações que o painel único mostra. */
-  compact?: boolean;
-}) {
-  const { data: session } = useVenueCashSession(orgId, register.openSession?.id ?? null);
+/** Um caixa: sessão aberta (números + movimentações) ou botão de abrir. */
+function RegisterPanel({ orgId, locationId, register, single }: { orgId: number; locationId: number; register: VenueCashRegister; single: boolean }) {
+  const { data: session, isLoading } = useVenueCashSession(orgId, register.openSession?.id ?? null);
   const [opening, setOpening] = useState(false);
   const [movementOpen, setMovementOpen] = useState(false);
   const [closingConfirm, setClosingConfirm] = useState(false);
+  const isOpen = register.openSession !== null;
+
+  const salesCents = session ? Object.values(session.paymentsByMethod).reduce((s, v) => s + v, 0) : 0;
+  const movements = session?.movements ?? [];
 
   return (
-    <>
-      {register.openSession && session ? (
-        <div className={compact ? "mt-3 space-y-2 text-sm" : "mt-4 space-y-3 text-sm"}>
-          <div className="grid grid-cols-2 gap-1.5 text-black/70">
-            <span>Aberto às</span>
-            <span className="text-right">{new Date(session.openedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
-            <span>Valor inicial</span>
-            <span className="text-right">{centsToBRL(session.openingAmountCents)}</span>
-            {Object.entries(session.paymentsByMethod).map(([method, cents]) => (
-              <Fragment key={method}>
-                <span>{VENUE_PAYMENT_METHOD_LABEL[method as keyof typeof VENUE_PAYMENT_METHOD_LABEL] ?? method}</span>
-                <span className="text-right">{centsToBRL(cents)}</span>
-              </Fragment>
-            ))}
-            <span className="font-semibold text-gray-900">Esperado em dinheiro</span>
-            <span className="text-right font-semibold text-gray-900">{centsToBRL(session.expectedCashCents)}</span>
-          </div>
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Button size="sm" variant="outline" onClick={() => setMovementOpen(true)}>
-              <Plus size={14} /> Movimentação
-            </Button>
-            <Button size="sm" variant="outline" className="text-red-600" onClick={() => setClosingConfirm(true)}>
-              Fechar caixa
-            </Button>
+    <Card accent={isOpen} className="gap-0">
+      <CardHeader className="items-center">
+        <div className="flex items-center gap-3">
+          <span className={cn("flex size-10 items-center justify-center rounded-full", isOpen ? "bg-brand-soft text-brand" : "bg-surface-2 text-muted-foreground")}>
+            <Icon name="wallet" size={16} />
+          </span>
+          <div>
+            <CardTitle>{register.nome}</CardTitle>
+            <p className="text-caption text-muted-foreground tnum">{isOpen && register.openSession ? `Aberto às ${formatClock(register.openSession.openedAt)} · ${formatElapsed(register.openSession.openedAt)}` : single ? "Caixa desta unidade" : "Fechado"}</p>
           </div>
         </div>
-      ) : (
-        <div className={compact ? "mt-3" : "mt-4"}>
-          {!compact ? (
-            <p className="mb-3 text-sm text-black/60">
-              Nenhuma venda pode ser cobrada enquanto o caixa estiver fechado. Abra o caixa no início do turno informando o troco disponível na gaveta.
-            </p>
-          ) : null}
-          <Button size="sm" onClick={() => setOpening(true)}>
-            Abrir caixa
-          </Button>
+        <div className="flex items-center gap-2">
+          <StatusBadge tone={isOpen ? "success" : "neutral"} pulse={isOpen}>
+            {isOpen ? "Aberto" : "Fechado"}
+          </StatusBadge>
         </div>
-      )}
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {isOpen ? (
+          isLoading || !session ? (
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Skeleton className="h-24 rounded-card" />
+              <Skeleton className="h-24 rounded-card" />
+              <Skeleton className="h-24 rounded-card" />
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <StatCard label="Abertura" icon="lock-open" value={session.openingAmountCents / 100} format="currency" hint="fundo de troco" className="p-4" />
+                <StatCard label="Vendas na sessão" icon="receipt" value={salesCents / 100} format="currency" hint="todas as formas" className="p-4" />
+                <StatCard label="Esperado na gaveta" icon="money" value={session.expectedCashCents / 100} format="currency" hint="só dinheiro" className="p-4" />
+              </div>
+
+              {Object.keys(session.paymentsByMethod).length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(session.paymentsByMethod).map(([method, cents]) => (
+                    <span key={method} className="inline-flex items-center gap-1.5 rounded-pill bg-surface-2 px-3 py-1.5 text-caption font-medium text-foreground">
+                      <Icon name={PAYMENT_METHOD_ICON[method as VenuePaymentMethod] ?? "coins"} size={11} className="text-muted-foreground" />
+                      {VENUE_PAYMENT_METHOD_LABEL[method as VenuePaymentMethod] ?? method}
+                      <span className="tnum text-muted-foreground">{formatBRLCents(cents)}</span>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" leftIcon="plus" onClick={() => setMovementOpen(true)}>
+                  Movimentação
+                </Button>
+                <Button variant="destructive-soft" leftIcon="lock" onClick={() => setClosingConfirm(true)}>
+                  Fechar caixa
+                </Button>
+              </div>
+
+              <div className="space-y-2.5">
+                <h4 className="text-sm font-semibold text-foreground">Movimentações</h4>
+                <DataTableShell
+                  maxHeight="none"
+                  table={
+                    <DataTable>
+                      <DataTableHead>
+                        <tr>
+                          <DataTableHeadCell>Hora</DataTableHeadCell>
+                          <DataTableHeadCell>Tipo</DataTableHeadCell>
+                          <DataTableHeadCell>Motivo</DataTableHeadCell>
+                          <DataTableHeadCell align="right">Valor</DataTableHeadCell>
+                        </tr>
+                      </DataTableHead>
+                      <DataTableBody>
+                        {movements.length === 0 ? (
+                          <DataTableEmpty colSpan={4} icon="money-transfer" title="Nenhuma movimentação" description="Sangrias, suprimentos e despesas desta sessão aparecem aqui." />
+                        ) : (
+                          movements.map((m, i) => (
+                            <DataTableRow key={m.id} index={i}>
+                              <DataTableCell className="tnum text-muted-foreground">{formatClock(m.createdAt)}</DataTableCell>
+                              <DataTableCell>
+                                <StatusBadge tone={MOVEMENT_IN[m.type] ? "success" : "warning"}>{VENUE_CASH_MOVEMENT_TYPE_LABEL[m.type]}</StatusBadge>
+                              </DataTableCell>
+                              <DataTableCell>{m.reason}</DataTableCell>
+                              <DataTableCell num className={cn("font-semibold", MOVEMENT_IN[m.type] ? "text-money-in" : "text-money-out")}>
+                                {MOVEMENT_IN[m.type] ? "+" : "−"}
+                                {formatBRLCents(m.amountCents)}
+                              </DataTableCell>
+                            </DataTableRow>
+                          ))
+                        )}
+                      </DataTableBody>
+                    </DataTable>
+                  }
+                  mobile={
+                    movements.length === 0 ? (
+                      <EmptyState compact icon="money-transfer" title="Nenhuma movimentação" />
+                    ) : (
+                      <MobileCardList>
+                        {movements.map((m, i) => (
+                          <MobileCard key={m.id} index={i} title={VENUE_CASH_MOVEMENT_TYPE_LABEL[m.type]} subtitle={`${formatClock(m.createdAt)} · ${m.reason}`} badge={<span className={cn("text-sm font-semibold tnum", MOVEMENT_IN[m.type] ? "text-money-in" : "text-money-out")}>{`${MOVEMENT_IN[m.type] ? "+" : "−"}${formatBRLCents(m.amountCents)}`}</span>} />
+                        ))}
+                      </MobileCardList>
+                    )
+                  }
+                />
+              </div>
+            </>
+          )
+        ) : (
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="max-w-md text-body text-muted-foreground">Nenhuma venda pode ser cobrada com o caixa fechado. Abra no início do turno informando o troco da gaveta.</p>
+            <Button size="lg" leftIcon="lock-open" onClick={() => setOpening(true)}>
+              Abrir caixa
+            </Button>
+          </div>
+        )}
+      </CardContent>
 
       <OpenSessionDialog register={opening ? register : null} onOpenChange={setOpening} orgId={orgId} locationId={locationId} />
-      <MovementDialog
-        sessionId={movementOpen ? (register.openSession?.id ?? null) : null}
-        onOpenChange={setMovementOpen}
-        orgId={orgId}
-        locationId={locationId}
-      />
-      <CloseSessionDialog
-        sessionId={closingConfirm ? (register.openSession?.id ?? null) : null}
-        expectedCents={session?.expectedCashCents ?? register.openSession?.expectedCashCents ?? 0}
-        onOpenChange={setClosingConfirm}
-        orgId={orgId}
-        locationId={locationId}
-      />
-    </>
+      <MovementDialog sessionId={movementOpen ? (register.openSession?.id ?? null) : null} onOpenChange={setMovementOpen} orgId={orgId} locationId={locationId} />
+      <CloseSessionDialog sessionId={closingConfirm ? (register.openSession?.id ?? null) : null} expectedCents={session?.expectedCashCents ?? register.openSession?.expectedCashCents ?? 0} onOpenChange={setClosingConfirm} orgId={orgId} locationId={locationId} />
+    </Card>
   );
 }
 
-function StatusBadge({ open }: { open: boolean }) {
-  return open ? (
-    <span className="flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
-      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Aberto
-    </span>
-  ) : (
-    <span className="flex items-center gap-1.5 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-500">
-      <span className="h-1.5 w-1.5 rounded-full bg-gray-400" /> Fechado
-    </span>
-  );
-}
-
-/** Caso comum: a unidade tem 1 caixa só. Painel único, sem grid de cards nem "Novo caixa" em destaque. */
-function SingleRegisterPanel({
-  orgId,
-  locationId,
-  register,
-  onManageMultiple,
-}: {
-  orgId: number;
-  locationId: number;
-  register: VenueCashRegister;
-  onManageMultiple: () => void;
-}) {
+function SessionsHistory({ sessions, registers }: { sessions: VenueCashSession[]; registers: VenueCashRegister[] }) {
+  const closed = sessions.filter((s) => s.status === "CLOSED");
+  const registerName = (id: number) => registers.find((r) => r.id === id)?.nome ?? "Caixa";
+  const diffClass = (d: number | null) => (d === null ? "" : d === 0 ? "text-money-in" : d < 0 ? "text-money-out" : "text-money-pending");
+  const diffLabel = (d: number | null) => (d === null ? "—" : `${d > 0 ? "+" : ""}${formatBRLCents(d)}`);
   return (
-    <div className="rounded-2xl border border-black/10 bg-white p-6">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-violet-50 text-violet-600">
-            <Wallet size={20} />
-          </div>
-          <div>
-            <p className="font-semibold text-gray-900">{register.nome}</p>
-            <p className="text-xs text-black/50">Caixa desta unidade</p>
-          </div>
-        </div>
-        <StatusBadge open={register.openSession !== null} />
-      </div>
-
-      <RegisterBody orgId={orgId} locationId={locationId} register={register} />
-
-      <button
-        type="button"
-        onClick={onManageMultiple}
-        className="mt-5 text-xs text-black/40 underline decoration-dotted underline-offset-2 hover:text-black/60"
-      >
-        Esta unidade usa mais de um caixa (ex.: bar e salão separados)?
-      </button>
-    </div>
+    <section className="space-y-3">
+      <SectionHeader title="Sessões anteriores" />
+      <DataTableShell
+        maxHeight="none"
+        table={
+          <DataTable>
+            <DataTableHead>
+              <tr>
+                <DataTableHeadCell>Caixa</DataTableHeadCell>
+                <DataTableHeadCell>Período</DataTableHeadCell>
+                <DataTableHeadCell align="right">Abertura</DataTableHeadCell>
+                <DataTableHeadCell align="right">Esperado</DataTableHeadCell>
+                <DataTableHeadCell align="right">Contado</DataTableHeadCell>
+                <DataTableHeadCell align="right">Diferença</DataTableHeadCell>
+              </tr>
+            </DataTableHead>
+            <DataTableBody>
+              {closed.length === 0 ? (
+                <DataTableEmpty colSpan={6} icon="history" title="Nenhuma sessão fechada ainda" />
+              ) : (
+                closed.map((s, i) => (
+                  <DataTableRow key={s.id} index={i}>
+                    <DataTableCell className="font-semibold">{registerName(s.cashRegisterId)}</DataTableCell>
+                    <DataTableCell className="tnum text-muted-foreground">
+                      {formatDay(s.openedAt)} · {formatClock(s.openedAt)}
+                      {s.closedAt ? ` – ${formatClock(s.closedAt)}` : ""}
+                    </DataTableCell>
+                    <DataTableCell num>{formatBRLCents(s.openingAmountCents)}</DataTableCell>
+                    <DataTableCell num>{formatBRLCents(s.expectedCashCents)}</DataTableCell>
+                    <DataTableCell num>{s.countedCashCents === null ? "—" : formatBRLCents(s.countedCashCents)}</DataTableCell>
+                    <DataTableCell num className={cn("font-semibold", diffClass(s.differenceCents))}>
+                      {diffLabel(s.differenceCents)}
+                    </DataTableCell>
+                  </DataTableRow>
+                ))
+              )}
+            </DataTableBody>
+          </DataTable>
+        }
+        mobile={
+          closed.length === 0 ? (
+            <EmptyState compact icon="history" title="Nenhuma sessão fechada ainda" />
+          ) : (
+            <MobileCardList>
+              {closed.map((s, i) => (
+                <MobileCard
+                  key={s.id}
+                  index={i}
+                  title={registerName(s.cashRegisterId)}
+                  subtitle={`${formatDay(s.openedAt)} · ${formatClock(s.openedAt)}${s.closedAt ? ` – ${formatClock(s.closedAt)}` : ""}`}
+                  badge={<span className={cn("text-sm font-semibold tnum", diffClass(s.differenceCents))}>{diffLabel(s.differenceCents)}</span>}
+                  meta={[
+                    { label: "Abertura", value: formatBRLCents(s.openingAmountCents), num: true },
+                    { label: "Esperado", value: formatBRLCents(s.expectedCashCents), num: true },
+                    { label: "Contado", value: s.countedCashCents === null ? "—" : formatBRLCents(s.countedCashCents), num: true },
+                  ]}
+                />
+              ))}
+            </MobileCardList>
+          )
+        }
+      />
+    </section>
   );
 }
 
-function RegisterCard({ orgId, locationId, register }: { orgId: number; locationId: number; register: VenueCashRegister }) {
-  return (
-    <div className="rounded-xl border border-black/10 bg-white p-4">
-      <div className="flex items-center justify-between">
-        <p className="font-semibold text-gray-900">{register.nome}</p>
-        <StatusBadge open={register.openSession !== null} />
-      </div>
-      <RegisterBody orgId={orgId} locationId={locationId} register={register} compact />
-    </div>
-  );
-}
-
-export function CaixaTab({ orgId, locationId }: { orgId: number; locationId: number }) {
+export function CaixaTab({ orgId, locationId, formOpen, onFormOpenChange }: { orgId: number; locationId: number; formOpen: boolean; onFormOpenChange: (v: boolean) => void }) {
   const { data: registers, isLoading } = useVenueCashRegisters(orgId, locationId);
+  const { data: sessions } = useVenueCashSessions(orgId, locationId);
   const { create } = useVenueCashRegisterMutations(orgId, locationId);
-  const [formOpen, setFormOpen] = useState(false);
-  // Só passa a mostrar a lista/grid de vários caixas se o usuário pedir
-  // explicitamente (link no painel único) ou já tiver 2+ cadastrados.
-  const [showMultiple, setShowMultiple] = useState(false);
-
   const list = registers ?? [];
 
-  if (isLoading) return <TableSkeleton />;
+  const formDialog = (
+    <RegisterFormDialog
+      open={formOpen}
+      onOpenChange={onFormOpenChange}
+      loading={create.isPending}
+      onSubmit={(nome) =>
+        create.mutate(
+          { nome },
+          {
+            onSuccess: () => {
+              toast.success("Caixa criado.");
+              onFormOpenChange(false);
+            },
+            onError: (err) => toast.error(getErrorMessage(err, "Não foi possível criar o caixa.")),
+          },
+        )
+      }
+    />
+  );
 
-  if (list.length === 0) {
+  if (isLoading) {
     return (
       <div className="space-y-4">
-        <EmptyState
-          title="Nenhum caixa cadastrado"
-          description="Cadastre o caixa desta unidade para começar a registrar vendas e movimentações."
-          actionLabel="Cadastrar caixa"
-          onAction={() => setFormOpen(true)}
-        />
-        <RegisterFormDialog
-          open={formOpen}
-          onOpenChange={setFormOpen}
-          loading={create.isPending}
-          onSubmit={(nome) =>
-            create.mutate(
-              { nome },
-              {
-                onSuccess: () => { toast.success("Caixa criado."); setFormOpen(false); },
-                onError: (err) => toast.error(getErrorMessage(err, "Não foi possível criar o caixa.")),
-              },
-            )
-          }
-        />
+        <Skeleton className="h-64 rounded-card" />
+        <Skeleton className="h-40 rounded-card" />
       </div>
     );
   }
 
-  const isSingle = list.length === 1 && !showMultiple;
+  if (list.length === 0) {
+    return (
+      <>
+        <EmptyState
+          icon="wallet"
+          title="Nenhum caixa cadastrado"
+          description="Cadastre o caixa desta unidade pra começar a registrar vendas e movimentações."
+          action={
+            <Button leftIcon="plus" onClick={() => onFormOpenChange(true)}>
+              Cadastrar caixa
+            </Button>
+          }
+        />
+        {formDialog}
+      </>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      {isSingle ? (
-        <SingleRegisterPanel
-          orgId={orgId}
-          locationId={locationId}
-          register={list[0]}
-          onManageMultiple={() => setShowMultiple(true)}
-        />
-      ) : (
-        <>
-          <div className="flex justify-end">
-            <Button size="sm" variant="outline" onClick={() => setFormOpen(true)}>
-              <Plus size={16} /> Novo caixa
-            </Button>
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {list.map((register) => (
-              <RegisterCard key={register.id} orgId={orgId} locationId={locationId} register={register} />
-            ))}
-          </div>
-        </>
-      )}
-
-      <RegisterFormDialog
-        open={formOpen}
-        onOpenChange={setFormOpen}
-        loading={create.isPending}
-        onSubmit={(nome) =>
-          create.mutate(
-            { nome },
-            {
-              onSuccess: () => { toast.success("Caixa criado."); setFormOpen(false); },
-              onError: (err) => toast.error(getErrorMessage(err, "Não foi possível criar o caixa.")),
-            },
-          )
-        }
-      />
+    <div className="space-y-6">
+      <div className={cn("grid gap-4", list.length > 1 && "xl:grid-cols-2")}>
+        {list.map((register) => (
+          <RegisterPanel key={register.id} orgId={orgId} locationId={locationId} register={register} single={list.length === 1} />
+        ))}
+      </div>
+      {sessions ? <SessionsHistory sessions={sessions} registers={list} /> : null}
+      {formDialog}
     </div>
   );
 }

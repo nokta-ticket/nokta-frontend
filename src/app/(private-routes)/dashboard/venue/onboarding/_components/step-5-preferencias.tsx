@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { OperacaoTab } from "../../../configuracoes/_components/operacao-tab";
+import { StepNav } from "./step-nav";
 
 export function Step5Preferencias({ orgId, onNext, onBack }: { orgId: number; onNext: () => void; onBack: () => void }) {
   return (
@@ -12,8 +13,10 @@ export function Step5Preferencias({ orgId, onNext, onBack }: { orgId: number; on
 
       <Card>
         <CardHeader>
-          <CardTitle>Horários de funcionamento</CardTitle>
-          <CardDescription>Ajude o Insights a calcular ocupação corretamente.</CardDescription>
+          <div>
+            <CardTitle>Horários de funcionamento</CardTitle>
+            <CardDescription>Aparecem na página pública ("aberto agora") e ajudam o Insights a calcular ocupação.</CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <Button variant="outline" asChild>
@@ -22,12 +25,7 @@ export function Step5Preferencias({ orgId, onNext, onBack }: { orgId: number; on
         </CardContent>
       </Card>
 
-      <div className="flex justify-between">
-        <Button variant="ghost" onClick={onBack}>
-          Voltar
-        </Button>
-        <Button onClick={onNext}>Continuar</Button>
-      </div>
+      <StepNav onBack={onBack} onNext={onNext} />
     </div>
   );
 }

@@ -2,28 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field, FieldGroup } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { SelectInput } from "@/components/ui/select-input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getErrorMessage } from "@/lib/axios";
-import { toast } from "@/lib/toast";
 import { formatPhone, normalizeDigits } from "@/lib/br-data";
+import { toast } from "@/lib/toast";
 import { useVenueAreas } from "../../operacao/_hooks/use-venue-areas-tables";
 import { useVenueWaitlistMutations } from "../_hooks/use-venue-waitlist";
 
-export function WaitlistFormDialog({
-  orgId,
-  locationId,
-  open,
-  onOpenChange,
-}: {
-  orgId: number;
-  locationId: number;
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-}) {
+export function WaitlistFormDialog({ orgId, locationId, open, onOpenChange }: { orgId: number; locationId: number; open: boolean; onOpenChange: (v: boolean) => void }) {
   const { data: areas } = useVenueAreas(orgId, locationId);
   const { create } = useVenueWaitlistMutations(orgId, locationId);
 
@@ -59,7 +49,7 @@ export function WaitlistFormDialog({
       },
       {
         onSuccess: (entry) => {
-          toast.success(`${entry.publicCode} adicionado à fila.`);
+          toast.success(`${entry.customerName} entrou na fila (${entry.publicCode}).`);
           onOpenChange(false);
         },
         onError: (err) => toast.error(getErrorMessage(err, "Não foi possível adicionar à fila.")),
@@ -69,65 +59,47 @@ export function WaitlistFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>Adicionar à fila de espera</DialogTitle>
+          <DialogDescription>Cliente sem reserva aguardando mesa. Avise pelo WhatsApp quando liberar.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
-          <div className="space-y-2">
-            <Label htmlFor="wl-nome">Nome</Label>
-            <Input id="wl-nome" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="wl-telefone">Telefone</Label>
-              <Input
-                id="wl-telefone"
-                value={customerPhoneDisplay}
-                onChange={(e) => setCustomerPhoneDisplay(formatPhone(e.target.value))}
-                placeholder="(11) 99999-8888"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="wl-pessoas">Pessoas</Label>
-              <Input id="wl-pessoas" type="number" min={1} value={partySize} onChange={(e) => setPartySize(e.target.value)} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Área preferida (opcional)</Label>
-              <Select value={preferredAreaId || "none"} onValueChange={(v) => setPreferredAreaId(v === "none" ? "" : v)}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Sem preferência" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem preferência</SelectItem>
-                  {(areas ?? []).map((a) => (
-                    <SelectItem key={a.id} value={String(a.id)}>{a.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="wl-estimativa">Previsão (min, opcional)</Label>
-              <Input
-                id="wl-estimativa"
-                type="number"
-                min={0}
-                value={estimatedWaitMinutes}
-                onChange={(e) => setEstimatedWaitMinutes(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="wl-obs">Observação (opcional)</Label>
-            <Textarea id="wl-obs" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </div>
-        </div>
+        <DialogBody>
+          <form
+            className="flex flex-col gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (canSubmit) handleSubmit();
+            }}
+          >
+            <Field label="Nome" htmlFor="wl-nome" required>
+              <Input id="wl-nome" value={customerName} onChange={(e) => setCustomerName(e.target.value)} autoFocus />
+            </Field>
+            <FieldGroup columns={2}>
+              <Field label="Telefone" htmlFor="wl-telefone" required>
+                <Input id="wl-telefone" inputMode="tel" value={customerPhoneDisplay} onChange={(e) => setCustomerPhoneDisplay(formatPhone(e.target.value))} placeholder="(11) 99999-8888" />
+              </Field>
+              <Field label="Pessoas" htmlFor="wl-pessoas" required>
+                <Input id="wl-pessoas" type="number" inputMode="numeric" min={1} value={partySize} onChange={(e) => setPartySize(e.target.value)} />
+              </Field>
+              <Field label="Área preferida" optional>
+                <SelectInput value={preferredAreaId || "none"} onValueChange={(v) => setPreferredAreaId(v === "none" ? "" : v)} options={[{ value: "none", label: "Sem preferência" }, ...(areas ?? []).map((a) => ({ value: String(a.id), label: a.nome }))]} />
+              </Field>
+              <Field label="Previsão de espera" htmlFor="wl-estimativa" optional>
+                <Input id="wl-estimativa" type="number" inputMode="numeric" min={0} suffix="min" value={estimatedWaitMinutes} onChange={(e) => setEstimatedWaitMinutes(e.target.value)} />
+              </Field>
+            </FieldGroup>
+            <Field label="Observação" htmlFor="wl-obs" optional>
+              <Textarea id="wl-obs" rows={2} className="min-h-20" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ex.: com cadeirinha, prefere perto da janela" />
+            </Field>
+          </form>
+        </DialogBody>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={create.isPending}>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={create.isPending}>
             Cancelar
           </Button>
-          <Button disabled={create.isPending || !canSubmit} onClick={handleSubmit}>
-            {create.isPending ? "Adicionando…" : "Adicionar à fila"}
+          <Button disabled={!canSubmit} loading={create.isPending} leftIcon="user-plus" onClick={handleSubmit}>
+            Adicionar à fila
           </Button>
         </DialogFooter>
       </DialogContent>

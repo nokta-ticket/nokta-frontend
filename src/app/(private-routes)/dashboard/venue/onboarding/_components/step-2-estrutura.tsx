@@ -1,38 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Circle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldGroup } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
 import { useVenueAreaMutations, useVenueTableMutations, useVenueTables } from "../../../operacao/_hooks/use-venue-areas-tables";
 import { useVenueCashRegisterMutations, useVenueCashRegisters } from "../../../operacao/_hooks/use-venue-cash";
+import { ReadyRow, StepNav } from "./step-nav";
 
-function ReadyRow({ done, label }: { done: boolean; label: string }) {
-  return (
-    <div className="flex items-center gap-2 text-sm">
-      {done ? <CheckCircle2 size={16} className="text-emerald-600" /> : <Circle size={16} className="text-black/25" />}
-      <span className={done ? "text-black/50 line-through" : "text-black/85"}>{label}</span>
-    </div>
-  );
-}
-
-export function Step2Estrutura({
-  orgId,
-  locationId,
-  operationMode,
-  onNext,
-  onBack,
-}: {
-  orgId: number;
-  locationId: number;
-  operationMode: string | null;
-  onNext: () => void;
-  onBack: () => void;
-}) {
+export function Step2Estrutura({ orgId, locationId, operationMode, onNext, onBack }: { orgId: number; locationId: number; operationMode: string | null; onNext: () => void; onBack: () => void }) {
   const { data: tables } = useVenueTables(orgId, locationId);
   const { data: cashRegisters } = useVenueCashRegisters(orgId, locationId);
   const { create: createArea } = useVenueAreaMutations(orgId, locationId);
@@ -48,8 +27,10 @@ export function Step2Estrutura({
   const { create: createCashRegister } = useVenueCashRegisterMutations(orgId, locationId);
 
   const needsTables = operationMode !== "COUNTER_SERVICE";
-  const hasTables = (tables?.length ?? 0) > 0;
-  const hasCashRegister = (cashRegisters?.length ?? 0) > 0;
+  const tableCount = tables?.length ?? 0;
+  const cashCount = cashRegisters?.length ?? 0;
+  const hasTables = tableCount > 0;
+  const hasCashRegister = cashCount > 0;
 
   const handleCreateTables = async () => {
     if (!areaNome.trim() || quantidade < 1) {
@@ -62,11 +43,7 @@ export function Step2Estrutura({
       const pad = quantidade >= 100 ? 3 : 2;
       for (let i = 1; i <= quantidade; i++) {
         // eslint-disable-next-line no-await-in-loop
-        await createTable.mutateAsync({
-          areaId: area.id,
-          nome: `${prefixo} ${String(i).padStart(pad, "0")}`,
-          capacidade,
-        });
+        await createTable.mutateAsync({ areaId: area.id, nome: `${prefixo} ${String(i).padStart(pad, "0")}`, capacidade });
       }
       toast.success(`Área "${area.nome}" criada com ${quantidade} mesas.`);
     } catch (err) {
@@ -94,45 +71,44 @@ export function Step2Estrutura({
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Status atual</CardTitle>
+          <div>
+            <CardTitle>Estrutura da casa</CardTitle>
+            <CardDescription>{needsTables ? "Mesas por área e ao menos um caixa pra receber." : "Operação por balcão — mesas não são obrigatórias, só o caixa."}</CardDescription>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-1.5">
-          {needsTables ? <ReadyRow done={hasTables} label="Ao menos uma mesa cadastrada" /> : null}
-          <ReadyRow done={hasCashRegister} label="Ao menos um caixa cadastrado" />
-          {!needsTables ? <p className="text-xs text-black/40">Operação por balcão — mesas não são obrigatórias.</p> : null}
+        <CardContent className="pt-2">
+          <ul>
+            {needsTables ? <ReadyRow done={hasTables} label={hasTables ? `${tableCount} ${tableCount === 1 ? "mesa cadastrada" : "mesas cadastradas"}` : "Ao menos uma mesa cadastrada"} /> : null}
+            <ReadyRow done={hasCashRegister} label={hasCashRegister ? `${cashCount} ${cashCount === 1 ? "caixa cadastrado" : "caixas cadastrados"}` : "Ao menos um caixa cadastrado"} />
+          </ul>
         </CardContent>
       </Card>
 
       {needsTables ? (
         <Card>
           <CardHeader>
-            <CardTitle>Criar área com mesas</CardTitle>
-            <CardDescription>Crie uma área e várias mesas de uma vez. Você pode editar depois em Operação.</CardDescription>
+            <div>
+              <CardTitle>Criar área com mesas</CardTitle>
+              <CardDescription>Cria uma área e várias mesas de uma vez — dá pra editar depois em Mesas e comandas.</CardDescription>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label>Área</Label>
-                <Input value={areaNome} onChange={(e) => setAreaNome(e.target.value)} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Quantidade</Label>
-                <Input type="number" min={1} max={200} value={quantidade} onChange={(e) => setQuantidade(Number(e.target.value))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Capacidade padrão</Label>
-                <Input type="number" min={1} value={capacidade} onChange={(e) => setCapacidade(Number(e.target.value))} />
-              </div>
-            </div>
-            <div className="max-w-[200px] space-y-1.5">
-              <Label>Prefixo do nome</Label>
-              <Input value={prefixo} onChange={(e) => setPrefixo(e.target.value)} />
-              <p className="text-xs text-black/40">
-                Gera &quot;{prefixo} 01&quot; até &quot;{prefixo} {String(quantidade).padStart(2, "0")}&quot;.
-              </p>
-            </div>
-            <Button variant="outline" onClick={handleCreateTables} disabled={creatingTables}>
-              {creatingTables ? "Criando…" : "Criar área e mesas"}
+            <FieldGroup columns={2}>
+              <Field label="Área" htmlFor="setup-area">
+                <Input id="setup-area" value={areaNome} onChange={(e) => setAreaNome(e.target.value)} placeholder="Salão, Varanda, Deck…" />
+              </Field>
+              <Field label="Prefixo das mesas" htmlFor="setup-prefixo" hint={`Gera "${prefixo} 01" até "${prefixo} ${String(quantidade).padStart(2, "0")}".`}>
+                <Input id="setup-prefixo" value={prefixo} onChange={(e) => setPrefixo(e.target.value)} />
+              </Field>
+              <Field label="Quantidade" htmlFor="setup-qtd">
+                <Input id="setup-qtd" type="number" inputMode="numeric" min={1} max={200} value={quantidade} onChange={(e) => setQuantidade(Number(e.target.value))} />
+              </Field>
+              <Field label="Lugares por mesa" htmlFor="setup-cap">
+                <Input id="setup-cap" type="number" inputMode="numeric" min={1} value={capacidade} onChange={(e) => setCapacidade(Number(e.target.value))} />
+              </Field>
+            </FieldGroup>
+            <Button variant="outline" leftIcon="chair" onClick={handleCreateTables} loading={creatingTables}>
+              Criar área e mesas
             </Button>
           </CardContent>
         </Card>
@@ -140,25 +116,22 @@ export function Step2Estrutura({
 
       <Card>
         <CardHeader>
-          <CardTitle>Cadastrar caixa</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap items-end gap-3">
-          <div className="max-w-xs flex-1 space-y-1.5">
-            <Label>Nome do caixa</Label>
-            <Input value={cashNome} onChange={(e) => setCashNome(e.target.value)} />
+          <div>
+            <CardTitle>Cadastrar caixa</CardTitle>
+            <CardDescription>Um por ponto de cobrança. Sem caixa aberto, nenhuma venda pode ser recebida.</CardDescription>
           </div>
-          <Button variant="outline" onClick={handleCreateCashRegister} disabled={createCashRegister.isPending}>
-            {createCashRegister.isPending ? "Cadastrando…" : "Cadastrar caixa"}
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <Field label="Nome do caixa" htmlFor="setup-caixa" className="flex-1 sm:max-w-xs">
+            <Input id="setup-caixa" value={cashNome} onChange={(e) => setCashNome(e.target.value)} />
+          </Field>
+          <Button variant="outline" leftIcon="wallet" onClick={handleCreateCashRegister} loading={createCashRegister.isPending}>
+            Cadastrar caixa
           </Button>
         </CardContent>
       </Card>
 
-      <div className="flex justify-between">
-        <Button variant="ghost" onClick={onBack}>
-          Voltar
-        </Button>
-        <Button onClick={onNext}>Continuar</Button>
-      </div>
+      <StepNav onBack={onBack} onNext={onNext} />
     </div>
   );
 }

@@ -1,54 +1,29 @@
 import { headers } from "next/headers";
-import { UtensilsCrossed } from "lucide-react";
-import { getApiBaseUrl } from "@/lib/surfaces";
+import { EmptyState } from "@/components/ui/empty-state";
+import { fetchVenuePublic } from "@/components/venue-menu/public-fetch";
 import type { VenueHomePageData } from "@/services/venue-home-public";
 import { VenueHomeView } from "./_components/venue-home-view";
 
 /**
- * Server Component — mesmo padrão de (public-routes)/cardapio/[orgSlug]/page.tsx
- * e (public-routes)/avaliacao/[orgSlug]/page.tsx (fetch no servidor via
- * headers(), cache:"no-store").
- *
- * [orgSlug] na RAIZ de (public-routes): nokta.live/{orgSlug} é a Home do
- * estabelecimento, acessada pelo ícone "Início" do cardápio/avaliação.
- * Rotas estáticas irmãs (login, eventos, institucional etc.) têm
- * precedência no roteamento do Next — sem conflito real.
+ * Home pública do estabelecimento (nokta.live/{orgSlug}) — Server Component,
+ * mesmo padrão de /cardapio/[orgSlug]. [orgSlug] fica na raiz de
+ * (public-routes); rotas estáticas irmãs têm precedência no roteamento.
  */
-async function getHomePageData(orgSlug: string): Promise<VenueHomePageData | null> {
-  const host = (await headers()).get("host");
-  const apiBaseUrl = getApiBaseUrl(host);
-
-  try {
-    const res = await fetch(`${apiBaseUrl}/inicio-publica/${orgSlug}`, {
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    return (await res.json()) as VenueHomePageData;
-  } catch {
-    return null;
-  }
-}
-
-export default async function VenueHomePage({
-  params,
-}: {
-  params: Promise<{ orgSlug: string }>;
-}) {
+export default async function VenueHomePage({ params }: { params: Promise<{ orgSlug: string }> }) {
   const { orgSlug } = await params;
-  const data = await getHomePageData(orgSlug);
+  const host = (await headers()).get("host");
+  const data = await fetchVenuePublic<VenueHomePageData>(host, `/inicio-publica/${orgSlug}`);
 
   if (!data) {
     return (
-      <main className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-3 overflow-y-auto bg-[#f4f4f6] px-6 text-center">
-        <UtensilsCrossed size={40} className="text-black/20" />
-        <h1 className="font-poppins text-xl font-semibold text-foreground">Estabelecimento não encontrado</h1>
-        <p className="max-w-xs text-sm text-muted-foreground">Verifique o link e tente novamente.</p>
+      <main className="flex min-h-dvh items-center justify-center bg-background px-6 py-16">
+        <EmptyState icon="store" title="Estabelecimento não encontrado" description="Confere o link e tenta de novo." className="w-full max-w-md" />
       </main>
     );
   }
 
   return (
-    <main className="fixed inset-0 z-50 overflow-y-auto bg-white">
+    <main>
       <VenueHomeView data={data} orgSlug={orgSlug} />
     </main>
   );

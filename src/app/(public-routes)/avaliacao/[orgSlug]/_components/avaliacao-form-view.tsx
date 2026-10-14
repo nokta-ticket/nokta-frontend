@@ -1,92 +1,66 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
-import {
-  Award,
-  Check,
-  Home,
-  Lock,
-  Receipt,
-  Send,
-  ShieldCheck,
-  Sparkles,
-  Star,
-  ThumbsDown,
-  ThumbsUp,
-} from "lucide-react";
-import { HomeIcon } from "@/components/icons/HomeIcon";
-import { InstagramIcon } from "@/components/icons/InstagramIcon";
-import { resolveMediaUrl } from "@/lib/media";
+import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Field } from "@/components/ui/field";
+import { Icon, type IconName } from "@/components/ui/icon";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Textarea } from "@/components/ui/textarea";
+import { HeaderAction, VenuePublicFooter, VenuePublicHeader } from "@/components/venue-menu/venue-public-header";
+import { cn } from "@/lib/cn";
 import { toast } from "@/lib/toast";
-import {
-  VENUE_REVIEW_COMPLAINT_CATEGORIES,
-  VENUE_REVIEW_COMPLAINT_LABEL,
-  venueReviewPublicApi,
-  type VenueReviewComplaintCategory,
-  type VenueReviewPageData,
-} from "@/services/venue-review-public";
-
-// Paleta exclusiva desta tela (referência de produto: vermelho-vinho +
-// dourado) — deliberadamente diferente do violeta/preto do resto da
-// plataforma e do MenuView, é um produto visual próprio (avaliação, não
-// cardápio). Nunca reaproveitar essas cores em outra tela sem pedido novo.
-const MAROON = "#8a1e2c";
-const MAROON_2 = "#7a1a26";
-const MAROON_SOFT = "#fbeef0";
-const MAROON_LINE = "#eecfd3";
-const GREEN = "#2f8a3b";
-const GREEN_SOFT = "#ebf6ed";
+import { VENUE_REVIEW_COMPLAINT_CATEGORIES, VENUE_REVIEW_COMPLAINT_LABEL, venueReviewPublicApi, type VenueReviewComplaintCategory, type VenueReviewPageData } from "@/services/venue-review-public";
 
 type Category = "priceRating" | "productsRating" | "serviceRating" | "ambienceRating";
 
-const CATEGORY_ROWS: { key: Category; label: string; icon: React.ReactNode; bg: string; fg: string }[] = [
-  { key: "priceRating", label: "Preço", icon: <Receipt size={20} />, bg: "#e6f4e9", fg: "#2f9e44" },
-  { key: "productsRating", label: "Produtos", icon: <Sparkles size={20} />, bg: "#fcf1d3", fg: "#d99b1c" },
-  { key: "serviceRating", label: "Atendimento", icon: <Award size={20} />, bg: "#e5eefb", fg: "#3b7fc4" },
-  { key: "ambienceRating", label: "Ambiente", icon: <Home size={20} />, bg: "#efe8f8", fg: "#8b5cbf" },
+const CATEGORY_ROWS: { key: Category; label: string; icon: IconName }[] = [
+  { key: "priceRating", label: "Preço", icon: "receipt" },
+  { key: "productsRating", label: "Produtos", icon: "cocktail" },
+  { key: "serviceRating", label: "Atendimento", icon: "users" },
+  { key: "ambienceRating", label: "Ambiente", icon: "music" },
 ];
 
-function StarRow({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function StarRow({ value, onChange, label }: { value: number; onChange: (v: number) => void; label: string }) {
   return (
-    <div className="flex gap-2.5">
+    <div role="radiogroup" aria-label={label} className="flex items-center">
       {[1, 2, 3, 4, 5].map((n) => (
-        <button
-          key={n}
-          type="button"
-          onClick={() => onChange(n)}
-          aria-label={`${n} estrela${n > 1 ? "s" : ""}`}
-          className="p-0.5"
-        >
-          <Star
-            size={26}
-            fill={n <= value ? "#f5a623" : "none"}
-            color={n <= value ? "#f5a623" : "#dcdce2"}
-            strokeWidth={1.5}
-          />
+        <button key={n} type="button" role="radio" aria-checked={value === n} onClick={() => onChange(n)} aria-label={`${n} ${n > 1 ? "estrelas" : "estrela"}`} className="press flex size-10 items-center justify-center rounded-full transition-colors hover:bg-surface-2">
+          <Icon name={n <= value ? "star" : "star-outline"} size={20} className={n <= value ? "text-warning" : "text-border-strong"} />
         </button>
       ))}
     </div>
   );
 }
 
-function initials(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("");
+function RatingRows({ ratings, onChange }: { ratings: Record<Category, number>; onChange: (key: Category, value: number) => void }) {
+  return (
+    <ul className="divide-y divide-border rounded-card border border-border bg-surface shadow-card">
+      {CATEGORY_ROWS.map((row) => (
+        <li key={row.key} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <span className="flex items-center gap-2.5 text-[15px] font-medium text-foreground">
+            <Icon name={row.icon} size={14} className="text-muted-foreground" />
+            {row.label}
+          </span>
+          <StarRow value={ratings[row.key]} onChange={(v) => onChange(row.key, v)} label={row.label} />
+        </li>
+      ))}
+    </ul>
+  );
 }
 
+/**
+ * Formulário público de avaliação (nokta.live/avaliacao/{slug}) — sem login.
+ * "Gostei" pede nota por categoria; "Não gostei" pede a principal crítica.
+ * Nome e WhatsApp são obrigatórios pra casa poder responder; data de
+ * nascimento só quando o cliente topa receber novidades.
+ */
 export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: VenueReviewPageData; orgSlug: string }) {
   const [liked, setLiked] = useState<boolean | null>(null);
-  const [ratings, setRatings] = useState<Record<Category, number>>({
-    priceRating: 0,
-    productsRating: 0,
-    serviceRating: 0,
-    ambienceRating: 0,
-  });
+  const [ratings, setRatings] = useState<Record<Category, number>>({ priceRating: 0, productsRating: 0, serviceRating: 0, ambienceRating: 0 });
   const [complaintCategory, setComplaintCategory] = useState<VenueReviewComplaintCategory | "">("");
   const [comment, setComment] = useState("");
   const [reviewerName, setReviewerName] = useState("");
@@ -97,16 +71,15 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
   const [submitted, setSubmitted] = useState(false);
 
   const { profile } = initialData;
-
   const setRating = (key: Category, value: number) => setRatings((prev) => ({ ...prev, [key]: value }));
 
   const handleSubmit = async () => {
     if (liked === null) {
-      toast.error("Conte pra gente como foi sua experiência.");
+      toast.error("Conta pra gente como foi sua experiência.");
       return;
     }
     if (liked && Object.values(ratings).some((v) => v === 0)) {
-      toast.error("Avalie todas as categorias para continuar.");
+      toast.error("Avalie todas as categorias pra continuar.");
       return;
     }
     if (!liked && !complaintCategory) {
@@ -118,7 +91,7 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
       return;
     }
     if (marketingOptIn && !reviewerBirthDate) {
-      toast.error("Preencha sua data de nascimento para receber novidades e benefícios.");
+      toast.error("Preencha sua data de nascimento pra receber novidades e benefícios.");
       return;
     }
 
@@ -139,7 +112,7 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
       });
       setSubmitted(true);
     } catch {
-      toast.error("Não foi possível enviar sua avaliação. Tente novamente.");
+      toast.error("Não foi possível enviar sua avaliação. Tenta de novo.");
     } finally {
       setSubmitting(false);
     }
@@ -147,338 +120,171 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
 
   if (submitted) {
     return (
-      <div className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-4 px-6 text-center">
-        <div
-          className="grid h-16 w-16 place-items-center rounded-full"
-          style={{ background: GREEN_SOFT, color: GREEN }}
-        >
-          <Check size={30} />
+      <div className="flex min-h-dvh items-center justify-center bg-background px-6 py-16">
+        <div className="scale-in flex w-full max-w-md flex-col items-center gap-4 text-center">
+          <span className="flex size-16 items-center justify-center rounded-full bg-success-bg text-success">
+            <Icon name="check" size={26} />
+          </span>
+          <h1 className="text-title font-semibold tracking-tight text-foreground">Valeu pela avaliação!</h1>
+          <p className="text-body text-muted-foreground">Sua opinião ajuda {initialData.organizationName} a melhorar sempre.</p>
+          <Button asChild variant="contrast" shape="pill" className="mt-2">
+            <a href={`/${orgSlug}`}>Voltar pro início</a>
+          </Button>
         </div>
-        <h1 className="font-poppins text-xl font-bold text-foreground">Obrigado pela sua avaliação!</h1>
-        <p className="text-sm text-muted-foreground">Sua opinião ajuda {initialData.organizationName} a melhorar sempre.</p>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto grid min-h-screen max-w-[1120px] grid-cols-1 lg:grid-cols-[1fr_316px]">
-      {/* ===== MAIN ===== */}
-      <div className="min-w-0">
-        {/* Cover — mesmo banner do cardápio/Home pública (VenuePublicProfile.bannerUrl, MenuView): aspect-ratio real (430/190) com object-fill (nunca corta lateral, distorção é responsabilidade de quem envia a imagem) e mesma altura de fallback sem banner. Sem banner cadastrado, mesmo fallback preto sólido do MenuView (nunca o gradiente marrom/dourado antigo, que só existia aqui). Borda inferior só com banner. */}
-        <div
-          className={`relative overflow-hidden bg-[#050505] ${profile.bannerUrl ? "border-b border-black/15" : "h-[180px] md:h-[220px]"}`}
-          style={profile.bannerUrl ? { aspectRatio: "430 / 190" } : undefined}
-        >
-          {profile.bannerUrl ? (
-            <Image
-              src={resolveMediaUrl(profile.bannerUrl) ?? profile.bannerUrl}
-              alt=""
-              fill
-              className="object-fill"
-              unoptimized
-            />
-          ) : null}
-        </div>
+    <div className="min-h-dvh bg-background text-foreground">
+      <div className="mx-auto w-full max-w-3xl">
+        <VenuePublicHeader
+          name={initialData.organizationName}
+          logoUrl={profile.logoUrl}
+          bannerUrl={profile.bannerUrl}
+          actions={
+            <>
+              <HeaderAction href={`/${orgSlug}`} label="Início do estabelecimento" icon="home" />
+              <HeaderAction href={`/cardapio/${orgSlug}`} label="Cardápio" icon="utensils" />
+              {profile.instagramUrl ? <HeaderAction href={profile.instagramUrl} label="Instagram" icon="instagram" external /> : null}
+            </>
+          }
+        />
 
-        {/* Venue — mesmo padrão exato do MenuView/Home pública: logo h-28/w-28 (112px, md:h-32/w-32), -mt-6 (24px sobrepostos ao banner). */}
-        <div className="relative z-10 flex gap-4 px-5 md:gap-6 md:px-8">
-          <div
-            className={`relative -mt-6 flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-4 border-white shadow-[0_4px_12px_rgba(0,0,0,.14)] md:h-32 md:w-32 ${profile.logoUrl ? "" : "bg-black"}`}
+        <div className="grid gap-8 px-4 pt-8 md:px-6 lg:grid-cols-[minmax(0,1fr)_280px]">
+          <form
+            className="min-w-0 space-y-8"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSubmit();
+            }}
           >
-            {profile.logoUrl ? (
-              <>
-                {/* Vidro fosco atrás da logo — sem isso, uma logo com fundo transparente sobreposta na borda do banner se misturava direto com a foto atrás dela. */}
-                <div className="absolute inset-0 rounded-full bg-white/55 backdrop-blur-md" />
-                <Image
-                  src={resolveMediaUrl(profile.logoUrl) ?? profile.logoUrl}
-                  alt={initialData.organizationName}
-                  fill
-                  className="relative rounded-full object-cover"
-                  unoptimized
-                />
-              </>
-            ) : (
-              <>
-                <div className="absolute h-16 w-16 rounded-full border border-white/40 md:h-[70px] md:w-[70px]" />
-                <span className="relative font-poppins text-sm font-light tracking-[0.25em] text-white md:text-base">
-                  {initials(initialData.organizationName)}
-                </span>
-              </>
-            )}
-          </div>
-          <div className="min-w-0 pt-1.5">
-            {/* Mesma fonte/tamanho/cor do nome e dos ícones do MenuView/Home pública — só o conjunto de ícones exibidos é próprio desta tela (Início/Instagram, sem WhatsApp/Busca). Início e Instagram são SVGs próprios do projeto (HomeIcon/InstagramIcon, size 22) — nunca o Home do lucide aqui: outline não tem o mesmo peso visual de um SVG sólido, mesmo em tamanho maior. */}
-            <h1 className="mb-2 truncate font-poppins text-xl font-semibold tracking-tight text-[#141414] md:text-2xl">
-              {initialData.organizationName}
-            </h1>
-            <div className="flex flex-wrap items-center gap-4 text-[#141414]">
-              <a href={`/${orgSlug}`} title="Início" aria-label="Início">
-                <HomeIcon size={22} />
-              </a>
-              {profile.instagramUrl ? (
-                <a href={profile.instagramUrl} target="_blank" rel="noopener noreferrer" title="Instagram">
-                  <InstagramIcon size={22} />
-                </a>
-              ) : (
-                <InstagramIcon size={22} className="opacity-30" />
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="px-5 pb-11 pt-6 md:px-8">
-          <h2 className="mb-5 text-center text-xl font-bold text-foreground md:text-[22px]">Como foi sua experiência?</h2>
-
-          {/* Toggle */}
-          <div className="mb-5 grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setLiked(true)}
-              className="flex h-[46px] items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition-colors"
-              style={
-                liked === true
-                  ? { borderColor: GREEN, background: GREEN_SOFT, color: GREEN }
-                  : { borderColor: "#e0e0e8", color: "#28282e", background: "#fff" }
-              }
-            >
-              <ThumbsUp size={17} strokeWidth={1.9} />
-              Gostei
-            </button>
-            <button
-              type="button"
-              onClick={() => setLiked(false)}
-              className="flex h-[46px] items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition-colors"
-              style={
-                liked === false
-                  ? { borderColor: MAROON, background: MAROON_SOFT, color: MAROON }
-                  : { borderColor: "#e0e0e8", color: "#28282e", background: "#fff" }
-              }
-            >
-              <ThumbsDown size={17} strokeWidth={1.9} />
-              Não gostei
-            </button>
-          </div>
-
-          {liked === true ? (
-            <div>
-              <div className="mb-5 rounded-2xl border border-[#e9e9ef]">
-                {CATEGORY_ROWS.map((row, i) => (
-                  <div
-                    key={row.key}
-                    className={`flex items-center gap-4 px-5 py-4 ${i > 0 ? "border-t border-[#e9e9ef]" : ""}`}
-                  >
-                    <span
-                      className="grid h-11 w-11 shrink-0 place-items-center rounded-full"
-                      style={{ background: row.bg, color: row.fg }}
-                    >
-                      {row.icon}
-                    </span>
-                    <span className="flex-1 text-[15px] font-semibold text-foreground">{row.label}</span>
-                    <StarRow value={ratings[row.key]} onChange={(v) => setRating(row.key, v)} />
-                  </div>
-                ))}
+            <section className="space-y-4">
+              <h2 className="text-title font-semibold tracking-tight">Como foi sua experiência?</h2>
+              <div role="radiogroup" aria-label="Como foi" className="grid grid-cols-2 gap-3">
+                <button type="button" role="radio" aria-checked={liked === true} onClick={() => setLiked(true)} className={cn("press flex h-14 items-center justify-center gap-2 rounded-card border text-[15px] font-semibold transition-colors", liked === true ? "border-transparent bg-success-bg text-success ring-2 ring-success" : "border-border bg-surface text-foreground hover:bg-surface-2")}>
+                  <Icon name="heart" size={16} />
+                  Gostei
+                </button>
+                <button type="button" role="radio" aria-checked={liked === false} onClick={() => setLiked(false)} className={cn("press flex h-14 items-center justify-center gap-2 rounded-card border text-[15px] font-semibold transition-colors", liked === false ? "border-transparent bg-danger-bg text-danger ring-2 ring-danger" : "border-border bg-surface text-foreground hover:bg-surface-2")}>
+                  <Icon name="x-circle" size={16} />
+                  Não gostei
+                </button>
               </div>
-              <p className="mb-2.5 text-[15px] font-semibold text-foreground">Conte pra gente (opcional)</p>
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value.slice(0, 500))}
-                maxLength={500}
-                placeholder="Deixe um comentário sobre sua experiência..."
-                className="min-h-[118px] w-full resize-y rounded-xl border border-[#e0e0e8] p-3.5 text-base outline-none"
-              />
-              <div className="mt-2 text-right text-xs text-black/40">{comment.length}/500</div>
-            </div>
-          ) : liked === false ? (
-            <div>
-              <div className="mb-5 grid grid-cols-1 items-start gap-6 md:grid-cols-2">
-                <div>
-                  <p className="mb-2.5 text-[15px] font-semibold text-foreground">Qual foi sua principal crítica?</p>
-                  <select
-                    value={complaintCategory}
-                    onChange={(e) => setComplaintCategory(e.target.value as VenueReviewComplaintCategory)}
-                    className="h-[52px] w-full rounded-xl border border-[#e0e0e8] px-4 text-base text-foreground outline-none"
-                  >
+            </section>
+
+            {liked === true ? (
+              <section className="fade-up space-y-4">
+                <RatingRows ratings={ratings} onChange={setRating} />
+                <Field label="Conta pra gente" optional htmlFor="review-comment" hint={`${comment.length}/500`}>
+                  <Textarea id="review-comment" value={comment} onChange={(e) => setComment(e.target.value.slice(0, 500))} maxLength={500} placeholder="O que mais curtiu?" />
+                </Field>
+              </section>
+            ) : liked === false ? (
+              <section className="fade-up space-y-4">
+                <Field label="Qual foi sua principal crítica?" htmlFor="review-complaint" required>
+                  <NativeSelect id="review-complaint" value={complaintCategory} onChange={(e) => setComplaintCategory(e.target.value as VenueReviewComplaintCategory)}>
                     <option value="">Selecione uma opção</option>
                     {VENUE_REVIEW_COMPLAINT_CATEGORIES.map((cat) => (
                       <option key={cat} value={cat}>
                         {VENUE_REVIEW_COMPLAINT_LABEL[cat]}
                       </option>
                     ))}
-                  </select>
-                </div>
-                <div>
-                  <p className="mb-2.5 text-[15px] font-semibold text-foreground">Conte pra gente o que aconteceu (opcional)</p>
-                  <textarea
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value.slice(0, 500))}
-                    maxLength={500}
-                    placeholder="Descreva brevemente o problema..."
-                    className="min-h-[140px] w-full resize-y rounded-xl border border-[#e0e0e8] p-3.5 text-base outline-none"
-                  />
-                  <div className="mt-2 text-right text-xs text-black/40">{comment.length}/500</div>
-                </div>
-              </div>
-
-              <p className="mb-2.5 text-[15px] font-semibold text-foreground">Avalie os pontos abaixo (opcional)</p>
-              <div className="mb-2">
-                {CATEGORY_ROWS.map((row) => (
-                  <div key={row.key} className="flex items-center gap-4 py-3.5">
-                    <span
-                      className="grid h-11 w-11 shrink-0 place-items-center rounded-full"
-                      style={{ background: row.bg, color: row.fg }}
-                    >
-                      {row.icon}
-                    </span>
-                    <span className="flex-1 text-[15px] font-semibold text-foreground">{row.label}</span>
-                    <StarRow value={ratings[row.key]} onChange={(v) => setRating(row.key, v)} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {/* Seus dados */}
-          <div className="my-6 h-px bg-[#e9e9ef]" />
-          <h3 className="mb-2 text-center text-lg font-bold text-foreground">Seus dados</h3>
-          <p className="mb-5 text-center text-sm text-muted-foreground">
-            Precisamos dessas informações para entrar em contato sobre sua avaliação.
-          </p>
-
-          <div className="mb-3.5 flex items-center gap-3 rounded-xl border border-[#e0e0e8] px-4 py-3">
-            <input
-              value={reviewerName}
-              onChange={(e) => setReviewerName(e.target.value)}
-              placeholder="Nome completo *"
-              className="w-full bg-transparent text-base outline-none"
-            />
-          </div>
-          <div className="mb-3.5 flex items-center gap-3 rounded-xl border border-[#e0e0e8] px-4 py-3">
-            <input
-              value={reviewerWhatsapp}
-              onChange={(e) => setReviewerWhatsapp(e.target.value)}
-              placeholder="WhatsApp com DDD *"
-              className="w-full bg-transparent text-base outline-none"
-            />
-          </div>
-
-          <div className="rounded-2xl border border-[#e0e0e8] p-4">
-            <button
-              type="button"
-              onClick={() => setMarketingOptIn((v) => !v)}
-              className="flex w-full items-start gap-3 text-left"
-            >
-              <span
-                className="mt-0.5 grid h-[22px] w-[22px] shrink-0 place-items-center rounded-md border-2"
-                style={
-                  marketingOptIn
-                    ? { background: MAROON, borderColor: MAROON, color: "#fff" }
-                    : { borderColor: "#e0e0e8" }
-                }
-              >
-                {marketingOptIn ? <Check size={13} strokeWidth={3} /> : null}
-              </span>
-              <span className="text-base leading-snug text-foreground">
-                Quero receber novidades, promoções e benefícios de {initialData.organizationName}.
-                <br />
-                <span className="text-sm text-muted-foreground">Enviaremos conteúdos exclusivos por WhatsApp.</span>
-              </span>
-            </button>
-
-            {/* Data de nascimento fica fechada até o usuário marcar o opt-in de marketing acima — só faz sentido pedir a data pra quem topa receber benefícios/campanhas. */}
-            {marketingOptIn ? (
-              <>
-                <div className="mt-4 flex items-center gap-3 rounded-xl border border-[#e0e0e8] px-4 py-3">
-                  <input
-                    type="date"
-                    value={reviewerBirthDate}
-                    onChange={(e) => setReviewerBirthDate(e.target.value)}
-                    className="w-full bg-transparent text-base text-foreground outline-none"
-                  />
-                </div>
-                <div className="mt-3 flex gap-2 text-xs leading-relaxed" style={{ color: MAROON }}>
-                  <Lock size={14} className="mt-0.5 shrink-0" />
-                  <span>
-                    Usaremos sua data de nascimento apenas para benefícios e campanhas especiais. Você pode cancelar quando quiser.
-                  </span>
-                </div>
-              </>
+                  </NativeSelect>
+                </Field>
+                <Field label="Conta pra gente o que aconteceu" optional htmlFor="review-comment-neg" hint={`${comment.length}/500`}>
+                  <Textarea id="review-comment-neg" value={comment} onChange={(e) => setComment(e.target.value.slice(0, 500))} maxLength={500} placeholder="Descreva rapidinho o problema" />
+                </Field>
+                <Field label="Avalie os pontos abaixo" optional>
+                  <RatingRows ratings={ratings} onChange={setRating} />
+                </Field>
+              </section>
             ) : null}
-          </div>
 
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="mt-6 flex h-[62px] w-full items-center justify-center gap-3 rounded-2xl text-base font-semibold text-white shadow-[0_10px_24px_rgba(138,30,44,.22)] transition-colors disabled:opacity-60"
-            style={{ background: submitting ? MAROON_2 : MAROON }}
-          >
-            <Send size={20} />
-            {submitting ? "Enviando…" : "Enviar avaliação"}
-          </button>
-          <div className="mt-3 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-            <ShieldCheck size={16} />
-            Ao enviar, você concorda com nossa{" "}
-            <a href="/politica-de-privacidade" className="font-semibold" style={{ color: MAROON }}>
-              Política de Privacidade
-            </a>
-            .
-          </div>
-        </div>
-      </div>
+            <section className="space-y-4">
+              <div>
+                <h2 className="text-title font-semibold tracking-tight">Seus dados</h2>
+                <p className="mt-1 text-body text-muted-foreground">Pra casa poder te responder sobre a avaliação.</p>
+              </div>
+              <Field label="Nome completo" htmlFor="review-name" required>
+                <Input id="review-name" value={reviewerName} onChange={(e) => setReviewerName(e.target.value)} autoComplete="name" />
+              </Field>
+              <Field label="WhatsApp com DDD" htmlFor="review-whatsapp" required>
+                <Input id="review-whatsapp" inputMode="tel" autoComplete="tel" leftIcon="whatsapp" value={reviewerWhatsapp} onChange={(e) => setReviewerWhatsapp(e.target.value)} placeholder="(11) 99999-8888" />
+              </Field>
 
-      {/* ===== ASIDE ===== */}
-      <div className="border-t border-[#e9e9ef] bg-[#fdfcfc] px-6 py-9 lg:border-l lg:border-t-0 lg:px-8">
-        <div className="mx-auto mb-5 grid h-[92px] w-[92px] place-items-center rounded-full" style={{ background: "#fbe3e8", color: MAROON }}>
-          <Award size={40} />
-        </div>
-        <h2 className="mb-4 text-center font-poppins text-xl font-bold leading-snug" style={{ color: MAROON }}>
-          Sua opinião faz
-          <br />
-          toda a diferença!
-        </h2>
-        <p className="mb-2 text-center text-sm text-muted-foreground">Leva menos de 1 minuto.</p>
-        <p className="mb-6 text-center text-sm leading-relaxed text-muted-foreground">
-          Suas respostas nos ajudam a melhorar sempre.
-        </p>
-        <hr className="mb-6 border-dashed border-[#e0e0e8]" />
+              <Card className="gap-0">
+                <CardContent className="space-y-4 p-4">
+                  <label htmlFor="review-optin" className="flex cursor-pointer items-start gap-3">
+                    <Checkbox id="review-optin" checked={marketingOptIn} onCheckedChange={(v) => setMarketingOptIn(v === true)} className="mt-0.5" />
+                    <span className="text-sm leading-snug text-foreground">
+                      Quero receber novidades, promoções e benefícios de {initialData.organizationName}.
+                      <span className="block text-caption text-muted-foreground">Conteúdos exclusivos por WhatsApp.</span>
+                    </span>
+                  </label>
+                  {marketingOptIn ? (
+                    <div className="fade-up space-y-3">
+                      <Field label="Data de nascimento" htmlFor="review-birth" required>
+                        <Input id="review-birth" type="date" value={reviewerBirthDate} onChange={(e) => setReviewerBirthDate(e.target.value)} />
+                      </Field>
+                      <p className="flex items-start gap-2 text-caption text-muted-foreground">
+                        <Icon name="lock" size={11} className="mt-0.5 shrink-0" />
+                        Usamos sua data de nascimento só pra benefícios e campanhas especiais. Dá pra cancelar quando quiser.
+                      </p>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            </section>
 
-        <div className="mb-5 flex gap-3.5">
-          <span className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full" style={{ background: "#fbe9ec", color: MAROON }}>
-            <Sparkles size={20} />
-          </span>
-          <div>
-            <div className="mb-1 text-sm font-bold text-foreground">Experiência melhor todo dia</div>
-            <div className="text-[13.5px] leading-relaxed text-muted-foreground">Seu feedback nos ajuda a evoluir.</div>
-          </div>
-        </div>
-        <div className="mb-5 flex gap-3.5">
-          <span className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full" style={{ background: "#fbe9ec", color: MAROON }}>
-            <Star size={20} />
-          </span>
-          <div>
-            <div className="mb-1 text-sm font-bold text-foreground">Ambiente mais agradável e acolhedor</div>
-            <div className="text-[13.5px] leading-relaxed text-muted-foreground">Cada opinião orienta decisões importantes.</div>
-          </div>
-        </div>
-        <div className="mb-6 flex gap-3.5">
-          <span className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full" style={{ background: "#fbe9ec", color: MAROON }}>
-            <Award size={20} />
-          </span>
-          <div>
-            <div className="mb-1 text-sm font-bold text-foreground">Promoções e benefícios exclusivos</div>
-            <div className="text-[13.5px] leading-relaxed text-muted-foreground">Para quem quer ficar sempre por dentro.</div>
-          </div>
+            <div className="space-y-3">
+              <Button type="submit" size="full" shape="pill" loading={submitting} leftIcon="send">
+                Enviar avaliação
+              </Button>
+              <p className="flex items-center justify-center gap-1.5 text-center text-caption text-muted-foreground">
+                <Icon name="shield" size={11} />
+                Ao enviar, você concorda com a{" "}
+                <a href="/privacidade" className="font-semibold text-brand underline-offset-4 hover:underline">
+                  Política de Privacidade
+                </a>
+                .
+              </p>
+            </div>
+          </form>
+
+          <aside className="space-y-4 lg:pt-1">
+            <Card accent>
+              <CardContent className="space-y-4">
+                <span className="flex size-12 items-center justify-center rounded-full bg-brand-soft text-brand">
+                  <Icon name="star" size={20} />
+                </span>
+                <div>
+                  <p className="text-base font-semibold text-foreground">Sua opinião faz diferença</p>
+                  <p className="mt-1 text-caption text-muted-foreground">Leva menos de 1 minuto e orienta decisões de verdade.</p>
+                </div>
+                <ul className="space-y-3 border-t border-border pt-4 text-sm">
+                  <li className="flex gap-2.5">
+                    <Icon name="magic" size={13} className="mt-0.5 shrink-0 text-brand" />
+                    <span className="text-muted-foreground">Experiência melhor a cada visita.</span>
+                  </li>
+                  <li className="flex gap-2.5">
+                    <Icon name="music" size={13} className="mt-0.5 shrink-0 text-brand" />
+                    <span className="text-muted-foreground">Ambiente mais agradável e acolhedor.</span>
+                  </li>
+                  <li className="flex gap-2.5">
+                    <Icon name="gift" size={13} className="mt-0.5 shrink-0 text-brand" />
+                    <span className="text-muted-foreground">Promoções e benefícios exclusivos.</span>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+            <Callout tone="neutral" icon="lock" title="Seus dados estão seguros">
+              Usamos seus dados só pra contato sobre a avaliação ou, se você autorizar, pra enviar novidades.
+            </Callout>
+          </aside>
         </div>
 
-        <div className="rounded-2xl border p-4" style={{ borderColor: MAROON_LINE, background: MAROON_SOFT }}>
-          <div className="mb-2 flex items-center gap-2 text-sm font-bold" style={{ color: MAROON }}>
-            <Lock size={17} />
-            Seus dados estão seguros
-          </div>
-          <p className="text-[13.5px] leading-relaxed text-muted-foreground">
-            Utilizamos seus dados apenas para contato relacionado à sua avaliação ou, se você autorizar, para envio de novidades e promoções.
-          </p>
-        </div>
+        <VenuePublicFooter instagramUrl={profile.instagramUrl} />
       </div>
     </div>
   );

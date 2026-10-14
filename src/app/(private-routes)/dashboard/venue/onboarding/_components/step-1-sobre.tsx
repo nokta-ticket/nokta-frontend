@@ -1,37 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldGroup } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SelectInput } from "@/components/ui/select-input";
+import { Callout } from "@/components/ui/callout";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
-import {
-  VENUE_BUSINESS_TYPES,
-  VENUE_BUSINESS_TYPE_LABEL,
-  VENUE_OPERATION_MODES,
-  VENUE_OPERATION_MODE_LABEL,
-  type VenueBusinessType,
-  type VenueOperationMode,
-  type VenueSetupStatus,
-} from "@/services/venue-setup";
+import { VENUE_BUSINESS_TYPES, VENUE_BUSINESS_TYPE_LABEL, VENUE_OPERATION_MODES, VENUE_OPERATION_MODE_LABEL, type VenueBusinessType, type VenueOperationMode, type VenueSetupStatus } from "@/services/venue-setup";
 import type { VenueLocation } from "@/services/venue-operation";
 import { useVenueLocationMutations } from "../../../operacao/_hooks/use-venue-locations";
 import { useSaveVenueSetupProfile } from "../../../configuracoes/_hooks/use-venue-settings";
+import { StepNav } from "./step-nav";
 
-export function Step1Sobre({
-  orgId,
-  status,
-  mainLocation,
-  onNext,
-}: {
-  orgId: number;
-  status: VenueSetupStatus;
-  mainLocation: VenueLocation | null;
-  onNext: () => void;
-}) {
+export function Step1Sobre({ orgId, status, mainLocation, onNext }: { orgId: number; status: VenueSetupStatus; mainLocation: VenueLocation | null; onNext: () => void }) {
   const saveProfile = useSaveVenueSetupProfile(orgId);
   const { create } = useVenueLocationMutations(orgId);
 
@@ -52,6 +35,7 @@ export function Step1Sobre({
   }, [mainLocation]);
 
   const isPending = saveProfile.isPending || create.isPending;
+  const locked = Boolean(mainLocation);
 
   const handleContinue = async () => {
     if (!nome.trim()) {
@@ -59,11 +43,7 @@ export function Step1Sobre({
       return;
     }
     try {
-      await saveProfile.mutateAsync({
-        ...(businessType && { businessType }),
-        ...(operationMode && { operationMode }),
-        lastStep: "sobre",
-      });
+      await saveProfile.mutateAsync({ ...(businessType && { businessType }), ...(operationMode && { operationMode }), lastStep: "sobre" });
       if (!mainLocation) {
         await create.mutateAsync({ nome: nome.trim(), telefone, endereco, timezone, isMain: true });
       }
@@ -74,71 +54,49 @@ export function Step1Sobre({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Sobre o estabelecimento</CardTitle>
-        <CardDescription>Isso ajuda a orientar o restante da configuração — pode ser ajustado depois.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label>Tipo de negócio</Label>
-            <Select value={businessType} onValueChange={(v) => setBusinessType(v as VenueBusinessType)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione" />
-              </SelectTrigger>
-              <SelectContent>
-                {VENUE_BUSINESS_TYPES.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {VENUE_BUSINESS_TYPE_LABEL[t]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <div>
+            <CardTitle>Sobre o estabelecimento</CardTitle>
+            <CardDescription>Orienta o resto da configuração — dá pra ajustar depois.</CardDescription>
           </div>
-          <div className="space-y-1.5">
-            <Label>Modo de operação</Label>
-            <Select value={operationMode} onValueChange={(v) => setOperationMode(v as VenueOperationMode)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione" />
-              </SelectTrigger>
-              <SelectContent>
-                {VENUE_OPERATION_MODES.map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {VENUE_OPERATION_MODE_LABEL[m]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <FieldGroup columns={2}>
+            <Field label="Tipo de negócio">
+              <SelectInput value={businessType || undefined} onValueChange={(v) => setBusinessType(v as VenueBusinessType)} placeholder="Selecione" options={VENUE_BUSINESS_TYPES.map((t) => ({ value: t, label: VENUE_BUSINESS_TYPE_LABEL[t] }))} />
+            </Field>
+            <Field label="Modo de operação" hint="Define se mesas são obrigatórias na próxima etapa.">
+              <SelectInput value={operationMode || undefined} onValueChange={(v) => setOperationMode(v as VenueOperationMode)} placeholder="Selecione" options={VENUE_OPERATION_MODES.map((m) => ({ value: m, label: VENUE_OPERATION_MODE_LABEL[m] }))} />
+            </Field>
+          </FieldGroup>
+
+          <div className="space-y-4 rounded-xl border border-border bg-surface-2/50 p-4">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Unidade principal</p>
+              <p className="text-caption text-muted-foreground">O endereço físico onde a operação acontece.</p>
+            </div>
+            {locked ? <Callout tone="info" icon="check-circle">Unidade já criada — pra alterar, use Configurações &gt; Unidades.</Callout> : null}
+            <Field label="Nome" htmlFor="setup-nome" required>
+              <Input id="setup-nome" value={nome} onChange={(e) => setNome(e.target.value)} disabled={locked} />
+            </Field>
+            <FieldGroup columns={2}>
+              <Field label="Telefone" htmlFor="setup-telefone" optional>
+                <Input id="setup-telefone" inputMode="tel" value={telefone} onChange={(e) => setTelefone(e.target.value)} disabled={locked} placeholder="(11) 99999-8888" />
+              </Field>
+              <Field label="Fuso horário" htmlFor="setup-tz">
+                <Input id="setup-tz" value={timezone} onChange={(e) => setTimezone(e.target.value)} disabled={locked} />
+              </Field>
+            </FieldGroup>
+            <Field label="Endereço" htmlFor="setup-endereco" optional>
+              <Input id="setup-endereco" value={endereco} onChange={(e) => setEndereco(e.target.value)} disabled={locked} placeholder="Rua, número — bairro, cidade/UF" />
+            </Field>
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        <div className="space-y-1.5">
-          <Label>Nome da unidade principal</Label>
-          <Input value={nome} onChange={(e) => setNome(e.target.value)} disabled={Boolean(mainLocation)} />
-          {mainLocation ? <p className="text-xs text-black/40">Já criada — edite em Configurações &gt; Unidades.</p> : null}
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label>Telefone</Label>
-            <Input value={telefone} onChange={(e) => setTelefone(e.target.value)} disabled={Boolean(mainLocation)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Timezone</Label>
-            <Input value={timezone} onChange={(e) => setTimezone(e.target.value)} disabled={Boolean(mainLocation)} />
-          </div>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label>Endereço (opcional)</Label>
-          <Input value={endereco} onChange={(e) => setEndereco(e.target.value)} disabled={Boolean(mainLocation)} />
-        </div>
-
-        <Button onClick={handleContinue} disabled={isPending}>
-          {isPending ? "Salvando…" : "Continuar"}
-        </Button>
-      </CardContent>
-    </Card>
+      <StepNav onNext={handleContinue} loading={isPending} nextLabel={locked ? "Continuar" : "Salvar e continuar"} />
+    </div>
   );
 }

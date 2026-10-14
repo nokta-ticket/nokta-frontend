@@ -2,22 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field, FieldGroup } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import { VENUE_TAB_TYPE_LABEL, type VenueTab, type VenueTabType } from "@/services/venue-operation";
@@ -28,8 +16,9 @@ export function CreateTabDialog({
   locationId,
   open,
   onOpenChange,
-  /** Se vier preenchido (ex.: clicou "Abrir comanda" numa mesa livre), trava o tipo em TABLE. */
+  /** Se vier preenchido (ex.: tocou numa mesa livre), trava o tipo em TABLE. */
   presetTableId,
+  presetTableName,
   onCreated,
 }: {
   orgId: number;
@@ -37,6 +26,7 @@ export function CreateTabDialog({
   open: boolean;
   onOpenChange: (v: boolean) => void;
   presetTableId?: number;
+  presetTableName?: string;
   onCreated: (tab: VenueTab) => void;
 }) {
   const { create } = useVenueTabMutations(orgId, locationId);
@@ -73,44 +63,40 @@ export function CreateTabDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent size="sm">
         <DialogHeader>
-          <DialogTitle>Nova comanda</DialogTitle>
+          <DialogTitle>{presetTableId ? `Abrir ${presetTableName ?? "mesa"}` : "Nova comanda"}</DialogTitle>
+          <DialogDescription>{presetTableId ? "A comanda fica ligada à mesa até o fechamento." : "Comanda individual ou venda rápida de balcão."}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
+        <DialogBody>
           {!presetTableId ? (
-            <div className="space-y-2">
-              <Label>Tipo</Label>
-              <Select value={type} onValueChange={(v) => setType(v as VenueTabType)}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="INDIVIDUAL">{VENUE_TAB_TYPE_LABEL.INDIVIDUAL}</SelectItem>
-                  <SelectItem value="COUNTER">{VENUE_TAB_TYPE_LABEL.COUNTER}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <Field label="Tipo">
+              <SegmentedControl
+                fullWidth
+                value={type}
+                onChange={(v) => setType(v)}
+                options={[
+                  { value: "INDIVIDUAL" as VenueTabType, label: VENUE_TAB_TYPE_LABEL.INDIVIDUAL, icon: "clipboard-list" },
+                  { value: "COUNTER" as VenueTabType, label: VENUE_TAB_TYPE_LABEL.COUNTER, icon: "store" },
+                ]}
+              />
+            </Field>
           ) : null}
-          <div className="space-y-2">
-            <Label htmlFor="tab-cliente">Nome do cliente (opcional)</Label>
-            <Input id="tab-cliente" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="tab-pessoas">Quantidade de pessoas (opcional)</Label>
-            <Input
-              id="tab-pessoas"
-              type="number"
-              min={1}
-              value={guestCount}
-              onChange={(e) => setGuestCount(e.target.value)}
-            />
-          </div>
-        </div>
+          <FieldGroup columns={2}>
+            <Field label="Cliente" htmlFor="tab-cliente" optional className="sm:col-span-2">
+              <Input id="tab-cliente" value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nome ou apelido" autoFocus />
+            </Field>
+            <Field label="Pessoas" htmlFor="tab-pessoas" optional>
+              <Input id="tab-pessoas" type="number" inputMode="numeric" min={1} value={guestCount} onChange={(e) => setGuestCount(e.target.value)} placeholder="2" />
+            </Field>
+          </FieldGroup>
+        </DialogBody>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={create.isPending}>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={create.isPending}>
             Cancelar
           </Button>
-          <Button disabled={create.isPending} onClick={handleCreate}>
-            {create.isPending ? "Abrindo…" : "Abrir comanda"}
+          <Button onClick={handleCreate} loading={create.isPending} leftIcon="plus">
+            Abrir comanda
           </Button>
         </DialogFooter>
       </DialogContent>

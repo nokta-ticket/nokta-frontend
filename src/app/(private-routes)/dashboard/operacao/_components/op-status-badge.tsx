@@ -1,41 +1,40 @@
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import {
-  VENUE_ORDER_STATUS_LABEL,
-  VENUE_TAB_STATUS_LABEL,
-  type VenueOrderStatus,
-  type VenueTabStatus,
-} from "@/services/venue-operation";
+import { StatusBadge, type Tone } from "@/components/ui/badge";
+import { VENUE_ORDER_STATUS_LABEL, VENUE_TAB_STATUS_LABEL, type VenueOrderStatus, type VenueTabStatus } from "@/services/venue-operation";
 
-const TAB_STATUS_CLASS: Record<VenueTabStatus, string> = {
-  OPEN: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  CLOSING: "bg-amber-100 text-amber-700 border-amber-200",
-  PAYMENT_IN_PROGRESS: "bg-amber-100 text-amber-700 border-amber-200",
-  CLOSED: "bg-gray-100 text-gray-600 border-gray-200",
-  CANCELED: "bg-red-100 text-red-600 border-red-200",
+/** Tom semântico por status — fonte única pra badges, cards e colunas. */
+export const TAB_STATUS_TONE: Record<VenueTabStatus, Tone> = {
+  OPEN: "success",
+  CLOSING: "warning",
+  PAYMENT_IN_PROGRESS: "warning",
+  CLOSED: "neutral",
+  CANCELED: "danger",
 };
 
-export function TabStatusBadge({ status }: { status: VenueTabStatus }) {
+export const ORDER_STATUS_TONE: Record<VenueOrderStatus, Tone> = {
+  DRAFT: "neutral",
+  SENT: "brand",
+  IN_PREPARATION: "warning",
+  READY: "success",
+  DELIVERED: "neutral",
+  CANCELED: "danger",
+};
+
+export function TabStatusBadge({ status, pulse }: { status: VenueTabStatus; pulse?: boolean }) {
   return (
-    <Badge variant="outline" className={cn(TAB_STATUS_CLASS[status])}>
+    <StatusBadge tone={TAB_STATUS_TONE[status]} pulse={pulse}>
       {VENUE_TAB_STATUS_LABEL[status]}
-    </Badge>
+    </StatusBadge>
   );
 }
 
-const ORDER_STATUS_CLASS: Record<VenueOrderStatus, string> = {
-  DRAFT: "bg-gray-100 text-gray-600 border-gray-200",
-  SENT: "bg-blue-100 text-blue-700 border-blue-200",
-  IN_PREPARATION: "bg-amber-100 text-amber-700 border-amber-200",
-  READY: "bg-violet-100 text-violet-700 border-violet-200",
-  DELIVERED: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  CANCELED: "bg-red-100 text-red-600 border-red-200",
-};
-
 export function OrderStatusBadge({ status }: { status: VenueOrderStatus }) {
-  return (
-    <Badge variant="outline" className={cn(ORDER_STATUS_CLASS[status])}>
-      {VENUE_ORDER_STATUS_LABEL[status]}
-    </Badge>
-  );
+  return <StatusBadge tone={ORDER_STATUS_TONE[status]}>{VENUE_ORDER_STATUS_LABEL[status]}</StatusBadge>;
+}
+
+/** Estado da MESA física (não da comanda): livre, ocupada ou fechando a conta. */
+export function TableStateBadge({ status }: { status: VenueTabStatus | null }) {
+  if (status === null) return <StatusBadge tone="success">Livre</StatusBadge>;
+  if (status === "OPEN") return <StatusBadge tone="brand">Ocupada</StatusBadge>;
+  if (status === "CLOSING" || status === "PAYMENT_IN_PROGRESS") return <StatusBadge tone="warning">Fechando</StatusBadge>;
+  return <StatusBadge tone="neutral">{VENUE_TAB_STATUS_LABEL[status]}</StatusBadge>;
 }

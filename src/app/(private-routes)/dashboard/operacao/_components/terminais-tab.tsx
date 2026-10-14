@@ -1,24 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Field } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { RowsSkeleton } from "@/components/ui/skeleton";
+import { StatusBadge, type Tone } from "@/components/ui/badge";
+import { cn } from "@/lib/cn";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
-import { type VenueDevice, type VenueDevicePairingCodeResponse } from "@/services/venue-operation";
+import type { VenueDevice, VenueDevicePairingCodeResponse } from "@/services/venue-operation";
 import { useVenueDeviceMutations, useVenueDevices } from "../_hooks/use-venue-devices";
-import { ConfirmDialog } from "../../cardapio/_components/confirm-dialog";
-import { EmptyState } from "../../_components/states/empty-state";
-import { TableSkeleton } from "../../_components/states/loading-state";
 
 function formatRemaining(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -27,26 +23,33 @@ function formatRemaining(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
-// Terminal pareado (token válido) mas sem nenhuma requisição autenticada há
-// mais de 60s é tratado como "Desconectado" na UI, não "Não pareado" — o
-// token continua válido, então volta a "Conectado" sozinho no próximo
-// heartbeat, sem precisar reparear. 60s (não 10min, valor original) porque
-// o mecanismo é polling passivo — o app só manda sinal de vida quando faz
-// alguma chamada de rede por outro motivo, nunca um heartbeat ativo em
-// background — então não existe "tempo real" de verdade sem isso; 60s é o
-// equilíbrio escolhido entre reagir rápido a app fechado e não piscar
-// "Desconectado" à toa numa pausa curta de rede/tela parada.
+// Terminal pareado (token válido) sem nenhuma requisição autenticada há mais
+// de 60s é "Desconectado", não "Não pareado" — volta a "Conectado" sozinho no
+// próximo heartbeat. O polling do hook (10s) acompanha esta janela.
 const ONLINE_THRESHOLD_MS = 60 * 1000;
 
-function PairingCodeDialog({
-  result,
-  devices,
-  onOpenChange,
-}: {
-  result: VenueDevicePairingCodeResponse | null;
-  devices: VenueDevice[];
-  onOpenChange: (v: boolean) => void;
-}) {
+type DeviceStatus = "online" | "offline" | "unpaired" | "pending";
+
+const STATUS_META: Record<DeviceStatus, { label: string; tone: Tone; pulse?: boolean }> = {
+  online: { label: "Conectado", tone: "success", pulse: true },
+  offline: { label: "Desconectado", tone: "warning" },
+  unpaired: { label: "Não pareado", tone: "danger" },
+  pending: { label: "Aguardando pareamento", tone: "brand" },
+};
+
+// serverNowMs vem SEMPRE do backend (VenueDevicesResponse.serverNow) — comparar
+// o relógio do servidor com o do navegador é clock drift na certa.
+function resolveStatus(device: VenueDevice, serverNowMs: number): DeviceStatus {
+  if (device.revokedAt) return "unpaired";
+  if (device.deviceToken !== null) {
+    const lastSeenMs = device.lastSeenAt ? new Date(device.lastSeenAt).getTime() : null;
+    return lastSeenMs !== null && serverNowMs - lastSeenMs < ONLINE_THRESHOLD_MS ? "online" : "offline";
+  }
+  const pendingExpired = !device.pairingCodeExpiresAt || new Date(device.pairingCodeExpiresAt).getTime() < serverNowMs;
+  return pendingExpired ? "unpaired" : "pending";
+}
+
+function PairingCodeDialog({ result, devices, onOpenChange }: { result: VenueDevicePairingCodeResponse | null; devices: VenueDevice[]; onOpenChange: (v: boolean) => void }) {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -55,10 +58,7 @@ function PairingCodeDialog({
     return () => clearInterval(interval);
   }, [result]);
 
-  // Já pareado (token gravado) enquanto o diálogo ainda está aberto: o
-  // código já foi confirmado no app, então fecha sozinho — sem isso, o
-  // gerente que esquece a caixa aberta vê o timer se esgotar até "código
-  // expirado, gere um novo" mesmo o pareamento já tendo funcionado.
+  // Pareou enquanto o diálogo estava aberto: fecha sozinho.
   useEffect(() => {
     if (!result) return;
     const device = devices.find((d) => d.id === result.id);
@@ -71,19 +71,17 @@ function PairingCodeDialog({
 
   return (
     <Dialog open={result !== null} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Código de pareamento</DialogTitle></DialogHeader>
-        <div className="space-y-3 text-center">
-          <p className="text-sm text-black/60">
-            No app Nokta POS do terminal, digite este código na tela de pareamento.
-          </p>
-          <p className="text-4xl font-bold tracking-[0.3em] text-gray-900">
+      <DialogContent size="sm">
+        <DialogHeader>
+          <DialogTitle>Código de pareamento</DialogTitle>
+          <DialogDescription>No app Nokta POS do terminal, digite este código na tela de pareamento.</DialogDescription>
+        </DialogHeader>
+        <DialogBody className="items-center text-center">
+          <p className={cn("font-display text-hero tracking-[0.18em] text-foreground tnum", expired && "opacity-30")} aria-live="polite">
             {result?.pairingCode ?? ""}
           </p>
-          <p className={`text-sm font-medium ${expired ? "text-red-600" : "text-black/60"}`}>
-            {expired ? "Código expirado — gere um novo." : `Expira em ${formatRemaining(remainingMs)}`}
-          </p>
-        </div>
+          {expired ? <StatusBadge tone="danger">Código expirado — gere um novo</StatusBadge> : <StatusBadge tone="brand" pulse>Expira em {formatRemaining(remainingMs)}</StatusBadge>}
+        </DialogBody>
         <DialogFooter>
           <Button onClick={() => onOpenChange(false)}>Fechar</Button>
         </DialogFooter>
@@ -92,38 +90,29 @@ function PairingCodeDialog({
   );
 }
 
-function NewDeviceDialog({
-  open,
-  onOpenChange,
-  onSubmit,
-  loading,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  onSubmit: (label: string) => void;
-  loading: boolean;
-}) {
+function NewDeviceDialog({ open, onOpenChange, onSubmit, loading }: { open: boolean; onOpenChange: (v: boolean) => void; onSubmit: (label: string) => void; loading: boolean }) {
   const [label, setLabel] = useState("");
   useEffect(() => {
     if (open) setLabel("");
   }, [open]);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Novo terminal</DialogTitle></DialogHeader>
-        <div className="space-y-2">
-          <Label htmlFor="terminal-label">Identificação</Label>
-          <Input
-            id="terminal-label"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder="Ex.: Maquininha do caixa, Terminal balcão"
-          />
-        </div>
+      <DialogContent size="sm">
+        <DialogHeader>
+          <DialogTitle>Novo terminal</DialogTitle>
+          <DialogDescription>Gera um código de 6 dígitos pra conectar o app Nokta POS.</DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <Field label="Identificação" htmlFor="terminal-label">
+            <Input id="terminal-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Ex.: Maquininha do caixa, Terminal balcão" autoFocus />
+          </Field>
+        </DialogBody>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancelar</Button>
-          <Button disabled={loading || !label.trim()} onClick={() => onSubmit(label.trim())}>
-            {loading ? "Gerando…" : "Gerar código"}
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
+            Cancelar
+          </Button>
+          <Button disabled={!label.trim()} loading={loading} leftIcon="qr" onClick={() => onSubmit(label.trim())}>
+            Gerar código
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -131,198 +120,125 @@ function NewDeviceDialog({
   );
 }
 
-// Três estados possíveis (mesmo modelo mental de uma maquininha Cielo):
-// - "online": token válido + heartbeat recente — pronto pra uso agora.
-// - "offline": token ainda válido no banco, só sem heartbeat recente. Dois
-//   casos reais por trás do mesmo status, indistinguíveis pelo servidor:
-//   (1) app fechado/sem rede temporariamente — volta a "online" sozinho no
-//   próximo heartbeat, sem precisar reparear; (2) o app perdeu o token de
-//   vez (reinstalado, dados limpos) e nunca mais vai mandar heartbeat — fica
-//   "offline" para sempre, já que não existe nenhum jeito de o servidor
-//   saber que o app morreu (o processo simplesmente some, sem aviso).
-//   Por isso "Gerar novo código" também fica disponível aqui, não só em
-//   "unpaired": o gerente que sabe que reinstalou o app não devia precisar
-//   esperar revogação manual/automática pra reconectar o mesmo registro.
-// - "unpaired": vínculo perdido de verdade e confirmado pelo servidor
-//   (revogado manual ou pela expiração automática de 15 dias,
-//   VenueDeviceExpirationService; ou o código de pareamento expirou sem
-//   nunca ter sido resgatado).
-type DeviceStatus = "online" | "offline" | "unpaired" | "pending";
-
-// serverNowMs vem SEMPRE do backend (VenueDevicesResponse.serverNow), nunca
-// de Date.now() do navegador — comparar o relógio do servidor (onde
-// lastSeenAt foi gravado) com o relógio local do PC do produtor é clock
-// drift na certa: qualquer segundos/minutos de diferença entre as duas
-// máquinas já derruba "Conectado" para "Desconectado" mesmo com heartbeat
-// recém-chegado (bug real reportado pelo usuário, 2026-08-27).
-function resolveStatus(device: VenueDevice, serverNowMs: number): DeviceStatus {
-  if (device.revokedAt) return "unpaired";
-  if (device.deviceToken !== null) {
-    const lastSeenMs = device.lastSeenAt ? new Date(device.lastSeenAt).getTime() : null;
-    return lastSeenMs !== null && serverNowMs - lastSeenMs < ONLINE_THRESHOLD_MS ? "online" : "offline";
-  }
-  const pendingExpired =
-    !device.pairingCodeExpiresAt || new Date(device.pairingCodeExpiresAt).getTime() < serverNowMs;
-  return pendingExpired ? "unpaired" : "pending";
-}
-
-function DeviceRow({
-  device,
-  serverNowMs,
-  onRevoke,
-  onShowCode,
-  onRegenerateCode,
-  onDelete,
-  regenerating,
-}: {
-  device: VenueDevice;
-  serverNowMs: number;
-  onRevoke: () => void;
-  onShowCode: () => void;
-  onRegenerateCode: () => void;
-  onDelete: () => void;
-  regenerating: boolean;
-}) {
+function DeviceCard({ device, serverNowMs, index, onRevoke, onShowCode, onRegenerateCode, onDelete, regenerating }: { device: VenueDevice; serverNowMs: number; index: number; onRevoke: () => void; onShowCode: () => void; onRegenerateCode: () => void; onDelete: () => void; regenerating: boolean }) {
   const status = resolveStatus(device, serverNowMs);
+  const meta = STATUS_META[status];
   const paired = device.deviceToken !== null;
 
   return (
-    <div className="flex items-center justify-between rounded-xl border border-black/10 bg-white p-4">
-      <div>
-        <p className="font-semibold text-gray-900">{device.label}</p>
-        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-          {status === "online" ? (
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">Conectado</span>
-          ) : status === "offline" ? (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">Desconectado</span>
-          ) : status === "unpaired" ? (
-            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">Não pareado</span>
-          ) : (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">Aguardando pareamento</span>
-          )}
-          {paired && device.lastSeenAt ? (
-            <span className="text-xs text-black/50">
-              Visto por último em {new Date(device.lastSeenAt).toLocaleString("pt-BR")}
-            </span>
-          ) : paired ? (
-            // Pareado mas nunca fez nenhuma requisição autenticada desde
-            // então — sinal de que o app pode ter sido reinstalado/trocado
-            // logo depois do pareamento, ou nunca chegou a ser usado de
-            // verdade.
-            <span className="text-xs text-black/50">Nunca usado desde o pareamento</span>
-          ) : null}
+    <article className="row-in flex flex-col gap-3 rounded-card border border-border bg-surface p-4 shadow-card sm:flex-row sm:items-center sm:justify-between" style={{ ["--i" as string]: index } as never}>
+      <div className="flex min-w-0 items-start gap-3">
+        <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-full", status === "online" ? "bg-success-bg text-success" : "bg-surface-2 text-muted-foreground")}>
+          <Icon name="tablet" size={16} />
+        </span>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate text-[15px] font-semibold text-foreground">{device.label}</p>
+            <StatusBadge tone={meta.tone} pulse={meta.pulse}>
+              {meta.label}
+            </StatusBadge>
+          </div>
+          <p className="mt-1 text-caption text-muted-foreground">
+            {paired && device.lastSeenAt ? `Visto por último em ${new Date(device.lastSeenAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}` : paired ? "Nunca usado desde o pareamento" : status === "pending" ? "Código gerado, aguardando o app" : "Vínculo encerrado"}
+            {" · "}
+            <span className="tnum">Cadastrado em {new Date(device.createdAt).toLocaleDateString("pt-BR")}</span>
+          </p>
         </div>
-        <p className="mt-1 text-xs text-black/40">
-          Pareado em {new Date(device.createdAt).toLocaleDateString("pt-BR")}
-        </p>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
         {status === "pending" ? (
-          <Button size="sm" variant="outline" onClick={onShowCode}>
+          <Button size="sm" variant="outline" leftIcon="qr" onClick={onShowCode}>
             Ver código
           </Button>
         ) : null}
         {status === "unpaired" || status === "offline" ? (
-          <Button size="sm" variant="outline" onClick={onRegenerateCode} disabled={regenerating}>
-            {regenerating ? "Gerando…" : "Gerar novo código"}
-          </Button>
-        ) : null}
-        {status === "unpaired" ? (
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-red-600"
-            onClick={onDelete}
-            aria-label="Excluir terminal"
-          >
-            <Trash2 size={16} />
+          <Button size="sm" variant="outline" leftIcon="refresh" loading={regenerating} onClick={onRegenerateCode}>
+            Novo código
           </Button>
         ) : null}
         {status !== "unpaired" ? (
-          <Button size="sm" variant="outline" className="text-red-600" onClick={onRevoke}>
+          <Button size="sm" variant="subtle" className="hover:bg-danger-bg hover:text-danger" leftIcon="ban" onClick={onRevoke}>
             Revogar
           </Button>
         ) : null}
+        {status === "unpaired" ? (
+          <Button size="icon-sm" variant="subtle" className="hover:bg-danger-bg hover:text-danger" aria-label="Excluir terminal" onClick={onDelete}>
+            <Icon name="trash" size={13} />
+          </Button>
+        ) : null}
       </div>
-    </div>
+    </article>
   );
 }
 
-export function TerminaisTab({ orgId, locationId }: { orgId: number; locationId: number }) {
+export function TerminaisTab({ orgId, locationId, formOpen, onFormOpenChange }: { orgId: number; locationId: number; formOpen: boolean; onFormOpenChange: (v: boolean) => void }) {
   const { data, isLoading } = useVenueDevices(orgId, locationId);
-  const { createPairingCode, revoke, regeneratePairingCode, deleteDevice } = useVenueDeviceMutations(
-    orgId,
-    locationId,
-  );
-  const [formOpen, setFormOpen] = useState(false);
+  const { createPairingCode, revoke, regeneratePairingCode, deleteDevice } = useVenueDeviceMutations(orgId, locationId);
   const [pairingResult, setPairingResult] = useState<VenueDevicePairingCodeResponse | null>(null);
   const [revokeDeviceId, setRevokeDeviceId] = useState<number | null>(null);
   const [deleteDeviceId, setDeleteDeviceId] = useState<number | null>(null);
 
   const list = data?.devices ?? [];
-  // Fallback só para o instante antes do primeiro fetch resolver (isLoading
-  // cobre esse caso com skeleton, então este valor nunca chega a ser usado
-  // de verdade em resolveStatus) — nunca usado como substituto de serverNow
-  // depois que os dados chegam.
+  // Só pro instante antes do primeiro fetch (coberto pelo skeleton).
   const serverNowMs = data ? new Date(data.serverNow).getTime() : Date.now();
+  const online = list.filter((d) => resolveStatus(d, serverNowMs) === "online").length;
 
-  if (isLoading) return <TableSkeleton />;
+  if (isLoading) return <RowsSkeleton rows={3} />;
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button size="sm" onClick={() => setFormOpen(true)}>
-          <Plus size={16} /> Novo terminal
-        </Button>
-      </div>
-
       {list.length === 0 ? (
         <EmptyState
+          icon="tablet"
           title="Nenhum terminal pareado"
-          description="Gere um código de pareamento para conectar o app Nokta POS numa maquininha ou terminal físico."
-          actionLabel="Novo terminal"
-          onAction={() => setFormOpen(true)}
+          description="Gere um código de pareamento pra conectar o app Nokta POS numa maquininha ou tablet."
+          action={
+            <Button leftIcon="plus" onClick={() => onFormOpenChange(true)}>
+              Novo terminal
+            </Button>
+          }
         />
       ) : (
-        <div className="space-y-2">
-          {list.map((device) => (
-            <DeviceRow
-              key={device.id}
-              device={device}
-              serverNowMs={serverNowMs}
-              onRevoke={() => setRevokeDeviceId(device.id)}
-              onShowCode={() => {
-                if (!device.pairingCode || !device.pairingCodeExpiresAt) return;
-                setPairingResult({
-                  id: device.id,
-                  pairingCode: device.pairingCode,
-                  expiresAt: device.pairingCodeExpiresAt,
-                });
-              }}
-              onRegenerateCode={() =>
-                regeneratePairingCode.mutate(device.id, {
-                  onSuccess: (result) => setPairingResult(result),
-                  onError: (err) =>
-                    toast.error(getErrorMessage(err, "Não foi possível gerar um novo código de pareamento.")),
-                })
-              }
-              onDelete={() => setDeleteDeviceId(device.id)}
-              regenerating={regeneratePairingCode.isPending && regeneratePairingCode.variables === device.id}
-            />
-          ))}
-        </div>
+        <>
+          <p className="text-caption text-muted-foreground tnum">
+            {online} de {list.length} {list.length === 1 ? "terminal conectado" : "terminais conectados"} agora
+          </p>
+          <div className="space-y-2.5">
+            {list.map((device, i) => (
+              <DeviceCard
+                key={device.id}
+                device={device}
+                serverNowMs={serverNowMs}
+                index={i}
+                onRevoke={() => setRevokeDeviceId(device.id)}
+                onShowCode={() => {
+                  if (!device.pairingCode || !device.pairingCodeExpiresAt) return;
+                  setPairingResult({ id: device.id, pairingCode: device.pairingCode, expiresAt: device.pairingCodeExpiresAt });
+                }}
+                onRegenerateCode={() =>
+                  regeneratePairingCode.mutate(device.id, {
+                    onSuccess: (result) => setPairingResult(result),
+                    onError: (err) => toast.error(getErrorMessage(err, "Não foi possível gerar um novo código de pareamento.")),
+                  })
+                }
+                onDelete={() => setDeleteDeviceId(device.id)}
+                regenerating={regeneratePairingCode.isPending && regeneratePairingCode.variables === device.id}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       <NewDeviceDialog
         open={formOpen}
-        onOpenChange={setFormOpen}
+        onOpenChange={onFormOpenChange}
         loading={createPairingCode.isPending}
         onSubmit={(label) =>
           createPairingCode.mutate(
             { locationId, label },
             {
               onSuccess: (result) => {
-                setFormOpen(false);
+                onFormOpenChange(false);
                 setPairingResult(result);
               },
               onError: (err) => toast.error(getErrorMessage(err, "Não foi possível gerar o código de pareamento.")),
@@ -336,32 +252,37 @@ export function TerminaisTab({ orgId, locationId }: { orgId: number; locationId:
       <ConfirmDialog
         open={revokeDeviceId !== null}
         onOpenChange={(v) => !v && setRevokeDeviceId(null)}
+        danger
         title="Revogar terminal"
-        description="O terminal perderá acesso imediatamente e precisará de um novo código para parear novamente."
+        description="O terminal perde o acesso na hora e vai precisar de um novo código pra parear de novo."
         confirmLabel="Revogar"
-        loading={revoke.isPending}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (revokeDeviceId === null) return;
-          revoke.mutate(revokeDeviceId, {
-            onSuccess: () => { toast.success("Terminal revogado."); setRevokeDeviceId(null); },
-            onError: (err) => toast.error(getErrorMessage(err, "Não foi possível revogar o terminal.")),
-          });
+          try {
+            await revoke.mutateAsync(revokeDeviceId);
+            toast.success("Terminal revogado.");
+          } catch (err) {
+            toast.error(getErrorMessage(err, "Não foi possível revogar o terminal."));
+          }
         }}
       />
 
       <ConfirmDialog
         open={deleteDeviceId !== null}
         onOpenChange={(v) => !v && setDeleteDeviceId(null)}
+        danger
+        icon="trash"
         title="Excluir terminal"
-        description="Remove este terminal definitivamente da lista. Essa ação não pode ser desfeita — se precisar dele de novo, crie um terminal novo."
+        description="Remove este terminal da lista de vez. Se precisar dele de novo, crie um terminal novo."
         confirmLabel="Excluir"
-        loading={deleteDevice.isPending}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (deleteDeviceId === null) return;
-          deleteDevice.mutate(deleteDeviceId, {
-            onSuccess: () => { toast.success("Terminal excluído."); setDeleteDeviceId(null); },
-            onError: (err) => toast.error(getErrorMessage(err, "Não foi possível excluir o terminal.")),
-          });
+          try {
+            await deleteDevice.mutateAsync(deleteDeviceId);
+            toast.success("Terminal excluído.");
+          } catch (err) {
+            toast.error(getErrorMessage(err, "Não foi possível excluir o terminal."));
+          }
         }}
       />
     </div>

@@ -3,129 +3,95 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  BellRing,
-  CalendarClock,
-  CalendarPlus,
-  CalendarX2,
-  ChefHat,
-  ChevronRight,
-  CircleCheck,
-  ClipboardList,
-  Clock3,
-  Eye,
-  EyeOff,
-  PackageMinus,
-  PackagePlus,
-  PackageX,
-  Receipt,
-  ReceiptText,
-  UserPlus,
-  Users2,
-  UsersRound,
-  Wallet,
-  type LucideIcon,
-} from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
+import { Icon, type IconName } from "@/components/ui/icon";
+import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatCard } from "@/components/ui/stat-card";
+import { StatusBadge } from "@/components/ui/badge";
+import { useAuth } from "@/context/AuthContext";
 import { useOrganizations } from "@/context/OrganizationContext";
 import { useVenueAccess } from "@/context/VenueAccessContext";
 import { useTicketsAccess } from "@/context/TicketsAccessContext";
 import { periodDates, periodLabel, periodToFinanceParams, usePeriod } from "@/context/PeriodContext";
-import { formatCentsBRL } from "@/services/venue-finance";
-import { cn } from "@/lib/utils";
-import { PageContainer } from "../../_components/page/page-container";
-import { BlockSkeleton } from "../../_components/states/loading-state";
-import { EmptyState } from "../../_components/states/empty-state";
+import { cn } from "@/lib/cn";
+import { formatBRLCents, formatEventDate } from "@/lib/format";
 import { FinanceTimelineChart } from "../../_components/finance-timeline-chart";
-import { formatMonthDelta } from "../../_components/month-revenue-card";
+import { writeBootHint } from "../../_lib/boot-prefetch";
 import { useVenueLocations } from "../../operacao/_hooks/use-venue-locations";
+import { LocationSelect } from "../../operacao/_components/location-select";
 import { OnboardingLocation } from "../../operacao/_components/onboarding-location";
 import { useVenueFinanceTimeline } from "../../financeiro/_venue/_hooks/use-venue-finance-overview";
 import { useTicketsFinanceTimeline } from "../../inicio/_hooks/use-tickets-finance";
 import { useVenueInsightsOverview } from "../../insights/_venue/_hooks/use-venue-insights";
 import { useVenueHome } from "./_hooks/use-venue-home";
-import { writeBootHint } from "../../_lib/boot-prefetch";
 import { SalesByHourCard, TopProductsCard } from "./_components/home-insights";
+import { HomeMoneyStat } from "./_components/home-money-stat";
 import { summarizePresence } from "./_lib/reservation-presence";
 
-const SHORTCUT_CONFIG: Record<string, { label: string; href: string; icon: LucideIcon }> = {
-  new_reservation: { label: "Nova reserva", href: "/dashboard/reservas", icon: CalendarPlus },
-  open_tab: { label: "Abrir comanda", href: "/dashboard/operacao?tab=mesas", icon: ClipboardList },
-  new_order: { label: "Novo pedido", href: "/dashboard/operacao?tab=pedidos", icon: ReceiptText },
-  open_cash: { label: "Abrir caixa", href: "/dashboard/operacao?tab=caixa", icon: Wallet },
-  register_purchase: { label: "Registrar compra", href: "/dashboard/estoque", icon: PackagePlus },
-  invite_team: { label: "Convidar equipe", href: "/dashboard/equipe", icon: UserPlus },
+const SHORTCUT_CONFIG: Record<string, { label: string; href: string; icon: IconName }> = {
+  new_reservation: { label: "Nova reserva", href: "/dashboard/reservas", icon: "calendar-plus" },
+  open_tab: { label: "Abrir comanda", href: "/dashboard/operacao", icon: "clipboard-list" },
+  new_order: { label: "Novo pedido", href: "/dashboard/operacao", icon: "receipt" },
+  open_cash: { label: "Abrir caixa", href: "/dashboard/operacao/caixa", icon: "wallet" },
+  register_purchase: { label: "Registrar compra", href: "/dashboard/estoque", icon: "box" },
+  invite_team: { label: "Convidar equipe", href: "/dashboard/equipe", icon: "user-plus" },
 };
 
-/**
- * Linguagem da Início: só o Panorama tem profundidade; o resto é plano com
- * borda. Vermelho contido (vinho) só para o que exige ação. Pressionáveis
- * respondem ao toque sem animação de entrada — a tela é aberta o dia todo.
- */
-const SURFACE = "rounded-[20px] border border-[#ebe8f2] bg-white";
-const PRESSABLE =
-  "transition-[transform,background-color,border-color,color] duration-150 ease-out active:scale-[0.97] motion-reduce:active:scale-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600";
-const ATTN_TEXT = "text-[#9b1c35]";
 const GUESTS_MIN_COVERAGE = 0.8;
 
-function moneyClass(hidden: boolean) {
-  return cn("font-poppins tabular-nums transition-[filter] duration-200", hidden && "blur-md select-none");
+function greeting(name: string | undefined): string {
+  const h = new Date().getHours();
+  const hello = h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite";
+  return name ? `${hello}, ${name}` : hello;
 }
 
-function OperationRow({ href, icon: Icon, label, children }: { href: string; icon: LucideIcon; label: string; children: ReactNode }) {
+function OperationRow({ href, icon, label, children }: { href: string; icon: IconName; label: string; children: ReactNode }) {
   return (
-    <Link href={href} className={cn("group flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-[#f7f5fb]", PRESSABLE)}>
-      <Icon size={16} strokeWidth={1.8} className="shrink-0 text-violet-500" />
-      <span className="text-[14.5px] font-medium text-gray-900">{label}</span>
+    <Link href={href} className="press group flex items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-surface-2">
+      <Icon name={icon} size={14} className="shrink-0 text-muted-foreground transition-colors group-hover:text-brand" />
+      <span className="text-sm font-medium text-foreground">{label}</span>
       <span className="ml-auto">{children}</span>
-      <ChevronRight
-        size={16}
-        strokeWidth={1.8}
-        className="shrink-0 text-black/25 transition-[transform,color] duration-150 ease-out group-hover:translate-x-0.5 group-hover:text-violet-600"
-      />
+      <Icon name="chevron-right" size={11} className="shrink-0 text-subtle-foreground transition-[transform,color] duration-150 group-hover:translate-x-0.5 group-hover:text-brand" />
     </Link>
   );
 }
 
 function CountValue({ value }: { value: number }) {
-  return <span className={cn("font-poppins text-[15px] font-bold tabular-nums", value === 0 ? "text-black/35" : "text-gray-900")}>{value}</span>;
+  return <span className={cn("text-[15px] font-semibold tnum", value === 0 ? "text-subtle-foreground" : "text-foreground")}>{value}</span>;
 }
 
 function HomeSkeleton() {
   return (
-    <PageContainer>
-      <BlockSkeleton className="h-9 w-2/3" />
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <BlockSkeleton className="h-72 rounded-[20px]" />
-        <BlockSkeleton className="h-72 rounded-[20px]" />
-        <BlockSkeleton className="h-72 rounded-[20px]" />
+    <div className="space-y-6">
+      <Skeleton className="h-10 w-2/3 max-w-sm" />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Skeleton className="h-28 rounded-card" />
+        <Skeleton className="h-28 rounded-card" />
+        <Skeleton className="h-28 rounded-card" />
       </div>
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[2fr_0.95fr]">
-        <BlockSkeleton className="h-64 rounded-[20px]" />
-        <BlockSkeleton className="h-64 rounded-[20px]" />
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Skeleton className="h-72 rounded-card" />
+        <Skeleton className="h-72 rounded-card" />
       </div>
-    </PageContainer>
+      <Skeleton className="h-64 rounded-card" />
+    </div>
   );
 }
 
 /**
- * Rota inicial padrão do Venue. WAITER, KITCHEN_BAR e STOCK continuam sendo
- * redirecionados direto para a tela operacional que usam o dia todo (rota
- * sugerida pelo backend em `defaultRoute`); OWNER, MANAGER, RECEPTION e
- * CASHIER ficam aqui e veem um painel real, recortado pelo que cada um pode
- * ver (`/organizations/:id/venue/home`, já filtrado por permissão).
- *
- * Organizada pelo turno, não por módulo: primeiro o que está acontecendo
- * agora (Panorama, operação, reservas), depois o dinheiro (gráfico e mês).
- *
- * Este componente vive fora de page.tsx de propósito: é reaproveitado por
- * /dashboard/inicio (a Início unificada — ver dashboard/inicio/page.tsx) e
- * um arquivo chamado `page.tsx` só pode exportar o conjunto reservado do
- * Next.js (default, metadata, ...) — um export nomeado extra quebra a
- * checagem de tipos de rota do Next.
+ * Início do Venue (também usada por /dashboard/inicio quando o módulo está
+ * ativo). WAITER, KITCHEN_BAR e STOCK vão direto pra tela operacional
+ * (`defaultRoute` do backend); OWNER, MANAGER, RECEPTION e CASHIER ficam
+ * aqui. Organizada pelo turno: o que está acontecendo agora, depois o
+ * dinheiro. Vive fora de page.tsx de propósito (export nomeado reaproveitado).
  */
 export function VenueInicioPageContent() {
   const router = useRouter();
+  const { user } = useAuth();
   const { loading: loadingAccess, defaultRoute, can } = useVenueAccess();
   const { currentOrg, loadingOrgs, organizations } = useOrganizations();
   const orgId = currentOrg?.id ?? null;
@@ -139,13 +105,11 @@ export function VenueInicioPageContent() {
   const redirecting = Boolean(defaultRoute && defaultRoute !== "/dashboard/venue/inicio");
 
   const { data: locations, isLoading: loadingLocations } = useVenueLocations(!redirecting ? orgId : null);
-  // A lista de unidades inclui arquivadas, mas /venue/home só considera
-  // unidades ATIVAS — nunca escolher/oferecer uma arquivada, senão a busca
-  // falha com 404 (já aconteceu em produção: unidade principal arquivada).
+  // /venue/home só aceita unidades ATIVAS — nunca oferecer uma arquivada.
   const activeLocations = locations?.filter((l) => l.active) ?? [];
   const [locationId, setLocationId] = useState<number | null>(null);
   const [hideValues, setHideValues] = useState(false);
-  // Relógio da tolerância de "não compareceu" — avança sozinho, sem depender de refetch.
+  // Relógio da tolerância de "não compareceu" — avança sozinho.
   const [nowMs, setNowMs] = useState(() => Date.now());
 
   useEffect(() => {
@@ -153,41 +117,28 @@ export function VenueInicioPageContent() {
     return () => window.clearInterval(id);
   }, []);
 
-  // Troca de organização — sem isso o locationId da org anterior ficava
-  // "preso" e nunca era recalculado, causando o mesmo 404 ao trocar de org.
   useEffect(() => {
     setLocationId(null);
   }, [orgId]);
 
-  // `locationId` é só a escolha manual do usuário. Sem escolha, /venue/home
-  // já responde pela unidade principal (mesma regra do backend), então a
-  // primeira busca serve para a tela. Antes um efeito gravava a unidade
-  // principal aqui depois que a lista de unidades chegava: a busca sem
-  // unidade era descartada e refeita com o id, e a tela só aparecia depois
-  // dessa segunda ida ao servidor (uma etapa a mais em fila; pesa em rede móvel).
-  const { data: home, isLoading: loadingHome, isError: homeError, refetch: refetchHome } = useVenueHome(
-    !redirecting ? orgId : null,
-    locationId,
-  );
-  const selectedLocationId =
-    locationId ?? (activeLocations.find((l) => l.isMain) ?? activeLocations[0])?.id ?? home?.location?.id ?? null;
+  // Sem escolha manual, /venue/home responde pela unidade principal — a
+  // primeira busca já serve a tela, sem segunda ida ao servidor.
+  const { data: home, isLoading: loadingHome, isError: homeError, refetch: refetchHome } = useVenueHome(!redirecting ? orgId : null, locationId);
+  const selectedLocationId = locationId ?? (activeLocations.find((l) => l.isMain) ?? activeLocations[0])?.id ?? home?.location?.id ?? null;
 
   const canViewFinance = can("venue.finance.view");
-  // Faturamento e gráfico seguem o filtro de período do header;
-  // o card do mês compara sempre este mês com o anterior inteiro.
   const { period } = usePeriod();
   const periodParams = periodToFinanceParams(period);
   const financeOrgId = canViewFinance ? orgId : null;
   const finance = useVenueFinanceTimeline(financeOrgId, selectedLocationId, periodParams);
   const financeThisMonth = useVenueFinanceTimeline(financeOrgId, selectedLocationId, { quickPeriod: "THIS_MONTH" });
   const financeLastMonth = useVenueFinanceTimeline(financeOrgId, selectedLocationId, { quickPeriod: "LAST_MONTH" });
-  // Organização que também vende ingressos: a venda entra no faturamento do Panorama e no gráfico.
+  // Organização que também vende ingressos: a venda entra no faturamento.
   const { can: canTickets } = useTicketsAccess();
   const ticketsOrgId = canViewFinance && canTickets("tickets.finance.view") ? orgId : null;
   const tickets = useTicketsFinanceTimeline(ticketsOrgId, periodParams);
   const ticketsThisMonth = useTicketsFinanceTimeline(ticketsOrgId, { quickPeriod: "THIS_MONTH" });
   const ticketsLastMonth = useTicketsFinanceTimeline(ticketsOrgId, { quickPeriod: "LAST_MONTH" });
-  // Ticket médio, pessoas atendidas, mais vendidos e vendas por horário: um único endpoint do Insights.
   const canViewInsights = can("venue.insights.view");
   const insights = useVenueInsightsOverview(canViewInsights && selectedLocationId !== null ? orgId : null, {
     locationId: selectedLocationId ?? undefined,
@@ -195,76 +146,36 @@ export function VenueInicioPageContent() {
     comparison: "PREVIOUS_PERIOD",
   });
 
-  // Dica para a próxima abertura disparar tudo de uma vez (boot-prefetch.ts).
-  // Só para a organização que o painel abre por padrão (a primeira) e para a
-  // unidade padrão: é o que a tela mostra depois de recarregar.
+  // Dica pra próxima abertura disparar tudo de uma vez (boot-prefetch.ts).
   const hasHome = Boolean(home);
   const canTicketsFinance = ticketsOrgId !== null;
   useEffect(() => {
     if (orgId === null || !hasHome || locationId !== null || organizations[0]?.id !== orgId) return;
-    writeBootHint({
-      orgId,
-      venue: true,
-      locationId: selectedLocationId,
-      venueFinance: canViewFinance,
-      ticketsFinance: canTicketsFinance,
-      insights: canViewInsights,
-    });
+    writeBootHint({ orgId, venue: true, locationId: selectedLocationId, venueFinance: canViewFinance, ticketsFinance: canTicketsFinance, insights: canViewInsights });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, hasHome, locationId, selectedLocationId, canViewFinance, canTicketsFinance, canViewInsights]);
 
-  if (loadingAccess || redirecting || loadingOrgs || loadingLocations) {
-    return <HomeSkeleton />;
-  }
+  if (loadingAccess || redirecting || loadingOrgs || loadingLocations) return <HomeSkeleton />;
 
   if (!orgId) {
-    return (
-      <PageContainer>
-        <EmptyState title="Nenhuma organização selecionada" description="Selecione uma organização para continuar." />
-      </PageContainer>
-    );
+    return <EmptyState icon="building" title="Nenhuma organização selecionada" description="Escolha uma organização no menu lateral pra continuar." />;
   }
 
   if (locations && locations.length === 0) {
-    return (
-      <PageContainer>
-        <OnboardingLocation orgId={orgId} />
-      </PageContainer>
-    );
+    return <OnboardingLocation orgId={orgId} />;
   }
 
   if (homeError) {
-    return (
-      <PageContainer>
-        <EmptyState
-          title="Não foi possível carregar a Início"
-          description="Tente novamente em instantes. Se o problema continuar, avise o suporte."
-          actionLabel="Tentar de novo"
-          onAction={() => refetchHome()}
-        />
-      </PageContainer>
-    );
+    return <ErrorState title="Não deu pra carregar a Início" description="Tenta de novo em instantes. Se continuar, avise o suporte." onRetry={() => refetchHome()} />;
   }
 
-  if (loadingHome || !home) {
-    return <HomeSkeleton />;
-  }
+  if (loadingHome || !home) return <HomeSkeleton />;
 
-  // A lista de unidades acima inclui arquivadas; a Início só considera unidades
-  // ativas. Se todas estiverem arquivadas, orienta em vez de mostrar um painel vazio.
   if (!home.hasLocation) {
-    return (
-      <PageContainer>
-        <EmptyState
-          title="Nenhuma unidade ativa"
-          description="Ative uma unidade em Configurações > Unidades para ver o painel da Início."
-        />
-      </PageContainer>
-    );
+    return <EmptyState icon="store" title="Nenhuma unidade ativa" description="Ative uma unidade em Configurações > Unidades pra ver o painel da Início." />;
   }
 
   const cashOpen = (home.cashSessions?.length ?? 0) > 0;
-  // "Abrir caixa" não faz sentido com o caixa já aberto.
   const shortcuts = home.shortcuts
     .filter((key) => !(key === "open_cash" && cashOpen))
     .map((key) => SHORTCUT_CONFIG[key])
@@ -277,372 +188,217 @@ export function VenueInicioPageContent() {
   const financeLoading = finance.isLoading || tickets.isLoading;
   const monthLoading = financeThisMonth.isLoading || financeLastMonth.isLoading || ticketsThisMonth.isLoading || ticketsLastMonth.isLoading;
   const chartData = finance.data ? mergeTimelines(finance.data, tickets.data ?? []) : undefined;
-  const money = moneyClass(hideValues);
+  const monthTrend = !monthLoading && lastMonthCents > 0 ? { pct: ((thisMonthCents - lastMonthCents) / lastMonthCents) * 100, label: "vs. mês anterior" } : null;
 
   const alerts = [
-    (home.outOfStockCount ?? 0) > 0
-      ? { key: "outOfStock", label: "sem estoque", value: home.outOfStockCount ?? 0, icon: PackageX, href: "/dashboard/estoque" }
-      : null,
-    (home.lowStockCount ?? 0) > 0
-      ? { key: "lowStock", label: "com estoque baixo", value: home.lowStockCount ?? 0, icon: PackageMinus, href: "/dashboard/estoque" }
-      : null,
-    (home.overduePayablesCount ?? 0) > 0
-      ? { key: "overdue", label: home.overduePayablesCount === 1 ? "conta vencida" : "contas vencidas", value: home.overduePayablesCount ?? 0, icon: CalendarX2, href: "/dashboard/financeiro" }
-      : null,
-    (home.cashDiscrepancyCount ?? 0) > 0
-      ? { key: "cash", label: home.cashDiscrepancyCount === 1 ? "divergência de caixa hoje" : "divergências de caixa hoje", value: home.cashDiscrepancyCount ?? 0, icon: Clock3, href: "/dashboard/operacao/caixa" }
-      : null,
+    (home.outOfStockCount ?? 0) > 0 ? { key: "outOfStock", label: "sem estoque", value: home.outOfStockCount ?? 0, icon: "box" as IconName, href: "/dashboard/estoque" } : null,
+    (home.lowStockCount ?? 0) > 0 ? { key: "lowStock", label: "com estoque baixo", value: home.lowStockCount ?? 0, icon: "warehouse" as IconName, href: "/dashboard/estoque" } : null,
+    (home.overduePayablesCount ?? 0) > 0 ? { key: "overdue", label: home.overduePayablesCount === 1 ? "conta vencida" : "contas vencidas", value: home.overduePayablesCount ?? 0, icon: "invoice" as IconName, href: "/dashboard/financeiro" } : null,
+    (home.cashDiscrepancyCount ?? 0) > 0 ? { key: "cash", label: home.cashDiscrepancyCount === 1 ? "divergência de caixa hoje" : "divergências de caixa hoje", value: home.cashDiscrepancyCount ?? 0, icon: "wallet" as IconName, href: "/dashboard/operacao/caixa" } : null,
   ].filter((a): a is NonNullable<typeof a> => a !== null);
-  // Só afirma "nada precisa de atenção" para quem enxerga ao menos uma das fontes de alerta.
-  const seesAnyAlertSource = [home.outOfStockCount, home.lowStockCount, home.overduePayablesCount, home.cashDiscrepancyCount].some(
-    (v) => v !== null,
-  );
+  const seesAnyAlertSource = [home.outOfStockCount, home.lowStockCount, home.overduePayablesCount, home.cashDiscrepancyCount].some((v) => v !== null);
 
   const reservations = home.todaysReservations !== null ? summarizePresence(home.todaysReservations, nowMs) : null;
-  const shownReservations = reservations?.actionable.slice(0, 3) ?? [];
+  const shownReservations = reservations?.actionable.slice(0, 4) ?? [];
   const moreWaiting = reservations ? reservations.actionable.length - shownReservations.length : 0;
 
-  const monthDelta = formatMonthDelta(thisMonthCents, lastMonthCents);
   const insightsCards = insights.data?.cards;
   const venueTicket = insightsCards?.averageTicketCents;
-  // Ticket médio do Panorama junta comandas fechadas e pedidos de ingresso. Com ingressos no
-  // período a variação some: o período anterior de ingressos não é consultado aqui.
+  // Ticket médio junta comandas fechadas e pedidos de ingresso; com ingressos
+  // no período a variação some (período anterior de ingressos não é consultado).
   const ticketOrders = (tickets.data ?? []).reduce((sum, p) => sum + (p.ordersCount ?? 0), 0);
   const closedTabs = insights.data?.secondary.closedTabsCount ?? 0;
-  const ticket =
-    venueTicket && ticketOrders > 0
-      ? {
-          current: Math.round((venueTicket.current * closedTabs + ticketsPeriodCents) / (closedTabs + ticketOrders)),
-          percentDiff: null,
-        }
-      : venueTicket;
+  const ticket = venueTicket && ticketOrders > 0 ? { current: Math.round((venueTicket.current * closedTabs + ticketsPeriodCents) / (closedTabs + ticketOrders)), percentDiff: null } : venueTicket;
   const guests = insightsCards?.guestsServed;
-  // Pessoas atendidas depende do garçom informar quantas pessoas há na comanda; com
-  // pouco preenchimento o número mente, então só aparece com >= 80% de cobertura.
   const showGuests = guests !== undefined && (guests.coverage === null || guests.coverage >= GUESTS_MIN_COVERAGE);
 
-  const hasOperation =
-    home.openTabsCount !== null ||
-    home.cashSessions !== null ||
-    home.ordersInPreparationCount !== null ||
-    home.ordersReadyCount !== null ||
-    home.waitlistCount !== null;
-  const firstRowCount = 1 + (hasOperation ? 1 : 0) + (reservations ? 1 : 0);
-  const firstRowCols =
-    firstRowCount === 3
-      ? "xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.95fr)]"
-      : firstRowCount === 2
-        ? "xl:grid-cols-2"
-        : "xl:grid-cols-1";
+  const hasOperation = home.openTabsCount !== null || home.cashSessions !== null || home.ordersInPreparationCount !== null || home.ordersReadyCount !== null || home.waitlistCount !== null;
+  const showMoney = canViewFinance || home.financeSummary !== null;
+  const moneyCents = canViewFinance ? (financeLoading ? null : periodCents) : (home.financeSummary?.totalCents ?? null);
+  const showTicket = showMoney && Boolean(ticket);
+  const statCount = [showMoney, home.openTabsCount !== null, reservations !== null, showTicket].filter(Boolean).length;
 
   return (
-    <PageContainer>
-      {activeLocations.length > 1 ? (
-        <div className="flex justify-end">
-          <Select value={selectedLocationId ? String(selectedLocationId) : ""} onValueChange={(v) => setLocationId(Number(v))}>
-            <SelectTrigger className="w-56">
-              <SelectValue placeholder="Unidade" />
-            </SelectTrigger>
-            <SelectContent>
-              {activeLocations.map((loc) => (
-                <SelectItem key={loc.id} value={String(loc.id)}>
-                  {loc.nome} {loc.isMain ? "· Principal" : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      ) : null}
-
-      {showRestrictedNotice ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          O responsável pela organização ainda está concluindo a configuração do Venue.
-        </div>
-      ) : null}
-
-      {/* Ações + estado de atenção */}
-      <div className="flex flex-col gap-4">
-        {shortcuts.length > 0 || (seesAnyAlertSource && alerts.length === 0) ? (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            {shortcuts.length > 0 ? (
-              <nav aria-label="Ações rápidas" className="scrollbar-hide -mx-4 flex w-[calc(100%+2rem)] items-center gap-2 overflow-x-auto overscroll-x-contain px-4 sm:mx-0 sm:w-auto sm:flex-wrap sm:overflow-visible sm:px-0">
-                {shortcuts.map(({ label, href, icon: Icon }) => (
-                  <Link
-                    key={label}
-                    href={href}
-                    className={cn(
-                      "group flex h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-[10px] border border-[#e6e2ef] bg-white px-3.5 text-[13.5px] font-medium text-gray-900 hover:border-[#d9cdf6] hover:bg-[#faf8ff] sm:h-9",
-                      PRESSABLE,
-                    )}
-                  >
-                    <Icon size={16} strokeWidth={1.8} className="text-violet-600 transition-colors group-hover:text-violet-700" />
-                    {label}
-                  </Link>
-                ))}
-              </nav>
-            ) : (
-              <span />
-            )}
-            {seesAnyAlertSource && alerts.length === 0 ? (
-              <p role="status" className="flex items-center gap-2 text-[13.5px] text-black/60">
-                <CircleCheck size={16} strokeWidth={1.8} className="text-emerald-700" />
-                Nada precisa de atenção agora
-              </p>
+    <div className="space-y-6">
+      <PageHeader
+        title={greeting(user?.nome)}
+        description={[home.date ? formatEventDate(home.date) : null, home.location?.nome].filter(Boolean).join(" · ")}
+        actions={
+          <>
+            {activeLocations.length > 1 ? <LocationSelect locations={activeLocations} value={selectedLocationId} onChange={setLocationId} className="w-48" /> : null}
+            {showMoney ? (
+              <Button variant="outline" size="icon" aria-pressed={hideValues} aria-label={hideValues ? "Mostrar valores" : "Ocultar valores"} title={hideValues ? "Mostrar valores" : "Ocultar valores"} onClick={() => setHideValues((v) => !v)}>
+                <Icon name={hideValues ? "eye" : "eye-slash"} size={14} />
+              </Button>
             ) : null}
-          </div>
-        ) : null}
+          </>
+        }
+      />
 
-        {alerts.length > 0 ? (
-          <div role="status" className="flex flex-wrap items-center gap-x-1.5 gap-y-2 rounded-[14px] border border-[#f0d7dc] bg-[#fcf5f6] px-3 py-2 text-sm">
-            <span className={cn("mr-2 flex items-center gap-2 pl-1 font-semibold", ATTN_TEXT)}>
-              <span className="h-2 w-2 rounded-full bg-[#cf3b55] shadow-[0_0_0_3px_rgba(207,59,85,0.14)]" aria-hidden="true" />
-              Precisa de atenção
-            </span>
-            {alerts.map(({ key, label, value, icon: Icon, href }) => (
-              <Link key={key} href={href} className={cn("flex h-8 items-center gap-1.5 rounded-lg px-2.5 font-medium hover:bg-[#f8e7ea]", ATTN_TEXT, PRESSABLE)}>
-                <Icon size={16} strokeWidth={1.8} />
-                <b className="font-poppins tabular-nums">{value}</b> {label}
+      {showRestrictedNotice ? <Callout tone="warning">O responsável pela organização ainda está concluindo a configuração do Venue.</Callout> : null}
+
+      {shortcuts.length > 0 ? (
+        <nav aria-label="Ações rápidas" className="scrollbar-hide -mx-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:px-0">
+          {shortcuts.map(({ label, href, icon }) => (
+            <Button key={label} asChild variant="outline" size="sm" shape="pill" className="shrink-0">
+              <Link href={href}>
+                <Icon name={icon} size={13} className="text-brand" />
+                {label}
+              </Link>
+            </Button>
+          ))}
+        </nav>
+      ) : null}
+
+      {alerts.length > 0 ? (
+        <Callout tone="danger" title="Precisa de atenção">
+          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+            {alerts.map(({ key, label, value, icon, href }) => (
+              <Link key={key} href={href} className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline-offset-4 hover:underline">
+                <Icon name={icon} size={12} className="text-danger" />
+                <b className="tnum">{value}</b> {label}
               </Link>
             ))}
           </div>
-        ) : null}
+        </Callout>
+      ) : seesAnyAlertSource ? (
+        <p role="status" className="flex items-center gap-2 text-caption text-muted-foreground">
+          <Icon name="check-circle" size={12} className="text-success" />
+          Nada precisa de atenção agora
+        </p>
+      ) : null}
 
+      <div className={cn("grid gap-4", statCount >= 4 ? "sm:grid-cols-2 xl:grid-cols-4" : statCount === 3 ? "sm:grid-cols-3" : statCount === 2 ? "sm:grid-cols-2" : "")}>
+        {showMoney ? (
+          <HomeMoneyStat label={canViewFinance ? `Faturamento · ${periodLabel(period)}` : "Faturamento do dia"} icon="chart-line" cents={moneyCents} hidden={hideValues} trend={canViewFinance ? monthTrend : null} hint={canViewFinance && !monthLoading ? `Este mês ${formatBRLCents(thisMonthCents)}` : home.financeSummary ? `${home.financeSummary.paymentsCount} ${home.financeSummary.paymentsCount === 1 ? "pagamento" : "pagamentos"}` : undefined} />
+        ) : null}
+        {home.openTabsCount !== null ? <StatCard label="Comandas abertas" icon="clipboard-list" value={home.openTabsCount} hint={home.tables ? `${home.tables.occupied} de ${home.tables.total} mesas ocupadas` : undefined} /> : null}
+        {reservations ? <StatCard label="Reservas hoje" icon="calendar-check" value={reservations.total} hint={reservations.total > 0 ? `${reservations.arrived} chegaram · ${reservations.waiting} a chegar${reservations.noShow > 0 ? ` · ${reservations.noShow} não vieram` : ""}` : "nenhuma reserva pra hoje"} /> : null}
+        {showTicket && ticket ? <HomeMoneyStat label="Ticket médio" icon="receipt" cents={ticket.current} hidden={hideValues} trend={ticket.percentDiff !== null && ticket.current > 0 ? { pct: ticket.percentDiff, label: "" } : null} hint={showGuests && guests ? `${guests.current} ${guests.current === 1 ? "pessoa atendida" : "pessoas atendidas"}` : undefined} /> : null}
       </div>
 
-      {/* Linha 1 — o turno agora */}
-      <div className={cn("grid grid-cols-1 gap-4 md:grid-cols-2", firstRowCols)}>
-        <section
-          aria-labelledby="home-panorama"
-          className="flex flex-col rounded-[20px] bg-gradient-to-br from-[#1d1834] via-[#191530] to-[#141020] p-6 text-white shadow-[0_10px_30px_rgba(28,24,48,0.22)]"
-        >
-          <div className="flex items-center justify-between gap-3">
-            <h2 id="home-panorama" className="text-[17px] font-semibold">
-              Panorama Geral
-            </h2>
-            {canViewFinance || home.financeSummary ? (
-              <button
-                type="button"
-                aria-pressed={hideValues}
-                onClick={() => setHideValues((v) => !v)}
-                className={cn("flex items-center gap-1.5 rounded-md text-[13px] font-medium text-white/60 hover:text-white/90", PRESSABLE)}
-              >
-                {hideValues ? <Eye size={16} strokeWidth={1.8} /> : <EyeOff size={16} strokeWidth={1.8} />}
-                {hideValues ? "Mostrar valores" : "Ocultar valores"}
-              </button>
-            ) : null}
-          </div>
-
-          {canViewFinance ? (
-            <div className="mt-5">
-              <p className="text-[13.5px] text-white/65">Faturamento · {periodLabel(period)}</p>
-              <p className={cn(money, "mt-1.5 text-[30px] font-bold leading-none tracking-tight")}>
-                {financeLoading ? "…" : formatCentsBRL(periodCents)}
-              </p>
-              {/* "Este mês" era um card inteiro para três informações; virou esta linha. */}
-              {!monthLoading ? (
-                <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-white/65">
-                  Este mês <b className={cn(money, "font-semibold text-white")}>{formatCentsBRL(thisMonthCents)}</b>
-                  {monthDelta ? (
-                    <>
-                      <span
-                        className={cn(
-                          "rounded-md px-1.5 py-0.5 font-poppins text-[12px] font-semibold tabular-nums",
-                          thisMonthCents >= lastMonthCents ? "bg-emerald-400/15 text-emerald-300" : "bg-rose-400/15 text-rose-300",
-                        )}
-                      >
-                        {monthDelta}
-                      </span>
-                      <span className="text-white/50">vs. mês anterior</span>
-                    </>
-                  ) : null}
-                </p>
-              ) : null}
-            </div>
-          ) : home.financeSummary ? (
-            <div className="mt-5">
-              <p className="text-[13.5px] text-white/65">Faturamento do dia</p>
-              <p className={cn(money, "mt-1.5 text-[30px] font-bold leading-none tracking-tight")}>{formatCentsBRL(home.financeSummary.totalCents)}</p>
-            </div>
-          ) : null}
-
-          {ticket ? (
-            <div className={cn("mt-auto grid gap-2.5 pt-6", showGuests ? "grid-cols-2" : "grid-cols-1")}>
-              <Link href="/dashboard/insights" className={cn("rounded-[14px] bg-white/[0.06] px-4 py-3.5 hover:bg-white/[0.09]", PRESSABLE)}>
-                <Receipt size={18} strokeWidth={1.8} className="text-violet-300" />
-                <p className={cn(money, "mt-3 text-xl font-bold", ticket.current === 0 && "text-white/50")}>{formatCentsBRL(ticket.current)}</p>
-                <p className="mt-0.5 text-xs text-white/65">
-                  Ticket médio
-                  {ticket.percentDiff !== null && ticket.current > 0 ? (
-                    <span className={ticket.percentDiff >= 0 ? "text-emerald-300" : "text-rose-300"}>
-                      {" · "}
-                      {ticket.percentDiff >= 0 ? "+" : "−"}
-                      {Math.abs(Math.round(ticket.percentDiff))}%
-                    </span>
-                  ) : null}
-                </p>
-              </Link>
-              {showGuests && guests ? (
-                <Link href="/dashboard/insights" className={cn("rounded-[14px] bg-white/[0.06] px-4 py-3.5 hover:bg-white/[0.09]", PRESSABLE)}>
-                  <UsersRound size={18} strokeWidth={1.8} className="text-violet-300" />
-                  <p className={cn("mt-3 font-poppins text-xl font-bold tabular-nums", guests.current === 0 && "text-white/50")}>{guests.current}</p>
-                  <p className="mt-0.5 text-xs text-white/65">Pessoas atendidas</p>
-                </Link>
-              ) : null}
-            </div>
-          ) : null}
-        </section>
-
-        {hasOperation ? (
-          <section aria-labelledby="home-operation" className={cn(SURFACE, "flex flex-col px-3 pb-3 pt-6")}>
-            <h2 id="home-operation" className="mb-2 px-3 text-[17px] font-semibold text-gray-900">
-              Agora na operação
-            </h2>
-            {home.openTabsCount !== null ? (
-              <OperationRow href="/dashboard/operacao" icon={ClipboardList} label="Comandas abertas">
-                <CountValue value={home.openTabsCount} />
-              </OperationRow>
-            ) : null}
-            {home.ordersInPreparationCount !== null ? (
-              <OperationRow href="/dashboard/operacao/pedidos" icon={ChefHat} label="Itens em preparo">
-                <CountValue value={home.ordersInPreparationCount} />
-              </OperationRow>
-            ) : null}
-            {home.ordersReadyCount !== null ? (
-              <OperationRow href="/dashboard/operacao/pedidos" icon={BellRing} label="Itens prontos para entregar">
-                <CountValue value={home.ordersReadyCount} />
-              </OperationRow>
-            ) : null}
-            {home.waitlistCount !== null ? (
-              <OperationRow href="/dashboard/reservas?tab=fila" icon={Users2} label="Clientes na fila">
-                <CountValue value={home.waitlistCount} />
-              </OperationRow>
-            ) : null}
-            {home.cashSessions !== null ? (
-              <OperationRow href="/dashboard/operacao/caixa" icon={Wallet} label="Caixa">
-                <span className={cn("text-sm font-semibold", cashOpen ? "text-emerald-700" : "text-black/45")}>{cashOpen ? "Aberto" : "Fechado"}</span>
-              </OperationRow>
-            ) : null}
-          </section>
-        ) : null}
-
-        {reservations ? (
-          <section aria-labelledby="home-reservations" className={cn(SURFACE, "flex flex-col px-3 pb-3 pt-6")}>
-            <div className="mb-3 flex items-baseline justify-between gap-3 px-3">
-              <h2 id="home-reservations" className="text-[17px] font-semibold text-gray-900">
-                Reservas de hoje <span className="ml-1 font-poppins text-[15px] tabular-nums text-black/35">{reservations.total}</span>
-              </h2>
-              <Link href="/dashboard/reservas" className={cn("rounded-md text-[13px] font-semibold text-violet-700 hover:text-violet-800", PRESSABLE)}>
-                Ver todas
-              </Link>
-            </div>
-
-            {reservations.total === 0 ? (
-              <div className="flex flex-1 flex-col items-center justify-center pb-3 text-center">
-                <CalendarClock size={22} strokeWidth={1.8} className="text-black/30" />
-                <p className="mt-2.5 text-[13.5px] text-black/60">Nenhuma reserva para hoje.</p>
-              </div>
-            ) : (
-              <>
-                <dl className="mx-3 grid grid-cols-3 divide-x divide-black/[0.06] rounded-[14px] bg-[#f7f5fb] py-2.5 text-center">
-                  <div>
-                    <dd className="font-poppins text-lg font-bold tabular-nums">{reservations.arrived}</dd>
-                    <dt className="text-xs text-black/60">Chegaram</dt>
-                  </div>
-                  <div>
-                    <dd className="font-poppins text-lg font-bold tabular-nums">{reservations.waiting}</dd>
-                    <dt className="text-xs text-black/60">A chegar</dt>
-                  </div>
-                  <div>
-                    <dd className={cn("font-poppins text-lg font-bold tabular-nums", reservations.noShow > 0 && ATTN_TEXT)}>{reservations.noShow}</dd>
-                    <dt className="text-xs text-black/60">Não vieram</dt>
-                  </div>
-                </dl>
-
-                {shownReservations.length > 0 ? (
-                  <ul className="mt-2 flex flex-col">
-                    {shownReservations.map((r) => {
-                      const noShow = r.presence === "NO_SHOW";
-                      return (
-                        <li key={r.id}>
-                          <Link href="/dashboard/reservas" className={cn("flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-[#f7f5fb]", PRESSABLE)}>
-                            <span
-                              className={cn(
-                                "w-11 font-poppins text-[13.5px] font-semibold tabular-nums",
-                                noShow && "text-black/45 line-through decoration-black/25",
-                              )}
-                            >
-                              {new Date(r.startAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate text-[14px] font-medium text-gray-900">{r.customerName}</span>
-                              <span className="text-xs text-black/55">
-                                {r.partySize} {r.partySize === 1 ? "pessoa" : "pessoas"}
-                              </span>
-                            </span>
-                            {noShow ? (
-                              <span className={cn("rounded-md bg-[#fcf5f6] px-2 py-0.5 text-xs font-semibold shadow-[inset_0_0_0_1px_#f0d7dc]", ATTN_TEXT)}>
-                                Não compareceu
-                              </span>
-                            ) : (
-                              <span className="rounded-md bg-black/[0.05] px-2 py-0.5 text-xs font-semibold text-black/65">Aguardando</span>
-                            )}
-                          </Link>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  <p className="px-3 pt-3 text-[13.5px] text-black/60">Todos que reservaram já chegaram.</p>
-                )}
-
-                {moreWaiting > 0 || reservations.canceled > 0 ? (
-                  <p className="px-3 pt-1 text-[12.5px] text-black/55">
-                    {[
-                      moreWaiting > 0 ? `e mais ${moreWaiting} na lista` : null,
-                      reservations.canceled > 0 ? `${reservations.canceled} ${reservations.canceled === 1 ? "cancelada" : "canceladas"}` : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
+      {hasOperation || reservations ? (
+        <div className={cn("grid gap-4", hasOperation && reservations && "xl:grid-cols-2")}>
+          {hasOperation ? (
+            <Card className="gap-0">
+              <CardHeader>
+                <CardTitle>Agora na operação</CardTitle>
+              </CardHeader>
+              <CardContent className="px-2 pb-2 pt-3">
+                {home.openTabsCount !== null ? (
+                  <OperationRow href="/dashboard/operacao" icon="clipboard-list" label="Comandas abertas">
+                    <CountValue value={home.openTabsCount} />
+                  </OperationRow>
                 ) : null}
-              </>
-            )}
-          </section>
-        ) : null}
-      </div>
+                {home.ordersInPreparationCount !== null ? (
+                  <OperationRow href="/dashboard/operacao/pedidos" icon="fire" label="Itens em preparo">
+                    <CountValue value={home.ordersInPreparationCount} />
+                  </OperationRow>
+                ) : null}
+                {home.ordersReadyCount !== null ? (
+                  <OperationRow href="/dashboard/operacao/pedidos" icon="bell" label="Prontos pra entregar">
+                    <CountValue value={home.ordersReadyCount} />
+                  </OperationRow>
+                ) : null}
+                {home.waitlistCount !== null ? (
+                  <OperationRow href="/dashboard/reservas?tab=fila" icon="users" label="Clientes na fila">
+                    <CountValue value={home.waitlistCount} />
+                  </OperationRow>
+                ) : null}
+                {home.cashSessions !== null ? (
+                  <OperationRow href="/dashboard/operacao/caixa" icon="wallet" label="Caixa">
+                    <StatusBadge tone={cashOpen ? "success" : "neutral"} pulse={cashOpen}>
+                      {cashOpen ? "Aberto" : "Fechado"}
+                    </StatusBadge>
+                  </OperationRow>
+                ) : null}
+              </CardContent>
+            </Card>
+          ) : null}
 
-      {/* Linha 2 — tendência e o que vende */}
+          {reservations ? (
+            <Card className="gap-0">
+              <CardHeader className="items-center">
+                <CardTitle>
+                  Reservas de hoje <span className="ml-1 text-sm font-normal text-subtle-foreground tnum">{reservations.total}</span>
+                </CardTitle>
+                <Link href="/dashboard/reservas" className="inline-flex items-center gap-1 text-caption font-semibold text-brand underline-offset-4 hover:underline">
+                  Ver todas
+                  <Icon name="arrow-right" size={10} />
+                </Link>
+              </CardHeader>
+              <CardContent className="pt-4">
+                {reservations.total === 0 ? (
+                  <EmptyState compact icon="calendar" title="Nenhuma reserva pra hoje" className="border-0 bg-transparent py-6" />
+                ) : (
+                  <>
+                    <dl className="grid grid-cols-3 divide-x divide-border rounded-xl bg-surface-2 py-3 text-center">
+                      <div>
+                        <dd className="text-lg font-semibold text-foreground tnum">{reservations.arrived}</dd>
+                        <dt className="text-caption text-muted-foreground">Chegaram</dt>
+                      </div>
+                      <div>
+                        <dd className="text-lg font-semibold text-foreground tnum">{reservations.waiting}</dd>
+                        <dt className="text-caption text-muted-foreground">A chegar</dt>
+                      </div>
+                      <div>
+                        <dd className={cn("text-lg font-semibold tnum", reservations.noShow > 0 ? "text-danger" : "text-foreground")}>{reservations.noShow}</dd>
+                        <dt className="text-caption text-muted-foreground">Não vieram</dt>
+                      </div>
+                    </dl>
+
+                    {shownReservations.length > 0 ? (
+                      <ul className="mt-3 flex flex-col">
+                        {shownReservations.map((r) => {
+                          const noShow = r.presence === "NO_SHOW";
+                          return (
+                            <li key={r.id}>
+                              <Link href="/dashboard/reservas" className="press flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-surface-2">
+                                <span className={cn("w-12 text-sm font-semibold tnum", noShow ? "text-subtle-foreground line-through" : "text-foreground")}>{new Date(r.startAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-sm font-medium text-foreground">{r.customerName}</span>
+                                  <span className="text-caption text-muted-foreground tnum">
+                                    {r.partySize} {r.partySize === 1 ? "pessoa" : "pessoas"}
+                                  </span>
+                                </span>
+                                <StatusBadge tone={noShow ? "danger" : "warning"}>{noShow ? "Não compareceu" : "Aguardando"}</StatusBadge>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    ) : (
+                      <p className="px-2 pt-3 text-body text-muted-foreground">Todos que reservaram já chegaram.</p>
+                    )}
+
+                    {moreWaiting > 0 || reservations.canceled > 0 ? <p className="px-2 pt-2 text-caption text-subtle-foreground">{[moreWaiting > 0 ? `e mais ${moreWaiting} na lista` : null, reservations.canceled > 0 ? `${reservations.canceled} ${reservations.canceled === 1 ? "cancelada" : "canceladas"}` : null].filter(Boolean).join(" · ")}</p> : null}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          ) : null}
+        </div>
+      ) : null}
+
       {canViewFinance || canViewInsights ? (
-        <div className={cn("grid grid-cols-1 gap-4", canViewFinance && canViewInsights && "xl:grid-cols-[minmax(0,2fr)_minmax(0,0.95fr)]")}>
+        <div className={cn("grid gap-4", canViewFinance && canViewInsights && "xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]")}>
           {canViewFinance ? (
             <FinanceTimelineChart
               data={chartData}
               isLoading={financeLoading}
-              // Resultado líquido = resultCents do timeline (faturamento − custo dos produtos − despesas pagas); o cálculo final ainda será definido.
+              // Resultado líquido = resultCents do timeline (faturamento − custo dos produtos − despesas pagas).
               description={`Faturamento e resultado líquido por dia · ${periodLabel(period)}`}
               resultLabel="Resultado líquido"
               zeroDates={home.date ? periodDates(period, home.date) : undefined}
               hideValues={hideValues}
-              className="rounded-[20px] border-[#ebe8f2] shadow-none"
             />
           ) : null}
-          {canViewInsights ? (
-            <TopProductsCard products={insights.data?.topProducts} isLoading={insights.isLoading} periodText={periodLabel(period)} hideValues={hideValues} />
-          ) : null}
+          {canViewInsights ? <TopProductsCard products={insights.data?.topProducts} isLoading={insights.isLoading} periodText={periodLabel(period)} hideValues={hideValues} /> : null}
         </div>
       ) : null}
 
-      {/* Linha 3 — em que hora a casa vende */}
-      {canViewInsights ? (
-        <SalesByHourCard
-          entries={insights.data?.salesByHour}
-          isLoading={insights.isLoading}
-          periodText={periodLabel(period)}
-          multiDay={period.key !== "today" && !(period.key === "custom" && period.range.from === period.range.to)}
-          hideValues={hideValues}
-        />
-      ) : null}
-    </PageContainer>
+      {canViewInsights ? <SalesByHourCard entries={insights.data?.salesByHour} isLoading={insights.isLoading} periodText={periodLabel(period)} multiDay={period.key !== "today" && !(period.key === "custom" && period.range.from === period.range.to)} hideValues={hideValues} /> : null}
+    </div>
   );
 }
 
@@ -662,11 +418,7 @@ function mergeTimelines(venue: TimelinePoint[], tickets: TimelinePoint[]): Timel
   const byDate = new Map<string, TimelinePoint>();
   for (const p of [...venue, ...tickets]) {
     const current = byDate.get(p.date);
-    byDate.set(p.date, {
-      date: p.date,
-      revenueCents: (current?.revenueCents ?? 0) + p.revenueCents,
-      resultCents: (current?.resultCents ?? 0) + p.resultCents,
-    });
+    byDate.set(p.date, { date: p.date, revenueCents: (current?.revenueCents ?? 0) + p.revenueCents, resultCents: (current?.resultCents ?? 0) + p.resultCents });
   }
   return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
 }

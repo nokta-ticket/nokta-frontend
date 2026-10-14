@@ -1,111 +1,48 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useOrganizations } from "@/context/OrganizationContext";
-import { PageContainer } from "../../_components/page/page-container";
-import { PageHeader } from "../../_components/page/page-header";
-import { EmptyState } from "../../_components/states/empty-state";
-import { BlockSkeleton } from "../../_components/states/loading-state";
-import { useVenueLocations } from "../_hooks/use-venue-locations";
-import { OnboardingLocation } from "../_components/onboarding-location";
+import { Suspense, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
+import { LocationGate, type LocationGateContext } from "../_components/location-gate";
+import { LocationSelect } from "../_components/location-select";
 import { TerminaisTab } from "../_components/terminais-tab";
 
-/**
- * Página própria (antes era uma aba dentro de Operação) — item dedicado no
- * menu lateral, ver unified-sidebar.tsx (EXTRA_NAV_ITEMS). Terminais nunca
- * teve uma capability de navegação própria no catálogo do backend (só era
- * liberado por permissão local dentro de Operação); a estrutura/lógica
- * interna (TerminaisTab) continua exatamente a mesma — só a localização no
- * menu mudou.
- */
+const TITLE = "Terminais";
+
+/** Pareamento do app Nokta POS (maquininhas e tablets) — página própria no menu lateral. */
 export default function OperacaoTerminaisPage() {
-  const { currentOrg, loadingOrgs, loadingModules } = useOrganizations();
-  const searchParams = useSearchParams();
-  const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
-
-  const orgId = currentOrg?.id ?? null;
-  const { data: locations } = useVenueLocations(orgId);
-
-  useEffect(() => {
-    setSelectedLocationId(null);
-  }, [orgId]);
-
-  useEffect(() => {
-    if (selectedLocationId !== null || !locations || locations.length === 0) return;
-    const paramLocationId = Number(searchParams.get("locationId"));
-    const fromParam = paramLocationId ? locations.find((l) => l.id === paramLocationId) : undefined;
-    const main = fromParam ?? locations.find((l) => l.isMain) ?? locations[0];
-    setSelectedLocationId(main.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locations, selectedLocationId]);
-
-  const description = "Pareie e gerencie os terminais (POS) usados no estabelecimento.";
-
-  if (loadingOrgs || loadingModules) {
-    return (
-      <PageContainer>
-        <PageHeader title="Terminais" description={description} />
-        <BlockSkeleton className="h-96" />
-      </PageContainer>
-    );
-  }
-
-  if (!orgId) {
-    return (
-      <PageContainer>
-        <PageHeader title="Terminais" description={description} />
-        <EmptyState title="Nenhuma organização selecionada" description="Selecione uma organização para ver os terminais." />
-      </PageContainer>
-    );
-  }
-
-  if (locations && locations.length === 0) {
-    return (
-      <PageContainer>
-        <PageHeader title="Terminais" description={description} />
-        <OnboardingLocation orgId={orgId} />
-      </PageContainer>
-    );
-  }
-
-  if (!selectedLocationId) {
-    return (
-      <PageContainer>
-        <PageHeader title="Terminais" description={description} />
-        <BlockSkeleton className="h-96" />
-      </PageContainer>
-    );
-  }
-
   return (
-    <PageContainer>
+    <Suspense
+      fallback={
+        <div className="space-y-6">
+          <PageHeader title={TITLE} />
+          <Skeleton className="h-96 rounded-card" />
+        </div>
+      }
+    >
+      <LocationGate title={TITLE}>{(ctx) => <TerminaisPageContent {...ctx} />}</LocationGate>
+    </Suspense>
+  );
+}
+
+function TerminaisPageContent({ orgId, locationId, locations, setLocationId }: LocationGateContext) {
+  const [formOpen, setFormOpen] = useState(false);
+  return (
+    <div className="space-y-6">
       <PageHeader
-        title="Terminais"
-        description={description}
+        title={TITLE}
+        description="Maquininhas e tablets com o app Nokta POS pareados nesta unidade."
         actions={
-          locations && locations.length > 1 ? (
-            <Select value={String(selectedLocationId)} onValueChange={(v) => setSelectedLocationId(Number(v))}>
-              <SelectTrigger className="w-48"><SelectValue placeholder="Unidade" /></SelectTrigger>
-              <SelectContent>
-                {locations.map((loc) => (
-                  <SelectItem key={loc.id} value={String(loc.id)}>
-                    {loc.nome} {loc.isMain ? "· Principal" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : undefined
+          <>
+            <LocationSelect locations={locations} value={locationId} onChange={setLocationId} className="w-44" />
+            <Button leftIcon="plus" onClick={() => setFormOpen(true)}>
+              Novo terminal
+            </Button>
+          </>
         }
       />
-      <TerminaisTab orgId={orgId} locationId={selectedLocationId} />
-    </PageContainer>
+      <TerminaisTab orgId={orgId} locationId={locationId} formOpen={formOpen} onFormOpenChange={setFormOpen} />
+    </div>
   );
 }

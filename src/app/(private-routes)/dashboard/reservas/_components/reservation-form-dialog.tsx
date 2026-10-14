@@ -2,23 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field, FieldGroup } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
+import { SelectInput } from "@/components/ui/select-input";
+import { Stepper } from "@/components/ui/stepper";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { getErrorMessage } from "@/lib/axios";
-import { toast } from "@/lib/toast";
 import { formatPhone, normalizeDigits } from "@/lib/br-data";
-import {
-  VENUE_RESERVATION_SOURCE_LABEL,
-  type VenueReservation,
-  type VenueReservationSource,
-} from "@/services/venue-reservations";
+import { toast } from "@/lib/toast";
+import { VENUE_RESERVATION_SOURCE_LABEL, type VenueReservation, type VenueReservationSource } from "@/services/venue-reservations";
 import { useVenueAreas } from "../../operacao/_hooks/use-venue-areas-tables";
 import { useVenueReservationMutations } from "../_hooks/use-venue-reservations";
-import { zonedWallClockToUtcIso, todayInTimeZone, formatInTimeZone } from "../_lib/timezone";
+import { formatInTimeZone, todayInTimeZone, zonedWallClockToUtcIso } from "../_lib/timezone";
 import { AvailabilityPicker } from "./availability-picker";
 
 interface LocationTz {
@@ -26,27 +23,22 @@ interface LocationTz {
   defaultReservationDurationMinutes: number;
 }
 
-export function ReservationFormDialog({
-  orgId,
-  locationId,
-  location,
-  reservation,
-  open,
-  onOpenChange,
-  onSaved,
-}: {
-  orgId: number;
-  locationId: number;
-  location: LocationTz;
-  reservation?: VenueReservation | null;
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  onSaved?: (r: VenueReservation) => void;
-}) {
+type Step = "dados" | "mesas";
+
+const SOURCE_OPTIONS = (Object.keys(VENUE_RESERVATION_SOURCE_LABEL) as VenueReservationSource[]).map((value) => ({ value, label: VENUE_RESERVATION_SOURCE_LABEL[value] }));
+
+/**
+ * Nova reserva / edição em duas etapas: dados do cliente e horário → mesas
+ * (disponibilidade real naquele horário). Mesas são entidade separada no
+ * backend (PUT /tables): na edição, o update dos dados vem primeiro e as
+ * mesas encadeiam usando a `version` já incrementada.
+ */
+export function ReservationFormDialog({ orgId, locationId, location, reservation, open, onOpenChange, onSaved }: { orgId: number; locationId: number; location: LocationTz; reservation?: VenueReservation | null; open: boolean; onOpenChange: (v: boolean) => void; onSaved?: (r: VenueReservation) => void }) {
   const { data: areas } = useVenueAreas(orgId, locationId);
   const { create, update, setTables } = useVenueReservationMutations(orgId, locationId);
   const isEdit = !!reservation;
 
+  const [step, setStep] = useState<Step>("dados");
   const [customerName, setCustomerName] = useState("");
   const [customerPhoneDisplay, setCustomerPhoneDisplay] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -65,6 +57,7 @@ export function ReservationFormDialog({
   // Radix só chama onOpenChange em fechamentos internos — preencher/resetar reage a `open`.
   useEffect(() => {
     if (!open) return;
+    setStep("dados");
     if (reservation) {
       setCustomerName(reservation.customerName);
       setCustomerPhoneDisplay(formatPhone(reservation.customerPhone));
@@ -72,9 +65,7 @@ export function ReservationFormDialog({
       setPartySize(String(reservation.partySize));
       setDate(formatInTimeZone(reservation.startAt, location.timezone, "YYYY-MM-DD"));
       setTime(formatInTimeZone(reservation.startAt, location.timezone, "HH:mm"));
-      const durMin = Math.round(
-        (new Date(reservation.endAt).getTime() - new Date(reservation.startAt).getTime()) / 60000,
-      );
+      const durMin = Math.round((new Date(reservation.endAt).getTime() - new Date(reservation.startAt).getTime()) / 60000);
       setDurationMinutes(String(durMin));
       setSource(reservation.source);
       setPreferredAreaId(reservation.preferredAreaId ? String(reservation.preferredAreaId) : "");
@@ -103,13 +94,10 @@ export function ReservationFormDialog({
   }, [open, reservation?.id]);
 
   const startAtIso = date && time ? zonedWallClockToUtcIso(date, time, location.timezone) : null;
-  const endAtIso =
-    startAtIso && durationMinutes
-      ? new Date(new Date(startAtIso).getTime() + Number(durationMinutes) * 60000).toISOString()
-      : null;
+  const endAtIso = startAtIso && durationMinutes ? new Date(new Date(startAtIso).getTime() + Number(durationMinutes) * 60000).toISOString() : null;
 
   const saving = create.isPending || update.isPending || setTables.isPending;
-  const canSubmit = !!customerName.trim() && !!customerPhoneDisplay.trim() && !!startAtIso && !!endAtIso && Number(partySize) > 0;
+  const dataValid = !!customerName.trim() && !!customerPhoneDisplay.trim() && !!startAtIso && !!endAtIso && Number(partySize) > 0;
 
   const tablesChanged = (() => {
     if (!reservation) return false;
@@ -150,8 +138,6 @@ export function ReservationFormDialog({
               onSaved?.(r);
               return;
             }
-            // Mesas são uma entidade separada no backend (PUT /tables) — encadeia
-            // usando a version já incrementada pelo update acima.
             setTables.mutate(
               { reservationId: reservation.id, payload: { tableIds, primaryTableId, version: r.version } },
               {
@@ -160,8 +146,7 @@ export function ReservationFormDialog({
                   onOpenChange(false);
                   onSaved?.(r2);
                 },
-                onError: (err) =>
-                  toast.error(getErrorMessage(err, "Reserva salva, mas não foi possível atualizar as mesas.")),
+                onError: (err) => toast.error(getErrorMessage(err, "Reserva salva, mas não foi possível atualizar as mesas.")),
               },
             );
           },
@@ -197,131 +182,119 @@ export function ReservationFormDialog({
     }
   };
 
+  const areaOptions = [{ value: "none", label: "Sem preferência" }, ...(areas ?? []).map((a) => ({ value: String(a.id), label: a.nome }))];
+
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex w-full flex-col sm:max-w-xl">
-        <SheetHeader>
-          <SheetTitle>{isEdit ? `Editar reserva ${reservation?.publicCode}` : "Nova reserva"}</SheetTitle>
-        </SheetHeader>
-        <div className="flex-1 space-y-4 overflow-y-auto px-4 pb-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="res-nome">Nome do cliente</Label>
-              <Input id="res-nome" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="res-telefone">Telefone</Label>
-              <Input
-                id="res-telefone"
-                value={customerPhoneDisplay}
-                onChange={(e) => setCustomerPhoneDisplay(formatPhone(e.target.value))}
-                placeholder="(11) 99999-8888"
-              />
-            </div>
-          </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent size="lg">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? `Editar reserva ${reservation?.publicCode}` : "Nova reserva"}</DialogTitle>
+          <DialogDescription>{step === "dados" ? "Quem vem, quando e quantos." : "Escolha as mesas disponíveis nesse horário (opcional)."}</DialogDescription>
+        </DialogHeader>
+        <DialogBody>
+          <Stepper
+            orientation="horizontal"
+            steps={[
+              { label: "Dados da reserva", description: dataValid && step === "mesas" ? `${customerName} · ${partySize} ${Number(partySize) === 1 ? "pessoa" : "pessoas"} · ${time}` : undefined, status: step === "dados" ? "current" : "done" },
+              { label: "Mesas", description: step === "mesas" && tableIds.length > 0 ? `${tableIds.length} ${tableIds.length === 1 ? "mesa" : "mesas"}` : undefined, status: step === "mesas" ? "current" : "upcoming" },
+            ]}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="res-email">E-mail (opcional)</Label>
-            <Input id="res-email" type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="space-y-2">
-              <Label htmlFor="res-pessoas">Pessoas</Label>
-              <Input id="res-pessoas" type="number" min={1} value={partySize} onChange={(e) => setPartySize(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="res-data">Data</Label>
-              <Input id="res-data" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="res-hora">Horário</Label>
-              <Input id="res-hora" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="res-duracao">Duração (min)</Label>
-              <Input
-                id="res-duracao"
-                type="number"
-                min={1}
-                value={durationMinutes}
-                onChange={(e) => setDurationMinutes(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Origem</Label>
-              <Select value={source} onValueChange={(v) => setSource(v as VenueReservationSource)}>
-                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(VENUE_RESERVATION_SOURCE_LABEL).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Área preferida (opcional)</Label>
-              <Select value={preferredAreaId || "none"} onValueChange={(v) => setPreferredAreaId(v === "none" ? "" : v)}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Sem preferência" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem preferência</SelectItem>
-                  {(areas ?? []).map((a) => (
-                    <SelectItem key={a.id} value={String(a.id)}>{a.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {startAtIso && endAtIso ? (
-            <div className="space-y-2 rounded-xl border border-black/10 p-3">
-              <Label>Mesas (opcional)</Label>
-              <AvailabilityPicker
-                orgId={orgId}
-                locationId={locationId}
-                startAt={startAtIso}
-                endAt={endAtIso}
-                partySize={Number(partySize) || 1}
-                areaId={preferredAreaId ? Number(preferredAreaId) : undefined}
-                reservationId={reservation?.id}
-                selectedTableIds={tableIds}
-                primaryTableId={primaryTableId}
-                onChange={(ids, primary) => {
-                  setTableIds(ids);
-                  setPrimaryTableId(primary);
-                }}
-              />
-            </div>
+          {step === "dados" ? (
+            <form
+              className="flex flex-col gap-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (dataValid) setStep("mesas");
+              }}
+            >
+              <FieldGroup columns={2}>
+                <Field label="Nome do cliente" htmlFor="res-nome" required>
+                  <Input id="res-nome" value={customerName} onChange={(e) => setCustomerName(e.target.value)} autoFocus />
+                </Field>
+                <Field label="Telefone" htmlFor="res-telefone" required>
+                  <Input id="res-telefone" inputMode="tel" value={customerPhoneDisplay} onChange={(e) => setCustomerPhoneDisplay(formatPhone(e.target.value))} placeholder="(11) 99999-8888" />
+                </Field>
+              </FieldGroup>
+              <Field label="E-mail" htmlFor="res-email" optional>
+                <Input id="res-email" type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} />
+              </Field>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                <Field label="Pessoas" htmlFor="res-pessoas" required>
+                  <Input id="res-pessoas" type="number" inputMode="numeric" min={1} value={partySize} onChange={(e) => setPartySize(e.target.value)} />
+                </Field>
+                <Field label="Data" htmlFor="res-data" required>
+                  <Input id="res-data" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+                </Field>
+                <Field label="Horário" htmlFor="res-hora" required>
+                  <Input id="res-hora" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+                </Field>
+                <Field label="Duração" htmlFor="res-duracao">
+                  <Input id="res-duracao" type="number" inputMode="numeric" min={1} suffix="min" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} />
+                </Field>
+              </div>
+              <FieldGroup columns={2}>
+                <Field label="Origem">
+                  <SelectInput value={source} onValueChange={(v) => setSource(v as VenueReservationSource)} options={SOURCE_OPTIONS} />
+                </Field>
+                <Field label="Área preferida" optional>
+                  <SelectInput value={preferredAreaId || "none"} onValueChange={(v) => setPreferredAreaId(v === "none" ? "" : v)} options={areaOptions} />
+                </Field>
+              </FieldGroup>
+              <FieldGroup columns={2}>
+                <Field label="Observações do cliente" htmlFor="res-obs" optional>
+                  <Textarea id="res-obs" rows={2} className="min-h-20" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Aniversário, cadeirão, restrição alimentar…" />
+                </Field>
+                <Field label="Observações internas" htmlFor="res-obs-internas" optional hint="Só a equipe vê.">
+                  <Textarea id="res-obs-internas" rows={2} className="min-h-20" value={internalNotes} onChange={(e) => setInternalNotes(e.target.value)} />
+                </Field>
+              </FieldGroup>
+              {!isEdit ? (
+                <label htmlFor="res-confirmada" className="flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-surface-2/60 px-4 py-3 text-sm text-foreground">
+                  <Checkbox id="res-confirmada" checked={confirmedNow} onCheckedChange={(v) => setConfirmedNow(v === true)} />
+                  Criar já como confirmada
+                </label>
+              ) : null}
+            </form>
+          ) : startAtIso && endAtIso ? (
+            <AvailabilityPicker
+              orgId={orgId}
+              locationId={locationId}
+              startAt={startAtIso}
+              endAt={endAtIso}
+              partySize={Number(partySize) || 1}
+              areaId={preferredAreaId ? Number(preferredAreaId) : undefined}
+              reservationId={reservation?.id}
+              selectedTableIds={tableIds}
+              primaryTableId={primaryTableId}
+              onChange={(ids, primary) => {
+                setTableIds(ids);
+                setPrimaryTableId(primary);
+              }}
+            />
           ) : null}
-
-          <div className="space-y-2">
-            <Label htmlFor="res-obs">Observações do cliente (opcional)</Label>
-            <Textarea id="res-obs" rows={2} value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="res-obs-internas">Observações internas (opcional)</Label>
-            <Textarea id="res-obs-internas" rows={2} value={internalNotes} onChange={(e) => setInternalNotes(e.target.value)} />
-          </div>
-
-          {!isEdit ? (
-            <div className="flex items-center gap-2">
-              <Switch checked={confirmedNow} onCheckedChange={setConfirmedNow} id="res-confirmada" />
-              <Label htmlFor="res-confirmada">Criar já como confirmada</Label>
-            </div>
-          ) : null}
-        </div>
-        <SheetFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-            Cancelar
-          </Button>
-          <Button disabled={saving || !canSubmit} onClick={handleSubmit}>
-            {saving ? "Salvando…" : "Salvar"}
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+        </DialogBody>
+        <DialogFooter>
+          {step === "mesas" ? (
+            <Button variant="ghost" onClick={() => setStep("dados")} disabled={saving} leftIcon="arrow-left" className="sm:mr-auto">
+              Voltar
+            </Button>
+          ) : (
+            <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
+              Cancelar
+            </Button>
+          )}
+          {step === "dados" ? (
+            <Button disabled={!dataValid} onClick={() => setStep("mesas")} rightIcon="arrow-right">
+              Escolher mesas
+            </Button>
+          ) : (
+            <Button disabled={!dataValid} loading={saving} leftIcon="check" onClick={handleSubmit}>
+              {isEdit ? "Salvar alterações" : tableIds.length > 0 ? "Criar reserva" : "Criar sem mesa"}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

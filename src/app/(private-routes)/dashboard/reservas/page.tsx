@@ -1,42 +1,52 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { Suspense, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatCard } from "@/components/ui/stat-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useOrganizations } from "@/context/OrganizationContext";
-import { useRequireWorkspace } from "../_components/require-workspace-provider";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import type { VenueReservation } from "@/services/venue-reservations";
-import { PageContainer } from "../_components/page/page-container";
-import { PageHeader } from "../_components/page/page-header";
-import { EmptyState } from "../_components/states/empty-state";
-import { BlockSkeleton } from "../_components/states/loading-state";
-import { useVenueLocations } from "../operacao/_hooks/use-venue-locations";
-import { OnboardingLocation } from "../operacao/_components/onboarding-location";
+import { useUrlTab } from "../_hooks/use-url-tab";
+import { LocationGate, type LocationGateContext } from "../operacao/_components/location-gate";
+import { LocationSelect } from "../operacao/_components/location-select";
+import { AgendaTab } from "./_components/agenda-tab";
+import { CancelWithReasonDialog } from "./_components/cancel-with-reason-dialog";
+import { FilaTab } from "./_components/fila-tab";
+import { ListaTab } from "./_components/lista-tab";
+import { ReservationDetailSheet } from "./_components/reservation-detail-sheet";
+import { ReservationFormDialog } from "./_components/reservation-form-dialog";
+import { SeatReservationDialog } from "./_components/seat-reservation-dialog";
+import { WaitlistFormDialog } from "./_components/waitlist-form-dialog";
 import { useVenueReservationMutations, useVenueReservationsSummary } from "./_hooks/use-venue-reservations";
 import { todayInTimeZone } from "./_lib/timezone";
-import { SummaryBar } from "./_components/summary-bar";
-import { AgendaTab } from "./_components/agenda-tab";
-import { ListaTab } from "./_components/lista-tab";
-import { FilaTab } from "./_components/fila-tab";
-import { ReservationFormDialog } from "./_components/reservation-form-dialog";
-import { ReservationDetailSheet } from "./_components/reservation-detail-sheet";
-import { SeatReservationDialog } from "./_components/seat-reservation-dialog";
-import { CancelWithReasonDialog } from "./_components/cancel-with-reason-dialog";
-import { WaitlistFormDialog } from "./_components/waitlist-form-dialog";
 
-type TabKey = "agenda" | "lista" | "fila";
+const TITLE = "Reservas";
+const TABS = ["agenda", "lista", "fila"] as const;
+type TabKey = (typeof TABS)[number];
 
 export default function VenueReservasPage() {
-  const { currentOrg, loadingOrgs, loadingModules } = useOrganizations();
-  const { guard } = useRequireWorkspace();
-  const [tab, setTab] = useState<TabKey>("agenda");
-  const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
-  const [date, setDate] = useState<string | null>(null);
+  return (
+    <Suspense
+      fallback={
+        <div className="space-y-6">
+          <PageHeader title={TITLE} />
+          <Skeleton className="h-96 rounded-card" />
+        </div>
+      }
+    >
+      <LocationGate title={TITLE}>{(ctx) => <ReservasPageContent {...ctx} />}</LocationGate>
+    </Suspense>
+  );
+}
+
+function ReservasPageContent({ orgId, locationId, location, locations, setLocationId }: LocationGateContext) {
+  // `?tab=fila` é o alias canônico de /dashboard/fila-espera.
+  const [tab, setTab] = useUrlTab<TabKey>(TABS, "agenda");
+  const [date, setDate] = useState<string>(() => todayInTimeZone(location.timezone));
 
   const [createOpen, setCreateOpen] = useState(false);
   const [waitlistOpen, setWaitlistOpen] = useState(false);
@@ -45,174 +55,77 @@ export default function VenueReservasPage() {
   const [editReservation, setEditReservation] = useState<VenueReservation | null>(null);
   const [cancelReservation, setCancelReservation] = useState<VenueReservation | null>(null);
 
-  const orgId = currentOrg?.id ?? null;
-
-  const { data: locations } = useVenueLocations(orgId);
-
+  // Troca de unidade: volta pro "hoje" no fuso da nova unidade.
   useEffect(() => {
-    setSelectedLocationId(null);
-    setDate(null);
-  }, [orgId]);
+    setDate(todayInTimeZone(location.timezone));
+  }, [location.id, location.timezone]);
 
-  useEffect(() => {
-    if (selectedLocationId !== null || !locations || locations.length === 0) return;
-    const main = locations.find((l) => l.isMain) ?? locations[0];
-    setSelectedLocationId(main.id);
-  }, [locations, selectedLocationId]);
-
-  const location = locations?.find((l) => l.id === selectedLocationId) ?? null;
-
-  useEffect(() => {
-    if (location && date === null) setDate(todayInTimeZone(location.timezone));
-  }, [location, date]);
-
-  const { cancel } = useVenueReservationMutations(orgId ?? -1, selectedLocationId ?? -1);
-  const { data: summary } = useVenueReservationsSummary(orgId, selectedLocationId, date ?? "");
-
-  if (loadingOrgs || loadingModules) {
-    return (
-      <PageContainer>
-        <PageHeader title="Reservas" description="Organize reservas, confirmações, chegadas e fila de espera." />
-        <BlockSkeleton className="h-96" />
-      </PageContainer>
-    );
-  }
-
-  if (!orgId) {
-    return (
-      <PageContainer>
-        <PageHeader
-          title="Reservas"
-          description="Organize reservas, confirmações, chegadas e fila de espera."
-          actions={
-            <Button onClick={() => guard(() => {})}>
-              <Plus size={16} /> Nova reserva
-            </Button>
-          }
-        />
-        <EmptyState
-          title="Nenhuma reserva ainda"
-          description="Crie seu workspace para começar a organizar reservas e fila de espera."
-          actionLabel="Nova reserva"
-          onAction={() => guard(() => {})}
-        />
-      </PageContainer>
-    );
-  }
-
-  if (locations && locations.length === 0) {
-    return (
-      <PageContainer>
-        <PageHeader title="Reservas" description="Organize reservas, confirmações, chegadas e fila de espera." />
-        <OnboardingLocation orgId={orgId} />
-      </PageContainer>
-    );
-  }
-
-  if (!selectedLocationId || !location || date === null) {
-    return (
-      <PageContainer>
-        <PageHeader title="Reservas" description="Organize reservas, confirmações, chegadas e fila de espera." />
-        <BlockSkeleton className="h-96" />
-      </PageContainer>
-    );
-  }
+  const { cancel } = useVenueReservationMutations(orgId, locationId);
+  const { data: summary, isLoading: loadingSummary } = useVenueReservationsSummary(orgId, locationId, date);
+  const isToday = date === todayInTimeZone(location.timezone);
+  const arrived = summary ? summary.seated + summary.completed : null;
 
   return (
-    <PageContainer>
+    <div className="space-y-6">
       <PageHeader
-        title="Reservas"
-        description="Organize reservas, confirmações, chegadas e fila de espera."
+        title={TITLE}
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            {locations && locations.length > 1 ? (
-              <Select value={String(selectedLocationId)} onValueChange={(v) => setSelectedLocationId(Number(v))}>
-                <SelectTrigger className="w-48"><SelectValue placeholder="Unidade" /></SelectTrigger>
-                <SelectContent>
-                  {locations.map((loc) => (
-                    <SelectItem key={loc.id} value={String(loc.id)}>
-                      {loc.nome} {loc.isMain ? "· Principal" : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : null}
-            <Input type="date" className="w-40" value={date} onChange={(e) => setDate(e.target.value)} />
-            <Button variant="outline" onClick={() => setWaitlistOpen(true)}>
-              <Plus size={16} /> Adicionar à fila
+          <>
+            <LocationSelect locations={locations} value={locationId} onChange={setLocationId} className="w-44" />
+            <Button variant="outline" leftIcon="user-plus" onClick={() => setWaitlistOpen(true)}>
+              Adicionar à fila
             </Button>
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus size={16} /> Nova reserva
+            <Button leftIcon="calendar-plus" onClick={() => setCreateOpen(true)}>
+              Nova reserva
             </Button>
-          </div>
+          </>
         }
       />
 
-      <SummaryBar summary={summary} />
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label={isToday ? "Reservas hoje" : "Reservas no dia"} icon="calendar-check" value={loadingSummary ? null : (summary?.totalReservations ?? 0)} hint={summary ? `${summary.expectedPeople} ${summary.expectedPeople === 1 ? "pessoa esperada" : "pessoas esperadas"}` : undefined} />
+        <StatCard label="Já chegaram" icon="door" value={loadingSummary ? null : (arrived ?? 0)} hint={summary ? `${summary.confirmed} confirmadas · ${summary.pending} pendentes` : undefined} />
+        <StatCard label="Fila de espera" icon="users" value={loadingSummary ? null : (summary?.waitlistCount ?? 0)} hint={summary ? (summary.averageWaitMinutes !== null ? `espera média de ${summary.averageWaitMinutes} min` : summary.noShow > 0 ? `${summary.noShow} no-show no dia` : "ninguém esperando") : undefined} />
+      </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)}>
-        <div className="scrollbar-hide -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          <TabsList className="w-max min-w-full sm:w-fit">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <TabsList>
             <TabsTrigger value="agenda">Agenda</TabsTrigger>
             <TabsTrigger value="lista">Lista</TabsTrigger>
             <TabsTrigger value="fila">Fila de espera</TabsTrigger>
           </TabsList>
+          {tab === "agenda" ? (
+            <div className="flex items-center gap-2">
+              <Input type="date" aria-label="Data da agenda" className="w-44" value={date} onChange={(e) => setDate(e.target.value)} />
+              {!isToday ? (
+                <Button variant="subtle" size="sm" onClick={() => setDate(todayInTimeZone(location.timezone))}>
+                  Hoje
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
 
         <TabsContent value="agenda">
-          <AgendaTab
-            orgId={orgId}
-            locationId={selectedLocationId}
-            location={location}
-            date={date}
-            onOpenDetail={setDetailId}
-            onSeat={setSeatReservation}
-            onEdit={setEditReservation}
-            onCancel={setCancelReservation}
-          />
+          <AgendaTab orgId={orgId} locationId={locationId} location={location} date={date} onOpenDetail={setDetailId} onSeat={setSeatReservation} onEdit={setEditReservation} onCancel={setCancelReservation} onAddWaitlist={() => setWaitlistOpen(true)} />
         </TabsContent>
         <TabsContent value="lista">
-          <ListaTab orgId={orgId} locationId={selectedLocationId} location={location} onOpenDetail={setDetailId} />
+          <ListaTab orgId={orgId} locationId={locationId} location={location} onOpenDetail={setDetailId} />
         </TabsContent>
         <TabsContent value="fila">
-          <FilaTab orgId={orgId} locationId={selectedLocationId} />
+          <FilaTab orgId={orgId} locationId={locationId} onAdd={() => setWaitlistOpen(true)} />
         </TabsContent>
       </Tabs>
 
-      <ReservationFormDialog
-        orgId={orgId}
-        locationId={selectedLocationId}
-        location={location}
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-      />
-      <WaitlistFormDialog orgId={orgId} locationId={selectedLocationId} open={waitlistOpen} onOpenChange={setWaitlistOpen} />
+      <ReservationFormDialog orgId={orgId} locationId={locationId} location={location} open={createOpen} onOpenChange={setCreateOpen} />
+      <WaitlistFormDialog orgId={orgId} locationId={locationId} open={waitlistOpen} onOpenChange={setWaitlistOpen} />
 
-      <ReservationDetailSheet
-        orgId={orgId}
-        locationId={selectedLocationId}
-        location={location}
-        reservationId={detailId}
-        open={detailId !== null}
-        onOpenChange={(v) => !v && setDetailId(null)}
-      />
+      <ReservationDetailSheet orgId={orgId} locationId={locationId} location={location} reservationId={detailId} open={detailId !== null} onOpenChange={(v) => !v && setDetailId(null)} />
 
-      <SeatReservationDialog
-        orgId={orgId}
-        locationId={selectedLocationId}
-        reservation={seatReservation}
-        open={seatReservation !== null}
-        onOpenChange={(v) => !v && setSeatReservation(null)}
-      />
+      <SeatReservationDialog orgId={orgId} locationId={locationId} reservation={seatReservation} open={seatReservation !== null} onOpenChange={(v) => !v && setSeatReservation(null)} />
 
-      <ReservationFormDialog
-        orgId={orgId}
-        locationId={selectedLocationId}
-        location={location}
-        reservation={editReservation}
-        open={editReservation !== null}
-        onOpenChange={(v) => !v && setEditReservation(null)}
-      />
+      <ReservationFormDialog orgId={orgId} locationId={locationId} location={location} reservation={editReservation} open={editReservation !== null} onOpenChange={(v) => !v && setEditReservation(null)} />
 
       <CancelWithReasonDialog
         open={cancelReservation !== null}
@@ -233,6 +146,6 @@ export default function VenueReservasPage() {
           )
         }
       />
-    </PageContainer>
+    </div>
   );
 }

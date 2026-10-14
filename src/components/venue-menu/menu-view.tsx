@@ -1,62 +1,40 @@
 "use client";
 
-import { forwardRef, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { ArrowLeft, Heart, LayoutGrid, List, Square, Star, TriangleAlert, X } from "lucide-react";
-import { HomeIcon } from "@/components/icons/HomeIcon";
-import { InstagramIcon } from "@/components/icons/InstagramIcon";
-import { SearchIcon } from "@/components/icons/SearchIcon";
-import { WhatsappIcon } from "@/components/icons/WhatsappIcon";
-import {
-  formatCentsBRL,
-  type PublicMenuCategory,
-  type PublicMenuItem,
-  type PublicMenuResponse,
-  type PublicMenuSection,
-} from "@/services/venue-menu-public";
+import { StatusBadge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
+import { SearchInput } from "@/components/ui/search-input";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/cn";
+import { formatBRLCents } from "@/lib/format";
 import { resolveMediaUrl } from "@/lib/media";
+import type { PublicMenuCategory, PublicMenuItem, PublicMenuResponse, PublicMenuSection } from "@/services/venue-menu-public";
+import { HeaderAction, VenuePublicFooter, VenuePublicHeader, venueInitials } from "./venue-public-header";
 
-type ViewMode = "list" | "grid" | "large";
-
-function initials(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join("");
-}
+type ViewMode = "list" | "grid";
 
 /**
- * Extrai uma magnitude numérica comparável do nome livre de uma variação
- * (ex.: "200 ml" → 200, "1 L" → 1000, "1,5kg" → 1500) para ordenar por
- * tamanho real em vez de confiar cegamente no displayOrder cadastrado no
- * dashboard (o produtor pode cadastrar fora de ordem). Unidades de volume/
- * massa maiores (L, kg) convertem pra base ml/g pra comparar com as
- * menores (ml, g) na mesma escala; unidades sem conversão conhecida (un,
- * fatia, "P"/"M"/"G"...) usam o número puro. Retorna null quando não há
- * nenhum número no nome (nunca lança) — nesse caso o chamador cai no
- * displayOrder original, que já vem ordenado 'asc' do backend.
+ * Magnitude comparável do nome de uma variação ("200 ml" → 200, "1 L" → 1000)
+ * pra ordenar por tamanho real, não pelo displayOrder cadastrado. Null quando
+ * não há número — o chamador mantém a ordem original.
  */
 function parseVariantSize(nome: string): number | null {
   const match = nome.replace(",", ".").match(/(\d+(?:\.\d+)?)\s*(ml|l|kg|g|un|oz)?/i);
   if (!match) return null;
   const value = parseFloat(match[1]);
   const unit = (match[2] ?? "").toLowerCase();
-  if (unit === "l") return value * 1000;
-  if (unit === "kg") return value * 1000;
+  if (unit === "l" || unit === "kg") return value * 1000;
   return value;
 }
 
-/**
- * Variações ordenadas da menor pra maior unidade real (200ml antes de
- * 600ml antes de 1L...). Quando pelo menos uma variação tem tamanho
- * parseável, ordena por ele (as sem tamanho parseável vão pro fim, na
- * ordem original entre si); sem nenhum tamanho parseável no item inteiro,
- * mantém a ordem original (displayOrder do backend) — nunca embaralha uma
- * lista tipo "Pequeno/Médio/Grande" tentando adivinhar tamanho.
- */
-function sortVariantsBySize(prices: PublicMenuItem["prices"]): PublicMenuItem["prices"] {
+/** Variações da menor pra maior; sem nenhum tamanho parseável, mantém a ordem (P/M/G nunca é embaralhado). */
+export function sortVariantsBySize(prices: PublicMenuItem["prices"]): PublicMenuItem["prices"] {
   const sizes = prices.map((p) => parseVariantSize(p.variantNome));
   if (sizes.every((s) => s === null)) return prices;
   return prices
@@ -70,25 +48,15 @@ function sortVariantsBySize(prices: PublicMenuItem["prices"]): PublicMenuItem["p
     .map(({ p }) => p);
 }
 
-/**
- * Variação principal (menor tamanho real) + preço, sempre visível no
- * card — nunca "a partir de", pra permitir comparar preço entre produtos
- * sem abrir nada (pedido explícito do usuário). Produto sem variação
- * (prices.length <= 1) não tem nome de variação pra mostrar, só o preço.
- */
-function itemMainPriceLabel(item: PublicMenuItem): string | null {
+/** Variação principal (menor) + preço, sempre visível no card — nunca "a partir de". */
+function itemMainPrice(item: PublicMenuItem): { price: string; variant: string | null } | null {
   if (item.prices.length === 0) return null;
-  const price = formatCentsBRL(item.prices[0].effectivePriceCents);
-  if (item.prices.length === 1) return price;
+  if (item.prices.length === 1) return { price: formatBRLCents(item.prices[0].effectivePriceCents), variant: null };
   const sorted = sortVariantsBySize(item.prices);
-  return `${sorted[0].variantNome} · ${formatCentsBRL(sorted[0].effectivePriceCents)}`;
+  return { price: formatBRLCents(sorted[0].effectivePriceCents), variant: sorted[0].variantNome };
 }
 
-/**
- * Medida real (volume/massa) no nome da variação, ou null. Diferente de
- * `parseVariantSize`, exige unidade: "8 anos", "1 bola" e "Kiwi" não são
- * tamanho.
- */
+/** Medida real (volume/massa) no nome da variação; exige unidade ("8 anos" não é tamanho). */
 function parseVariantMeasure(nome: string): number | null {
   const match = nome.replace(",", ".").match(/(\d+(?:\.\d+)?)\s*(ml|cl|l|kg|g|oz)\b/i);
   if (!match) return null;
@@ -99,1296 +67,527 @@ function parseVariantMeasure(nome: string): number | null {
   return value;
 }
 
-/**
- * "5 tamanhos", "4 opções" — rótulo do acionador do bottom sheet de
- * variações; null quando não há múltiplas variações. "Tamanhos" só quando
- * toda variação tem medida e as medidas são diferentes entre si (Água sem
- * gás 500ml / com gás 500ml são opções, não tamanhos).
- */
+/** "5 tamanhos" / "4 opções"; null sem múltiplas variações. */
 function variantCountLabel(item: PublicMenuItem): string | null {
   const count = item.prices.length;
   if (count <= 1) return null;
   const measures = item.prices.map((p) => parseVariantMeasure(p.variantNome));
-  const isSizes =
-    measures.every((m) => m !== null) && new Set(measures).size === measures.length;
+  const isSizes = measures.every((m) => m !== null) && new Set(measures).size === measures.length;
   return `${count} ${isSizes ? "tamanhos" : "opções"}`;
 }
 
+const STICKY_OFFSET = 56;
+
 /**
- * Renderer real do cardápio (nokta.live/cardapio/{slug}) — hero escuro com
- * anel, avatar circular, chips de categoria sticky, 3 modos de
- * visualização, favoritos. Componente puro: recebe os dados prontos e um
- * callback opcional de favoritar, sem acoplar a nenhuma API própria —
- * usado tanto pela página pública real (PublicMenuView, que busca os
- * dados e favorita contra o endpoint público) quanto pelo preview
- * autenticado do dashboard (MenuPreviewPhone, sem favoritar), para nunca
- * existir uma segunda implementação visual divergente.
- *
- * Mobile-first (o público real é 100% celular, em evento/bar ninguém abre
- * no notebook), mas ajustado com breakpoints md/lg/xl para tablet/desktop
- * em vez de ficar preso a um cartão de 440px centralizado.
- *
- * Rola dentro do elemento indicado por `scrollContainerSelector` (padrão
- * "main") — a página pública rola dentro de um `<main fixed inset-0
- * overflow-y-auto>|; o preview do dashboard passa o seletor do próprio
- * frame de celular. Os chips têm `sticky top-0`, cujo
- * getBoundingClientRect().top gruda em 0 quando colado e nunca reflete
- * quanto realmente rolou — por isso a appbar precisa observar o scroll do
- * container real, nunca de `window`.
- *
- * A appbar (barra escura que aparece ao rolar) é `sticky top-0` (como os
- * chips de categoria logo abaixo), nunca `fixed` — `fixed` sempre se
- * posiciona contra a viewport real do navegador, o que funciona por
- * acidente na página pública (o `<main>` já cobre a viewport inteira) mas
- * vaza pra fora do bezel quando este mesmo componente roda dentro do
- * preview de celular no dashboard (container pequeno, não a tela
- * inteira). `sticky` sempre gruda no topo do ancestral rolável mais
- * próximo, então funciona idêntico nos dois casos sem cálculo de posição.
- * O wrapper sticky fica com h-0 (nunca ocupa espaço no fluxo/empurra o
- * hero) — o conteúdo visual mora num filho absolute por cima dele.
+ * Renderer do cardápio público (nokta.live/cardapio/{slug}) — também usado
+ * pelo preview autenticado do painel (iframe) pra nunca existir uma segunda
+ * implementação. Componente puro: recebe os dados e um callback opcional de
+ * favoritar. Tema escuro da Nokta com a identidade do bar (banner, logo).
+ * Rola no documento; a barra de categorias é `sticky` (nunca `fixed`, que
+ * vazaria pra fora do bezel do preview).
  */
 export function MenuView({
   data,
   onToggleFavorite,
-  scrollContainerSelector = "main",
   orgSlug,
-  disableSticky = false,
 }: {
   data: PublicMenuResponse;
   onToggleFavorite?: (item: PublicMenuItem) => void;
-  scrollContainerSelector?: string;
-  /** Slug da organização, usado para linkar "Avaliar". Ausente no preview do dashboard (link real não faz sentido lá) — o ícone some nesse caso. */
+  /** Slug da organização — liga "Início" e "Avaliar". Ausente no preview do painel. */
   orgSlug?: string;
-  /**
-   * `position: sticky` não se comporta corretamente dentro de um ancestral
-   * com `transform` (ex.: o preview do dashboard, que usa `scale()` pra
-   * caber no bezel de celular) — os chips/appbar ficam presos numa posição
-   * errada, criando uma faixa visual estranha. Sem solução de CSS real pra
-   * isso (limitação conhecida do spec), então o preview passa
-   * `disableSticky` pra virar `relative` ali, evitando o artefato — só a
-   * página pública real (sem scale) usa sticky de verdade.
-   */
+  /** Mantidos por compatibilidade com chamadores antigos (o layout atual rola no documento). */
+  scrollContainerSelector?: string;
   disableSticky?: boolean;
 }) {
-  // Chip "ativo" é só indicativo (destaca visualmente qual seção o clique
-  // mais recente mirou) — todas as categorias (e Destaques) ficam sempre
-  // visíveis, empilhadas, cada uma com seu próprio título/separador. Clicar
-  // num chip rola até o início daquela seção (scrollIntoView), nunca
-  // esconde as demais. "Destaques" não tem mais chip próprio no carrossel
-  // (já aparecia repetido logo abaixo do carrossel, pedido explícito do
-  // usuário pra remover a duplicação) — a seção continua existindo, só sem
-  // atalho de clique dedicado; o estado inicial cai direto na 1ª categoria.
-  const [activeCategoryId, setActiveCategoryId] = useState<number | "highlights">(
-    (data.menu.categories.find((c) => (c.section ?? "MENU") === "MENU") ?? data.menu.categories[0])?.id ?? "highlights",
-  );
-  // Área escolhida pelo cliente: bebidas/alimentos ("MENU") ou tabacaria
-  // ("TOBACCO"). As duas NUNCA aparecem juntas — cada área tem carrossel de
-  // categorias, destaques e seções próprios; o seletor logo abaixo do
-  // perfil só existe quando o cardápio tem as duas. Com uma área só, ela é
-  // mostrada direto (ver `activeSection`), sem seletor.
   const [section, setSection] = useState<PublicMenuSection>("MENU");
   const [view, setView] = useState<ViewMode>("list");
-  const [showAppbar, setShowAppbar] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [allCategoriesOpen, setAllCategoriesOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  // Item com o bottom sheet "Escolha o tamanho" aberto — só um por vez,
-  // controlado aqui (não dentro de cada card) pra nunca haver dois sheets
-  // montados simultaneamente e pra qualquer card (lista/grade/cards/
-  // destaques) poder abrir o mesmo overlay compartilhado.
+  // Um sheet de cada tipo por vez, controlado aqui — qualquer card abre o mesmo overlay.
   const [variantSheetItem, setVariantSheetItem] = useState<PublicMenuItem | null>(null);
-  // Tela de detalhe do produto (foto grande, descrição, harmoniza com,
-  // contraindicações) — aberta pelo clique no card, nunca automaticamente.
-  // Compartilhada por todos os modos de visualização/carrossel, igual ao
-  // VariantSheet, pra nunca existir uma segunda implementação divergente.
-  // Guarda só o ID (não o objeto do card clicado): favoritar dentro do
-  // detalhe precisa refletir o favoriteCount/favoritedByVisitor atualizado
-  // vindo de `data`, nunca uma cópia congelada do momento do clique.
+  // Só o ID: favoritar dentro do detalhe precisa refletir o `data` atualizado.
   const [detailItemId, setDetailItemId] = useState<number | null>(null);
-  const profileRef = useRef<HTMLDivElement>(null);
-  const sectionSwitchRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const sectionRefs = useRef(new Map<number | "highlights", HTMLDivElement>());
+  const sectionRefs = useRef(new Map<number | "highlights", HTMLElement>());
+  const topRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const scrollParent = profileRef.current?.closest(scrollContainerSelector);
-    if (!scrollParent) return;
-    function onScroll() {
-      if (!profileRef.current) return;
-      setShowAppbar(profileRef.current.getBoundingClientRect().bottom <= 52);
-    }
-    scrollParent.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => scrollParent.removeEventListener("scroll", onScroll);
-  }, [scrollContainerSelector]);
+  const hasTobacco = data.menu.categories.some((c) => c.section === "TOBACCO");
+  const hasMenu = data.menu.categories.some((c) => (c.section ?? "MENU") === "MENU");
+  const hasBothSections = hasTobacco && hasMenu;
+  const activeSection: PublicMenuSection = hasBothSections ? section : hasTobacco ? "TOBACCO" : "MENU";
+  const visibleCategories = data.menu.categories.filter((c) => (c.section ?? "MENU") === activeSection && c.items.length > 0);
+  const visibleHighlights = data.menu.highlights.filter((i) => (i.section ?? "MENU") === activeSection);
 
+  const [activeCategoryId, setActiveCategoryId] = useState<string>(() => String(visibleCategories[0]?.id ?? ""));
+
+  // Busca cruza TODAS as categorias — o cliente pode não saber onde o produto está.
+  const allItems = useMemo(() => data.menu.categories.flatMap((c) => c.items), [data.menu.categories]);
+  const detailItem = detailItemId === null ? null : (allItems.find((i) => i.id === detailItemId) ?? data.menu.highlights.find((i) => i.id === detailItemId) ?? null);
+
+  // Chip ativo acompanha a rolagem (seção mais próxima do topo da barra).
   useEffect(() => {
-    if (searchOpen) searchInputRef.current?.focus();
-  }, [searchOpen]);
+    if (typeof IntersectionObserver === "undefined") return;
+    const entries = [...sectionRefs.current.entries()].filter(([key]) => key !== "highlights");
+    if (entries.length === 0) return;
+    const ratio = new Map<number | "highlights", boolean>();
+    const observer = new IntersectionObserver(
+      (observed) => {
+        for (const e of observed) {
+          const key = entries.find(([, el]) => el === e.target)?.[0];
+          if (key !== undefined) ratio.set(key, e.isIntersecting);
+        }
+        const first = entries.find(([key]) => ratio.get(key));
+        if (first) setActiveCategoryId(String(first[0]));
+      },
+      { rootMargin: `-${STICKY_OFFSET + 8}px 0px -60% 0px`, threshold: 0 },
+    );
+    entries.forEach(([, el]) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [visibleCategories.length, activeSection]);
+
+  const scrollToSection = (id: number | "highlights") => {
+    setActiveCategoryId(String(id));
+    sectionRefs.current.get(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const switchSection = (next: PublicMenuSection) => {
+    setSection(next);
+    const first = data.menu.categories.find((c) => (c.section ?? "MENU") === next);
+    if (first) setActiveCategoryId(String(first.id));
+    topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const closeSearch = () => {
     setSearchOpen(false);
     setSearchQuery("");
   };
 
-  const scrollToSection = (id: number | "highlights") => {
-    setActiveCategoryId(id);
-    sectionRefs.current.get(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
-  // Busca cruza TODAS as categorias (não só a ativa) — o usuário pode não
-  // lembrar em qual categoria o produto está.
-  const allItems = useMemo(
-    () => data.menu.categories.flatMap((c) => c.items),
-    [data.menu.categories],
-  );
-
-  // Resolve o item atual pelo ID a cada render (nunca guarda o objeto do
-  // card clicado) — favoritar dentro da tela de detalhe precisa refletir o
-  // favoriteCount/favoritedByVisitor atualizado vindo de `data`, incluindo
-  // itens de `highlights` (que não estão em allItems).
-  const detailItem =
-    detailItemId === null
-      ? null
-      : (allItems.find((i) => i.id === detailItemId) ??
-        data.menu.highlights.find((i) => i.id === detailItemId) ??
-        null);
-
-  const hasTobacco = data.menu.categories.some((c) => c.section === "TOBACCO");
-  const hasMenu = data.menu.categories.some((c) => (c.section ?? "MENU") === "MENU");
-  const hasBothSections = hasTobacco && hasMenu;
-  const activeSection: PublicMenuSection = hasBothSections ? section : hasTobacco ? "TOBACCO" : "MENU";
-  const visibleCategories = data.menu.categories.filter((c) => (c.section ?? "MENU") === activeSection);
-  const visibleHighlights = data.menu.highlights.filter((i) => (i.section ?? "MENU") === activeSection);
-
-  const switchSection = (next: PublicMenuSection) => {
-    setSection(next);
-    const first = data.menu.categories.find((c) => (c.section ?? "MENU") === next);
-    if (first) setActiveCategoryId(first.id);
-    // Quem troca pelo atalho do fim da página precisa voltar ao começo da
-    // área nova, senão cai no meio de uma lista que não escolheu.
-    sectionSwitchRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
   const { profile } = data;
-  // Nome exibido publicamente é o do CARDÁPIO (menu.nome, editável em
-  // "Nome do cardápio" no dashboard) — nunca o nome da organização
-  // (data.organizationName), que é um dado interno/de conta, não o nome do
-  // estabelecimento que o cliente vê.
+  // Nome público é o do CARDÁPIO (editável no painel), não o da organização.
   const displayName = data.menu.nome;
+  const favoriteFor = (item: PublicMenuItem) => (onToggleFavorite ? () => onToggleFavorite(item) : undefined);
 
   return (
-    <div className="relative min-h-full bg-[#e9e9ec] font-sans">
-      <div className="mx-auto min-h-full w-full max-w-[440px] bg-white shadow-[0_0_50px_rgba(0,0,0,0.1)] md:max-w-2xl lg:max-w-4xl">
-        {/* APPBAR — sticky (não fixed, ver comentário no topo do arquivo). h-0 pra nunca empurrar o hero abaixo; o conteúdo visual mora num filho absolute. disableSticky também esconde a appbar por completo (nunca aparece de forma torta dentro do preview escalado). */}
-        {disableSticky ? null : (
-        <div className="sticky top-0 z-40 h-0">
-          <div
-            className={`absolute inset-x-0 top-0 h-[52px] items-center gap-4 bg-[#0f0f11] px-4 text-white shadow-[0_4px_16px_rgba(0,0,0,0.25)] transition-transform duration-200 ${
-              showAppbar ? "flex translate-y-0" : "flex -translate-y-full"
-            }`}
-          >
-            <span className="truncate font-poppins text-sm font-medium md:text-base">
-              {hasBothSections && activeSection === "TOBACCO" ? "Tabacaria" : displayName}
-            </span>
-            <div className="ml-auto flex gap-1">
-              <ViewButton active={view === "list"} onClick={() => setView("list")} icon={<List size={18} />} label="Lista" />
-              <ViewButton active={view === "grid"} onClick={() => setView("grid")} icon={<LayoutGrid size={18} />} label="Grade" />
-              <ViewButton
-                active={view === "large"}
-                onClick={() => setView("large")}
-                icon={<Square size={18} />}
-                label="Cards"
-              />
-            </div>
-          </div>
-        </div>
-        )}
-
-        {/* HERO — banner real do perfil quando definido (mesma imagem editada em "Banner do cardápio (capa)" no dashboard, só a imagem, sem nome sobreposto); sem banner, mantém o fallback de sempre (fundo escuro + nome + anel decorativo, altura fixa). Borda inferior só com banner: uma imagem clara/branca se misturava com o fundo da página logo abaixo, sem nenhuma linha demarcando onde o banner termina.
-
-        COM banner: mesmo padrão exato da Home pública (venue-home-view.tsx) — aspect-ratio real (430/190, igual ao crop do dashboard) em vez de altura fixa. Imagem em object-fill (nunca corta lateral nem sobra faixa vazia — estica pra preencher 100% x 100% do container; decisão explícita do usuário de que distorção é responsabilidade do produtor que envia a imagem, nunca cortar conteúdo). */}
-        <div
-          className={`relative flex items-center justify-center overflow-hidden bg-[#050505] ${profile.bannerUrl ? "border-b border-black/15" : "h-[180px] px-6 md:h-[220px]"}`}
-          style={profile.bannerUrl ? { aspectRatio: "430 / 190" } : undefined}
-        >
-          {profile.bannerUrl ? (
-            <Image
-              src={resolveMediaUrl(profile.bannerUrl) ?? profile.bannerUrl}
-              alt=""
-              fill
-              className="object-fill"
-              unoptimized
-            />
-          ) : (
+    <div className="min-h-dvh bg-background text-foreground">
+      <div className="mx-auto w-full max-w-3xl">
+        <VenuePublicHeader
+          name={displayName}
+          logoUrl={profile.logoUrl}
+          bannerUrl={profile.bannerUrl}
+          actions={
             <>
-              <div className="absolute -top-24 h-[280px] w-[280px] rounded-full border border-white/40 md:-top-32 md:h-[340px] md:w-[340px]" />
-              <p className="relative max-w-full break-words text-center font-poppins text-2xl font-light leading-tight tracking-[0.2em] text-white md:text-[46px] md:tracking-[0.42em]">
-                {displayName.toUpperCase()}
-              </p>
-            </>
-          )}
-        </div>
-
-        {/* PROFILE — mesmo padrão exato da Home pública: logo h-28/w-28 (112px), -mt-6 (24px sobrepostos ao banner, resto na área branca), nome+ícones ao lado numa única linha. Início/Busca/Avaliar são exclusivos do cardápio (a Home pública não tem), inseridos no mesmo eixo sem alterar o alinhamento logo↔texto. */}
-        <div ref={profileRef} className="flex gap-3.5 px-5 pb-4 md:gap-5 md:px-8">
-          <div
-            className={`relative -mt-6 flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-4 border-white shadow-[0_4px_12px_rgba(0,0,0,.14)] md:h-32 md:w-32 ${profile.logoUrl ? "" : "bg-black"}`}
-          >
-            {profile.logoUrl ? (
-              <>
-                {/* Vidro fosco atrás da logo — sem isso, uma logo com fundo transparente sobreposta na borda do banner se misturava direto com a foto atrás dela. */}
-                <div className="absolute inset-0 rounded-full bg-white/55 backdrop-blur-md" />
-                <Image
-                  src={resolveMediaUrl(profile.logoUrl) ?? profile.logoUrl}
-                  alt={displayName}
-                  fill
-                  className="relative rounded-full object-cover"
-                  unoptimized
-                />
-              </>
-            ) : (
-              <>
-                <div className="absolute h-16 w-16 rounded-full border border-white/40 md:h-[70px] md:w-[70px]" />
-                <span className="relative font-poppins text-sm font-light tracking-[0.25em] text-white md:text-base">
-                  {initials(displayName)}
-                </span>
-              </>
-            )}
-          </div>
-          <div className="min-w-0 pt-1.5">
-            <h1 className="mb-2 truncate font-poppins text-xl font-semibold tracking-tight text-[#141414] md:text-2xl">
-              {displayName}
-            </h1>
-            {/* Início / Instagram / WhatsApp / Busca — sempre visíveis e clicáveis, nessa ordem. Instagram sem link cadastrado vai pro instagram.com genérico; WhatsApp sem número vai pro wa.me genérico (abre o app sem conversa pré-selecionada) — nunca link morto. Início linka pra Home pública (nokta.live/{orgSlug}); sem orgSlug (preview do dashboard), fica sem ação. Todos os 4 ícones (HomeIcon/InstagramIcon/WhatsappIcon/SearchIcon) são SVGs próprios do projeto em size 22 — nunca lucide aqui: um ícone lucide outline, mesmo maior, não fica com o mesmo peso visual de um SVG sólido (relatado pelo usuário: Início/Busca pareciam "mais grossos"/diferentes de Instagram/WhatsApp mesmo no mesmo tamanho). SearchIcon é o mesmo SVG do input de busca de eventos (search-overlay.tsx); HomeIcon vem de public/icons8-casa.svg. */}
-            <div className="mb-2 flex flex-wrap items-center gap-4 text-[#141414]">
+              {orgSlug ? <HeaderAction href={`/${orgSlug}`} label="Início do estabelecimento" icon="home" /> : null}
+              <HeaderAction href={profile.instagramUrl || "https://instagram.com"} label="Instagram" icon="instagram" external />
+              <HeaderAction href={profile.whatsappNumber ? `https://wa.me/${profile.whatsappNumber.replace(/\D/g, "")}` : "https://wa.me"} label="WhatsApp" icon="whatsapp" external />
+              <HeaderAction onClick={() => setSearchOpen(true)} label="Buscar no cardápio" icon="search" />
               {orgSlug ? (
-                <a href={`/${orgSlug}`} title="Início" aria-label="Início">
-                  <HomeIcon size={22} />
-                </a>
-              ) : (
-                <button type="button" title="Início" aria-label="Início">
-                  <HomeIcon size={22} />
-                </button>
-              )}
-              <a href={profile.instagramUrl || "https://instagram.com"} target="_blank" rel="noopener noreferrer" title="Instagram">
-                <InstagramIcon size={22} />
-              </a>
-              <a
-                href={profile.whatsappNumber ? `https://wa.me/${profile.whatsappNumber.replace(/\D/g, "")}` : "https://wa.me"}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="WhatsApp"
-              >
-                <WhatsappIcon size={22} />
-              </a>
-              <button type="button" onClick={() => setSearchOpen(true)} title="Buscar produto" aria-label="Buscar produto">
-                <SearchIcon size={22} />
-              </button>
-            </div>
-            {orgSlug ? (
-              <a
-                href={`/avaliacao/${orgSlug}`}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-[#d9a326]"
-              >
-                Avaliar
-                <Star size={16} strokeWidth={1.8} fill="#d9a326" />
-              </a>
-            ) : null}
-          </div>
-        </div>
+                <Button asChild variant="outline" size="sm" shape="pill" className="ml-auto h-11">
+                  <a href={`/avaliacao/${orgSlug}`}>
+                    <Icon name="star" size={13} className="text-warning" />
+                    Avaliar
+                  </a>
+                </Button>
+              ) : null}
+            </>
+          }
+        >
+          {data.menu.descricao ? <p className="mt-3 px-4 text-body text-muted-foreground md:px-6">{data.menu.descricao}</p> : null}
+        </VenuePublicHeader>
 
-        {/* CATEGORIAS — carrossel de avatares circulares (foto + nome embaixo), clicar rola até o início da seção (scrollToSection), nunca esconde as demais categorias. Sem imageUrl na categoria, cai no mesmo fallback de iniciais usado em logo/avatar (nunca um terceiro estilo de fallback). "Ver todas" abre uma lista completa (modal) como atalho.
+        <div ref={topRef} className="scroll-mt-2" />
 
-        Avatar de 76px + gap de 30px entre eles — nessa proporção, ~4
-        avatares completos cabem na tela de um celular real (a referência
-        visual enviada pelo usuário), sem cortar o próximo item; o resto só
-        aparece arrastando. Nunca uma "caixa" com largura calculada à parte
-        (isso foi tentado e ficou errado — criava um container mais estreito
-        que o card e deslocado, cortando os dois lados de forma incorreta) —
-        o corte em ~4 é só uma CONSEQUÊNCIA do tamanho do avatar+gap cabendo
-        (ou não) na largura real do card, nunca um limite artificial.
-
-        O scroller NUNCA usa margem negativa (-mx-5) pra simular full-bleed —
-        isso foi tentado e quebrou em telas reais: quando o card ocupa a
-        viewport inteira (mobile, sem sobra de max-w), a margem negativa
-        empurra o elemento pra fora da viewport física, e o padding interno
-        (px-5) que deveria abrir respiro na primeira/última posição do
-        scroll fica "escondido" atrás desse offset — o primeiro avatar
-        nasce cortado na borda, e sobra um vão vazio depois do último
-        (relatado pelo usuário com print). O scroller agora ocupa a largura
-        real do card (sem -mx-5/w-full), e o padding lateral (px-5/md:px-8)
-        mora nele mesmo — cada ponta do scroll físico já é o respiro
-        correto, sem depender de a margem negativa "vazar" pra fora de nada.
-
-        pt-1.5 no flex interno: `overflow-x-auto` corta o eixo Y na altura
-        exata do conteúdo (regra do CSS spec — eixo com overflow não-visible
-        força o outro eixo a não ficar visible também); sem esse respiro no
-        topo, a sombra do avatar (`shadow-[...]` em CategoryAvatarButton)
-        ficava cortada (relatado com print). Nome de categoria usa
-        `line-clamp-2` (não `truncate`) — pedido explícito do usuário pra
-        quebrar em 2 linhas em vez de reticências; o botão inteiro é
-        flex-col dentro de um pai `items-stretch` (padrão do flex, sem
-        override), então todos os itens da mesma altura ficam alinhados
-        pelo topo do círculo automaticamente. */}
-        {/* ÁREAS — Cardápio | Tabacaria. Só aparece quando o cardápio tem as
-        duas; a tabacaria nunca divide carrossel, destaques ou lista com
-        bebidas e alimentos (pedido explícito do usuário). Mesma linguagem
-        dos títulos de seção (texto grande + linha fina embaixo), sem pílula,
-        ícone ou cartão: a primeira versão tinha tudo isso e foi recusada
-        por "parecer feita por IA". */}
         {hasBothSections ? (
-          <div ref={sectionSwitchRef} className="scroll-mt-[52px] px-5 md:px-8">
-            <div role="tablist" aria-label="Áreas do cardápio" className="flex gap-7 border-b border-[#ececee]">
-              <SectionTab active={activeSection === "MENU"} onClick={() => switchSection("MENU")} label="Cardápio" />
-              <SectionTab active={activeSection === "TOBACCO"} onClick={() => switchSection("TOBACCO")} label="Tabacaria" />
-            </div>
+          <div className="px-4 pt-5 md:px-6">
+            <SegmentedControl fullWidth value={activeSection} onChange={switchSection} options={[{ value: "MENU", label: "Cardápio", icon: "utensils" }, { value: "TOBACCO", label: "Tabacaria", icon: "fire" }]} />
           </div>
         ) : null}
 
         {activeSection === "TOBACCO" ? (
-          <p className="px-5 pt-3 text-sm text-[#8b8b90] md:px-8">Venda proibida para menores de 18 anos.</p>
+          <div className="px-4 pt-4 md:px-6">
+            <Callout tone="warning" icon="id-card">
+              Venda proibida para menores de 18 anos.
+            </Callout>
+          </div>
         ) : null}
 
-        <div className="border-b border-black/[0.03] pb-6 pt-5">
-          {/* leading-none corta a caixa de linha rente ao cap-height, sem
-          espaço pro descendente do "g" de "Categorias" — mesmo com mb-5
-          logo depois, o "g" parecia colado no carrossel abaixo (relatado
-          com print). Trocado por leading-normal (caixa de linha real da
-          fonte, com espaço pra descendentes); items-center no flex mantém
-          título e "Ver todas" alinhados na mesma linha visual. */}
-          <div className="mb-5 flex items-center justify-between px-5 md:px-8">
-            <h3 className="font-poppins text-[18px] font-semibold leading-normal text-[#141414] md:text-xl">Categorias</h3>
+        {/* Barra pegajosa: categorias + modo de visualização. */}
+        <div className="sticky top-0 z-30 mt-4 border-b border-border bg-background/95 backdrop-blur-sm">
+          <div className="flex items-center gap-2 px-4 md:px-6">
             {visibleCategories.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => setAllCategoriesOpen(true)}
-                className="text-sm font-normal leading-normal text-[#a3a3a8]"
-              >
-                Ver todas →
+              <Tabs value={activeCategoryId} onValueChange={(v) => scrollToSection(Number(v))} className="min-w-0 flex-1 gap-0">
+                <TabsList variant="line" className="border-b-0">
+                  {visibleCategories.map((cat) => (
+                    <TabsTrigger key={cat.id} value={String(cat.id)} className="h-14">
+                      {cat.nome}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
+            ) : (
+              <span className="flex-1" />
+            )}
+            <div className="flex shrink-0 items-center gap-0.5">
+              {visibleCategories.length > 3 ? (
+                <button type="button" onClick={() => setAllCategoriesOpen(true)} aria-label="Todas as categorias" title="Todas as categorias" className="flex size-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground">
+                  <Icon name="layers" size={15} />
+                </button>
+              ) : null}
+              <button type="button" onClick={() => setView(view === "list" ? "grid" : "list")} aria-label={view === "list" ? "Ver em grade" : "Ver em lista"} title={view === "list" ? "Ver em grade" : "Ver em lista"} className="flex size-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:text-foreground">
+                <Icon name={view === "list" ? "grid" : "list"} size={15} />
               </button>
-            ) : null}
-          </div>
-          <div className="overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex gap-x-[30px] px-5 pb-1 pt-1.5 md:px-8">
-              {/* Chip "Destaques" removido do carrossel — a seção Destaques já aparece logo abaixo dele, o chip era uma duplicação do mesmo conceito (pedido explícito do usuário). A seção continua existindo normalmente. */}
-              {visibleCategories.map((cat) => (
-                <CategoryAvatarButton
-                  key={cat.id}
-                  label={cat.nome}
-                  imageUrl={cat.imageUrl}
-                  active={activeCategoryId === cat.id}
-                  onClick={() => scrollToSection(cat.id)}
-                />
-              ))}
             </div>
           </div>
         </div>
 
-        {/* SECTIONS — todas as categorias (e Destaques) empilhadas em sequência, cada uma com título próprio funcionando como separador visual entre a categoria anterior e a próxima (pedido explícito do usuário: "acabou Cervejas, avisar que começa a próxima"). */}
-        <div className="pb-24">
+        <div className="pb-6">
           {visibleHighlights.length > 0 ? (
-            <HighlightsSection
+            <section
               ref={(el) => {
                 if (el) sectionRefs.current.set("highlights", el);
                 else sectionRefs.current.delete("highlights");
               }}
-              items={visibleHighlights}
-              onToggleFavorite={onToggleFavorite}
-              onOpenVariants={setVariantSheetItem}
-              onOpenDetail={(item) => setDetailItemId(item.id)}
-            />
+              className="pt-6"
+              style={{ scrollMarginTop: STICKY_OFFSET + 8 }}
+            >
+              <h2 className="mb-3 flex items-center gap-2 px-4 text-title font-semibold tracking-tight md:px-6">
+                <Icon name="fire" size={16} className="text-brand" />
+                Destaques
+              </h2>
+              <div className="snap-row gap-3 px-4 pb-2 md:px-6">
+                {visibleHighlights.map((item, i) => (
+                  <HighlightCard key={item.id} item={item} first={i === 0} onToggleFavorite={favoriteFor(item)} onOpenVariants={() => setVariantSheetItem(item)} onOpenDetail={() => setDetailItemId(item.id)} />
+                ))}
+              </div>
+            </section>
           ) : null}
+
+          {visibleCategories.length === 0 && visibleHighlights.length === 0 ? (
+            <div className="px-4 pt-8 md:px-6">
+              <EmptyState icon="utensils" title="Cardápio em preparação" description="Os itens aparecem aqui assim que forem publicados." />
+            </div>
+          ) : null}
+
           {visibleCategories.map((cat) => (
-            <MenuSection
+            <section
               key={cat.id}
               ref={(el) => {
                 if (el) sectionRefs.current.set(cat.id, el);
                 else sectionRefs.current.delete(cat.id);
               }}
-              title={cat.nome}
-              items={cat.items}
-              view={view}
-              onToggleFavorite={onToggleFavorite}
-              onOpenVariants={setVariantSheetItem}
-              onOpenDetail={(item) => setDetailItemId(item.id)}
-            />
-          ))}
-          {/* Atalho para a outra área no fim da lista — quem rolou o
-          cardápio inteiro sem voltar ao topo ainda descobre a tabacaria (e
-          volta dela) sem procurar o seletor. Uma linha de texto entre duas
-          linhas finas, no mesmo peso dos títulos de seção. */}
-          {hasBothSections ? (
-            <div className="px-5 pt-10 md:px-8">
-              <button
-                type="button"
-                onClick={() => switchSection(activeSection === "MENU" ? "TOBACCO" : "MENU")}
-                className="flex w-full items-center justify-between gap-4 border-y border-[#ececee] py-5 text-left active:bg-[#faf9fb]"
-              >
-                <span className="font-poppins text-xl font-semibold text-[#141414] md:text-2xl">
-                  {activeSection === "MENU" ? "Tabacaria" : "Cardápio"}
-                </span>
-                <span className="shrink-0 text-sm text-[#8b8b90]">
-                  {activeSection === "MENU" ? "Ver itens →" : "Voltar →"}
-                </span>
-              </button>
-            </div>
-          ) : null}
-        </div>
-
-        {/* FOOTER — mesmo rodapé da Home pública (venue-home-view.tsx): faixa simples com razão social/CNPJ da Nokta + Instagram discreto, no lugar do antigo "NOKTA" estilizado em faixa preta. */}
-        <div className="flex items-center justify-between gap-3 border-t border-[#ececee] px-[18px] py-3.5">
-          <span className="-translate-y-[1.5px] text-[11px] leading-snug text-[#9a9aa4]">
-            Nokta Tecnologia LTDA • CNPJ: 59.386.582/0001-39
-          </span>
-          <a
-            href={profile.instagramUrl || "https://instagram.com"}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Instagram"
-            aria-label="Instagram"
-            className="-translate-y-[1.5px] shrink-0 text-[#9a9aa4]"
-          >
-            <InstagramIcon size={16} />
-          </a>
-        </div>
-      </div>
-
-      {allCategoriesOpen ? (
-        <AllCategoriesOverlay
-          categories={visibleCategories}
-          activeCategoryId={activeCategoryId}
-          onSelect={(id) => {
-            setAllCategoriesOpen(false);
-            scrollToSection(id);
-          }}
-          onClose={() => setAllCategoriesOpen(false)}
-        />
-      ) : null}
-
-      {searchOpen ? (
-        <SearchOverlay
-          allItems={allItems}
-          query={searchQuery}
-          onQueryChange={setSearchQuery}
-          onClose={closeSearch}
-          onToggleFavorite={onToggleFavorite}
-          onOpenVariants={setVariantSheetItem}
-          onOpenDetail={(item) => setDetailItemId(item.id)}
-          inputRef={searchInputRef}
-        />
-      ) : null}
-
-      {variantSheetItem ? (
-        <VariantSheet item={variantSheetItem} onClose={() => setVariantSheetItem(null)} />
-      ) : null}
-
-      {detailItem ? (
-        <ProductDetailOverlay
-          item={detailItem}
-          onClose={() => setDetailItemId(null)}
-          onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(detailItem) : undefined}
-          onOpenVariants={() => setVariantSheetItem(detailItem)}
-        />
-      ) : null}
-    </div>
-  );
-}
-
-/**
- * Card do carrossel de Destaques — foto grande + faixa colorida com o
- * nome da categoria de origem por cima da foto + nome/preço do produto
- * embaixo (referência visual enviada pelo usuário). Sempre em carrossel
- * horizontal, independente do modo de visualização (lista/grade/cards)
- * escolhido pro resto do cardápio — pedido explícito: "quero a lista na
- * horizontal e não vertical igual o restante".
- */
-function HighlightCard({
-  item,
-  onToggleFavorite,
-  onOpenVariants,
-  onOpenDetail,
-}: {
-  item: PublicMenuItem;
-  onToggleFavorite?: () => void;
-  onOpenVariants: () => void;
-  onOpenDetail: () => void;
-}) {
-  const price = itemMainPriceLabel(item);
-  const variantCount = variantCountLabel(item);
-  return (
-    <article
-      onClick={onOpenDetail}
-      className={`w-[200px] shrink-0 cursor-pointer ${item.available ? "" : "opacity-60"}`}
-    >
-      <div className="relative h-[200px] overflow-hidden rounded-2xl">
-        <ItemThumb item={item} />
-        <FavoriteButtonSlot item={item} onToggleFavorite={onToggleFavorite} compact />
-        {item.categoryNome ? (
-          <div className="absolute inset-x-0 bottom-0 bg-[#0a0a0a] px-3 py-1.5 text-center text-sm font-semibold text-white">
-            {item.categoryNome}
-          </div>
-        ) : null}
-      </div>
-      <div className="pt-2.5">
-        <h4 className="truncate text-sm font-semibold text-[#141414]">{item.nome}</h4>
-        <div className="mt-1.5 flex items-center justify-between gap-2">
-          {price ? <span className="truncate text-sm font-semibold text-[#141414]">{price}</span> : null}
-          {item.favoriteCount > 0 ? (
-            <span className="flex shrink-0 items-center gap-1 text-xs text-[#9a9aa0]">
-              {item.favoriteCount} <Heart size={11} className="fill-[#ef4444] stroke-[#ef4444]" />
-            </span>
-          ) : null}
-        </div>
-        {/* min-h reserva a altura da 2ª linha sempre (com ou sem variantes) — nenhum card do carrossel fica mais alto/baixo que o vizinho por ter ou não múltiplos tamanhos. */}
-        <div className="mt-0.5 min-h-[16px]">
-          {variantCount ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenVariants();
-              }}
-              className="text-xs font-medium text-[#d9a326]"
+              className="px-4 pt-7 md:px-6"
+              style={{ scrollMarginTop: STICKY_OFFSET + 8 }}
             >
-              {variantCount} ›
-            </button>
-          ) : null}
-        </div>
-      </div>
-    </article>
-  );
-}
-
-function FavoriteButtonSlot({
-  item,
-  onToggleFavorite,
-  compact = false,
-}: {
-  item: PublicMenuItem;
-  onToggleFavorite?: () => void;
-  compact?: boolean;
-}) {
-  if (!onToggleFavorite) return null;
-  return <FavoriteButton item={item} onToggle={onToggleFavorite} compact={compact} />;
-}
-
-const HighlightsSection = forwardRef<
-  HTMLDivElement,
-  {
-    items: PublicMenuItem[];
-    onToggleFavorite?: (item: PublicMenuItem) => void;
-    onOpenVariants: (item: PublicMenuItem) => void;
-    onOpenDetail: (item: PublicMenuItem) => void;
-  }
->(function HighlightsSection({ items, onToggleFavorite, onOpenVariants, onOpenDetail }, ref) {
-  if (items.length === 0) return null;
-
-  return (
-    <div ref={ref} className="scroll-mt-[68px] pt-6">
-      <h2 className="mb-3 border-b border-[#ececee] px-5 pb-3 font-poppins text-xl font-semibold text-[#141414] md:px-8 md:text-2xl">
-        Destaques
-      </h2>
-      {/* Padding lateral mora DENTRO do scroller (px-5/md:px-8 aqui, não no
-      container pai) — só o padding do pai cobre o início do conteúdo
-      rolável; o fim do scroll expõe o scrollWidth real do flex, que sem
-      padding próprio no fim deixa um vão vazio depois do último card
-      (mesma causa-raiz do bug corrigido no carrossel de Categorias, só que
-      por FALTA de padding em vez de margem negativa vazando). */}
-      <div className="flex gap-3.5 overflow-x-auto overscroll-x-contain px-5 [scrollbar-width:none] md:px-8 [&::-webkit-scrollbar]:hidden">
-        {items.map((item) => (
-          <HighlightCard
-            key={item.id}
-            item={item}
-            onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined}
-            onOpenVariants={() => onOpenVariants(item)}
-            onOpenDetail={() => onOpenDetail(item)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-});
-
-/**
- * Uma seção do cardápio (categoria): título próprio + lista de itens no
- * modo de visualização ativo (lista/grade/cards). O título funciona como
- * separador visual entre o fim de uma categoria e o início da próxima, já
- * que todas as seções ficam empilhadas na mesma página (pedido explícito
- * do usuário — antes só a categoria selecionada no chip aparecia,
- * escondendo as demais). Sem itens, a seção inteira nem renderiza (nunca
- * um título "Cervejas" seguido de nada). Destaques usa HighlightsSection
- * (carrossel sempre horizontal), nunca esta.
- */
-const MenuSection = forwardRef<
-  HTMLDivElement,
-  {
-    title: string;
-    items: PublicMenuItem[];
-    view: ViewMode;
-    onToggleFavorite?: (item: PublicMenuItem) => void;
-    onOpenVariants: (item: PublicMenuItem) => void;
-    onOpenDetail: (item: PublicMenuItem) => void;
-  }
->(function MenuSection({ title, items, view, onToggleFavorite, onOpenVariants, onOpenDetail }, ref) {
-  if (items.length === 0) return null;
-
-  return (
-    <div ref={ref} className="scroll-mt-[68px] px-5 pt-6 md:px-8">
-      <h2 className="mb-3 border-b border-[#ececee] pb-3 font-poppins text-xl font-semibold text-[#141414] md:text-2xl">
-        {title}
-      </h2>
-      {view === "grid" ? (
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-          {items.map((item) => (
-            <ItemGridCard
-              key={item.id}
-              item={item}
-              onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined}
-              onOpenVariants={() => onOpenVariants(item)}
-              onOpenDetail={() => onOpenDetail(item)}
-            />
+              <div className="mb-3">
+                <h2 className="text-title font-semibold tracking-tight">{cat.nome}</h2>
+                {cat.descricao ? <p className="mt-0.5 text-caption text-muted-foreground">{cat.descricao}</p> : null}
+              </div>
+              {view === "grid" ? (
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                  {cat.items.map((item, i) => (
+                    <ItemGridCard key={item.id} item={item} index={i} onToggleFavorite={favoriteFor(item)} onOpenVariants={() => setVariantSheetItem(item)} onOpenDetail={() => setDetailItemId(item.id)} />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {cat.items.map((item, i) => (
+                    <ItemListRow key={item.id} item={item} index={i} onToggleFavorite={favoriteFor(item)} onOpenVariants={() => setVariantSheetItem(item)} onOpenDetail={() => setDetailItemId(item.id)} />
+                  ))}
+                </div>
+              )}
+            </section>
           ))}
-        </div>
-      ) : view === "large" ? (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {items.map((item) => (
-            <ItemLargeCard
-              key={item.id}
-              item={item}
-              onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined}
-              onOpenVariants={() => onOpenVariants(item)}
-              onOpenDetail={() => onOpenDetail(item)}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-2.5">
-          {items.map((item) => (
-            <ItemListRow
-              key={item.id}
-              item={item}
-              onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined}
-              onOpenVariants={() => onOpenVariants(item)}
-              onOpenDetail={() => onOpenDetail(item)}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-});
 
-/**
- * Modal "Ver todas" — atalho pra lista completa de categorias, sem
- * substituir o carrossel arrastável (que continua com scroll horizontal
- * normal). Reaproveita o mesmo avatar/fallback de CategoryAvatarButton,
- * só em grade em vez de carrossel.
- */
-function AllCategoriesOverlay({
-  categories,
-  activeCategoryId,
-  onSelect,
-  onClose,
-}: {
-  categories: PublicMenuCategory[];
-  activeCategoryId: number | "highlights";
-  onSelect: (id: number | "highlights") => void;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 md:items-center" onClick={onClose}>
-      <div
-        className="max-h-[80vh] w-full max-w-[440px] overflow-y-auto rounded-t-3xl bg-white p-5 md:max-w-lg md:rounded-3xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-poppins text-lg font-semibold text-[#141414]">Todas as categorias</h2>
-          <button type="button" onClick={onClose} aria-label="Fechar" className="text-[#8b8b90]">
-            <X size={20} strokeWidth={1.8} />
-          </button>
-        </div>
-        <div className="grid grid-cols-4 gap-4">
-          {/* Chip "Destaques" removido daqui também (mesmo pedido do carrossel principal) — este modal espelha o mesmo conjunto de chips. */}
-          {categories.map((cat) => (
-            <CategoryAvatarButton
-              key={cat.id}
-              label={cat.nome}
-              imageUrl={cat.imageUrl}
-              active={activeCategoryId === cat.id}
-              onClick={() => onSelect(cat.id)}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SearchOverlay({
-  allItems,
-  query,
-  onQueryChange,
-  onClose,
-  onToggleFavorite,
-  onOpenVariants,
-  onOpenDetail,
-  inputRef,
-}: {
-  allItems: PublicMenuItem[];
-  query: string;
-  onQueryChange: (value: string) => void;
-  onClose: () => void;
-  onToggleFavorite?: (item: PublicMenuItem) => void;
-  onOpenVariants: (item: PublicMenuItem) => void;
-  onOpenDetail: (item: PublicMenuItem) => void;
-  inputRef: React.RefObject<HTMLInputElement | null>;
-}) {
-  const normalizedQuery = query.trim().toLowerCase();
-  const results = normalizedQuery
-    ? allItems.filter((item) => item.nome.toLowerCase().includes(normalizedQuery))
-    : [];
-
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-white">
-      <div className="flex shrink-0 items-center gap-4 border-b border-[#ececee] px-4 py-4 md:px-8">
-        <button type="button" onClick={onClose} aria-label="Voltar" className="text-[#141414]">
-          <ArrowLeft size={22} strokeWidth={1.8} />
-        </button>
-        <h1 className="font-poppins text-base font-semibold text-[#141414] md:text-lg">Pesquisar</h1>
-      </div>
-
-      <div className="shrink-0 px-4 pt-4 pb-2 md:px-8">
-        <input
-          ref={inputRef}
-          value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
-          onKeyDown={(e) => e.key === "Escape" && onClose()}
-          placeholder="O que você procura?"
-          // text-base (16px) sempre, mesmo em mobile — abaixo de 16px o
-          // Safari/iOS dá zoom automático na página inteira ao focar o
-          // input (autoFocus dispara isso na hora que o overlay abre).
-          className="w-full rounded-full border-2 border-[#d9a326] px-5 py-3 text-base text-[#141414] outline-none"
-        />
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-4 pb-24 md:px-8">
-        {!normalizedQuery ? (
-          <p className="py-10 text-center text-sm text-[#9a9aa0]">Digite para buscar produtos no cardápio.</p>
-        ) : results.length === 0 ? (
-          <p className="py-10 text-center text-sm text-[#9a9aa0]">Nenhum produto encontrado.</p>
-        ) : (
-          <div className="divide-y divide-[#ececee]">
-            {results.map((item) => (
-              <ItemListRow
-                key={item.id}
-                item={item}
-                onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined}
-                onOpenVariants={() => onOpenVariants(item)}
-                onOpenDetail={() => onOpenDetail(item)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Bottom sheet "Escolha o tamanho" — aberto pelo acionador discreto do
- * card ("N tamanhos ›"), nunca lista as variações dentro do próprio card
- * (isso quebraria a altura uniforme entre cards, pedido explícito do
- * usuário). Sobe de baixo, cantos superiores arredondados, fundo do
- * cardápio visível e escurecido (overlay), altura dinâmica conforme a
- * quantidade de opções (nunca tela cheia por padrão — só um scroll
- * interno se a lista for realmente grande), fecha arrastando pra baixo,
- * tocando fora, ou pelo botão "X". `env(safe-area-inset-bottom)` evita a
- * barra de gestos do iPhone cobrir a última opção.
- */
-function VariantSheet({ item, onClose }: { item: PublicMenuItem; onClose: () => void }) {
-  const [dragY, setDragY] = useState(0);
-  const [closing, setClosing] = useState(false);
-  const dragStartY = useRef<number | null>(null);
-  const sheetRef = useRef<HTMLDivElement>(null);
-
-  const sorted = useMemo(() => sortVariantsBySize(item.prices), [item.prices]);
-
-  // Pequeno atraso pra rodar a transição de entrada/saída (translateY) em
-  // vez de o sheet simplesmente "aparecer" já na posição final.
-  const [entered, setEntered] = useState(false);
-  useEffect(() => {
-    const raf = requestAnimationFrame(() => setEntered(true));
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
-  const handleClose = () => {
-    setClosing(true);
-    setTimeout(onClose, 200);
-  };
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    dragStartY.current = e.clientY;
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  };
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (dragStartY.current === null) return;
-    const delta = e.clientY - dragStartY.current;
-    if (delta > 0) setDragY(delta);
-  };
-  const onPointerUp = () => {
-    if (dragStartY.current === null) return;
-    dragStartY.current = null;
-    if (dragY > 80) {
-      handleClose();
-    } else {
-      setDragY(0);
-    }
-  };
-
-  const translateY = closing ? "100%" : !entered ? "100%" : `${dragY}px`;
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center">
-      {/* Overlay — fecha ao tocar fora, cardápio continua visível por trás, só escurecido. */}
-      <div
-        className={`absolute inset-0 bg-black/50 transition-opacity duration-200 ${closing || !entered ? "opacity-0" : "opacity-100"}`}
-        onClick={handleClose}
-      />
-      <div
-        ref={sheetRef}
-        className="relative z-10 flex max-h-[80vh] w-full max-w-[440px] flex-col rounded-t-3xl bg-white shadow-[0_-8px_30px_rgba(0,0,0,0.2)] md:max-w-lg"
-        style={{
-          transform: `translateY(${translateY})`,
-          transition: dragStartY.current !== null ? "none" : "transform 200ms ease-out",
-          paddingBottom: "env(safe-area-inset-bottom)",
-        }}
-      >
-        {/* Handle de arrastar — toda a área do cabeçalho responde ao drag, não só a barrinha visual. */}
-        <div
-          className="flex shrink-0 cursor-grab flex-col items-center pt-2.5 active:cursor-grabbing"
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-        >
-          <div className="h-1 w-9 rounded-full bg-black/15" />
-        </div>
-
-        <div className="flex shrink-0 items-center justify-between px-5 pb-3 pt-3">
-          <div className="min-w-0">
-            <h2 className="truncate font-poppins text-base font-semibold text-[#141414]">{item.nome}</h2>
-            <p className="text-sm text-[#9a9aa0]">
-              {variantCountLabel(item)?.endsWith("tamanhos") ? "Escolha o tamanho" : "Escolha a opção"}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={handleClose}
-            aria-label="Fechar"
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-black/5 text-[#8b8b90]"
-          >
-            <X size={18} strokeWidth={1.8} />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-5 pb-2">
-          <div className="divide-y divide-[#ececee]">
-            {/* Sem carrinho/pedido no cardápio público (só consulta) — cada linha é clicável e reage ao toque (active:bg), mas serve pra destacar/consultar a opção, não pra "adicionar" nada. */}
-            {sorted.map((price) => (
-              <button
-                key={price.variantId}
-                type="button"
-                className="flex w-full items-center justify-between gap-4 rounded-xl py-3.5 text-left transition-colors active:bg-black/[0.03]"
-              >
-                <span className="text-[15px] text-[#141414]">{price.variantNome}</span>
-                <span className="font-poppins text-[15px] font-semibold text-[#141414]">
-                  {formatCentsBRL(price.effectivePriceCents)}
+          {hasBothSections ? (
+            <div className="px-4 pt-10 md:px-6">
+              <button type="button" onClick={() => switchSection(activeSection === "MENU" ? "TOBACCO" : "MENU")} className="press card-hover flex w-full items-center justify-between gap-4 rounded-card border border-border bg-surface px-5 py-4 text-left shadow-card">
+                <span className="flex items-center gap-3">
+                  <Icon name={activeSection === "MENU" ? "fire" : "utensils"} size={16} className="text-brand" />
+                  <span className="text-base font-semibold text-foreground">{activeSection === "MENU" ? "Tabacaria" : "Cardápio"}</span>
+                </span>
+                <span className="inline-flex items-center gap-1 text-caption text-muted-foreground">
+                  {activeSection === "MENU" ? "Ver essências" : "Voltar pro cardápio"}
+                  <Icon name="arrow-right" size={10} />
                 </span>
               </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Tela de detalhe do produto — aberta pelo clique em qualquer card (lista/
- * grade/cards/destaques/busca), overlay full-screen igual ao SearchOverlay
- * (nunca uma rota própria: o cardápio inteiro já é uma SPA sem navegação de
- * URL por item, então uma nova rota exigiria replicar o fetch dos dados que
- * o MenuView já tem em mãos). Foto grande no topo (mesma proporção da
- * referência visual enviada pelo usuário), botão voltar + favoritar
- * sobrepostos à foto, nome/descrição/harmoniza-com/preço/contraindicações
- * abaixo. "Esgotado" reaproveita a mesma badge do card da lista — nunca um
- * segundo texto/estilo pra dizer a mesma coisa.
- */
-function ProductDetailOverlay({
-  item,
-  onClose,
-  onToggleFavorite,
-  onOpenVariants,
-}: {
-  item: PublicMenuItem;
-  onClose: () => void;
-  onToggleFavorite?: () => void;
-  onOpenVariants: () => void;
-}) {
-  const price = itemMainPriceLabel(item);
-  const variantCount = variantCountLabel(item);
-
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-white">
-      <div className="relative h-[320px] shrink-0 md:h-[380px]">
-        <ItemThumb item={item} />
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Voltar"
-          className="absolute left-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/90 text-[#141414] shadow-[0_2px_8px_rgba(0,0,0,0.18)]"
-        >
-          <ArrowLeft size={20} strokeWidth={1.8} />
-        </button>
-        {onToggleFavorite ? (
-          <button
-            type="button"
-            onClick={onToggleFavorite}
-            aria-label="favoritar"
-            className="absolute right-4 top-4 flex h-10 items-center gap-1.5 rounded-full bg-white/90 px-3 shadow-[0_2px_8px_rgba(0,0,0,0.18)]"
-          >
-            <Heart
-              size={18}
-              strokeWidth={2}
-              className={item.favoritedByVisitor ? "fill-[#ef4444] stroke-[#ef4444]" : "stroke-[#ef4444]"}
-            />
-            {item.favoriteCount > 0 ? (
-              <span className="text-sm font-medium text-[#141414]">{item.favoriteCount}</span>
-            ) : null}
-          </button>
-        ) : null}
-      </div>
-
-      <div className="mx-auto w-full max-w-[440px] flex-1 px-6 py-6 text-center md:max-w-2xl">
-        <h1 className="font-poppins text-2xl font-semibold text-[#141414]">{item.nome}</h1>
-        {item.descricao ? (
-          <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-[#9a9aa0]">{item.descricao}</p>
-        ) : null}
-        {item.harmonizaCom ? (
-          <p className="mt-3 text-sm text-[#9a9aa0]">Harmoniza com {item.harmonizaCom}</p>
-        ) : null}
-
-        {price ? (
-          <div className="mt-5 flex flex-col items-center gap-1.5">
-            <span className="font-poppins text-2xl font-semibold text-[#2f9e44]">{price}</span>
-            {variantCount ? (
-              <button type="button" onClick={onOpenVariants} className="text-sm font-medium text-[#d9a326]">
-                {variantCount} ›
-              </button>
-            ) : null}
-          </div>
-        ) : null}
-
-        {!item.available ? (
-          <span className="mt-4 inline-block w-fit rounded-full bg-black/5 px-3 py-1 text-xs font-medium text-black/50">
-            Esgotado
-          </span>
-        ) : null}
-
-        {item.contraindicacoes ? (
-          <div className="mt-8">
-            <h2 className="text-sm font-semibold text-[#141414]">Alergênicos</h2>
-            <div className="mt-3 flex justify-center">
-              <span className="flex items-center gap-2 rounded-full border border-[#ececee] bg-[#faf9fb] px-4 py-2 text-sm text-[#5a5a60]">
-                <TriangleAlert size={16} className="text-[#b45309]" />
-                {item.contraindicacoes}
-              </span>
             </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
+
+        <VenuePublicFooter instagramUrl={profile.instagramUrl} />
       </div>
+
+      <AllCategoriesSheet open={allCategoriesOpen} categories={visibleCategories} activeCategoryId={activeCategoryId} onSelect={(id) => { setAllCategoriesOpen(false); scrollToSection(id); }} onClose={() => setAllCategoriesOpen(false)} />
+
+      <SearchSheet open={searchOpen} allItems={allItems} query={searchQuery} onQueryChange={setSearchQuery} onClose={closeSearch} onToggleFavorite={onToggleFavorite} onOpenVariants={setVariantSheetItem} onOpenDetail={(item) => setDetailItemId(item.id)} />
+
+      <VariantSheet item={variantSheetItem} onClose={() => setVariantSheetItem(null)} />
+
+      <ProductDetailSheet item={detailItem} onClose={() => setDetailItemId(null)} onToggleFavorite={detailItem ? favoriteFor(detailItem) : undefined} onOpenVariants={() => detailItem && setVariantSheetItem(detailItem)} />
     </div>
   );
 }
 
-/**
- * Aba do seletor de área (Cardápio | Tabacaria): texto no tamanho dos
- * títulos de seção, com um traço preto sobre a linha fina na aba ativa.
- */
-function SectionTab({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+/* ---------- peças ---------- */
+
+function ItemThumb({ item, sizes = "160px", className, priority }: { item: PublicMenuItem; sizes?: string; className?: string; priority?: boolean }) {
+  const src = item.imageUrl ? resolveMediaUrl(item.imageUrl, null) : null;
+  return (
+    <div className={cn("relative h-full w-full overflow-hidden rounded-xl bg-surface-2", className)}>
+      {src ? <Image src={src} alt={item.nome} fill sizes={sizes} priority={priority} className="object-cover" unoptimized /> : <div className="flex h-full w-full items-center justify-center text-subtle-foreground"><Icon name="utensils" size={20} /></div>}
+    </div>
+  );
+}
+
+function FavoriteButton({ item, onToggle, className }: { item: PublicMenuItem; onToggle: () => void; className?: string }) {
   return (
     <button
       type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={`relative -mb-px flex h-12 items-center font-poppins text-xl font-semibold transition-colors duration-200 md:text-2xl ${
-        active ? "text-[#141414]" : "text-[#8b8b90]"
-      }`}
-    >
-      {label}
-      <span
-        aria-hidden
-        className={`absolute inset-x-0 bottom-0 h-[2px] origin-left bg-[#141414] transition-transform duration-200 ease-out motion-reduce:transition-none ${
-          active ? "scale-x-100" : "scale-x-0"
-        }`}
-      />
-    </button>
-  );
-}
-
-function CategoryAvatarButton({
-  label,
-  imageUrl,
-  active,
-  onClick,
-}: {
-  label: string;
-  imageUrl: string | null;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button onClick={onClick} className="flex w-[76px] shrink-0 flex-col items-center gap-3">
-      <div
-        className={`relative flex h-[76px] w-[76px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-black shadow-[0_2px_10px_rgba(0,0,0,0.18)] ring-2 ${
-          active ? "ring-[#0a0a0a]" : "ring-transparent"
-        }`}
-      >
-        {imageUrl ? (
-          <Image src={resolveMediaUrl(imageUrl) ?? imageUrl} alt="" fill className="object-cover" unoptimized />
-        ) : (
-          <span className="font-poppins text-sm font-light tracking-[0.2em] text-white">{initials(label)}</span>
-        )}
-      </div>
-      <span
-        className={`line-clamp-2 w-full text-center text-sm font-normal leading-tight ${
-          active ? "text-[#0a0a0a]" : "text-[#8b8b90]"
-        }`}
-      >
-        {label}
-      </span>
-    </button>
-  );
-}
-
-function ViewButton({
-  active,
-  onClick,
-  icon,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      aria-label={label}
-      className={`grid h-9 w-9 place-items-center rounded-lg ${active ? "bg-[#26262a] text-white" : "text-[#8b8b90]"}`}
-    >
-      {icon}
-    </button>
-  );
-}
-
-function FavoriteButton({
-  item,
-  onToggle,
-  compact = false,
-}: {
-  item: PublicMenuItem;
-  onToggle: () => void;
-  /** Card de Destaques é menor — o botão de 36px chamava atenção demais nele (feedback explícito do usuário). */
-  compact?: boolean;
-}) {
-  return (
-    <button
       onClick={(e) => {
         e.stopPropagation();
         onToggle();
       }}
-      aria-label="favoritar"
-      className={`absolute z-[3] grid place-items-center rounded-full bg-white shadow-[0_2px_8px_rgba(0,0,0,0.18)] ${
-        compact ? "right-2 top-2 h-7 w-7" : "right-2.5 top-2.5 h-9 w-9"
-      }`}
+      aria-pressed={item.favoritedByVisitor}
+      aria-label={item.favoritedByVisitor ? "Remover dos favoritos" : "Favoritar"}
+      className={cn("press flex size-11 items-center justify-center rounded-full bg-background/80 text-foreground shadow-thumb backdrop-blur-sm transition-colors", item.favoritedByVisitor && "text-brand", className)}
     >
-      <Heart
-        size={compact ? 14 : 18}
-        strokeWidth={2}
-        className={item.favoritedByVisitor ? "fill-[#ef4444] stroke-[#ef4444]" : "stroke-[#ef4444]"}
-      />
+      <Icon name={item.favoritedByVisitor ? "heart" : "heart-outline"} size={16} />
     </button>
   );
 }
 
-function ItemThumb({ item }: { item: PublicMenuItem }) {
-  if (item.imageUrl) {
-    return (
-      <div className="relative h-full w-full overflow-hidden rounded-xl bg-black/5">
-        <Image src={resolveMediaUrl(item.imageUrl) ?? item.imageUrl} alt={item.nome} fill className="object-cover" unoptimized />
-      </div>
-    );
-  }
+function FavoriteCount({ item, className }: { item: PublicMenuItem; className?: string }) {
+  if (item.favoriteCount <= 0) return null;
   return (
-    <div className="relative h-full w-full rounded-xl bg-[radial-gradient(130%_100%_at_50%_130%,#33334a,#0b0b12)]" />
+    <span className={cn("inline-flex items-center gap-1 text-caption text-muted-foreground tnum", className)}>
+      <Icon name="heart" size={10} className="text-brand" />
+      {item.favoriteCount}
+    </span>
   );
 }
 
-function ItemLargeCard({
-  item,
-  onToggleFavorite,
-  onOpenVariants,
-  onOpenDetail,
-}: {
-  item: PublicMenuItem;
-  onToggleFavorite?: () => void;
-  onOpenVariants: () => void;
-  onOpenDetail: () => void;
-}) {
-  const price = itemMainPriceLabel(item);
-  const variantCount = variantCountLabel(item);
+function VariantsLink({ item, onOpenVariants, className }: { item: PublicMenuItem; onOpenVariants: () => void; className?: string }) {
+  const label = variantCountLabel(item);
+  if (!label) return null;
   return (
-    <article onClick={onOpenDetail} className={`cursor-pointer ${item.available ? "" : "opacity-60"}`}>
-      <div className="relative h-[200px] md:h-[240px]">
-        <ItemThumb item={item} />
-        {onToggleFavorite ? <FavoriteButton item={item} onToggle={onToggleFavorite} /> : null}
-      </div>
-      <div className="pt-3.5">
-        <h4 className="font-poppins text-base font-semibold text-[#141414] md:text-lg">{item.nome}</h4>
-        <div className="mt-3 flex items-center justify-between gap-2">
-          {price ? <span className="truncate font-poppins text-base font-semibold text-[#141414]">{price}</span> : null}
-          {item.favoriteCount > 0 ? (
-            <span className="flex shrink-0 items-center gap-1.5 text-sm text-[#9a9aa0]">
-              {item.favoriteCount} <Heart size={16} className="fill-[#ef4444] stroke-[#ef4444]" />
-            </span>
-          ) : null}
-        </div>
-        {/* min-h reserva a altura da 2ª linha sempre — cards vizinhos na mesma grade nunca ficam com altura diferente por causa da presença/ausência de variantes. */}
-        <div className="mt-1 min-h-[20px]">
-          {variantCount ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenVariants();
-              }}
-              className="text-sm font-medium text-[#d9a326]"
-            >
-              {variantCount} ›
-            </button>
-          ) : null}
-        </div>
-      </div>
-    </article>
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpenVariants();
+      }}
+      className={cn("inline-flex min-h-8 items-center gap-1 text-caption font-semibold text-brand", className)}
+    >
+      {label}
+      <Icon name="chevron-right" size={9} />
+    </button>
   );
 }
 
-function ItemGridCard({
-  item,
-  onToggleFavorite,
-  onOpenVariants,
-  onOpenDetail,
-}: {
-  item: PublicMenuItem;
-  onToggleFavorite?: () => void;
-  onOpenVariants: () => void;
-  onOpenDetail: () => void;
-}) {
-  const price = itemMainPriceLabel(item);
-  const variantCount = variantCountLabel(item);
+function PriceLine({ item, size = "md" }: { item: PublicMenuItem; size?: "sm" | "md" | "lg" }) {
+  const main = itemMainPrice(item);
+  if (!main) return null;
   return (
-    <article onClick={onOpenDetail} className={`cursor-pointer ${item.available ? "" : "opacity-60"}`}>
-      <div className="relative h-[130px] md:h-[150px]">
-        <ItemThumb item={item} />
-        {onToggleFavorite ? <FavoriteButton item={item} onToggle={onToggleFavorite} /> : null}
+    <span className={cn("inline-flex flex-wrap items-baseline gap-x-1.5", size === "sm" ? "text-sm" : size === "lg" ? "text-title" : "text-base")}>
+      <span className="font-semibold text-foreground tnum">{main.price}</span>
+      {main.variant ? <span className="text-caption text-muted-foreground">{main.variant}</span> : null}
+    </span>
+  );
+}
+
+function HighlightCard({ item, first, onToggleFavorite, onOpenVariants, onOpenDetail }: { item: PublicMenuItem; first?: boolean; onToggleFavorite?: () => void; onOpenVariants: () => void; onOpenDetail: () => void }) {
+  return (
+    <article onClick={onOpenDetail} className={cn("press w-44 cursor-pointer md:w-52", !item.available && "opacity-60")}>
+      <div className="relative aspect-square">
+        <ItemThumb item={item} sizes="208px" className="rounded-card" priority={first} />
+        {onToggleFavorite ? <FavoriteButton item={item} onToggle={onToggleFavorite} className="absolute right-2 top-2 size-10" /> : null}
+        {item.categoryNome ? <span className="absolute bottom-2 left-2 rounded-pill bg-background/85 px-2.5 py-1 text-micro font-semibold uppercase tracking-[0.06em] text-foreground backdrop-blur-sm">{item.categoryNome}</span> : null}
       </div>
       <div className="pt-2.5">
-        <h4 className="truncate text-sm font-semibold text-[#141414]">{item.nome}</h4>
-        <div className="mt-2 flex items-center justify-between gap-2">
-          {price ? <span className="truncate text-sm font-semibold text-[#141414]">{price}</span> : null}
-          {item.favoriteCount > 0 ? (
-            <span className="flex shrink-0 items-center gap-1 text-xs text-[#9a9aa0]">
-              {item.favoriteCount} <Heart size={13} className="fill-[#ef4444] stroke-[#ef4444]" />
-            </span>
-          ) : null}
+        <h3 className="truncate text-sm font-semibold text-foreground">{item.nome}</h3>
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <PriceLine item={item} size="sm" />
+          <FavoriteCount item={item} />
         </div>
-        {/* min-h reserva a altura da 2ª linha sempre (mesmo raciocínio do ItemLargeCard). */}
-        <div className="mt-0.5 min-h-[16px]">
-          {variantCount ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenVariants();
-              }}
-              className="text-xs font-medium text-[#d9a326]"
-            >
-              {variantCount} ›
-            </button>
-          ) : null}
+        <div className="min-h-6">
+          <VariantsLink item={item} onOpenVariants={onOpenVariants} />
         </div>
       </div>
     </article>
   );
 }
 
-function ItemListRow({
-  item,
-  onToggleFavorite,
-  onOpenVariants,
-  onOpenDetail,
-}: {
-  item: PublicMenuItem;
-  onToggleFavorite?: () => void;
-  onOpenVariants: () => void;
-  onOpenDetail: () => void;
-}) {
-  const price = itemMainPriceLabel(item);
-  const variantCount = variantCountLabel(item);
+function ItemListRow({ item, index, onToggleFavorite, onOpenVariants, onOpenDetail }: { item: PublicMenuItem; index: number; onToggleFavorite?: () => void; onOpenVariants: () => void; onOpenDetail: () => void }) {
   return (
-    <article
-      onClick={onOpenDetail}
-      className={`flex cursor-pointer gap-4 rounded-2xl border border-[#ececee] bg-white p-3.5 ${item.available ? "" : "opacity-60"}`}
-    >
+    <article onClick={onOpenDetail} className={cn("press card-hover fade-up flex cursor-pointer gap-3.5 rounded-card border border-border bg-surface p-3.5 shadow-card", !item.available && "opacity-60")} style={{ ["--i" as string]: index } as never}>
       <div className="flex min-w-0 flex-1 flex-col">
-        <h4 className="truncate font-poppins text-base font-semibold text-[#141414] md:text-lg">{item.nome}</h4>
-        {item.descricao ? <p className="mt-1.5 line-clamp-2 text-sm leading-snug text-[#9a9aa0]">{item.descricao}</p> : null}
+        <h3 className="text-[15px] font-semibold leading-snug text-foreground">{item.nome}</h3>
+        {item.descricao ? <p className="mt-1 line-clamp-2 text-caption leading-snug text-muted-foreground">{item.descricao}</p> : null}
         {!item.available ? (
-          <span className="mt-1.5 w-fit rounded-full bg-black/5 px-2 py-0.5 text-[11px] font-medium text-black/50">
-            Esgotado
-          </span>
-        ) : null}
-        {/* Card compacto sempre com a mesma altura (travada pela thumb h-[124px] ao lado) — variação principal (menor tamanho) + preço juntos numa linha, nunca "a partir de", pra comparar preço entre produtos sem abrir nada. O acionador de variantes fica numa 2ª linha discreta, abaixo do preço, sem crescer o card: abre o bottom sheet "Escolha o tamanho" (VariantSheet) em vez de listar tudo aqui. */}
-        <div className="mt-auto flex flex-col gap-0.5 pt-3">
-          <div className="flex items-center gap-3">
-            {price ? <span className="truncate font-poppins text-base font-semibold text-[#141414]">{price}</span> : null}
-            {item.favoriteCount > 0 ? (
-              <span className="flex shrink-0 items-center gap-1.5 text-sm text-[#9a9aa0]">
-                {item.favoriteCount} <Heart size={16} className="fill-[#ef4444] stroke-[#ef4444]" />
-              </span>
-            ) : null}
+          <div className="mt-1.5">
+            <StatusBadge tone="neutral">Esgotado</StatusBadge>
           </div>
-          {variantCount ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenVariants();
-              }}
-              className="w-fit text-sm font-medium text-[#d9a326]"
-            >
-              {variantCount} ›
-            </button>
-          ) : null}
+        ) : null}
+        <div className="mt-auto flex flex-wrap items-center gap-x-3 pt-2.5">
+          <PriceLine item={item} />
+          <FavoriteCount item={item} />
+          <VariantsLink item={item} onOpenVariants={onOpenVariants} className="ml-auto" />
         </div>
       </div>
-      <div className="relative h-[124px] w-[152px] shrink-0">
-        <ItemThumb item={item} />
-        {onToggleFavorite ? <FavoriteButton item={item} onToggle={onToggleFavorite} /> : null}
+      <div className="relative size-24 shrink-0 md:size-28">
+        <ItemThumb item={item} sizes="112px" />
+        {onToggleFavorite ? <FavoriteButton item={item} onToggle={onToggleFavorite} className="absolute -bottom-1.5 -right-1.5 size-10" /> : null}
       </div>
     </article>
+  );
+}
+
+function ItemGridCard({ item, index, onToggleFavorite, onOpenVariants, onOpenDetail }: { item: PublicMenuItem; index: number; onToggleFavorite?: () => void; onOpenVariants: () => void; onOpenDetail: () => void }) {
+  return (
+    <article onClick={onOpenDetail} className={cn("press fade-up cursor-pointer", !item.available && "opacity-60")} style={{ ["--i" as string]: index } as never}>
+      <div className="relative aspect-square">
+        <ItemThumb item={item} sizes="(max-width: 768px) 50vw, 240px" className="rounded-card" />
+        {onToggleFavorite ? <FavoriteButton item={item} onToggle={onToggleFavorite} className="absolute right-2 top-2 size-10" /> : null}
+        {!item.available ? <StatusBadge tone="neutral" className="absolute bottom-2 left-2">Esgotado</StatusBadge> : null}
+      </div>
+      <div className="pt-2.5">
+        <h3 className="truncate text-sm font-semibold text-foreground">{item.nome}</h3>
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <PriceLine item={item} size="sm" />
+          <FavoriteCount item={item} />
+        </div>
+        <div className="min-h-6">
+          <VariantsLink item={item} onOpenVariants={onOpenVariants} />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function AllCategoriesSheet({ open, categories, activeCategoryId, onSelect, onClose }: { open: boolean; categories: PublicMenuCategory[]; activeCategoryId: string; onSelect: (id: number) => void; onClose: () => void }) {
+  return (
+    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
+      <SheetContent side="bottom">
+        <SheetHeader>
+          <SheetTitle>Categorias</SheetTitle>
+          <SheetDescription>Toque pra ir direto pra seção.</SheetDescription>
+        </SheetHeader>
+        <SheetBody className="pb-6">
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+            {categories.map((cat) => {
+              const active = String(cat.id) === activeCategoryId;
+              const src = cat.imageUrl ? resolveMediaUrl(cat.imageUrl, null) : null;
+              return (
+                <button key={cat.id} type="button" onClick={() => onSelect(cat.id)} className="press flex flex-col items-center gap-2 text-center">
+                  <span className={cn("relative flex size-16 items-center justify-center overflow-hidden rounded-full bg-surface-2 ring-2", active ? "ring-brand" : "ring-transparent")}>
+                    {src ? <Image src={src} alt="" fill sizes="64px" className="object-cover" unoptimized /> : <span className="text-sm font-semibold tracking-[0.1em] text-muted-foreground">{venueInitials(cat.nome)}</span>}
+                  </span>
+                  <span className={cn("line-clamp-2 text-caption leading-tight", active ? "font-semibold text-foreground" : "text-muted-foreground")}>{cat.nome}</span>
+                </button>
+              );
+            })}
+          </div>
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+function SearchSheet({ open, allItems, query, onQueryChange, onClose, onToggleFavorite, onOpenVariants, onOpenDetail }: { open: boolean; allItems: PublicMenuItem[]; query: string; onQueryChange: (value: string) => void; onClose: () => void; onToggleFavorite?: (item: PublicMenuItem) => void; onOpenVariants: (item: PublicMenuItem) => void; onOpenDetail: (item: PublicMenuItem) => void }) {
+  const normalized = query.trim().toLowerCase();
+  const results = normalized ? allItems.filter((item) => item.nome.toLowerCase().includes(normalized) || item.descricao?.toLowerCase().includes(normalized)) : [];
+  return (
+    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
+      <SheetContent side="bottom" className="h-[92dvh]">
+        <SheetHeader>
+          <SheetTitle>Buscar no cardápio</SheetTitle>
+          <SheetDescription>Busca em todas as categorias.</SheetDescription>
+        </SheetHeader>
+        <div className="px-5 pb-3">
+          <SearchInput value={query} onChange={onQueryChange} placeholder="O que você procura?" autoFocus />
+        </div>
+        <SheetBody className="gap-2.5 pt-0">
+          {!normalized ? (
+            <p className="py-10 text-center text-body text-muted-foreground">Digite o nome de um produto.</p>
+          ) : results.length === 0 ? (
+            <EmptyState compact icon="search" title="Nenhum produto encontrado" description="Tenta outro nome ou olha as categorias." />
+          ) : (
+            results.map((item, i) => <ItemListRow key={item.id} item={item} index={i} onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(item) : undefined} onOpenVariants={() => onOpenVariants(item)} onOpenDetail={() => onOpenDetail(item)} />)
+          )}
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+/** Folha "Escolha o tamanho" — nunca lista variações dentro do card (altura uniforme). Só consulta, sem carrinho. */
+function VariantSheet({ item, onClose }: { item: PublicMenuItem | null; onClose: () => void }) {
+  const sorted = useMemo(() => (item ? sortVariantsBySize(item.prices) : []), [item]);
+  return (
+    <Sheet open={item !== null} onOpenChange={(v) => !v && onClose()}>
+      <SheetContent side="bottom">
+        <SheetHeader>
+          <SheetTitle>{item?.nome ?? ""}</SheetTitle>
+          <SheetDescription>{item && variantCountLabel(item)?.endsWith("tamanhos") ? "Tamanhos e preços" : "Opções e preços"}</SheetDescription>
+        </SheetHeader>
+        <SheetBody className="gap-0 pb-6">
+          <ul className="divide-y divide-border">
+            {sorted.map((price) => (
+              <li key={price.variantId} className="flex min-h-12 items-center justify-between gap-4 py-3">
+                <span className="text-[15px] text-foreground">{price.variantNome}</span>
+                <span className="text-[15px] font-semibold text-foreground tnum">{formatBRLCents(price.effectivePriceCents)}</span>
+              </li>
+            ))}
+          </ul>
+        </SheetBody>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+/** Detalhe do produto: foto grande, descrição, harmonização, preço e alergênicos. */
+function ProductDetailSheet({ item, onClose, onToggleFavorite, onOpenVariants }: { item: PublicMenuItem | null; onClose: () => void; onToggleFavorite?: () => void; onOpenVariants: () => void }) {
+  return (
+    <Sheet open={item !== null} onOpenChange={(v) => !v && onClose()}>
+      <SheetContent side="bottom" className="max-h-[92dvh]" showCloseButton={false}>
+        {item ? (
+          <>
+            <SheetBody className="gap-5 px-0 pt-2">
+              <div className="relative mx-4 aspect-[4/3] md:mx-6">
+                <ItemThumb item={item} sizes="(max-width: 768px) 100vw, 768px" className="rounded-card" />
+                <button type="button" onClick={onClose} aria-label="Fechar" className="press absolute left-3 top-3 flex size-11 items-center justify-center rounded-full bg-background/80 text-foreground shadow-thumb backdrop-blur-sm">
+                  <Icon name="close" size={16} />
+                </button>
+                {onToggleFavorite ? <FavoriteButton item={item} onToggle={onToggleFavorite} className="absolute right-3 top-3" /> : null}
+              </div>
+              <div className="px-5 md:px-6">
+                <SheetTitle className="text-title">{item.nome}</SheetTitle>
+                <SheetDescription className="mt-1">{item.descricao ?? "Sem descrição."}</SheetDescription>
+                {item.harmonizaCom ? (
+                  <p className="mt-2 inline-flex items-center gap-1.5 text-caption text-muted-foreground">
+                    <Icon name="wine" size={11} className="text-brand" />
+                    Harmoniza com {item.harmonizaCom}
+                  </p>
+                ) : null}
+                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <PriceLine item={item} size="lg" />
+                  <FavoriteCount item={item} />
+                  {!item.available ? <StatusBadge tone="neutral">Esgotado</StatusBadge> : null}
+                </div>
+                {variantCountLabel(item) ? (
+                  <Button variant="outline" size="sm" shape="pill" rightIcon="chevron-right" className="mt-3" onClick={onOpenVariants}>
+                    Ver {variantCountLabel(item)}
+                  </Button>
+                ) : null}
+                {item.contraindicacoes ? (
+                  <Callout tone="warning" icon="warning" title="Alergênicos" className="mt-5">
+                    {item.contraindicacoes}
+                  </Callout>
+                ) : null}
+              </div>
+            </SheetBody>
+          </>
+        ) : null}
+      </SheetContent>
+    </Sheet>
   );
 }

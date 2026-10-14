@@ -1,104 +1,47 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useOrganizations } from "@/context/OrganizationContext";
-import { PageContainer } from "../../_components/page/page-container";
-import { PageHeader } from "../../_components/page/page-header";
-import { EmptyState } from "../../_components/states/empty-state";
-import { BlockSkeleton } from "../../_components/states/loading-state";
-import { useVenueLocations } from "../_hooks/use-venue-locations";
-import { OnboardingLocation } from "../_components/onboarding-location";
+import { Suspense, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import { CaixaTab } from "../_components/caixa-tab";
+import { LocationGate, type LocationGateContext } from "../_components/location-gate";
+import { LocationSelect } from "../_components/location-select";
 
-/** Página própria (antes era uma aba dentro de Operação) — item dedicado no menu lateral, ver navigation-presentation.ts (CASH_REGISTER/VENUE_PAYMENTS). */
+const TITLE = "Caixa";
+
+/** Página própria (antes era uma aba dentro de Operação) — item dedicado no menu lateral. */
 export default function OperacaoCaixaPage() {
-  const { currentOrg, loadingOrgs, loadingModules } = useOrganizations();
-  const searchParams = useSearchParams();
-  const [selectedLocationId, setSelectedLocationId] = useState<number | null>(null);
-
-  const orgId = currentOrg?.id ?? null;
-  const { data: locations } = useVenueLocations(orgId);
-
-  useEffect(() => {
-    setSelectedLocationId(null);
-  }, [orgId]);
-
-  useEffect(() => {
-    if (selectedLocationId !== null || !locations || locations.length === 0) return;
-    const paramLocationId = Number(searchParams.get("locationId"));
-    const fromParam = paramLocationId ? locations.find((l) => l.id === paramLocationId) : undefined;
-    const main = fromParam ?? locations.find((l) => l.isMain) ?? locations[0];
-    setSelectedLocationId(main.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locations, selectedLocationId]);
-
-  const description = "Abra e feche o caixa, registre suprimentos e retiradas.";
-
-  if (loadingOrgs || loadingModules) {
-    return (
-      <PageContainer>
-        <PageHeader title="Caixa" description={description} />
-        <BlockSkeleton className="h-96" />
-      </PageContainer>
-    );
-  }
-
-  if (!orgId) {
-    return (
-      <PageContainer>
-        <PageHeader title="Caixa" description={description} />
-        <EmptyState title="Nenhuma organização selecionada" description="Selecione uma organização para ver o caixa." />
-      </PageContainer>
-    );
-  }
-
-  if (locations && locations.length === 0) {
-    return (
-      <PageContainer>
-        <PageHeader title="Caixa" description={description} />
-        <OnboardingLocation orgId={orgId} />
-      </PageContainer>
-    );
-  }
-
-  if (!selectedLocationId) {
-    return (
-      <PageContainer>
-        <PageHeader title="Caixa" description={description} />
-        <BlockSkeleton className="h-96" />
-      </PageContainer>
-    );
-  }
-
   return (
-    <PageContainer>
+    <Suspense
+      fallback={
+        <div className="space-y-6">
+          <PageHeader title={TITLE} />
+          <Skeleton className="h-96 rounded-card" />
+        </div>
+      }
+    >
+      <LocationGate title={TITLE}>{(ctx) => <CaixaPageContent {...ctx} />}</LocationGate>
+    </Suspense>
+  );
+}
+
+function CaixaPageContent({ orgId, locationId, locations, setLocationId }: LocationGateContext) {
+  const [formOpen, setFormOpen] = useState(false);
+  return (
+    <div className="space-y-6">
       <PageHeader
-        title="Caixa"
-        description={description}
+        title={TITLE}
         actions={
-          locations && locations.length > 1 ? (
-            <Select value={String(selectedLocationId)} onValueChange={(v) => setSelectedLocationId(Number(v))}>
-              <SelectTrigger className="w-48"><SelectValue placeholder="Unidade" /></SelectTrigger>
-              <SelectContent>
-                {locations.map((loc) => (
-                  <SelectItem key={loc.id} value={String(loc.id)}>
-                    {loc.nome} {loc.isMain ? "· Principal" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : undefined
+          <>
+            <LocationSelect locations={locations} value={locationId} onChange={setLocationId} className="w-44" />
+            <Button variant="outline" leftIcon="plus" onClick={() => setFormOpen(true)}>
+              Novo caixa
+            </Button>
+          </>
         }
       />
-      <CaixaTab orgId={orgId} locationId={selectedLocationId} />
-    </PageContainer>
+      <CaixaTab orgId={orgId} locationId={locationId} formOpen={formOpen} onFormOpenChange={setFormOpen} />
+    </div>
   );
 }

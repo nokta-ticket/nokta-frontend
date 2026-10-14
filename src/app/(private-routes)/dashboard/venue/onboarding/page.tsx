@@ -1,17 +1,17 @@
 import { Suspense } from "react";
-import { PageContainer } from "../../_components/page/page-container";
-import { PageHeader } from "../../_components/page/page-header";
-import { BlockSkeleton } from "../../_components/states/loading-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
 import { OnboardingContent } from "./_components/onboarding-content";
 
 export default function VenueOnboardingPage() {
   return (
     <Suspense
       fallback={
-        <PageContainer>
-          <PageHeader title="Configuração guiada do Venue" description="Ative e configure seu estabelecimento passo a passo." />
-          <BlockSkeleton className="h-96" />
-        </PageContainer>
+        <div className="mx-auto w-full max-w-4xl space-y-6">
+          <PageHeader title="Primeiros passos" />
+          <Skeleton className="h-16 rounded-card" />
+          <Skeleton className="h-96 rounded-card" />
+        </div>
       }
     >
       <OnboardingContent />

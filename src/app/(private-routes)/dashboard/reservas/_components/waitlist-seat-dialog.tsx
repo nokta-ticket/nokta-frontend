@@ -3,26 +3,14 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import type { VenueWaitlistEntry } from "@/services/venue-reservations";
 import { useVenueWaitlistMutations } from "../_hooks/use-venue-waitlist";
 import { AvailabilityPicker } from "./availability-picker";
 
-export function WaitlistSeatDialog({
-  orgId,
-  locationId,
-  entry,
-  open,
-  onOpenChange,
-}: {
-  orgId: number;
-  locationId: number;
-  entry: VenueWaitlistEntry | null;
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-}) {
+export function WaitlistSeatDialog({ orgId, locationId, entry, open, onOpenChange }: { orgId: number; locationId: number; entry: VenueWaitlistEntry | null; open: boolean; onOpenChange: (v: boolean) => void }) {
   const { seat } = useVenueWaitlistMutations(orgId, locationId);
   const router = useRouter();
   const [tableIds, setTableIds] = useState<number[]>([]);
@@ -57,14 +45,14 @@ export function WaitlistSeatDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>Sentar cliente — {entry.publicCode}</DialogTitle>
+          <DialogTitle>Sentar — {entry.customerName}</DialogTitle>
+          <DialogDescription>
+            Fila {entry.publicCode} · {entry.partySize} {entry.partySize === 1 ? "pessoa" : "pessoas"}. A comanda abre na mesa escolhida.
+          </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
-          <p className="text-sm text-black/60">
-            {entry.customerName} · {entry.partySize} pessoa(s)
-          </p>
+        <DialogBody>
           <AvailabilityPicker
             orgId={orgId}
             locationId={locationId}
@@ -77,13 +65,13 @@ export function WaitlistSeatDialog({
               setPrimaryTableId(primary);
             }}
           />
-        </div>
+        </DialogBody>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={seat.isPending}>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={seat.isPending}>
             Cancelar
           </Button>
-          <Button disabled={seat.isPending || tableIds.length === 0} onClick={handleSeat}>
-            {seat.isPending ? "Abrindo…" : "Confirmar"}
+          <Button size="lg" disabled={tableIds.length === 0} loading={seat.isPending} leftIcon="door" onClick={handleSeat}>
+            Confirmar
           </Button>
         </DialogFooter>
       </DialogContent>

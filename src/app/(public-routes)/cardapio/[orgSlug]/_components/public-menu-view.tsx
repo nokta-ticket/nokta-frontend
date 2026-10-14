@@ -5,18 +5,13 @@ import { getVisitorToken, venueMenuPublicApi, type PublicMenuItem, type PublicMe
 import { MenuView } from "@/components/venue-menu/menu-view";
 
 /**
- * Página pública de cardápio (nokta.live/cardapio/{slug}) — só liga o
- * MenuView (renderer real, compartilhado com o preview autenticado do
- * dashboard) aos dados/favoritos de verdade da API pública. Nenhuma
- * decisão visual mora aqui — está toda em MenuView, pra nunca existir uma
- * segunda implementação divergente do cardápio.
+ * Liga o MenuView (renderer compartilhado com o preview do painel) aos dados
+ * e favoritos reais da API pública. Nenhuma decisão visual mora aqui.
  *
- * initialData vem do servidor (page.tsx é Server Component agora, ver
- * comentário lá) sem visitorToken — favoritedByVisitor chega sempre false
- * nesse fetch inicial (localStorage não existe no servidor). Assim que o
- * componente monta no navegador, refaz o mesmo GET com o token real em
- * segundo plano (sem mostrar loading) só pra corrigir os corações já
- * favoritados em visitas anteriores — nunca bloqueia a primeira renderização.
+ * `initialData` vem do servidor sem visitorToken — ao montar, refaz o GET com
+ * o token real em segundo plano só pra corrigir os corações favoritados em
+ * visitas anteriores; nunca bloqueia a primeira renderização. Favoritar é
+ * otimista, com rollback se a API falhar.
  */
 export function PublicMenuView({ initialData, orgSlug }: { initialData: PublicMenuResponse; orgSlug: string }) {
   const [data, setData] = useState(initialData);
@@ -43,14 +38,10 @@ export function PublicMenuView({ initialData, orgSlug }: { initialData: PublicMe
         ...prev,
         menu: {
           ...prev.menu,
-          highlights: prev.menu.highlights.map((it) =>
-            it.id === menuItemId ? { ...it, favoritedByVisitor: favorited, favoriteCount: it.favoriteCount + delta } : it,
-          ),
+          highlights: prev.menu.highlights.map((it) => (it.id === menuItemId ? { ...it, favoritedByVisitor: favorited, favoriteCount: it.favoriteCount + delta } : it)),
           categories: prev.menu.categories.map((cat) => ({
             ...cat,
-            items: cat.items.map((it) =>
-              it.id === menuItemId ? { ...it, favoritedByVisitor: favorited, favoriteCount: it.favoriteCount + delta } : it,
-            ),
+            items: cat.items.map((it) => (it.id === menuItemId ? { ...it, favoritedByVisitor: favorited, favoriteCount: it.favoriteCount + delta } : it)),
           })),
         },
       }));
@@ -70,5 +61,5 @@ export function PublicMenuView({ initialData, orgSlug }: { initialData: PublicMe
     }
   }
 
-  return <MenuView data={data} onToggleFavorite={toggleFavorite} scrollContainerSelector="main" orgSlug={orgSlug} />;
+  return <MenuView data={data} onToggleFavorite={toggleFavorite} orgSlug={orgSlug} />;
 }

@@ -1,43 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { DataTable, DataTableBody, DataTableCell, DataTableEmpty, DataTableHead, DataTableHeadCell, DataTablePagination, DataTableRow, DataTableShell, DataTableToolbar, MobileCard, MobileCardList } from "@/components/ui/data-table";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
+import { SearchInput, useDebouncedValue } from "@/components/ui/search-input";
+import { SelectInput } from "@/components/ui/select-input";
+import { RowsSkeleton } from "@/components/ui/skeleton";
 import { formatPhone } from "@/lib/br-data";
-import {
-  VENUE_RESERVATION_SOURCE_LABEL,
-  VENUE_RESERVATION_STATUS_LABEL,
-  type VenueReservation,
-  type VenueReservationSource,
-  type VenueReservationStatus,
-} from "@/services/venue-reservations";
+import { VENUE_RESERVATION_SOURCE_LABEL, VENUE_RESERVATION_STATUS_LABEL, type VenueReservation, type VenueReservationSource, type VenueReservationStatus } from "@/services/venue-reservations";
 import { useVenueReservations } from "../_hooks/use-venue-reservations";
-import { useDebounce } from "../../cardapio/_hooks/use-debounce";
 import { formatInTimeZone } from "../_lib/timezone";
 import { ReservationStatusBadge } from "./reservation-status-badge";
-import { EmptyState } from "../../_components/states/empty-state";
-import { TableSkeleton } from "../../_components/states/loading-state";
-import { ErrorState } from "../../_components/states/error-state";
 
 interface LocationTz {
   timezone: string;
 }
 
-export function ListaTab({
-  orgId,
-  locationId,
-  location,
-  onOpenDetail,
-}: {
-  orgId: number;
-  locationId: number;
-  location: LocationTz;
-  onOpenDetail: (reservationId: number) => void;
-}) {
+const PER_PAGE = 20;
+const STATUS_OPTIONS = [{ value: "ALL", label: "Todos os status" }, ...(Object.keys(VENUE_RESERVATION_STATUS_LABEL) as VenueReservationStatus[]).map((v) => ({ value: v, label: VENUE_RESERVATION_STATUS_LABEL[v] }))];
+const SOURCE_OPTIONS = [{ value: "ALL", label: "Todas as origens" }, ...(Object.keys(VENUE_RESERVATION_SOURCE_LABEL) as VenueReservationSource[]).map((v) => ({ value: v, label: VENUE_RESERVATION_SOURCE_LABEL[v] }))];
+
+/** Histórico completo de reservas (todas as datas e status), com busca e paginação. */
+export function ListaTab({ orgId, locationId, location, onOpenDetail }: { orgId: number; locationId: number; location: LocationTz; onOpenDetail: (reservationId: number) => void }) {
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 350);
+  const debouncedSearch = useDebouncedValue(search, 350);
   const [status, setStatus] = useState<VenueReservationStatus | "ALL">("ALL");
   const [source, setSource] = useState<VenueReservationSource | "ALL">("ALL");
   const [page, setPage] = useState(1);
@@ -47,90 +33,120 @@ export function ListaTab({
     status: status === "ALL" ? undefined : status,
     source: source === "ALL" ? undefined : source,
     page,
-    limit: 20,
+    limit: PER_PAGE,
   });
 
   const reservations: VenueReservation[] = data?.data ?? [];
   const total = data?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / 20));
+  const lastPage = Math.max(1, Math.ceil(total / PER_PAGE));
+  const tablesLabel = (r: VenueReservation) => (r.tables.length === 0 ? null : r.tables.map((t) => t.table.nome).join(", "));
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        <div className="relative min-w-[200px] flex-1">
-          <Search className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-black/40" size={16} />
-          <Input
-            className="pl-9"
-            placeholder="Buscar por nome, telefone ou código…"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+      <DataTableToolbar>
+        <SearchInput
+          value={search}
+          onChange={(v) => {
+            setSearch(v);
+            setPage(1);
+          }}
+          placeholder="Nome, telefone ou código…"
+          className="w-full flex-1 md:max-w-xl"
+        />
+        <div className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto">
+          <SelectInput
+            value={status}
+            onValueChange={(v) => {
+              setStatus(v as VenueReservationStatus | "ALL");
+              setPage(1);
+            }}
+            options={STATUS_OPTIONS}
+            className="md:w-44"
+          />
+          <SelectInput
+            value={source}
+            onValueChange={(v) => {
+              setSource(v as VenueReservationSource | "ALL");
+              setPage(1);
+            }}
+            options={SOURCE_OPTIONS}
+            className="md:w-44"
           />
         </div>
-        <Select value={status} onValueChange={(v) => { setStatus(v as VenueReservationStatus | "ALL"); setPage(1); }}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">Todos os status</SelectItem>
-            {Object.entries(VENUE_RESERVATION_STATUS_LABEL).map(([value, label]) => (
-              <SelectItem key={value} value={value}>{label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={source} onValueChange={(v) => { setSource(v as VenueReservationSource | "ALL"); setPage(1); }}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">Todas as origens</SelectItem>
-            {Object.entries(VENUE_RESERVATION_SOURCE_LABEL).map(([value, label]) => (
-              <SelectItem key={value} value={value}>{label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      </DataTableToolbar>
 
       {isError ? (
-        <ErrorState description="Não foi possível carregar as reservas." onRetry={() => refetch()} />
+        <ErrorState title="Não deu pra carregar as reservas" onRetry={() => refetch()} />
       ) : isLoading ? (
-        <TableSkeleton />
-      ) : reservations.length === 0 ? (
-        <EmptyState title="Nenhuma reserva encontrada" description="Ajuste os filtros ou crie uma nova reserva." />
+        <RowsSkeleton rows={6} />
       ) : (
-        <>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {reservations.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => onOpenDetail(r.id)}
-                className="rounded-xl border border-black/10 bg-white p-3 text-left hover:border-violet-300"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-gray-900">{r.publicCode}</span>
-                  <ReservationStatusBadge status={r.status} />
-                </div>
-                <p className="mt-1 text-sm text-gray-900">{r.customerName}</p>
-                <p className="text-xs text-black/50">
-                  {formatInTimeZone(r.startAt, location.timezone, "DD/MM/YYYY HH:mm")} · {r.partySize} pessoa(s)
-                </p>
-                <p className="text-xs text-black/40">
-                  {formatPhone(r.customerPhone)} · {VENUE_RESERVATION_SOURCE_LABEL[r.source]}
-                  {r.tables.length > 0 ? ` · ${r.tables.map((t) => t.table.nome).join(", ")}` : ""}
-                </p>
-              </button>
-            ))}
-          </div>
-
-          {totalPages > 1 ? (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-black/50">Página {page} de {totalPages} · {total} reserva(s)</span>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-                  Anterior
-                </Button>
-                <Button size="sm" variant="outline" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
-                  Próxima
-                </Button>
-              </div>
-            </div>
-          ) : null}
-        </>
+        <DataTableShell
+          table={
+            <DataTable>
+              <DataTableHead>
+                <tr>
+                  <DataTableHeadCell>Quando</DataTableHeadCell>
+                  <DataTableHeadCell>Cliente</DataTableHeadCell>
+                  <DataTableHeadCell align="right">Pessoas</DataTableHeadCell>
+                  <DataTableHeadCell>Origem</DataTableHeadCell>
+                  <DataTableHeadCell>Mesas</DataTableHeadCell>
+                  <DataTableHeadCell>Status</DataTableHeadCell>
+                </tr>
+              </DataTableHead>
+              <DataTableBody>
+                {reservations.length === 0 ? (
+                  <DataTableEmpty colSpan={6} icon="calendar" title="Nenhuma reserva encontrada" description="Ajuste os filtros ou crie uma nova reserva." />
+                ) : (
+                  reservations.map((r, i) => (
+                    <DataTableRow key={r.id} index={i} onClick={() => onOpenDetail(r.id)}>
+                      <DataTableCell className="tnum">
+                        <span className="font-semibold">{formatInTimeZone(r.startAt, location.timezone, "DD/MM")}</span>
+                        <span className="ml-1.5 text-muted-foreground">{formatInTimeZone(r.startAt, location.timezone, "HH:mm")}</span>
+                      </DataTableCell>
+                      <DataTableCell>
+                        <span className="font-semibold">{r.customerName}</span>
+                        <span className="block text-caption text-muted-foreground tnum">
+                          {r.publicCode} · {formatPhone(r.customerPhone)}
+                        </span>
+                      </DataTableCell>
+                      <DataTableCell num>{r.partySize}</DataTableCell>
+                      <DataTableCell>{VENUE_RESERVATION_SOURCE_LABEL[r.source]}</DataTableCell>
+                      <DataTableCell className={tablesLabel(r) ? undefined : "text-subtle-foreground"}>{tablesLabel(r) ?? "Sem mesa"}</DataTableCell>
+                      <DataTableCell>
+                        <ReservationStatusBadge status={r.status} />
+                      </DataTableCell>
+                    </DataTableRow>
+                  ))
+                )}
+              </DataTableBody>
+            </DataTable>
+          }
+          mobile={
+            reservations.length === 0 ? (
+              <EmptyState compact icon="calendar" title="Nenhuma reserva encontrada" description="Ajuste os filtros ou crie uma nova reserva." />
+            ) : (
+              <MobileCardList>
+                {reservations.map((r, i) => (
+                  <MobileCard
+                    key={r.id}
+                    index={i}
+                    onClick={() => onOpenDetail(r.id)}
+                    title={r.customerName}
+                    subtitle={`${formatInTimeZone(r.startAt, location.timezone, "DD/MM [às] HH:mm")} · ${r.publicCode}`}
+                    badge={<ReservationStatusBadge status={r.status} />}
+                    meta={[
+                      { label: "Pessoas", value: r.partySize, num: true },
+                      { label: "Origem", value: VENUE_RESERVATION_SOURCE_LABEL[r.source] },
+                      { label: "Mesas", value: tablesLabel(r) ?? "Sem mesa" },
+                      { label: "Telefone", value: formatPhone(r.customerPhone), num: true },
+                    ]}
+                  />
+                ))}
+              </MobileCardList>
+            )
+          }
+          footer={total > PER_PAGE ? <DataTablePagination page={page} lastPage={lastPage} total={total} perPage={PER_PAGE} noun="reservas" onPageChange={setPage} /> : undefined}
+        />
       )}
     </div>
   );

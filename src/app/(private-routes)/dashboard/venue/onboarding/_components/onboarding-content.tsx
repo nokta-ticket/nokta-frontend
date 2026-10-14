@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect } from "react";
-import { CheckCircle2 } from "lucide-react";
 import { useOrganizations } from "@/context/OrganizationContext";
 import { useVenueAccess } from "@/context/VenueAccessContext";
-import { PageContainer } from "../../../_components/page/page-container";
-import { PageHeader } from "../../../_components/page/page-header";
-import { EmptyState } from "../../../_components/states/empty-state";
-import { BlockSkeleton } from "../../../_components/states/loading-state";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
+import { PageHeader } from "@/components/ui/page-header";
+import { cn } from "@/lib/cn";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Stepper, type StepperStep } from "@/components/ui/stepper";
+import { StatusBadge } from "@/components/ui/badge";
 import { useUrlTab } from "../../../_hooks/use-url-tab";
 import { useVenueLocations } from "../../../operacao/_hooks/use-venue-locations";
 import { useVenueSetupLifecycle, useVenueSetupStatus } from "../../../configuracoes/_hooks/use-venue-settings";
@@ -30,24 +32,13 @@ const STEP_LABEL: Record<StepKey, string> = {
   revisao: "Revisão",
 };
 
-function Stepper({ step, doneSteps }: { step: StepKey; doneSteps: Set<StepKey> }) {
+const TITLE = "Primeiros passos";
+
+function Frame({ children, badge }: { children: React.ReactNode; badge?: React.ReactNode }) {
   return (
-    <div className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-      {STEPS.map((key, i) => {
-        const active = key === step;
-        const done = doneSteps.has(key) && !active;
-        return (
-          <div
-            key={key}
-            className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium ${
-              active ? "border-violet-600 bg-violet-50 text-violet-700" : done ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-black/10 text-black/50"
-            }`}
-          >
-            {done ? <CheckCircle2 size={13} /> : <span>{i + 1}</span>}
-            {STEP_LABEL[key]}
-          </div>
-        );
-      })}
+    <div className="mx-auto w-full max-w-4xl space-y-6">
+      <PageHeader title={TITLE} description="Configure o estabelecimento passo a passo. Pode sair e voltar quando quiser." badge={badge} />
+      {children}
     </div>
   );
 }
@@ -67,95 +58,84 @@ export function OnboardingContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId]);
 
-  if (loadingOrgs || loadingAccess) {
+  if (loadingOrgs || loadingAccess || (orgId && (loadingStatus || loadingLocations || !status))) {
     return (
-      <PageContainer>
-        <PageHeader title="Configuração guiada do Venue" description="Ative e configure seu estabelecimento passo a passo." />
-        <BlockSkeleton className="h-96" />
-      </PageContainer>
+      <Frame>
+        <Skeleton className="h-16 rounded-card" />
+        <Skeleton className="h-96 rounded-card" />
+      </Frame>
     );
   }
 
   if (!orgId) {
     return (
-      <PageContainer>
-        <PageHeader title="Configuração guiada do Venue" description="Ative e configure seu estabelecimento passo a passo." />
-        <EmptyState title="Nenhuma organização selecionada" description="Selecione uma organização para continuar." />
-      </PageContainer>
+      <Frame>
+        <EmptyState icon="building" title="Nenhuma organização selecionada" description="Escolha uma organização no menu lateral pra continuar." />
+      </Frame>
     );
   }
 
   if (!can("organization.settings.manage")) {
     return (
-      <PageContainer>
-        <PageHeader title="Configuração guiada do Venue" description="Ative e configure seu estabelecimento passo a passo." />
-        <EmptyState
-          title="Sem acesso a esta etapa"
-          description="O responsável pela organização ainda está concluindo a configuração do Venue."
-        />
-      </PageContainer>
+      <Frame>
+        <EmptyState icon="lock" title="Sem acesso a esta etapa" description="O responsável pela organização ainda está concluindo a configuração do Venue." />
+      </Frame>
     );
   }
 
-  if (loadingStatus || loadingLocations || !status) {
-    return (
-      <PageContainer>
-        <div className="mx-auto w-full max-w-4xl space-y-6">
-          <PageHeader title="Configuração guiada do Venue" description="Ative e configure seu estabelecimento passo a passo." />
-          <BlockSkeleton className="h-96" />
-        </div>
-      </PageContainer>
-    );
-  }
+  if (!status) return null;
 
   const mainLocation = locations?.find((l) => l.isMain) ?? locations?.[0] ?? null;
   const doneSteps = new Set<StepKey>();
   if (status.requiredItems.find((i) => i.key === "active_location")?.done) doneSteps.add("sobre");
-  if (status.requiredItems.find((i) => i.key === "operational_structure")?.done && status.requiredItems.find((i) => i.key === "cash_register")?.done)
-    doneSteps.add("estrutura");
+  if (status.requiredItems.find((i) => i.key === "operational_structure")?.done && status.requiredItems.find((i) => i.key === "cash_register")?.done) doneSteps.add("estrutura");
   if (status.requiredItems.find((i) => i.key === "published_menu")?.done) doneSteps.add("cardapio");
   if (status.recommendedItems.find((i) => i.key === "team")?.done) doneSteps.add("equipe");
 
   const goTo = (s: StepKey) => setStep(s);
+  const currentIndex = STEPS.indexOf(step);
+  const stepperSteps: StepperStep[] = STEPS.map((key, i) => ({
+    label: STEP_LABEL[key],
+    status: key === step ? "current" : doneSteps.has(key) || i < currentIndex ? "done" : "upcoming",
+  }));
 
   return (
-    <PageContainer>
-      <div className="mx-auto w-full max-w-4xl space-y-6">
-        <PageHeader
-          title="Configuração guiada do Venue"
-          description="Ative e configure seu estabelecimento passo a passo. Você pode sair e voltar quando quiser."
-        />
+    <Frame badge={<StatusBadge tone={status.readyToOperate ? "success" : "brand"}>{status.progress}% pronto</StatusBadge>}>
+      <nav aria-label="Etapas" className="rounded-card border border-border bg-surface p-4 shadow-card md:p-5">
+        {/* Desktop: linha do tempo; celular: chips clicáveis (a linha vertical ocuparia a tela inteira). */}
+        <div className="hidden md:block">
+          <Stepper orientation="horizontal" steps={stepperSteps} />
+        </div>
+        <div className="scrollbar-hide -mx-4 flex gap-1.5 overflow-x-auto px-4 md:hidden">
+          {STEPS.map((key, i) => {
+            const state = stepperSteps[i].status;
+            return (
+              <button key={key} type="button" onClick={() => goTo(key)} aria-current={state === "current" ? "step" : undefined} className={cn("press inline-flex h-9 shrink-0 items-center gap-1.5 rounded-pill px-3 text-caption font-semibold transition-colors", state === "current" ? "bg-brand text-brand-foreground" : state === "done" ? "bg-success-bg text-success" : "bg-surface-2 text-muted-foreground")}>
+                {state === "done" ? <Icon name="check" size={10} /> : <span className="tnum">{i + 1}</span>}
+                {STEP_LABEL[key]}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
 
-        <Stepper step={step} doneSteps={doneSteps} />
+      {step === "sobre" ? <Step1Sobre orgId={orgId} status={status} mainLocation={mainLocation} onNext={() => goTo("estrutura")} /> : null}
 
-        {step === "sobre" ? (
-          <Step1Sobre orgId={orgId} status={status} mainLocation={mainLocation} onNext={() => goTo("estrutura")} />
-        ) : null}
+      {step === "estrutura" ? (
+        mainLocation ? (
+          <Step2Estrutura orgId={orgId} locationId={mainLocation.id} operationMode={status.profile?.operationMode ?? null} onNext={() => goTo("cardapio")} onBack={() => goTo("sobre")} />
+        ) : (
+          <EmptyState icon="store" title="Crie a unidade primeiro" description="Volte à etapa Sobre e crie a unidade principal." />
+        )
+      ) : null}
 
-        {step === "estrutura" ? (
-          mainLocation ? (
-            <Step2Estrutura
-              orgId={orgId}
-              locationId={mainLocation.id}
-              operationMode={status.profile?.operationMode ?? null}
-              onNext={() => goTo("cardapio")}
-              onBack={() => goTo("sobre")}
-            />
-          ) : (
-            <EmptyState title="Crie a unidade primeiro" description="Volte à etapa Sobre e crie a unidade principal." />
-          )
-        ) : null}
+      {step === "cardapio" ? <Step3Cardapio orgId={orgId} status={status} onNext={() => goTo("equipe")} onBack={() => goTo("estrutura")} /> : null}
 
-        {step === "cardapio" ? <Step3Cardapio orgId={orgId} status={status} onNext={() => goTo("equipe")} onBack={() => goTo("estrutura")} /> : null}
+      {step === "equipe" ? <Step4Equipe onNext={() => goTo("preferencias")} onBack={() => goTo("cardapio")} /> : null}
 
-        {step === "equipe" ? <Step4Equipe onNext={() => goTo("preferencias")} onBack={() => goTo("cardapio")} /> : null}
+      {step === "preferencias" ? <Step5Preferencias orgId={orgId} onNext={() => goTo("revisao")} onBack={() => goTo("equipe")} /> : null}
 
-        {step === "preferencias" ? (
-          <Step5Preferencias orgId={orgId} onNext={() => goTo("revisao")} onBack={() => goTo("equipe")} />
-        ) : null}
-
-        {step === "revisao" ? <Step6Revisao orgId={orgId} status={status} onBack={() => goTo("preferencias")} /> : null}
-      </div>
-    </PageContainer>
+      {step === "revisao" ? <Step6Revisao orgId={orgId} status={status} onBack={() => goTo("preferencias")} /> : null}
+    </Frame>
   );
 }
