@@ -7,6 +7,7 @@ import { toast } from "@/lib/toast";
 import { cn } from "@/lib/cn";
 import { crmApi, crmKeys, type CrmChannel, type CrmContact, type CrmContactSort, type CrmFilterOptions, type CrmFilters, type CrmOverview, type CrmSegment, type CrmSourceType } from "@/services/crm";
 import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
 import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeadCell, DataTablePagination, DataTableRow, DataTableShell, MobileCard, MobileCardList } from "@/components/ui/data-table";
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState, ErrorState } from "@/components/ui/empty-state";
@@ -195,6 +196,12 @@ export function ContactsTab({ orgId, filters, onFilters, options, segments, impo
       {filterPanel}
 
       <div className="min-w-0 flex-1 space-y-4">
+        {list.data?.syncError ? (
+          <Callout tone="danger" title="A lista pode estar desatualizada.">
+            Não foi possível ler as compras e os VIPs mais recentes. Avise o suporte com o texto abaixo.
+            <span className="mt-1 block break-words font-mono text-caption">{list.data.syncError}</span>
+          </Callout>
+        ) : null}
         <SearchInput value={searchInput} onChange={setSearchInput} placeholder="Nome, e-mail ou telefone" className="w-full lg:max-w-xl" />
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

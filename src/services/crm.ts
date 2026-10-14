@@ -62,6 +62,8 @@ export interface CrmContactList {
   perPage: number;
   total: number;
   counts: CrmCounts;
+  /** Preenchido quando a leitura de compras e VIPs falhou: a lista pode estar sem os contatos mais novos. */
+  syncError?: string | null;
 }
 
 export interface CrmContactDetail extends CrmContact {

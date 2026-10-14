@@ -374,6 +374,27 @@ const GUESTS = [
 
 const P = "/produtor/eventos";
 
+// Lista VIP do produtor (Convidados → Lista VIP).
+type VipPayload = { nome: string; total: number; vipAte: string; ativa: boolean };
+type VipSummary = VipPayload & { id: number; naLista: number; entraram: number };
+type VipName = { id: number; listaId: number; nome: string; email: string; entrou: boolean; em: string };
+const VIP_PEOPLE = ["Ana Clara Souza", "Bruno Lima", "Camila Rocha", "Diego Martins", "Eduarda Alves", "Felipe Costa", "Gabriela Nunes", "Henrique Dias", "Isabela Ferreira", "João Pedro Melo"];
+const vipStore = new Map<number, { listas: VipSummary[]; nomes: VipName[] }>();
+function vipFor(id: number) {
+  let cur = vipStore.get(id);
+  if (!cur) {
+    const listaId = id * 100 + 1;
+    const nomes = VIP_PEOPLE.map((nome, i) => ({ id: id * 1000 + i, listaId, nome, email: `${nome.split(" ")[0].toLowerCase()}${i}@email.com`, entrou: i % 3 === 0, em: new Date(Date.now() - (i + 1) * 18_000_000).toISOString() }));
+    cur = { listas: [{ id: listaId, nome: "Lista do produtor", vipAte: new Date(Date.now() + 2 * 86_400_000).toISOString(), ativa: true, total: 100, naLista: nomes.length, entraram: nomes.filter((n) => n.entrou).length }], nomes };
+    vipStore.set(id, cur);
+  }
+  return cur;
+}
+function vipResponse(id: number) {
+  const ev = MOCK_EVENTS.find((e) => Number(e.id) === id);
+  return { link: ev?.slug ?? String(id), ...vipFor(id) };
+}
+
 export const eventsAdminHandlers: MockHandler[] = [
   // ── upload ──
   { test: /\/upload$/, method: "post", handle: () => ok({ data: [posterUrl("garden-party")] }) },
@@ -397,7 +418,10 @@ export const eventsAdminHandlers: MockHandler[] = [
   { test: new RegExp(`${P}/\\d+/despublicar$`), method: "patch", handle: ({ url }) => { eventStatus.set(num(url, 2), 1); return ok(); } },
   { test: new RegExp(`${P}/\\d+/cancelar$`), method: "patch", handle: ({ url }) => { eventStatus.set(num(url, 2), 3); return ok(); } },
   { test: new RegExp(`${P}/\\d+/ingressos$`), method: "get", handle: ({ url }) => ok({ data: getLotes(num(url, 2)) }) },
-  { test: new RegExp(`${P}/\\d+/lista-vip/\\d+$`), method: "delete", handle: ({ url }) => { const id = num(url, 3); lotesStore.set(id, getLotes(id).filter((l) => l.id !== num(url))); return ok(); } },
+  { test: new RegExp(`${P}/\\d+/lista-vip$`), method: "get", handle: ({ url }) => ok(vipResponse(num(url, 2))) },
+  { test: new RegExp(`${P}/\\d+/lista-vip$`), method: "post", handle: ({ url, body }) => { const id = num(url, 2); const b = body as VipPayload; const cur = vipFor(id); cur.listas.push({ id: id * 100 + cur.listas.length + 1, ...b, naLista: 0, entraram: 0 }); return ok(vipResponse(id)); } },
+  { test: new RegExp(`${P}/\\d+/lista-vip/\\d+$`), method: "put", handle: ({ url, body }) => { const id = num(url, 3); const b = body as VipPayload; const cur = vipFor(id); cur.listas = cur.listas.map((l) => (l.id === num(url) ? { ...l, ...b } : l)); return ok(vipResponse(id)); } },
+  { test: new RegExp(`${P}/\\d+/lista-vip/\\d+$`), method: "delete", handle: ({ url }) => { const id = num(url, 3); const cur = vipFor(id); cur.listas = cur.listas.filter((l) => l.id !== num(url)); cur.nomes = cur.nomes.filter((n) => n.listaId !== num(url)); return ok(); } },
   { test: new RegExp(`${P}/\\d+/vendas$`), method: "get", handle: ({ url }) => ok(vendas(num(url, 2))) },
 
   // ── cupons ──

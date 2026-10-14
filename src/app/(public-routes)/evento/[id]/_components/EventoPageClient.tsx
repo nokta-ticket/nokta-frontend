@@ -242,11 +242,15 @@ export default function EventoPageClient() {
     router.push(buildCheckoutUrl());
   }
 
+  // Na tela da lista VIP o botão vira "Convidar amigos" e leva o link da
+  // lista, não o da página com os ingressos à venda.
+  const shareLabel = vipActive ? "Convidar amigos" : "Compartilhar";
   function handleShare() {
+    const url = vipActive ? getPublicTicketsUrl(`/vip/${evento!.slug ?? evento!.id}`) : canonicalEventUrl;
     if (navigator.share) {
-      navigator.share({ title: evento!.nome, url: canonicalEventUrl }).catch(() => {});
+      navigator.share({ title: evento!.nome, url }).catch(() => {});
     } else {
-      navigator.clipboard?.writeText(canonicalEventUrl);
+      navigator.clipboard?.writeText(url);
       toast.success("Link copiado!");
     }
   }
@@ -311,7 +315,7 @@ export default function EventoPageClient() {
                 <h1 className="font-display text-[2rem] uppercase leading-[0.95] text-foreground lg:text-[2.75rem]">{evento.nome}</h1>
                 <p className="mt-2 text-[15px] font-semibold text-brand lg:text-lg">{formatEventDate(evento.data) || "Data a confirmar"}</p>
               </div>
-              <Button variant="outline" size="icon" shape="pill" aria-label="Compartilhar evento" onClick={handleShare} className="size-11 shrink-0 bg-surface/60 backdrop-blur-md">
+              <Button variant="outline" size="icon" shape="pill" aria-label={shareLabel} onClick={handleShare} className="size-11 shrink-0 bg-surface/60 backdrop-blur-md">
                 <Icon name="share" size={15} />
               </Button>
             </div>
@@ -336,7 +340,7 @@ export default function EventoPageClient() {
               {tickets.length === 0 && !vipKey && closedReason ? <ClosedCallout reason={closedReason} /> : null}
               {tickets.length === 0 && !vipKey && !closedReason ? <EmptyState compact icon="ticket" title="Ingressos em breve" description="O produtor ainda não abriu as vendas por aqui." /> : null}
               <Button variant="outline" size="full" shape="pill" leftIcon="share" onClick={handleShare} className="hidden lg:inline-flex">
-                Compartilhar evento
+                {vipActive ? shareLabel : "Compartilhar evento"}
               </Button>
             </div>
           </aside>

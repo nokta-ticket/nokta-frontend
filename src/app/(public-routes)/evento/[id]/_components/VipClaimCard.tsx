@@ -13,8 +13,8 @@ import { StatusBadge, type Tone } from "@/components/ui/badge";
 import { CpfGate } from "../checkout/_components/cpf-gate";
 
 // Lista VIP dentro da página do evento. Só aparece para quem chegou pelo
-// link do produtor (`/vip/nome-do-evento`): o lote não existe na lista
-// pública de ingressos.
+// link do produtor (`/vip/nome-do-evento`): a lista não existe entre os
+// ingressos à venda. Quem coloca o nome recebe o ingresso com QR na conta.
 
 type VipStatus = "ABERTA" | "ENCERRADA" | "ESGOTADA" | "INDISPONIVEL";
 
@@ -23,6 +23,8 @@ interface VipList {
   nome: string | null;
   ate: string | null;
   status: VipStatus;
+  naLista: number;
+  total: number;
 }
 
 interface VipListResponse {
@@ -38,9 +40,15 @@ const STATUS_META: Record<VipStatus, { label: string; tone: Tone }> = {
 };
 
 const CLOSED_MESSAGE: Record<Exclude<VipStatus, "ABERTA">, string> = {
-  ENCERRADA: "O prazo pra retirar acabou.",
-  ESGOTADA: "Todos os VIPs já foram retirados.",
+  ENCERRADA: "O prazo pra colocar o nome acabou.",
+  ESGOTADA: "Todos os nomes da lista já foram preenchidos.",
   INDISPONIVEL: "Indisponível no momento.",
+};
+
+const CLOSED_LABEL: Record<Exclude<VipStatus, "ABERTA">, string> = {
+  ENCERRADA: "Lista encerrada",
+  ESGOTADA: "Lista esgotada",
+  INDISPONIVEL: "Lista indisponível",
 };
 
 function formatDeadline(iso: string): string {
@@ -108,10 +116,13 @@ export function VipClaimCard({
     try {
       const res = await api.post<{ claimed: boolean; alreadyClaimed: boolean }>(`/lista-vip/${token}/retirar`);
       setResults((prev) => ({ ...prev, [token]: res.data.alreadyClaimed ? "already" : "claimed" }));
+      if (res.data.claimed) {
+        setLists((prev) => prev.map((l) => (l.token === token ? { ...l, naLista: l.naLista + 1 } : l)));
+      }
     } catch (err: unknown) {
       const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
       if (code === "CPF_REQUIRED") setPending({ token, step: "cpf" });
-      else toast.error(getErrorMessage(err, "Não foi possível retirar o VIP. Tente de novo."));
+      else toast.error(getErrorMessage(err, "Não foi possível colocar seu nome na lista. Tente de novo."));
     } finally {
       setClaimingToken(null);
     }
@@ -142,11 +153,11 @@ export function VipClaimCard({
             return (
               <li key={lista.token} className="px-4 py-4 lg:px-5">
                 {result ? (
-                  <div className="flex items-center gap-3">
+                  <div className="vip-confirm flex items-center gap-3">
                     <Icon name="check-circle" size={22} className="shrink-0 text-success" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[15px] font-semibold leading-snug text-foreground">{result === "claimed" ? "Seu VIP está garantido" : "Você já retirou este VIP"}</p>
-                      <p className="mt-0.5 text-caption text-muted-foreground">O QR code está em Meus ingressos.</p>
+                      <p className="text-[15px] font-semibold leading-snug text-foreground">{result === "claimed" ? "Seu nome está na lista" : "Seu nome já estava na lista"}</p>
+                      <p className="mt-0.5 text-caption text-muted-foreground">O ingresso com QR code está na sua conta.</p>
                     </div>
                     <Button asChild variant="contrast" size="sm" shape="pill" className="shrink-0">
                       <Link href="/meus-ingressos">Ver ingresso</Link>
@@ -161,11 +172,16 @@ export function VipClaimCard({
                           {meta.label}
                         </StatusBadge>
                       </div>
-                      <p className="mt-1 text-sm font-semibold text-brand">Gratuito</p>
-                      <p className="mt-0.5 text-caption text-muted-foreground">{open ? `Um por pessoa${lista.ate ? ` · retire até ${formatDeadline(lista.ate)}` : ""}` : CLOSED_MESSAGE[lista.status as Exclude<VipStatus, "ABERTA">]}</p>
+                      <p className="mt-1.5 flex items-center gap-2 text-caption text-muted-foreground">
+                        <span className="rounded-full bg-foreground px-2.5 py-1 text-[13px] font-bold tabular-nums text-background">
+                          {lista.naLista}/{lista.total}
+                        </span>
+                        nomes na lista · <span className="font-semibold text-brand">Gratuito</span>
+                      </p>
+                      <p className="mt-0.5 text-caption text-muted-foreground">{open ? `Um nome por pessoa${lista.ate ? ` · até ${formatDeadline(lista.ate)}` : ""}` : CLOSED_MESSAGE[lista.status as Exclude<VipStatus, "ABERTA">]}</p>
                     </div>
                     <Button shape="pill" onClick={() => handleClick(lista.token)} disabled={!open || claimingToken !== null} loading={claimingToken === lista.token} className="h-11 shrink-0 px-5">
-                      {lista.status === "ESGOTADA" ? "Esgotado" : "Pegar VIP"}
+                      {open ? "Colocar nome" : CLOSED_LABEL[lista.status as Exclude<VipStatus, "ABERTA">]}
                     </Button>
                   </div>
                 )}

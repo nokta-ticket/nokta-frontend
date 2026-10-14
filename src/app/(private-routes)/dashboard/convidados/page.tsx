@@ -20,9 +20,10 @@ import { StatusBadge, type Tone } from "@/components/ui/badge";
 import { useRequireWorkspace } from "../_components/require-workspace-provider";
 import { InviteGuestDialog } from "./_components/invite-guest-dialog";
 import { ReservationGuestsSection } from "./_components/reservation-guests-section";
+import { VipListsSection } from "./_components/vip-lists-section";
 
-type EventoOption = { id: number; nome: string };
-type Mode = "evento" | "reserva";
+type EventoOption = { id: number; nome: string; data?: string };
+type Mode = "vip" | "evento" | "reserva";
 
 // UserTicketStatus: 1=NOT_VALIDATED 2=VALIDATED 3=IN_RESALE 4=TRANSFERRED
 const STATUS_META: Record<number, { label: string; tone: Tone }> = {
@@ -35,8 +36,11 @@ const STATUS_META: Record<number, { label: string; tone: Tone }> = {
 const fmtDateTime = (iso: string) => new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 /**
- * Convidados (GUEST_LISTS). Dois modos, sem relação entre si:
- * - Evento: cortesia de bilheteria (UserTicket real, exige conta Nokta) —
+ * Convidados (GUEST_LISTS). Três modos, sem relação entre si:
+ * - Lista VIP: lista de nomes com entrada gratuita, divulgada por link
+ *   (/vip/<evento>); quem coloca o nome recebe o ingresso na conta — ver
+ *   services/vip-lists.ts.
+ * - Cortesias: cortesia de bilheteria (UserTicket real, exige conta Nokta) —
  *   ver services/guests.ts / tickets/guests no backend.
  * - Reserva: lista de nomes de uma reserva/mesa do Venue, sem exigir conta
  *   nem QR — ver services/venue-reservations.ts (listGuests/addGuest/...) /
@@ -47,7 +51,7 @@ export default function ConvidadosPage() {
   const { currentOrg, loadingOrgs, activeModuleKeys } = useOrganizations();
   const { guard } = useRequireWorkspace();
   const hasVenue = activeModuleKeys.includes("venue");
-  const [mode, setMode] = useState<Mode>("evento");
+  const [mode, setMode] = useState<Mode>("vip");
 
   const [eventos, setEventos] = useState<EventoOption[]>([]);
   const [loadingEventos, setLoadingEventos] = useState(true);
@@ -119,16 +123,27 @@ export default function ConvidadosPage() {
 
   const stats = useMemo(() => ({ total: guests.length, compareceram: guests.filter((g) => g.status === 2).length, qrPendentes: guests.filter((g) => !g.qrSentAt).length }), [guests]);
 
-  const modeSwitcher = hasVenue ? (
+  const modeSwitcher = (
     <SegmentedControl
       value={mode}
       onChange={setMode}
       options={[
-        { value: "evento", label: "Evento", icon: "ticket" },
-        { value: "reserva", label: "Reserva", icon: "chair" },
+        { value: "vip" as const, label: "Lista VIP", icon: "crown" as const },
+        { value: "evento" as const, label: "Cortesias", icon: "ticket" as const },
+        ...(hasVenue ? [{ value: "reserva" as const, label: "Reserva", icon: "chair" as const }] : []),
       ]}
     />
-  ) : null;
+  );
+
+  const eventSelect = (
+    <NativeSelect aria-label="Evento" value={selectedEventId ?? ""} onChange={(e) => setSelectedEventId(Number(e.target.value))} className="flex-1 sm:w-64 sm:flex-none">
+      {eventos.map((ev) => (
+        <option key={ev.id} value={ev.id}>
+          {ev.nome}
+        </option>
+      ))}
+    </NativeSelect>
+  );
 
   const inviteButton = (
     <Button leftIcon="user-plus" onClick={() => (currentOrg ? setInviteOpen(true) : guard(() => undefined))} disabled={Boolean(currentOrg) && selectedEventId === null}>
@@ -136,7 +151,7 @@ export default function ConvidadosPage() {
     </Button>
   );
 
-  if (loadingOrgs || (mode === "evento" && loadingEventos)) {
+  if (loadingOrgs || (mode !== "reserva" && loadingEventos)) {
     return (
       <div className="space-y-6">
         <PageHeader title="Convidados" actions={modeSwitcher} />
@@ -172,7 +187,18 @@ export default function ConvidadosPage() {
     return (
       <div className="space-y-6">
         <PageHeader title="Convidados" actions={modeSwitcher} />
-        <EmptyState icon="calendar-plus" title="Nenhum evento disponível" description="Crie um evento (mesmo em rascunho) para poder convidar pessoas com cortesia." />
+        <EmptyState icon="calendar-plus" title="Nenhum evento disponível" description="Crie um evento (mesmo em rascunho) para montar a lista VIP ou enviar cortesias." />
+      </div>
+    );
+  }
+
+  if (mode === "vip") {
+    const selected = eventos.find((ev) => ev.id === selectedEventId);
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Convidados" description="Divulgue o link da lista VIP e veja quem colocou o nome. Cada pessoa recebe o ingresso com QR code na conta." actions={modeSwitcher} />
+        <div className="flex items-center gap-2">{eventSelect}</div>
+        {selectedEventId !== null ? <VipListsSection key={selectedEventId} eventId={selectedEventId} eventDate={selected?.data} /> : null}
       </div>
     );
   }
@@ -199,13 +225,7 @@ export default function ConvidadosPage() {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <SearchInput value={search} onChange={setSearch} placeholder="Buscar por nome ou e-mail" className="w-full sm:max-w-xl sm:flex-1" />
         <div className="flex items-center gap-2">
-          <NativeSelect aria-label="Evento" value={selectedEventId ?? ""} onChange={(e) => setSelectedEventId(Number(e.target.value))} className="flex-1 sm:w-64 sm:flex-none">
-            {eventos.map((ev) => (
-              <option key={ev.id} value={ev.id}>
-                {ev.nome}
-              </option>
-            ))}
-          </NativeSelect>
+          {eventSelect}
           <Button variant="subtle" size="icon" aria-label="Atualizar lista" title="Atualizar" onClick={() => selectedEventId !== null && loadGuests(selectedEventId)}>
             <Icon name="refresh" size={14} className={cn(loadingGuests && "animate-spin")} />
           </Button>
