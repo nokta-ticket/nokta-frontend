@@ -1,16 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field, FieldGroup } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
@@ -73,44 +67,43 @@ export function SupplierFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>{supplier ? "Editar fornecedor" : "Novo fornecedor"}</DialogTitle>
+          <DialogDescription>Quem vende pra você. Aparece como opção ao registrar uma compra.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="supplier-nome">Nome</Label>
-            <Input id="supplier-nome" value={nome} onChange={(e) => setNome(e.target.value)} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="supplier-contact">Contato (opcional)</Label>
-              <Input id="supplier-contact" value={contactName} onChange={(e) => setContactName(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="supplier-phone">Telefone (opcional)</Label>
-              <Input id="supplier-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="supplier-email">E-mail (opcional)</Label>
-              <Input id="supplier-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="supplier-doc">Documento (opcional)</Label>
-              <Input id="supplier-doc" value={document} onChange={(e) => setDocument(e.target.value)} />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="supplier-notes">Observações (opcional)</Label>
-            <Textarea id="supplier-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
-          </div>
-        </div>
+
+        <DialogBody>
+          <Field label="Nome" htmlFor="supplier-nome" required>
+            <Input id="supplier-nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Distribuidora Paulista de Bebidas" autoFocus />
+          </Field>
+          <FieldGroup columns={2}>
+            <Field label="Contato" htmlFor="supplier-contact" optional>
+              <Input id="supplier-contact" leftIcon="user" value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Nome de quem atende" />
+            </Field>
+            <Field label="Telefone" htmlFor="supplier-phone" optional>
+              <Input id="supplier-phone" type="tel" leftIcon="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(11) 99999-0000" />
+            </Field>
+          </FieldGroup>
+          <FieldGroup columns={2}>
+            <Field label="E-mail" htmlFor="supplier-email" optional>
+              <Input id="supplier-email" type="email" leftIcon="mail" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="pedidos@fornecedor.com" />
+            </Field>
+            <Field label="CNPJ ou CPF" htmlFor="supplier-doc" optional>
+              <Input id="supplier-doc" leftIcon="id-card" value={document} onChange={(e) => setDocument(e.target.value)} placeholder="00.000.000/0000-00" />
+            </Field>
+          </FieldGroup>
+          <Field label="Observações" htmlFor="supplier-notes" optional>
+            <Textarea id="supplier-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="min-h-20" placeholder="Dias de entrega, pedido mínimo, condições…" />
+          </Field>
+        </DialogBody>
+
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancelar</Button>
-          <Button disabled={loading || !nome.trim()} onClick={handleSubmit}>
-            {loading ? "Salvando…" : "Salvar"}
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSubmit} loading={loading} disabled={!nome.trim()}>
+            {supplier ? "Salvar alterações" : "Criar fornecedor"}
           </Button>
         </DialogFooter>
       </DialogContent>

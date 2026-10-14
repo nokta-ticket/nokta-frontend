@@ -1,25 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Icon } from "@/components/ui/icon";
+import { NativeSelect } from "@/components/ui/native-select";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
-import { VENUE_INVENTORY_UNIT_LABEL } from "@/services/venue-stock";
 import { useVenueStockItems } from "../_hooks/use-venue-stock-catalog";
 import { useSetModifierComponents, useVenueModifierComponents } from "../_hooks/use-venue-stock-components";
 import { QuantityField } from "./quantity-field";
+import { UNIT_SHORT } from "./stock-primitives";
 
 type DraftComponent = { key: string; inventoryItemId: number | null; quantity: string };
 
+/** Export público usado pelo cardápio (adicionais) — assinatura mantida. */
 export function ModifierComponentsDialog({
   orgId,
   modifierOptionId,
@@ -62,50 +57,47 @@ export function ModifierComponentsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent size="md">
         <DialogHeader>
-          <DialogTitle>Consumo de estoque {optionName ? `— ${optionName}` : ""}</DialogTitle>
+          <DialogTitle>Consumo de estoque{optionName ? ` · ${optionName}` : ""}</DialogTitle>
+          <DialogDescription>Quanto sai do estoque cada vez que este adicional é escolhido. Deixe sem itens pra adicionais só descritivos (ex.: &quot;ao ponto&quot;).</DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
-          <p className="text-xs text-black/50">
-            Deixe sem itens vinculados para adicionais puramente descritivos (ex.: &quot;ao ponto&quot;), que não baixam estoque.
-          </p>
+
+        <DialogBody className="gap-3">
           {draft.map((d, i) => {
             const item = items.find((it) => it.id === d.inventoryItemId);
             return (
               <div key={d.key} className="flex items-center gap-2">
-                <Select
-                  value={d.inventoryItemId ? String(d.inventoryItemId) : undefined}
-                  onValueChange={(v) => setDraft((prev) => prev.map((x, xi) => (xi === i ? { ...x, inventoryItemId: Number(v) } : x)))}
-                >
-                  <SelectTrigger className="flex-1"><SelectValue placeholder="Item de estoque" /></SelectTrigger>
-                  <SelectContent>
-                    {items.map((it) => (
-                      <SelectItem key={it.id} value={String(it.id)}>{it.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="w-32">
-                  <QuantityField
-                    value={d.quantity}
-                    onChange={(v) => setDraft((prev) => prev.map((x, xi) => (xi === i ? { ...x, quantity: v } : x)))}
-                    suffix={item ? VENUE_INVENTORY_UNIT_LABEL[item.baseUnit] : undefined}
-                  />
+                <NativeSelect aria-label="Item de estoque" className="min-w-0 flex-1" value={d.inventoryItemId ? String(d.inventoryItemId) : ""} onChange={(e) => setDraft((prev) => prev.map((x, xi) => (xi === i ? { ...x, inventoryItemId: e.target.value ? Number(e.target.value) : null } : x)))}>
+                  <option value="">Item de estoque</option>
+                  {items.map((it) => (
+                    <option key={it.id} value={String(it.id)}>
+                      {it.nome}
+                    </option>
+                  ))}
+                </NativeSelect>
+                <div className="w-32 shrink-0">
+                  <QuantityField value={d.quantity} onChange={(v) => setDraft((prev) => prev.map((x, xi) => (xi === i ? { ...x, quantity: v } : x)))} suffix={item ? UNIT_SHORT[item.baseUnit] : undefined} />
                 </div>
-                <Button size="sm" variant="ghost" onClick={() => setDraft((prev) => prev.filter((_, xi) => xi !== i))}>
-                  <Trash2 size={14} />
+                <Button size="icon" variant="subtle" aria-label="Remover item" title="Remover" className="shrink-0 hover:bg-danger-bg hover:text-danger" onClick={() => setDraft((prev) => prev.filter((_, xi) => xi !== i))}>
+                  <Icon name="trash" size={14} />
                 </Button>
               </div>
             );
           })}
-          <Button size="sm" variant="outline" onClick={() => setDraft((prev) => [...prev, { key: `new-${prev.length}`, inventoryItemId: null, quantity: "" }])}>
-            <Plus size={14} /> Adicionar item
-          </Button>
-        </div>
+          <div>
+            <Button size="sm" variant="outline" leftIcon="plus" onClick={() => setDraft((prev) => [...prev, { key: `new-${prev.length}`, inventoryItemId: null, quantity: "" }])}>
+              Adicionar item
+            </Button>
+          </div>
+        </DialogBody>
+
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={setComponents.isPending}>Cancelar</Button>
-          <Button disabled={setComponents.isPending} onClick={handleSave}>
-            {setComponents.isPending ? "Salvando…" : "Salvar"}
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={setComponents.isPending}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSave} loading={setComponents.isPending}>
+            Salvar
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,31 +1,93 @@
 "use client";
 
 import { useState } from "react";
-import { Archive, Plus, Search } from "lucide-react";
+import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeadCell, DataTablePagination, DataTableRow, DataTableShell, DataTableToolbar, MobileCard, MobileCardList } from "@/components/ui/data-table";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
+import { NativeSelect } from "@/components/ui/native-select";
+import { SearchInput, useDebouncedValue } from "@/components/ui/search-input";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Skeleton, RowsSkeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/cn";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import type { VenueLocation } from "@/services/venue-operation";
-import type { VenueInventoryItem } from "@/services/venue-stock";
-import { useVenueStockCategories, useVenueStockItemMutations, useVenueStockItems } from "../_hooks/use-venue-stock-catalog";
-import { useDebounce } from "../../cardapio/_hooks/use-debounce";
+import { VENUE_INVENTORY_UNIT_LABEL, type VenueInventoryItem } from "@/services/venue-stock";
+import { useVenueStockCategories, useVenueStockItemBalances, useVenueStockItemMutations, useVenueStockItems } from "../_hooks/use-venue-stock-catalog";
 import { ItemFormDialog } from "./item-form-dialog";
 import { ItemDetailSheet } from "./item-detail-sheet";
-import { ArchivedBadge } from "./stock-status-badge";
 import { CategoriesManagerDialog } from "./categories-manager-dialog";
-import { ConfirmDialog } from "../../cardapio/_components/confirm-dialog";
-import { EmptyState } from "../../_components/states/empty-state";
-import { TableSkeleton } from "../../_components/states/loading-state";
-import { ErrorState } from "../../_components/states/error-state";
+import { ArchivedBadge, StockStatusBadge } from "./stock-status-badge";
+import { StockLevel } from "./stock-primitives";
 
-export function ItensTab({ orgId, locations }: { orgId: number; locations: VenueLocation[] }) {
+const PAGE_SIZE = 20;
+type ItemStatus = "ACTIVE" | "ARCHIVED";
+
+/** Saldo do item na unidade selecionada (a lista de itens é da organização; o saldo é por unidade). */
+function useBalanceAt(orgId: number, itemId: number, locationId: number) {
+  const { data, isLoading } = useVenueStockItemBalances(orgId, itemId);
+  return { balance: data?.find((b) => b.locationId === locationId) ?? null, isLoading };
+}
+
+function NoBalance() {
+  return (
+    <StatusBadge tone="neutral" dot={false}>
+      Sem saldo aqui
+    </StatusBadge>
+  );
+}
+
+function ItemBalanceCells({ orgId, item, locationId }: { orgId: number; item: VenueInventoryItem; locationId: number }) {
+  const { balance, isLoading } = useBalanceAt(orgId, item.id, locationId);
+  if (isLoading) {
+    return (
+      <>
+        <DataTableCell>
+          <Skeleton className="h-7 w-44" />
+        </DataTableCell>
+        <DataTableCell>
+          <Skeleton className="h-6 w-20 rounded-pill" />
+        </DataTableCell>
+      </>
+    );
+  }
+  return (
+    <>
+      <DataTableCell>{balance ? <StockLevel onHand={balance.quantityOnHand} target={balance.targetQuantity} status={balance.status} unit={item.baseUnit} /> : <span className="text-caption text-subtle-foreground">Nenhum lançamento nesta unidade</span>}</DataTableCell>
+      <DataTableCell>{item.archivedAt ? <ArchivedBadge archived /> : balance ? <StockStatusBadge status={balance.status} /> : <NoBalance />}</DataTableCell>
+    </>
+  );
+}
+
+function ItemMobileCard({ orgId, item, locationId, index, onOpen, actions }: { orgId: number; item: VenueInventoryItem; locationId: number; index: number; onOpen: () => void; actions: React.ReactNode }) {
+  const { balance, isLoading } = useBalanceAt(orgId, item.id, locationId);
+  return (
+    <MobileCard
+      index={index}
+      title={item.nome}
+      badge={isLoading ? <Skeleton className="h-6 w-20 rounded-pill" /> : item.archivedAt ? <ArchivedBadge archived /> : balance ? <StockStatusBadge status={balance.status} /> : <NoBalance />}
+      subtitle={
+        <span className="block">
+          <span className="block truncate">{[item.category?.nome ?? "Sem categoria", item.internalCode].filter(Boolean).join(" · ")}</span>
+          {isLoading ? <span className="skeleton-shimmer mt-2 block h-7 w-full rounded-md" /> : balance ? <StockLevel onHand={balance.quantityOnHand} target={balance.targetQuantity} status={balance.status} unit={item.baseUnit} className="mt-2" /> : null}
+        </span>
+      }
+      meta={[{ label: "Unidade-base", value: VENUE_INVENTORY_UNIT_LABEL[item.baseUnit] }, ...(balance ? [{ label: "Mínimo", value: `${Number(balance.minimumQuantity).toLocaleString("pt-BR")}`, num: true }] : [])]}
+      onClick={onOpen}
+      actions={actions}
+    />
+  );
+}
+
+export function ItensTab({ orgId, locationId, locationName, locations, onCreate }: { orgId: number; locationId: number; locationName: string; locations: VenueLocation[]; onCreate: () => void }) {
   const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 400);
+  const debouncedSearch = useDebouncedValue(search, 350);
   const [categoryId, setCategoryId] = useState<string>("all");
-  const [status, setStatus] = useState<"ACTIVE" | "ARCHIVED">("ACTIVE");
+  const [status, setStatus] = useState<ItemStatus>("ACTIVE");
+  const [page, setPage] = useState(1);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<VenueInventoryItem | null>(null);
@@ -34,158 +96,182 @@ export function ItensTab({ orgId, locations }: { orgId: number; locations: Venue
   const [categoriesOpen, setCategoriesOpen] = useState(false);
 
   const { data: categories } = useVenueStockCategories(orgId);
-  const { data, isLoading, isError, refetch } = useVenueStockItems(orgId, {
+  const { data, isLoading, isError, isFetching, refetch } = useVenueStockItems(orgId, {
     search: debouncedSearch || undefined,
     categoryId: categoryId !== "all" ? Number(categoryId) : undefined,
     status,
-    limit: 100,
+    page,
+    limit: PAGE_SIZE,
   });
   const { archive } = useVenueStockItemMutations(orgId);
 
   const list = data?.data ?? [];
+  const total = data?.total ?? 0;
+  const lastPage = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const hasFilters = Boolean(debouncedSearch) || categoryId !== "all" || status !== "ACTIVE";
+
+  const changeSearch = (v: string) => {
+    setSearch(v);
+    setPage(1);
+  };
+  const changeCategory = (v: string) => {
+    setCategoryId(v);
+    setPage(1);
+  };
+  const changeStatus = (v: ItemStatus) => {
+    setStatus(v);
+    setPage(1);
+  };
+  const clearFilters = () => {
+    setSearch("");
+    setCategoryId("all");
+    setStatus("ACTIVE");
+    setPage(1);
+  };
+
+  const openEdit = (item: VenueInventoryItem) => {
+    setDetail(null);
+    setEditing(item);
+    setFormOpen(true);
+  };
+
+  const handleArchive = async () => {
+    if (!archiving) return;
+    try {
+      await archive.mutateAsync(archiving.id);
+      toast.success("Item arquivado.");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Não foi possível arquivar."));
+    }
+  };
+
+  const rowActions = (item: VenueInventoryItem) => (
+    <>
+      <Button variant="subtle" size="icon-sm" aria-label={`Editar ${item.nome}`} title="Editar" onClick={() => openEdit(item)}>
+        <Icon name="edit" size={14} />
+      </Button>
+      {!item.archivedAt ? (
+        <Button variant="subtle" size="icon-sm" aria-label={`Arquivar ${item.nome}`} title="Arquivar" className="hover:bg-danger-bg hover:text-danger" onClick={() => setArchiving(item)}>
+          <Icon name="ban" size={14} />
+        </Button>
+      ) : null}
+    </>
+  );
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-1 flex-wrap items-center gap-2">
-          <div className="relative w-full max-w-xs">
-            <Search className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-black/30" size={16} />
-            <Input className="pl-9" placeholder="Buscar item…" value={search} onChange={(e) => setSearch(e.target.value)} />
-          </div>
-          <Select value={categoryId} onValueChange={setCategoryId}>
-            <SelectTrigger className="w-44"><SelectValue placeholder="Categoria" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas categorias</SelectItem>
-              {(categories ?? []).map((c) => (
-                <SelectItem key={c.id} value={String(c.id)}>{c.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={status} onValueChange={(v) => setStatus(v as "ACTIVE" | "ARCHIVED")}>
-            <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ACTIVE">Ativos</SelectItem>
-              <SelectItem value="ARCHIVED">Arquivados</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setCategoriesOpen(true)}>Categorias</Button>
-          <Button onClick={() => { setEditing(null); setFormOpen(true); }}>
-            <Plus size={16} /> Novo item
+      <DataTableToolbar>
+        <SearchInput value={search} onChange={changeSearch} placeholder="Buscar por nome, código ou EAN" className="w-full md:w-auto md:max-w-xl md:flex-1" />
+        <NativeSelect aria-label="Categoria" value={categoryId} onChange={(e) => changeCategory(e.target.value)} className="w-full md:w-48">
+          <option value="all">Todas as categorias</option>
+          {(categories ?? []).map((c) => (
+            <option key={c.id} value={String(c.id)}>
+              {c.nome}
+            </option>
+          ))}
+        </NativeSelect>
+        <SegmentedControl
+          size="sm"
+          value={status}
+          onChange={changeStatus}
+          options={[
+            { value: "ACTIVE", label: "Ativos" },
+            { value: "ARCHIVED", label: "Arquivados" },
+          ]}
+        />
+        <div className="ml-auto flex items-center gap-1.5">
+          <Button variant="outline" size="sm" leftIcon="tags" onClick={() => setCategoriesOpen(true)}>
+            Categorias
+          </Button>
+          <Button variant="subtle" size="icon-sm" aria-label="Atualizar lista" title="Atualizar" onClick={() => refetch()}>
+            <Icon name="refresh" size={14} className={cn(isFetching && "animate-spin")} />
           </Button>
         </div>
-      </div>
+      </DataTableToolbar>
 
       {isError ? (
         <ErrorState description="Não foi possível carregar os itens." onRetry={() => refetch()} />
       ) : isLoading ? (
-        <TableSkeleton />
+        <RowsSkeleton rows={6} />
       ) : list.length === 0 ? (
-        <EmptyState
-          title="Nenhum item de estoque ainda"
-          description="Cadastre insumos e produtos para começar a controlar compras, consumo e saldo."
-          actionLabel="Novo item"
-          onAction={() => setFormOpen(true)}
-        />
+        hasFilters ? (
+          <EmptyState
+            icon="search"
+            title="Nenhum item encontrado"
+            description="Tente outra busca ou limpe os filtros."
+            action={
+              <Button variant="outline" onClick={clearFilters}>
+                Limpar filtros
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon="box"
+            title="Nenhum item de estoque ainda"
+            description="Cadastre insumos e produtos pra controlar compras, consumo e saldo."
+            action={
+              <Button leftIcon="plus" onClick={onCreate}>
+                Novo item
+              </Button>
+            }
+          />
+        )
       ) : (
-        <>
-          {/* Desktop */}
-          <div className="hidden overflow-hidden rounded-xl border border-black/10 bg-white sm:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Categoria</TableHead>
-                  <TableHead>Código</TableHead>
-                  <TableHead>Unidade</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {list.map((item) => (
-                  <TableRow key={item.id} className="cursor-pointer" onClick={() => setDetail(item)}>
-                    <TableCell className="font-medium">{item.nome}</TableCell>
-                    <TableCell>{item.category?.nome ?? "—"}</TableCell>
-                    <TableCell className="text-xs">{item.internalCode ?? "—"}</TableCell>
-                    <TableCell className="text-xs">{item.baseUnit}</TableCell>
-                    <TableCell><ArchivedBadge archived={!!item.archivedAt} /></TableCell>
-                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="outline" onClick={() => { setEditing(item); setFormOpen(true); }}>
-                          Editar
-                        </Button>
-                        {!item.archivedAt ? (
-                          <Button size="sm" variant="ghost" onClick={() => setArchiving(item)}>
-                            <Archive size={14} />
-                          </Button>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                  </TableRow>
+        <DataTableShell
+          maxHeight="calc(100dvh - 30rem)"
+          table={
+            <DataTable>
+              <DataTableHead>
+                <tr>
+                  <DataTableHeadCell>Item</DataTableHeadCell>
+                  <DataTableHeadCell>Categoria</DataTableHeadCell>
+                  <DataTableHeadCell width={220}>Saldo em {locationName}</DataTableHeadCell>
+                  <DataTableHeadCell>Status</DataTableHeadCell>
+                  <DataTableHeadCell align="right">Ações</DataTableHeadCell>
+                </tr>
+              </DataTableHead>
+              <DataTableBody>
+                {list.map((item, i) => (
+                  <DataTableRow key={item.id} index={i} onClick={() => setDetail(item)}>
+                    <DataTableCell>
+                      <p className="font-semibold text-foreground">{item.nome}</p>
+                      <p className="text-caption text-muted-foreground">{[item.internalCode, VENUE_INVENTORY_UNIT_LABEL[item.baseUnit]].filter(Boolean).join(" · ")}</p>
+                    </DataTableCell>
+                    <DataTableCell className="text-muted-foreground">{item.category?.nome ?? <span className="text-subtle-foreground">Sem categoria</span>}</DataTableCell>
+                    <ItemBalanceCells orgId={orgId} item={item} locationId={locationId} />
+                    <DataTableCell align="right" stopPropagation>
+                      <div className="flex items-center justify-end gap-0.5">{rowActions(item)}</div>
+                    </DataTableCell>
+                  </DataTableRow>
                 ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Mobile */}
-          <div className="space-y-2 sm:hidden">
-            {list.map((item) => (
-              <div key={item.id} className="rounded-xl border border-black/10 bg-white p-3" onClick={() => setDetail(item)}>
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{item.nome}</span>
-                  <ArchivedBadge archived={!!item.archivedAt} />
-                </div>
-                <div className="mt-1 flex flex-wrap gap-x-3 text-xs text-black/50">
-                  <span>{item.category?.nome ?? "Sem categoria"}</span>
-                  <span>{item.baseUnit}</span>
-                  {item.internalCode ? <span>{item.internalCode}</span> : null}
-                </div>
-                <div className="mt-2 flex gap-2" onClick={(e) => e.stopPropagation()}>
-                  <Button size="sm" variant="outline" onClick={() => { setEditing(item); setFormOpen(true); }}>
-                    Editar
-                  </Button>
-                  {!item.archivedAt ? (
-                    <Button size="sm" variant="ghost" onClick={() => setArchiving(item)}>
-                      <Archive size={14} /> Arquivar
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
+              </DataTableBody>
+            </DataTable>
+          }
+          mobile={
+            <MobileCardList>
+              {list.map((item, i) => (
+                <ItemMobileCard key={item.id} orgId={orgId} item={item} locationId={locationId} index={i} onOpen={() => setDetail(item)} actions={rowActions(item)} />
+              ))}
+            </MobileCardList>
+          }
+          footer={<DataTablePagination page={page} lastPage={lastPage} total={total} perPage={PAGE_SIZE} noun="itens" onPageChange={setPage} />}
+        />
       )}
 
-      <ItemFormDialog
-        orgId={orgId}
-        locations={locations}
-        categories={categories ?? []}
-        item={editing}
-        open={formOpen}
-        onOpenChange={setFormOpen}
-      />
-      <ItemDetailSheet orgId={orgId} item={detail} open={detail !== null} onOpenChange={(v) => !v && setDetail(null)} />
+      <ItemFormDialog orgId={orgId} locations={locations} categories={categories ?? []} item={editing} open={formOpen} onOpenChange={setFormOpen} />
+      <ItemDetailSheet orgId={orgId} item={detail} open={detail !== null} onOpenChange={(v) => !v && setDetail(null)} locationId={locationId} onEdit={openEdit} />
       <CategoriesManagerDialog orgId={orgId} open={categoriesOpen} onOpenChange={setCategoriesOpen} />
 
       <ConfirmDialog
         open={archiving !== null}
         onOpenChange={(v) => !v && setArchiving(null)}
-        title="Arquivar item"
-        description={`"${archiving?.nome}" não poderá mais receber compras ou movimentações manuais. O histórico continua acessível.`}
+        danger
+        icon="ban"
+        title={`Arquivar ${archiving?.nome ?? "item"}?`}
+        description="Não recebe mais compras nem lançamentos manuais. O histórico e os saldos continuam visíveis."
         confirmLabel="Arquivar"
-        loading={archive.isPending}
-        onConfirm={() =>
-          archiving &&
-          archive.mutate(archiving.id, {
-            onSuccess: () => {
-              toast.success("Item arquivado.");
-              setArchiving(null);
-            },
-            onError: (err) => toast.error(getErrorMessage(err, "Não foi possível arquivar.")),
-          })
-        }
+        onConfirm={handleArchive}
       />
     </div>
   );

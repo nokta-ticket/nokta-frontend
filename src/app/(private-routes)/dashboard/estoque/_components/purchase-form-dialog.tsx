@@ -1,29 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field, FieldGroup } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { getErrorMessage } from "@/lib/axios";
+import { formatBRLCents } from "@/lib/format";
 import { toast } from "@/lib/toast";
-import {
-  VENUE_INVENTORY_UNIT_LABEL,
-  type CreateVenuePurchaseItemPayload,
-  type VenueInventoryItem,
-  type VenueSupplier,
-} from "@/services/venue-stock";
+import { formatStockQuantity, type CreateVenuePurchaseItemPayload, type VenueInventoryItem, type VenueSupplier } from "@/services/venue-stock";
 import { useVenueStockItems } from "../_hooks/use-venue-stock-catalog";
 import { useVenueStockPurchaseMutations } from "../_hooks/use-venue-stock-purchases";
+import { QuantityField } from "./quantity-field";
+import { UNIT_SHORT } from "./stock-primitives";
 import { MoneyField } from "../../cardapio/_components/money-field";
 
 type DraftItem = {
@@ -46,6 +39,12 @@ function emptyDraftItem(): DraftItem {
     quantityBase: "",
     totalCostCents: 0,
   };
+}
+
+/** Quantidade final na unidade-base de uma linha (0 quando incompleta). */
+function lineQuantityBase(d: DraftItem): number {
+  if (d.mode === "base") return Number(d.quantityBase) || 0;
+  return (Number(d.packageQuantity) || 0) * (Number(d.packageSizeBase) || 0);
 }
 
 export function PurchaseFormDialog({
@@ -80,8 +79,7 @@ export function PurchaseFormDialog({
 
   const findItem = (id: number | null): VenueInventoryItem | undefined => items.find((i) => i.id === id);
 
-  const updateItem = (key: string, patch: Partial<DraftItem>) =>
-    setDraftItems((prev) => prev.map((d) => (d.key === key ? { ...d, ...patch } : d)));
+  const updateItem = (key: string, patch: Partial<DraftItem>) => setDraftItems((prev) => prev.map((d) => (d.key === key ? { ...d, ...patch } : d)));
 
   const totalCents = draftItems.reduce((sum, d) => sum + d.totalCostCents, 0);
 
@@ -107,7 +105,7 @@ export function PurchaseFormDialog({
         items: payloadItems,
       })
       .then(() => {
-        toast.success("Compra criada como rascunho. Revise e receba quando os itens chegarem.");
+        toast.success("Compra salva como rascunho. Receba quando os itens chegarem.");
         onOpenChange(false);
       })
       .catch((err) => toast.error(getErrorMessage(err, "Não foi possível criar a compra.")));
@@ -115,131 +113,120 @@ export function PurchaseFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle>Registrar compra</DialogTitle>
+          <DialogDescription>Entra como rascunho. O estoque e o custo médio só mudam quando você marcar a compra como recebida.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Fornecedor (opcional)</Label>
-              <Select value={supplierId} onValueChange={setSupplierId}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem fornecedor</SelectItem>
-                  {suppliers.map((s) => (
-                    <SelectItem key={s.id} value={String(s.id)}>{s.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="purchase-doc">Nº do documento (opcional)</Label>
-              <Input id="purchase-doc" value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} />
-            </div>
-          </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Itens da compra</Label>
-              <Button size="sm" variant="outline" onClick={() => setDraftItems((prev) => [...prev, emptyDraftItem()])}>
-                <Plus size={14} /> Adicionar item
+        <DialogBody>
+          <FieldGroup columns={2}>
+            <Field label="Fornecedor" htmlFor="purchase-supplier" optional>
+              <NativeSelect id="purchase-supplier" value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
+                <option value="none">Sem fornecedor</option>
+                {suppliers.map((s) => (
+                  <option key={s.id} value={String(s.id)}>
+                    {s.nome}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+            <Field label="Nº do documento" htmlFor="purchase-doc" optional>
+              <Input id="purchase-doc" leftIcon="receipt" value={documentNumber} onChange={(e) => setDocumentNumber(e.target.value)} placeholder="NF, pedido ou cupom" />
+            </Field>
+          </FieldGroup>
+
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h4 className="text-sm font-semibold text-foreground">Itens da compra</h4>
+              <Button size="sm" variant="outline" leftIcon="plus" onClick={() => setDraftItems((prev) => [...prev, emptyDraftItem()])}>
+                Adicionar item
               </Button>
             </div>
 
-            {draftItems.map((d) => {
+            {draftItems.map((d, index) => {
               const item = findItem(d.inventoryItemId);
-              const unitLabel = item ? VENUE_INVENTORY_UNIT_LABEL[item.baseUnit] : "";
+              const unit = item ? UNIT_SHORT[item.baseUnit] : "";
+              const qty = lineQuantityBase(d);
+              const unitCost = item && qty > 0 && d.totalCostCents > 0 ? d.totalCostCents / qty : null;
               return (
-                <div key={d.key} className="space-y-2 rounded-lg border border-black/10 p-3">
-                  <div className="flex items-center gap-2">
-                    <Select
-                      value={d.inventoryItemId ? String(d.inventoryItemId) : undefined}
-                      onValueChange={(v) => updateItem(d.key, { inventoryItemId: Number(v) })}
-                    >
-                      <SelectTrigger className="flex-1"><SelectValue placeholder="Selecione o item" /></SelectTrigger>
-                      <SelectContent>
+                <div key={d.key} className="surface-inset space-y-3 rounded-xl p-4">
+                  <div className="flex items-end gap-2">
+                    <Field label={`Item ${index + 1}`} htmlFor={`purchase-item-${d.key}`} className="min-w-0 flex-1">
+                      <NativeSelect id={`purchase-item-${d.key}`} value={d.inventoryItemId ? String(d.inventoryItemId) : ""} onChange={(e) => updateItem(d.key, { inventoryItemId: e.target.value ? Number(e.target.value) : null })}>
+                        <option value="">Selecione o item</option>
                         {items.map((i) => (
-                          <SelectItem key={i.id} value={String(i.id)}>{i.nome}</SelectItem>
+                          <option key={i.id} value={String(i.id)}>
+                            {i.nome}
+                          </option>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </NativeSelect>
+                    </Field>
                     <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setDraftItems((prev) => prev.filter((x) => x.key !== d.key))}
+                      size="icon"
+                      variant="subtle"
+                      aria-label="Remover linha"
+                      title={draftItems.length === 1 ? "A compra precisa de ao menos um item" : "Remover linha"}
+                      className="mb-px shrink-0 hover:bg-danger-bg hover:text-danger disabled:opacity-40"
                       disabled={draftItems.length === 1}
+                      onClick={() => setDraftItems((prev) => prev.filter((x) => x.key !== d.key))}
                     >
-                      <Trash2 size={14} />
+                      <Icon name="trash" size={14} />
                     </Button>
                   </div>
 
                   {item ? (
                     <>
-                      <div className="flex gap-2 text-xs">
-                        <button
-                          className={`rounded-full px-2 py-1 ${d.mode === "base" ? "bg-black text-white" : "bg-black/5"}`}
-                          onClick={() => updateItem(d.key, { mode: "base" })}
-                        >
-                          Direto na unidade-base ({unitLabel})
-                        </button>
-                        <button
-                          className={`rounded-full px-2 py-1 ${d.mode === "package" ? "bg-black text-white" : "bg-black/5"}`}
-                          onClick={() => updateItem(d.key, { mode: "package" })}
-                        >
-                          Embalagem/pacote
-                        </button>
-                      </div>
-
+                      <SegmentedControl
+                        size="sm"
+                        fullWidth
+                        value={d.mode}
+                        onChange={(mode) => updateItem(d.key, { mode })}
+                        options={[
+                          { value: "base", label: `Direto em ${unit}` },
+                          { value: "package", label: "Por embalagem" },
+                        ]}
+                      />
                       {d.mode === "base" ? (
-                        <Input
-                          inputMode="decimal"
-                          placeholder={`Quantidade em ${unitLabel.toLowerCase()}`}
-                          value={d.quantityBase}
-                          onChange={(e) => updateItem(d.key, { quantityBase: e.target.value.replace(",", ".") })}
-                        />
+                        <QuantityField id={`purchase-qty-${d.key}`} label="Quantidade" value={d.quantityBase} onChange={(v) => updateItem(d.key, { quantityBase: v })} suffix={unit} />
                       ) : (
-                        <div className="grid grid-cols-2 gap-2">
-                          <Input
-                            inputMode="decimal"
-                            placeholder="Qtd. de embalagens (ex.: 2 caixas)"
-                            value={d.packageQuantity}
-                            onChange={(e) => updateItem(d.key, { packageQuantity: e.target.value.replace(",", ".") })}
-                          />
-                          <Input
-                            inputMode="decimal"
-                            placeholder={`Tamanho da embalagem em ${unitLabel.toLowerCase()} (ex.: 12, 1000, 2500)`}
-                            value={d.packageSizeBase}
-                            onChange={(e) => updateItem(d.key, { packageSizeBase: e.target.value.replace(",", ".") })}
-                          />
-                        </div>
+                        <FieldGroup columns={2}>
+                          <QuantityField id={`purchase-pkg-${d.key}`} label="Embalagens" value={d.packageQuantity} onChange={(v) => updateItem(d.key, { packageQuantity: v })} placeholder="Ex.: 2" suffix="cx" />
+                          <QuantityField id={`purchase-size-${d.key}`} label="Tamanho de cada" value={d.packageSizeBase} onChange={(v) => updateItem(d.key, { packageSizeBase: v })} placeholder="Ex.: 12" suffix={unit} />
+                        </FieldGroup>
                       )}
                     </>
                   ) : null}
 
-                  <MoneyField
-                    label="Custo total desta linha"
-                    cents={d.totalCostCents}
-                    onChange={(cents) => updateItem(d.key, { totalCostCents: cents })}
-                  />
+                  <MoneyField id={`purchase-cost-${d.key}`} label="Custo total da linha" cents={d.totalCostCents} onChange={(cents) => updateItem(d.key, { totalCostCents: cents })} />
+
+                  {item && qty > 0 ? (
+                    <p className="text-caption text-muted-foreground tnum">
+                      Entra {formatStockQuantity(qty, item.baseUnit)}
+                      {unitCost !== null ? ` · ${formatBRLCents(unitCost)} por ${unit}` : ""}
+                    </p>
+                  ) : null}
                 </div>
               );
             })}
-          </div>
+          </section>
 
-          <div className="space-y-2">
-            <Label htmlFor="purchase-notes">Observações (opcional)</Label>
-            <Textarea id="purchase-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
-          </div>
+          <Field label="Observações" htmlFor="purchase-notes" optional>
+            <Textarea id="purchase-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="min-h-20" placeholder="Ex.: entrega combinada pra quinta" />
+          </Field>
 
-          <div className="flex justify-end text-sm font-medium">
-            Total: {(totalCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+          <div className="surface-inset flex items-center justify-between gap-3 rounded-xl px-4 py-3">
+            <span className="text-sm text-muted-foreground">Total da compra</span>
+            <span className="text-lg font-semibold tnum text-foreground">{formatBRLCents(totalCents)}</span>
           </div>
-        </div>
+        </DialogBody>
+
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={create.isPending}>Cancelar</Button>
-          <Button disabled={create.isPending} onClick={handleSubmit}>
-            {create.isPending ? "Salvando…" : "Salvar rascunho"}
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={create.isPending}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSubmit} loading={create.isPending} leftIcon="save">
+            Salvar rascunho
           </Button>
         </DialogFooter>
       </DialogContent>

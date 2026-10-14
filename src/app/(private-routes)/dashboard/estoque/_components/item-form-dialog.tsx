@@ -1,18 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field, FieldGroup } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import type { VenueLocation } from "@/services/venue-operation";
@@ -25,6 +19,7 @@ import {
 } from "@/services/venue-stock";
 import { useVenueStockItemMutations } from "../_hooks/use-venue-stock-catalog";
 import { QuantityField } from "./quantity-field";
+import { UNIT_SHORT } from "./stock-primitives";
 import { MoneyField } from "../../cardapio/_components/money-field";
 
 export function ItemFormDialog({
@@ -54,7 +49,8 @@ export function ItemFormDialog({
   const [openingQuantity, setOpeningQuantity] = useState("");
   const [openingTotalCostCents, setOpeningTotalCostCents] = useState(0);
 
-  const hasMovements = item !== null; // conservador: se já existe, trava a unidade-base no backend mesmo assim
+  // Conservador: item existente trava a unidade-base (o backend também trava).
+  const unitLocked = item !== null;
 
   useEffect(() => {
     if (!open) return;
@@ -119,93 +115,84 @@ export function ItemFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>{item ? "Editar item de estoque" : "Novo item de estoque"}</DialogTitle>
+          <DialogTitle>{item ? "Editar item" : "Novo item de estoque"}</DialogTitle>
+          <DialogDescription>{item ? "Nome, categoria e códigos. Saldos e limites ficam no detalhe do item." : "Insumo ou produto que entra por compra e sai por venda, perda ou ajuste."}</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="item-nome">Nome</Label>
-            <Input id="item-nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Cachaça, Limão, Cerveja Long Neck" />
-          </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Categoria</Label>
-              <Select value={categoryId} onValueChange={setCategoryId}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem categoria</SelectItem>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>{c.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Unidade-base</Label>
-              <Select value={baseUnit} onValueChange={(v) => setBaseUnit(v as VenueInventoryUnit)} disabled={hasMovements}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {(Object.keys(VENUE_INVENTORY_UNIT_LABEL) as VenueInventoryUnit[]).map((u) => (
-                    <SelectItem key={u} value={u}>{VENUE_INVENTORY_UNIT_LABEL[u]}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {hasMovements ? (
-                <p className="text-xs text-black/50">Não é possível trocar a unidade de um item já existente.</p>
-              ) : null}
-            </div>
-          </div>
+        <DialogBody>
+          <Field label="Nome" htmlFor="item-nome" required>
+            <Input id="item-nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Cachaça, Limão, Cerveja long neck" autoFocus />
+          </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="item-codigo">Código interno (opcional)</Label>
-              <Input id="item-codigo" value={internalCode} onChange={(e) => setInternalCode(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="item-barcode">Código de barras (opcional)</Label>
-              <Input id="item-barcode" value={barcode} onChange={(e) => setBarcode(e.target.value)} />
-            </div>
-          </div>
+          <FieldGroup columns={2}>
+            <Field label="Categoria" htmlFor="item-categoria">
+              <NativeSelect id="item-categoria" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+                <option value="none">Sem categoria</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={String(c.id)}>
+                    {c.nome}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+            <Field label="Unidade-base" htmlFor="item-unidade" hint={unitLocked ? "Não dá pra trocar a unidade de um item já existente." : "Como o saldo é contado: unidades, gramas ou mililitros."}>
+              <NativeSelect id="item-unidade" value={baseUnit} onChange={(e) => setBaseUnit(e.target.value as VenueInventoryUnit)} disabled={unitLocked}>
+                {(Object.keys(VENUE_INVENTORY_UNIT_LABEL) as VenueInventoryUnit[]).map((u) => (
+                  <option key={u} value={u}>
+                    {VENUE_INVENTORY_UNIT_LABEL[u]} ({UNIT_SHORT[u]})
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+          </FieldGroup>
 
-          <div className="space-y-2">
-            <Label htmlFor="item-descricao">Descrição (opcional)</Label>
-            <Textarea id="item-descricao" value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={2} />
-          </div>
+          <FieldGroup columns={2}>
+            <Field label="Código interno" htmlFor="item-codigo" optional>
+              <Input id="item-codigo" leftIcon="tag" value={internalCode} onChange={(e) => setInternalCode(e.target.value)} placeholder="Ex.: GIN-750" />
+            </Field>
+            <Field label="Código de barras" htmlFor="item-barcode" optional>
+              <Input id="item-barcode" leftIcon="barcode" inputMode="numeric" value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="EAN" />
+            </Field>
+          </FieldGroup>
+
+          <Field label="Descrição" htmlFor="item-descricao" optional>
+            <Textarea id="item-descricao" value={descricao} onChange={(e) => setDescricao(e.target.value)} rows={2} className="min-h-20" placeholder="Marca, fornecedor habitual, como armazenar…" />
+          </Field>
 
           {!item ? (
-            <div className="space-y-3 rounded-lg border border-black/10 p-3">
-              <p className="text-sm font-medium">Saldo inicial (opcional)</p>
-              <div className="space-y-2">
-                <Label>Unidade</Label>
-                <Select value={openingLocationId} onValueChange={setOpeningLocationId}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Não lançar saldo inicial</SelectItem>
-                    {locations.map((l) => (
-                      <SelectItem key={l.id} value={String(l.id)}>{l.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <section className="surface-inset space-y-4 rounded-xl p-4">
+              <div>
+                <h4 className="text-sm font-semibold text-foreground">Saldo inicial</h4>
+                <p className="mt-0.5 text-caption text-muted-foreground">Opcional. Lança o que já existe na unidade como movimentação de abertura.</p>
               </div>
+              <Field label="Unidade" htmlFor="item-opening-location">
+                <NativeSelect id="item-opening-location" value={openingLocationId} onChange={(e) => setOpeningLocationId(e.target.value)}>
+                  <option value="none">Não lançar saldo inicial</option>
+                  {locations.map((l) => (
+                    <option key={l.id} value={String(l.id)}>
+                      {l.nome}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
               {openingLocationId !== "none" ? (
-                <div className="grid grid-cols-2 gap-3">
-                  <QuantityField
-                    label={`Quantidade (${VENUE_INVENTORY_UNIT_LABEL[baseUnit]})`}
-                    value={openingQuantity}
-                    onChange={setOpeningQuantity}
-                  />
-                  <MoneyField label="Custo total (opcional)" cents={openingTotalCostCents} onChange={setOpeningTotalCostCents} />
-                </div>
+                <FieldGroup columns={2}>
+                  <QuantityField id="item-opening-qty" label="Quantidade" value={openingQuantity} onChange={setOpeningQuantity} suffix={UNIT_SHORT[baseUnit]} />
+                  <MoneyField id="item-opening-cost" label="Custo total (opcional)" cents={openingTotalCostCents} onChange={setOpeningTotalCostCents} />
+                </FieldGroup>
               ) : null}
-            </div>
+            </section>
           ) : null}
-        </div>
+        </DialogBody>
+
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>Cancelar</Button>
-          <Button disabled={loading || !nome.trim()} onClick={handleSubmit}>
-            {loading ? "Salvando…" : "Salvar"}
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSubmit} loading={loading} disabled={!nome.trim()}>
+            {item ? "Salvar alterações" : "Criar item"}
           </Button>
         </DialogFooter>
       </DialogContent>

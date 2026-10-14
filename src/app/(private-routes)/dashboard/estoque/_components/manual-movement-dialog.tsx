@@ -1,30 +1,37 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
+import { NativeSelect } from "@/components/ui/native-select";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
-import { VENUE_INVENTORY_UNIT_LABEL } from "@/services/venue-stock";
 import { useVenueStockItems } from "../_hooks/use-venue-stock-catalog";
 import { useVenueStockManualMovementMutations } from "../_hooks/use-venue-stock-movements";
 import { QuantityField } from "./quantity-field";
+import { UNIT_SHORT } from "./stock-primitives";
 
 type Kind = "WASTE" | "ADJUSTMENT_IN" | "ADJUSTMENT_OUT";
 
 const KIND_LABEL: Record<Kind, string> = {
+  WASTE: "Perda",
+  ADJUSTMENT_IN: "Entrada",
+  ADJUSTMENT_OUT: "Saída",
+};
+
+const KIND_HINT: Record<Kind, string> = {
+  WASTE: "Quebra, vencimento, desperdício — sai do saldo e fica registrado como perda.",
+  ADJUSTMENT_IN: "Corrige o saldo pra cima (ex.: garrafa encontrada, lançamento esquecido).",
+  ADJUSTMENT_OUT: "Corrige o saldo pra baixo sem ser perda (ex.: contagem divergente).",
+};
+
+const KIND_CTA: Record<Kind, string> = {
   WASTE: "Registrar perda",
-  ADJUSTMENT_IN: "Ajuste de entrada",
-  ADJUSTMENT_OUT: "Ajuste de saída",
+  ADJUSTMENT_IN: "Registrar entrada",
+  ADJUSTMENT_OUT: "Registrar saída",
 };
 
 export function ManualMovementDialog({
@@ -43,14 +50,14 @@ export function ManualMovementDialog({
   const { registerWaste, registerAdjustmentIn, registerAdjustmentOut } = useVenueStockManualMovementMutations(orgId, locationId);
 
   const [kind, setKind] = useState<Kind>("WASTE");
-  const [itemId, setItemId] = useState<string | undefined>(undefined);
+  const [itemId, setItemId] = useState<string>("");
   const [quantity, setQuantity] = useState("");
   const [reason, setReason] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setKind("WASTE");
-    setItemId(undefined);
+    setItemId("");
     setQuantity("");
     setReason("");
   }, [open]);
@@ -82,47 +89,50 @@ export function ManualMovementDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>Lançamento manual</DialogTitle>
+          <DialogDescription>Perdas e ajustes que não passam por compra nem venda.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Tipo</Label>
-            <Select value={kind} onValueChange={(v) => setKind(v as Kind)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {(Object.keys(KIND_LABEL) as Kind[]).map((k) => (
-                  <SelectItem key={k} value={k}>{KIND_LABEL[k]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Item</Label>
-            <Select value={itemId} onValueChange={setItemId}>
-              <SelectTrigger><SelectValue placeholder="Selecione o item" /></SelectTrigger>
-              <SelectContent>
-                {items.map((i) => (
-                  <SelectItem key={i.id} value={String(i.id)}>{i.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <QuantityField
-            label={`Quantidade${item ? ` (${VENUE_INVENTORY_UNIT_LABEL[item.baseUnit]})` : ""}`}
-            value={quantity}
-            onChange={setQuantity}
-          />
-          <div className="space-y-2">
-            <Label htmlFor="movement-reason">Motivo</Label>
-            <Textarea id="movement-reason" value={reason} onChange={(e) => setReason(e.target.value)} rows={2} placeholder="Ex.: quebra no manuseio, contagem divergente, correção de lançamento" />
-          </div>
-        </div>
+
+        <DialogBody>
+          <Field label="Tipo" hint={KIND_HINT[kind]}>
+            <SegmentedControl
+              fullWidth
+              value={kind}
+              onChange={setKind}
+              options={[
+                { value: "WASTE", label: KIND_LABEL.WASTE, icon: "warning" },
+                { value: "ADJUSTMENT_IN", label: KIND_LABEL.ADJUSTMENT_IN, icon: "arrow-up" },
+                { value: "ADJUSTMENT_OUT", label: KIND_LABEL.ADJUSTMENT_OUT, icon: "arrow-down" },
+              ]}
+            />
+          </Field>
+
+          <Field label="Item" htmlFor="movement-item">
+            <NativeSelect id="movement-item" value={itemId} onChange={(e) => setItemId(e.target.value)}>
+              <option value="">Selecione o item</option>
+              {items.map((i) => (
+                <option key={i.id} value={String(i.id)}>
+                  {i.nome}
+                </option>
+              ))}
+            </NativeSelect>
+          </Field>
+
+          <QuantityField id="movement-qty" label="Quantidade" value={quantity} onChange={setQuantity} suffix={item ? UNIT_SHORT[item.baseUnit] : undefined} />
+
+          <Field label="Motivo" htmlFor="movement-reason" required>
+            <Textarea id="movement-reason" value={reason} onChange={(e) => setReason(e.target.value)} rows={2} className="min-h-20" placeholder="Ex.: quebra no manuseio, contagem divergente, correção de lançamento" />
+          </Field>
+        </DialogBody>
+
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={mutation.isPending}>Cancelar</Button>
-          <Button disabled={mutation.isPending} onClick={handleSubmit}>
-            {mutation.isPending ? "Registrando…" : "Registrar"}
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={mutation.isPending}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSubmit} loading={mutation.isPending}>
+            {KIND_CTA[kind]}
           </Button>
         </DialogFooter>
       </DialogContent>

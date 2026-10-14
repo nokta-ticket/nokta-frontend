@@ -1,21 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Archive, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { cn } from "@/lib/cn";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import type { VenueInventoryCategory } from "@/services/venue-stock";
 import { useVenueStockCategories, useVenueStockCategoryMutations } from "../_hooks/use-venue-stock-catalog";
-import { ReorderControls, buildSwapReorderPayload } from "../../cardapio/_components/reorder-controls";
+import { buildSwapReorderPayload } from "../../cardapio/_components/reorder-controls";
 import { ArchivedBadge } from "./stock-status-badge";
 
 export function CategoriesManagerDialog({
@@ -47,9 +43,13 @@ export function CategoriesManagerDialog({
   };
 
   const handleRename = (category: VenueInventoryCategory, value: string) => {
+    if (value === category.nome) return;
     update.mutate(
       { categoryId: category.id, payload: { nome: value } },
-      { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível renomear.")) },
+      {
+        onSuccess: () => toast.success("Categoria renomeada."),
+        onError: (err) => toast.error(getErrorMessage(err, "Não foi possível renomear.")),
+      },
     );
   };
 
@@ -64,66 +64,86 @@ export function CategoriesManagerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-md">
+      <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>Categorias de estoque</DialogTitle>
+          <DialogDescription>Agrupam os itens nas listas e nos inventários. Clique no nome pra renomear.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-3">
-          <div className="flex gap-2">
-            <Input value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nova categoria" />
-            <Button size="sm" disabled={create.isPending || !nome.trim()} onClick={handleCreate}>
-              <Plus size={16} />
-            </Button>
-          </div>
 
-          <div className="divide-y divide-black/5 rounded-lg border border-black/10">
-            {list.map((category, i) => (
-              <div key={category.id} className="flex items-center gap-2 px-3 py-2">
-                <ReorderControls
-                  index={i}
-                  total={list.length}
-                  onMoveUp={() => move(i, -1)}
-                  onMoveDown={() => move(i, 1)}
-                  disabled={reorder.isPending}
-                />
-                {editing?.id === category.id ? (
-                  <Input
-                    autoFocus
-                    className="h-8"
-                    defaultValue={category.nome}
-                    onBlur={(e) => {
-                      handleRename(category, e.target.value.trim() || category.nome);
-                      setEditing(null);
-                    }}
-                    onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-                  />
-                ) : (
-                  <button className="min-w-0 flex-1 truncate text-left text-sm" onClick={() => setEditing(category)}>
-                    {category.nome}
-                  </button>
-                )}
-                <ArchivedBadge archived={!!category.archivedAt} />
-                {!category.archivedAt ? (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() =>
-                      archive.mutate(category.id, {
-                        onError: (err) => toast.error(getErrorMessage(err, "Não foi possível arquivar.")),
-                      })
-                    }
-                  >
-                    <Archive size={14} />
-                  </Button>
-                ) : null}
-              </div>
-            ))}
-            {list.length === 0 ? (
-              <p className="px-3 py-4 text-center text-sm text-black/50">Nenhuma categoria ainda.</p>
-            ) : null}
-          </div>
-          <Label className="text-xs text-black/40">Clique no nome para renomear.</Label>
-        </div>
+        <DialogBody className="gap-4">
+          <form
+            className="flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleCreate();
+            }}
+          >
+            <Input aria-label="Nova categoria" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Nova categoria" className="min-w-0 flex-1" />
+            <Button type="submit" leftIcon="plus" loading={create.isPending} disabled={!nome.trim()} className="shrink-0">
+              Adicionar
+            </Button>
+          </form>
+
+          {list.length === 0 ? (
+            <EmptyState compact icon="tags" title="Nenhuma categoria ainda" description="Crie a primeira acima — Bebidas, Insumos, Descartáveis…" />
+          ) : (
+            <ul className="surface-inset divide-y divide-border/70 rounded-xl">
+              {list.map((category, i) => (
+                <li key={category.id} className={cn("flex items-center gap-2 py-2 pl-2 pr-2", category.archivedAt && "opacity-70")}>
+                  <div className="flex flex-col">
+                    <Button variant="subtle" size="icon-sm" className="size-7" aria-label="Mover para cima" disabled={reorder.isPending || i === 0} onClick={() => move(i, -1)}>
+                      <Icon name="chevron-up" size={11} />
+                    </Button>
+                    <Button variant="subtle" size="icon-sm" className="size-7" aria-label="Mover para baixo" disabled={reorder.isPending || i === list.length - 1} onClick={() => move(i, 1)}>
+                      <Icon name="chevron-down" size={11} />
+                    </Button>
+                  </div>
+
+                  {editing?.id === category.id ? (
+                    <Input
+                      autoFocus
+                      aria-label="Nome da categoria"
+                      className="h-9 min-w-0 flex-1 md:h-9"
+                      defaultValue={category.nome}
+                      onBlur={(e) => {
+                        handleRename(category, e.target.value.trim() || category.nome);
+                        setEditing(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.currentTarget.blur();
+                        if (e.key === "Escape") setEditing(null);
+                      }}
+                    />
+                  ) : (
+                    <button type="button" className="min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-left text-sm font-medium text-foreground transition-colors hover:bg-surface-2" onClick={() => setEditing(category)} title="Renomear">
+                      {category.nome}
+                    </button>
+                  )}
+
+                  <ArchivedBadge archived={!!category.archivedAt} />
+
+                  {!category.archivedAt ? (
+                    <Button
+                      variant="subtle"
+                      size="icon-sm"
+                      aria-label={`Arquivar ${category.nome}`}
+                      title="Arquivar"
+                      className="hover:bg-danger-bg hover:text-danger"
+                      onClick={() =>
+                        archive.mutate(category.id, {
+                          onSuccess: () => toast.success("Categoria arquivada."),
+                          onError: (err) => toast.error(getErrorMessage(err, "Não foi possível arquivar.")),
+                        })
+                      }
+                    >
+                      <Icon name="ban" size={14} />
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </DialogBody>
       </DialogContent>
     </Dialog>
   );

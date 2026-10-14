@@ -1,42 +1,46 @@
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import { VENUE_BALANCE_STATUS_LABEL, type VenueInventoryBalanceStatus } from "@/services/venue-stock";
+import { StatusBadge, type Tone } from "@/components/ui/badge";
+import {
+  VENUE_BALANCE_STATUS_LABEL,
+  VENUE_PURCHASE_STATUS_LABEL,
+  VENUE_STOCK_COUNT_STATUS_LABEL,
+  VENUE_STOCK_TRANSFER_STATUS_LABEL,
+  type VenueInventoryBalanceStatus,
+  type VenuePurchaseStatus,
+  type VenueStockCountStatus,
+  type VenueStockTransferStatus,
+} from "@/services/venue-stock";
+
+/** Tons semânticos por status — fonte única pra badges, barras e steppers do estoque. */
+export const STOCK_STATUS_TONE: Record<VenueInventoryBalanceStatus, Tone> = { OK: "success", LOW_STOCK: "warning", OUT_OF_STOCK: "danger" };
+export const PURCHASE_STATUS_TONE: Record<VenuePurchaseStatus, Tone> = { DRAFT: "neutral", RECEIVED: "success", CANCELED: "danger" };
+export const COUNT_STATUS_TONE: Record<VenueStockCountStatus, Tone> = { DRAFT: "info", COMPLETED: "success", CANCELED: "danger" };
+export const TRANSFER_STATUS_TONE: Record<VenueStockTransferStatus, Tone> = { DRAFT: "neutral", SENT: "warning", RECEIVED: "success", CANCELED: "danger" };
 
 export function StockStatusBadge({ status }: { status: VenueInventoryBalanceStatus }) {
+  return <StatusBadge tone={STOCK_STATUS_TONE[status]}>{VENUE_BALANCE_STATUS_LABEL[status]}</StatusBadge>;
+}
+
+export function PurchaseStatusBadge({ status }: { status: VenuePurchaseStatus }) {
+  return <StatusBadge tone={PURCHASE_STATUS_TONE[status]}>{VENUE_PURCHASE_STATUS_LABEL[status]}</StatusBadge>;
+}
+
+export function CountStatusBadge({ status }: { status: VenueStockCountStatus }) {
   return (
-    <Badge
-      variant="outline"
-      className={cn(
-        status === "OUT_OF_STOCK" && "border-red-200 bg-red-50 text-red-700",
-        status === "LOW_STOCK" && "border-amber-200 bg-amber-50 text-amber-700",
-        status === "OK" && "border-emerald-200 bg-emerald-50 text-emerald-700",
-      )}
-    >
-      {VENUE_BALANCE_STATUS_LABEL[status]}
-    </Badge>
+    <StatusBadge tone={COUNT_STATUS_TONE[status]} pulse={status === "DRAFT"}>
+      {VENUE_STOCK_COUNT_STATUS_LABEL[status]}
+    </StatusBadge>
   );
+}
+
+export function TransferStatusBadge({ status }: { status: VenueStockTransferStatus }) {
+  return <StatusBadge tone={TRANSFER_STATUS_TONE[status]}>{VENUE_STOCK_TRANSFER_STATUS_LABEL[status]}</StatusBadge>;
 }
 
 export function ArchivedBadge({ archived }: { archived: boolean }) {
-  return (
-    <Badge variant="outline" className={cn(archived ? "border-black/10 bg-black/5 text-black/50" : "border-emerald-200 bg-emerald-50 text-emerald-700")}>
-      {archived ? "Arquivado" : "Ativo"}
-    </Badge>
-  );
+  return <StatusBadge tone={archived ? "neutral" : "success"}>{archived ? "Arquivado" : "Ativo"}</StatusBadge>;
 }
 
-export function GenericStatusBadge({ label, tone }: { label: string; tone: "neutral" | "success" | "warning" | "danger" }) {
-  return (
-    <Badge
-      variant="outline"
-      className={cn(
-        tone === "neutral" && "border-black/10 bg-black/5 text-black/60",
-        tone === "success" && "border-emerald-200 bg-emerald-50 text-emerald-700",
-        tone === "warning" && "border-amber-200 bg-amber-50 text-amber-700",
-        tone === "danger" && "border-red-200 bg-red-50 text-red-700",
-      )}
-    >
-      {label}
-    </Badge>
-  );
+/** Export público usado por outras frentes (financeiro, promotores) — assinatura mantida. */
+export function GenericStatusBadge({ label, tone }: { label: string; tone: Tone }) {
+  return <StatusBadge tone={tone}>{label}</StatusBadge>;
 }

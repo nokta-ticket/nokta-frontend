@@ -1,25 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field, FieldGroup } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import type { VenueLocation } from "@/services/venue-operation";
-import { VENUE_INVENTORY_UNIT_LABEL } from "@/services/venue-stock";
 import { useVenueStockItems } from "../_hooks/use-venue-stock-catalog";
 import { useVenueStockTransferMutations } from "../_hooks/use-venue-stock-movements";
 import { QuantityField } from "./quantity-field";
+import { UNIT_SHORT } from "./stock-primitives";
 
 type DraftLine = { key: string; inventoryItemId: number | null; quantity: string };
 
@@ -45,20 +39,19 @@ export function TransferFormDialog({
   const { create } = useVenueStockTransferMutations(orgId);
 
   const [fromLocationId, setFromLocationId] = useState(String(defaultFromLocationId));
-  const [toLocationId, setToLocationId] = useState<string | undefined>(undefined);
+  const [toLocationId, setToLocationId] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [lines, setLines] = useState<DraftLine[]>([emptyLine()]);
 
   useEffect(() => {
     if (!open) return;
     setFromLocationId(String(defaultFromLocationId));
-    setToLocationId(undefined);
+    setToLocationId("");
     setNotes("");
     setLines([emptyLine()]);
   }, [open, defaultFromLocationId]);
 
-  const updateLine = (key: string, patch: Partial<DraftLine>) =>
-    setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+  const updateLine = (key: string, patch: Partial<DraftLine>) => setLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
 
   const handleSubmit = () => {
     if (!toLocationId || toLocationId === fromLocationId) {
@@ -86,82 +79,86 @@ export function TransferFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent size="md">
         <DialogHeader>
           <DialogTitle>Nova transferência</DialogTitle>
+          <DialogDescription>Move saldo entre unidades. Sai da origem ao enviar e entra no destino ao receber.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Origem</Label>
-              <Select value={fromLocationId} onValueChange={setFromLocationId}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {locations.map((l) => (
-                    <SelectItem key={l.id} value={String(l.id)}>{l.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Destino</Label>
-              <Select value={toLocationId} onValueChange={setToLocationId}>
-                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  {locations.filter((l) => String(l.id) !== fromLocationId).map((l) => (
-                    <SelectItem key={l.id} value={String(l.id)}>{l.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label>Itens</Label>
-              <Button size="sm" variant="outline" onClick={() => setLines((prev) => [...prev, emptyLine()])}>
-                <Plus size={14} /> Adicionar item
+        <DialogBody>
+          <FieldGroup columns={2}>
+            <Field label="Origem" htmlFor="transfer-from">
+              <NativeSelect id="transfer-from" value={fromLocationId} onChange={(e) => setFromLocationId(e.target.value)}>
+                {locations.map((l) => (
+                  <option key={l.id} value={String(l.id)}>
+                    {l.nome}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+            <Field label="Destino" htmlFor="transfer-to">
+              <NativeSelect id="transfer-to" value={toLocationId} onChange={(e) => setToLocationId(e.target.value)}>
+                <option value="">Selecione</option>
+                {locations
+                  .filter((l) => String(l.id) !== fromLocationId)
+                  .map((l) => (
+                    <option key={l.id} value={String(l.id)}>
+                      {l.nome}
+                    </option>
+                  ))}
+              </NativeSelect>
+            </Field>
+          </FieldGroup>
+
+          <section className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h4 className="text-sm font-semibold text-foreground">Itens</h4>
+              <Button size="sm" variant="outline" leftIcon="plus" onClick={() => setLines((prev) => [...prev, emptyLine()])}>
+                Adicionar item
               </Button>
             </div>
             {lines.map((l) => {
               const item = items.find((i) => i.id === l.inventoryItemId);
               return (
                 <div key={l.key} className="flex items-center gap-2">
-                  <Select
-                    value={l.inventoryItemId ? String(l.inventoryItemId) : undefined}
-                    onValueChange={(v) => updateLine(l.key, { inventoryItemId: Number(v) })}
-                  >
-                    <SelectTrigger className="flex-1"><SelectValue placeholder="Item" /></SelectTrigger>
-                    <SelectContent>
-                      {items.map((i) => (
-                        <SelectItem key={i.id} value={String(i.id)}>{i.nome}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="w-36">
-                    <QuantityField
-                      value={l.quantity}
-                      onChange={(v) => updateLine(l.key, { quantity: v })}
-                      suffix={item ? VENUE_INVENTORY_UNIT_LABEL[item.baseUnit] : undefined}
-                    />
+                  <NativeSelect aria-label="Item" className="min-w-0 flex-1" value={l.inventoryItemId ? String(l.inventoryItemId) : ""} onChange={(e) => updateLine(l.key, { inventoryItemId: e.target.value ? Number(e.target.value) : null })}>
+                    <option value="">Item</option>
+                    {items.map((i) => (
+                      <option key={i.id} value={String(i.id)}>
+                        {i.nome}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                  <div className="w-32 shrink-0">
+                    <QuantityField value={l.quantity} onChange={(v) => updateLine(l.key, { quantity: v })} suffix={item ? UNIT_SHORT[item.baseUnit] : undefined} />
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => setLines((prev) => prev.filter((x) => x.key !== l.key))} disabled={lines.length === 1}>
-                    <Trash2 size={14} />
+                  <Button
+                    size="icon"
+                    variant="subtle"
+                    aria-label="Remover linha"
+                    title={lines.length === 1 ? "A transferência precisa de ao menos um item" : "Remover linha"}
+                    className="shrink-0 hover:bg-danger-bg hover:text-danger disabled:opacity-40"
+                    disabled={lines.length === 1}
+                    onClick={() => setLines((prev) => prev.filter((x) => x.key !== l.key))}
+                  >
+                    <Icon name="trash" size={14} />
                   </Button>
                 </div>
               );
             })}
-          </div>
+          </section>
 
-          <div className="space-y-2">
-            <Label htmlFor="transfer-notes">Observações (opcional)</Label>
-            <Textarea id="transfer-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
-          </div>
-        </div>
+          <Field label="Observações" htmlFor="transfer-notes" optional>
+            <Textarea id="transfer-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="min-h-20" placeholder="Ex.: gelo pro evento de sábado" />
+          </Field>
+        </DialogBody>
+
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={create.isPending}>Cancelar</Button>
-          <Button disabled={create.isPending} onClick={handleSubmit}>
-            {create.isPending ? "Salvando…" : "Salvar rascunho"}
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={create.isPending}>
+            Cancelar
+          </Button>
+          <Button onClick={handleSubmit} loading={create.isPending} leftIcon="save">
+            Salvar rascunho
           </Button>
         </DialogFooter>
       </DialogContent>
