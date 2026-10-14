@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
@@ -244,9 +245,9 @@ export function AvaliacaoFormView({ initialData, orgSlug }: { initialData: Venue
               <p className="flex items-center justify-center gap-1.5 text-center text-caption text-muted-foreground">
                 <Icon name="shield" size={11} />
                 Ao enviar, você concorda com a{" "}
-                <a href="/privacidade" className="font-semibold text-brand underline-offset-4 hover:underline">
+                <Link href="/privacidade" className="font-semibold text-brand underline-offset-4 hover:underline">
                   Política de Privacidade
-                </a>
+                </Link>
                 .
               </p>
             </div>
