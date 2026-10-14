@@ -20,6 +20,12 @@ export const metadata = buildMetadata({
 
 const MONTH = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" });
 
+/** "outubro de 2026" → "Outubro de 2026" (só a primeira letra). */
+function monthLabel(key: string): string {
+  const text = MONTH.format(new Date(`${key}-01T12:00:00Z`));
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 function monthKey(date: string): string {
   return date.slice(0, 7);
 }
@@ -69,8 +75,8 @@ export default async function AgendaPage() {
         <div className="mt-8 space-y-10">
           {[...months.entries()].map(([k, list]) => (
             <section key={k} aria-labelledby={`m-${k}`}>
-              <h2 id={`m-${k}`} className="mb-4 text-title font-semibold capitalize tracking-tight text-foreground">
-                {MONTH.format(new Date(`${k}-01T12:00:00Z`))}
+              <h2 id={`m-${k}`} className="mb-4 text-title font-semibold tracking-tight text-foreground">
+                {monthLabel(k)}
               </h2>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {list.map((e, i) => (

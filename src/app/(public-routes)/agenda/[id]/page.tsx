@@ -122,7 +122,7 @@ export default async function AgendaEventPage({ params }: Props) {
               <div>
                 <dt className="sr-only">Preço</dt>
                 <dd className="font-medium text-foreground">{e.priceMin != null ? (e.priceMax && e.priceMax !== e.priceMin ? `${formatBRL(e.priceMin)} a ${formatBRL(e.priceMax)}` : formatBRL(e.priceMin)) : "Preços no site oficial"}</dd>
-                <dd className="text-muted-foreground">Valores informados por {sold}; taxas podem ser cobradas no site oficial.</dd>
+                <dd className="text-muted-foreground">{e.priceMin != null ? `Valores informados por ${sold}; taxas podem ser cobradas no site oficial.` : `Consulte valores, setores e taxas no site do ${sold}.`}</dd>
               </div>
             </div>
             {e.genre ? (
