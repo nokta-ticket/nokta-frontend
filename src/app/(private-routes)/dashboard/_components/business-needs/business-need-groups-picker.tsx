@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { CheckCircle2, ChevronDown, Lock } from "lucide-react";
+import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
+import { Card } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
+import { cn } from "@/lib/cn";
 import type { BusinessNeedGroup } from "@/services/platform";
 
 export interface BusinessNeedSelectionState {
@@ -39,149 +39,95 @@ export function flattenSelection(groups: BusinessNeedGroup[], selection: Busines
   return { businessNeedKeys, capabilityKeys };
 }
 
-function GroupCapabilityRow({
+type CapabilityState = "active" | "selected" | "required" | "available";
+
+function CapabilityCard({
   capability,
-  checked,
-  alreadyActive,
-  locked,
+  state,
   groupSelected,
+  index,
   onToggle,
   onDeactivate,
   deactivating,
 }: {
   capability: BusinessNeedGroup["capabilities"][number];
-  checked: boolean;
-  alreadyActive: boolean;
-  /** Não pode ser alternada pelo usuário (já ativa, ou obrigatória com o grupo selecionado). */
-  locked: boolean;
-  /** Grupo pai desmarcado — item aparece apagado/não interativo, mesmo sendo "Necessário" quando o grupo estiver ligado. */
+  state: CapabilityState;
   groupSelected: boolean;
+  index: number;
   onToggle: () => void;
   onDeactivate?: () => void;
   deactivating?: boolean;
 }) {
-  const interactive = !locked && groupSelected;
-  const dimmed = !groupSelected && !alreadyActive;
+  const interactive = state === "selected" || state === "available";
+  const checked = state === "selected" || state === "required";
+
+  const badge =
+    state === "active" ? (
+      <StatusBadge tone="success">Ativa</StatusBadge>
+    ) : state === "selected" ? (
+      <StatusBadge tone="brand">Marcada</StatusBadge>
+    ) : state === "required" ? (
+      <StatusBadge tone="neutral" dot={false}>
+        <Icon name="lock" size={9} />
+        Necessária
+      </StatusBadge>
+    ) : (
+      <StatusBadge tone="neutral">Disponível</StatusBadge>
+    );
 
   return (
-    <div
-      className={`flex items-start gap-2.5 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
-        dimmed ? "border-black/5 bg-black/[0.02] opacity-50" : locked ? "border-black/5 bg-black/[0.02]" : "border-black/10 hover:border-violet-300 hover:bg-violet-50/40"
-      }`}
+    <Card
+      interactive={interactive}
+      accent={state === "active"}
+      role={interactive ? "checkbox" : undefined}
+      aria-checked={interactive ? checked : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onClick={interactive ? onToggle : undefined}
+      onKeyDown={
+        interactive
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onToggle();
+              }
+            }
+          : undefined
+      }
+      className={cn("fade-up gap-3 p-4 text-left", interactive && "cursor-pointer", state === "selected" && "border-brand/40 ring-1 ring-brand-ring", !groupSelected && state === "available" && "opacity-80")}
+      style={{ ["--i" as string]: index } as never}
     >
-      <label className={`flex flex-1 items-start gap-2.5 ${interactive ? "cursor-pointer" : "cursor-default"}`}>
-        <Checkbox checked={checked} disabled={!interactive} onCheckedChange={onToggle} className="mt-0.5 shrink-0" />
-        <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-1.5">
-            <span className="font-medium text-gray-900">{capability.label}</span>
-            {alreadyActive ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-700">
-                <CheckCircle2 size={9} /> Ativa
-              </span>
-            ) : capability.required && groupSelected ? (
-              <span className="inline-flex items-center gap-1 rounded-full bg-black/5 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-black/50">
-                <Lock size={9} /> Necessário
-              </span>
-            ) : null}
+      <div className="flex items-start justify-between gap-3">
+        {badge}
+        {interactive ? (
+          <span aria-hidden className={cn("flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors", checked ? "border-brand bg-brand text-brand-foreground" : "border-border-strong bg-surface-2")}>
+            {checked ? <Icon name="check" size={10} /> : null}
           </span>
-          <span className="mt-0.5 block text-xs text-black/50">{capability.description}</span>
-          {!alreadyActive && capability.required && groupSelected && capability.requiredReason ? (
-            <span className="mt-1 block text-xs text-violet-700">{capability.requiredReason}</span>
-          ) : null}
-        </span>
-      </label>
-      {alreadyActive && onDeactivate ? (
-        <Button variant="outline" size="sm" onClick={onDeactivate} disabled={deactivating} className="shrink-0">
-          {deactivating ? "Desativando…" : "Desativar"}
-        </Button>
-      ) : null}
-    </div>
-  );
-}
-
-function GroupCard({
-  group,
-  selected,
-  expanded,
-  onToggleExpanded,
-  deselectedKeys,
-  activeCapabilityKeys,
-  onToggleGroup,
-  onToggleCapability,
-  onDeactivateCapability,
-  deactivatingKey,
-  forceOpen,
-}: {
-  group: BusinessNeedGroup;
-  selected: boolean;
-  expanded: boolean;
-  onToggleExpanded: () => void;
-  deselectedKeys: Set<string>;
-  activeCapabilityKeys: Set<string> | null;
-  onToggleGroup: () => void;
-  onToggleCapability: (capabilityKey: string) => void;
-  onDeactivateCapability?: (capabilityKey: string) => void;
-  deactivatingKey?: string | null;
-  forceOpen: boolean;
-}) {
-  const open = expanded || forceOpen;
-  const activeCount = activeCapabilityKeys ? group.capabilities.filter((c) => activeCapabilityKeys.has(c.key)).length : 0;
-
-  return (
-    <Collapsible open={open}>
-      <div className={`rounded-2xl border transition-colors ${selected ? "border-violet-300 bg-violet-50/30" : "border-black/10 bg-white"}`}>
-        <div className="flex items-start gap-3 p-4">
-          <Checkbox checked={selected} onCheckedChange={onToggleGroup} className="mt-0.5 shrink-0" aria-label={`Selecionar ${group.label}`} />
-          <button
-            type="button"
-            onClick={onToggleExpanded}
-            className="flex flex-1 items-start gap-3 text-left"
-            aria-expanded={open}
-          >
-            <span className="min-w-0 flex-1">
-              <span className="flex flex-wrap items-center gap-1.5">
-                <span className="font-medium text-gray-900">{group.label}</span>
-                {activeCount > 0 ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-emerald-700">
-                    {activeCount} ativa{activeCount > 1 ? "s" : ""}
-                  </span>
-                ) : null}
-              </span>
-              <span className="mt-0.5 block text-sm text-black/50">{group.description}</span>
-            </span>
-            <ChevronDown size={16} className={`mt-1 shrink-0 text-black/30 transition-transform ${open ? "rotate-180 text-violet-600" : ""}`} />
-          </button>
-        </div>
-
-        <CollapsibleContent>
-          <div className="space-y-2 px-4 pb-4">
-            {group.capabilities.map((capability) => {
-              const alreadyActive = activeCapabilityKeys?.has(capability.key) ?? false;
-              // Item segue o grupo pai: grupo desmarcado = todos os itens
-              // aparecem desmarcados (mesmo os "Necessário", que só fazem
-              // sentido como obrigatórios quando o grupo está selecionado).
-              const checked = alreadyActive || (selected && (capability.required || !deselectedKeys.has(capability.key)));
-              return (
-                <GroupCapabilityRow
-                  key={capability.key}
-                  capability={capability}
-                  alreadyActive={alreadyActive}
-                  checked={checked}
-                  locked={alreadyActive || (selected && capability.required)}
-                  groupSelected={selected}
-                  onToggle={() => onToggleCapability(capability.key)}
-                  onDeactivate={onDeactivateCapability ? () => onDeactivateCapability(capability.key) : undefined}
-                  deactivating={deactivatingKey === capability.key}
-                />
-              );
-            })}
-          </div>
-        </CollapsibleContent>
+        ) : null}
       </div>
-    </Collapsible>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-foreground">{capability.label}</p>
+        <p className="mt-1 text-caption leading-snug text-muted-foreground">{capability.description}</p>
+        {state === "required" && capability.requiredReason ? <p className="mt-2 text-caption text-brand">{capability.requiredReason}</p> : null}
+      </div>
+      {state === "active" && onDeactivate ? (
+        <div className="mt-auto flex justify-end border-t border-border pt-3">
+          <Button variant="subtle" size="sm" loading={deactivating} onClick={onDeactivate} className="hover:bg-danger-bg hover:text-danger">
+            Desativar
+          </Button>
+        </div>
+      ) : null}
+    </Card>
   );
 }
 
+/**
+ * Catálogo de necessidades do negócio (tela Explore): cada grupo é uma seção
+ * com a grade das suas capacidades em cards. Marcar o grupo liga tudo;
+ * clicar num card marca/desmarca só aquela capacidade (num grupo ainda
+ * desmarcado, o primeiro clique liga o grupo só com aquela capacidade —
+ * mesma regra do painel de personalização do onboarding). Capacidades já
+ * ACTIVE aparecem travadas com "Ativa" e o botão de desativar na linha.
+ */
 export function BusinessNeedGroupsPicker({
   groups,
   selection,
@@ -199,18 +145,6 @@ export function BusinessNeedGroupsPicker({
   onDeactivateCapability?: (capabilityKey: string) => void;
   deactivatingKey?: string | null;
 }) {
-  // Expandir/recolher é puramente visual (ver o que tem dentro do grupo) —
-  // deliberadamente separado de `selection`: clicar no card pra abrir não
-  // pode desmarcar o grupo sem querer (só o checkbox faz isso).
-  // Accordion (no máx. 1 aberto por vez): com vários grupos pré-marcados
-  // por padrão, começar todos expandidos empilhava a etapa inteira e
-  // forçava scroll longo. null = nenhum card aberto.
-  const [expandedKey, setExpandedKey] = useState<string | null>(null);
-
-  const toggleExpanded = (groupKey: string) => {
-    setExpandedKey((prev) => (prev === groupKey ? null : groupKey));
-  };
-
   const toggleGroup = (groupKey: string) => {
     const nextGroups = new Set(selection.selectedGroupKeys);
     // Marcar ou desmarcar o grupo sempre reseta as exceções individuais
@@ -223,45 +157,85 @@ export function BusinessNeedGroupsPicker({
       nextGroups.delete(groupKey);
     } else {
       nextGroups.add(groupKey);
-      setExpandedKey(groupKey);
     }
     onChange({ ...selection, selectedGroupKeys: nextGroups, deselectedCapabilityKeysByGroup: nextDeselected });
   };
 
-  const toggleCapability = (groupKey: string, capability: BusinessNeedGroup["capabilities"][number]) => {
+  const toggleCapability = (group: BusinessNeedGroup, capability: BusinessNeedGroup["capabilities"][number]) => {
     if (capability.required || activeCapabilityKeys?.has(capability.key)) return;
+
+    if (!selection.selectedGroupKeys.has(group.key)) {
+      // Grupo ainda desmarcado: liga o grupo só com esta capacidade (as
+      // demais, exceto as `required`, entram como desmarcadas).
+      const nextGroups = new Set(selection.selectedGroupKeys);
+      nextGroups.add(group.key);
+      const nextByGroup = new Map(selection.deselectedCapabilityKeysByGroup);
+      nextByGroup.set(group.key, new Set(group.capabilities.filter((c) => !c.required && c.key !== capability.key && !activeCapabilityKeys?.has(c.key)).map((c) => c.key)));
+      onChange({ ...selection, selectedGroupKeys: nextGroups, deselectedCapabilityKeysByGroup: nextByGroup });
+      return;
+    }
+
     const nextByGroup = new Map(selection.deselectedCapabilityKeysByGroup);
-    const current = new Set(nextByGroup.get(groupKey) ?? []);
+    const current = new Set(nextByGroup.get(group.key) ?? []);
     if (current.has(capability.key)) {
       current.delete(capability.key);
     } else {
       current.add(capability.key);
     }
-    nextByGroup.set(groupKey, current);
+    nextByGroup.set(group.key, current);
     onChange({ ...selection, deselectedCapabilityKeysByGroup: nextByGroup });
   };
 
   return (
-    <div className="space-y-3">
-      {groups.map((group) => (
-        <GroupCard
-          key={group.key}
-          group={group}
-          selected={selection.selectedGroupKeys.has(group.key)}
-          expanded={expandedKey === group.key}
-          onToggleExpanded={() => toggleExpanded(group.key)}
-          deselectedKeys={selection.deselectedCapabilityKeysByGroup.get(group.key) ?? new Set()}
-          activeCapabilityKeys={activeCapabilityKeys ?? null}
-          forceOpen={Boolean(activeCapabilityKeys) && group.capabilities.some((c) => activeCapabilityKeys?.has(c.key))}
-          onToggleGroup={() => toggleGroup(group.key)}
-          onToggleCapability={(capKey) => {
-            const capability = group.capabilities.find((c) => c.key === capKey);
-            if (capability) toggleCapability(group.key, capability);
-          }}
-          onDeactivateCapability={onDeactivateCapability}
-          deactivatingKey={deactivatingKey}
-        />
-      ))}
+    <div className="space-y-10">
+      {groups.map((group) => {
+        const selected = selection.selectedGroupKeys.has(group.key);
+        const deselected = selection.deselectedCapabilityKeysByGroup.get(group.key) ?? new Set<string>();
+        const activeCount = activeCapabilityKeys ? group.capabilities.filter((c) => activeCapabilityKeys.has(c.key)).length : 0;
+        const allActive = activeCount === group.capabilities.length;
+
+        return (
+          <section key={group.key} aria-labelledby={`need-${group.key}`}>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div className="min-w-0">
+                <h2 id={`need-${group.key}`} className="flex flex-wrap items-center gap-2 text-title font-semibold tracking-tight text-foreground">
+                  {group.label}
+                  {activeCount > 0 ? (
+                    <StatusBadge tone="success" dot={false}>
+                      {activeCount} de {group.capabilities.length} ativa{activeCount > 1 ? "s" : ""}
+                    </StatusBadge>
+                  ) : null}
+                </h2>
+                <p className="mt-1 text-body text-muted-foreground">{group.description}</p>
+              </div>
+              {!allActive ? (
+                <Button size="sm" variant={selected ? "secondary" : "outline"} leftIcon={selected ? "check" : "plus"} onClick={() => toggleGroup(group.key)} aria-pressed={selected} className="shrink-0 self-start sm:self-auto">
+                  {selected ? "Grupo marcado" : "Marcar grupo inteiro"}
+                </Button>
+              ) : null}
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {group.capabilities.map((capability, index) => {
+                const alreadyActive = activeCapabilityKeys?.has(capability.key) ?? false;
+                const state: CapabilityState = alreadyActive ? "active" : selected && capability.required ? "required" : selected && !deselected.has(capability.key) ? "selected" : "available";
+                return (
+                  <CapabilityCard
+                    key={capability.key}
+                    capability={capability}
+                    state={state}
+                    groupSelected={selected}
+                    index={index}
+                    onToggle={() => toggleCapability(group, capability)}
+                    onDeactivate={onDeactivateCapability ? () => onDeactivateCapability(capability.key) : undefined}
+                    deactivating={deactivatingKey === capability.key}
+                  />
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

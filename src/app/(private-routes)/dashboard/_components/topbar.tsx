@@ -1,369 +1,215 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
 import { useOrganizations } from "@/context/OrganizationContext";
 import { periodLabel, usePeriod, type PeriodKey } from "@/context/PeriodContext";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { resolveMediaUrl } from "@/lib/media";
-import { useVenuePublicProfile } from "../cardapio/_hooks/use-venue-public-profile";
-import { NoktaWordmark } from "@/components/brand/nokta-wordmark";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Icon } from "@/components/ui/icon";
+import { BrandLogo } from "@/components/brand/brand-logo";
+import { cn } from "@/lib/cn";
+import { resolveSectionTitle, routeUsesPeriod } from "../_lib/section-title";
 import { MobileNav } from "./dashboard-sidebar";
+import { ThemeToggle } from "./theme-toggle";
+import { UserMenu } from "./user-menu";
 
 /**
- * Topbar do dashboard: "Conecte o dashboard da {empresa} ao Claude" à esquerda; período, notificações,
- * indique e ganhe e workspace à direita. O menu do usuário (perfil/sair) não
- * fica mais aqui — está na sidebar (UserMenu variant="sidebar"), inclusive na
- * gaveta do mobile.
+ * Topbar do painel: sólida (nunca translúcida), 64px. Esquerda: título da
+ * seção (desktop) ou hambúrguer + logo (celular). Direita: período (só nas
+ * telas que leem o PeriodContext), tema e conta. O período grava no
+ * PeriodContext (padrão "Hoje") e é consumido via periodToFinanceParams.
  *
- * Sem organização (onboarding, antes do primeiro workspace) mostra a saudação
- * no lugar desse atalho e esconde período/workspace. Onboarding cria e seleciona a
- * organização (currentOrg) já na 1ª etapa — sem a checagem de rota abaixo, o
- * workspace aparecia no meio do wizard, no passo em que o usuário escolhe os
- * módulos da organização recém-criada.
- *
- * "Conectar" leva para Configurações → IA e conexões (conector MCP). Notificações e
- * indique e ganhe são só visuais (não existem no backend ainda). O período grava no PeriodContext (padrão "Hoje") e é
- * consumido pelas telas via periodToFinanceParams — hoje, a Início.
+ * Sem organização (onboarding, antes do primeiro workspace) o período some —
+ * o onboarding cria e seleciona a organização já na 1ª etapa, e sem a
+ * checagem de rota ele apareceria no meio do wizard.
  */
 
-const PERIOD_OPTIONS: { key: PeriodKey; label: string }[] = [
-  { key: "today", label: "Hoje" },
-  { key: "7d", label: "7 dias" },
-  { key: "30d", label: "30 dias" },
+type QuickKey = Exclude<PeriodKey, "custom">;
+
+const QUICK_OPTIONS: { value: QuickKey; label: string }[] = [
+  { value: "today", label: "Hoje" },
+  { value: "7d", label: "7 dias" },
+  { value: "30d", label: "30 dias" },
 ];
-
-// A própria barra é o item flex (w-px/h-6 só valem em elemento de bloco — um
-// <span> de linha dentro de outro wrapper perdia a largura e sumia).
-function Divider({ className = "block" }: { className?: string }) {
-  return <span className={`h-6 w-px shrink-0 bg-[#e3e0ec] ${className}`} aria-hidden="true" />;
-}
-
-const PERIOD_BUTTON_CLASS =
-  "flex h-[30px] items-center gap-1.5 rounded-[7px] border-0 bg-transparent px-3 text-[12.5px] text-[#6b6878] aria-pressed:bg-[#f1eff6] aria-pressed:font-medium aria-pressed:text-[#1c1a24]";
 
 /** "YYYY-MM-DD" de hoje no fuso de São Paulo (mesmo fuso do backend). */
 function todayInSaoPaulo(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
 }
 
-function CustomPeriodButton() {
+function useCustomRangeDraft() {
   const { period, setPeriod } = usePeriod();
-  const [open, setOpen] = useState(false);
   const today = todayInSaoPaulo();
   const [from, setFrom] = useState(period.range.from ?? today);
   const [to, setTo] = useState(period.range.to ?? today);
   const valid = Boolean(from && to && from <= to && to <= today);
-
-  return (
-    <Popover
-      open={open}
-      onOpenChange={(next) => {
-        if (next) {
-          setFrom(period.range.from ?? today);
-          setTo(period.range.to ?? today);
-        }
-        setOpen(next);
-      }}
-    >
-      <PopoverTrigger asChild>
-        <button type="button" aria-pressed={period.key === "custom"} className={PERIOD_BUTTON_CLASS}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
-            <path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
-          </svg>
-          {period.key === "custom" ? periodLabel(period) : "Personalizado"}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-64 space-y-3 p-4">
-        <p className="text-sm font-semibold text-[#1c1a24]">Período personalizado</p>
-        <label className="block space-y-1 text-xs text-[#6b6878]">
-          De
-          <input
-            type="date"
-            value={from}
-            max={to || today}
-            onChange={(e) => setFrom(e.target.value)}
-            className="h-9 w-full rounded-lg border border-[#ebe8f2] px-2 text-base text-[#1c1a24] outline-none focus:border-[#7c3aed] sm:text-sm"
-          />
-        </label>
-        <label className="block space-y-1 text-xs text-[#6b6878]">
-          Até
-          <input
-            type="date"
-            value={to}
-            min={from || undefined}
-            max={today}
-            onChange={(e) => setTo(e.target.value)}
-            className="h-9 w-full rounded-lg border border-[#ebe8f2] px-2 text-base text-[#1c1a24] outline-none focus:border-[#7c3aed] sm:text-sm"
-          />
-        </label>
-        <button
-          type="button"
-          disabled={!valid}
-          onClick={() => {
-            setPeriod({ key: "custom", range: { from, to } });
-            setOpen(false);
-          }}
-          className="h-9 w-full rounded-lg bg-[#7c3aed] text-sm font-medium text-white hover:bg-[#6d28d9] disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          Aplicar
-        </button>
-      </PopoverContent>
-    </Popover>
-  );
+  const reset = () => {
+    setFrom(period.range.from ?? today);
+    setTo(period.range.to ?? today);
+  };
+  const apply = () => setPeriod({ key: "custom", range: { from, to } });
+  return { today, from, to, setFrom, setTo, valid, reset, apply };
 }
 
-function PeriodFilter() {
-  const { period, setPeriod } = usePeriod();
-
+function CustomRangeFields({ draft, idPrefix }: { draft: ReturnType<typeof useCustomRangeDraft>; idPrefix: string }) {
   return (
-    <div role="group" aria-label="Período" className="flex gap-0.5 rounded-[10px] border border-[#ebe8f2] bg-white p-[3px]">
-      {PERIOD_OPTIONS.map((o) => (
-        <button
-          key={o.key}
-          type="button"
-          aria-pressed={period.key === o.key}
-          onClick={() => setPeriod({ key: o.key, range: { from: null, to: null } })}
-          className={PERIOD_BUTTON_CLASS}
-        >
-          {o.label}
-        </button>
-      ))}
-      <CustomPeriodButton />
+    <div className="grid grid-cols-2 gap-3">
+      <Field label="De" htmlFor={`${idPrefix}-from`}>
+        <Input id={`${idPrefix}-from`} type="date" value={draft.from} max={draft.to || draft.today} onChange={(e) => draft.setFrom(e.target.value)} />
+      </Field>
+      <Field label="Até" htmlFor={`${idPrefix}-to`}>
+        <Input id={`${idPrefix}-to`} type="date" value={draft.to} min={draft.from || undefined} max={draft.today} onChange={(e) => draft.setTo(e.target.value)} />
+      </Field>
     </div>
   );
 }
 
-const DATE_INPUT_CLASS =
-  "h-11 w-full rounded-lg border border-[#ebe8f2] bg-white px-2 text-base text-[#1c1a24] outline-none focus:border-[#7c3aed]";
+/** Desktop: segmented control + botão "Personalizado" com popover de datas. */
+function PeriodFilter() {
+  const { period, setPeriod } = usePeriod();
+  const [open, setOpen] = useState(false);
+  const draft = useCustomRangeDraft();
+  const isCustom = period.key === "custom";
+
+  return (
+    <div role="group" aria-label="Período" className="flex items-center gap-1.5">
+      <SegmentedControl<QuickKey | "custom"> size="sm" value={period.key} onChange={(key) => setPeriod({ key: key as QuickKey, range: { from: null, to: null } })} options={QUICK_OPTIONS} />
+      <Popover
+        open={open}
+        onOpenChange={(next) => {
+          if (next) draft.reset();
+          setOpen(next);
+        }}
+      >
+        <PopoverTrigger asChild>
+          <button type="button" aria-pressed={isCustom} className={cn("inline-flex h-8 items-center gap-1.5 rounded-pill px-3 text-caption font-medium transition-colors", isCustom ? "bg-brand-soft text-brand ring-1 ring-inset ring-brand-ring" : "bg-surface-2 text-muted-foreground hover:text-foreground")}>
+            <Icon name="calendar" size={12} />
+            {isCustom ? periodLabel(period) : "Personalizado"}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent align="end" sideOffset={8} className="w-72 rounded-card border-border bg-surface p-4 shadow-3">
+          <p className="mb-3 text-sm font-semibold text-foreground">Período personalizado</p>
+          <CustomRangeFields draft={draft} idPrefix="period" />
+          <Button
+            size="sm"
+            className="mt-3 w-full"
+            disabled={!draft.valid}
+            onClick={() => {
+              draft.apply();
+              setOpen(false);
+            }}
+          >
+            Aplicar
+          </Button>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
 
 /**
- * Período abaixo de xl: o seletor segmentado não cabe na barra, então vira um
- * botão com o período atual que abre as mesmas quatro opções. Antes disso o
- * período simplesmente não existia no celular: a Início ficava presa em "Hoje".
+ * Abaixo de lg o seletor segmentado não cabe na barra: vira um botão com o
+ * período atual que abre as mesmas quatro opções.
  */
 function CompactPeriodFilter() {
   const { period, setPeriod } = usePeriod();
   const [open, setOpen] = useState(false);
-  const today = todayInSaoPaulo();
-  const [from, setFrom] = useState(period.range.from ?? today);
-  const [to, setTo] = useState(period.range.to ?? today);
-  const valid = Boolean(from && to && from <= to && to <= today);
+  const draft = useCustomRangeDraft();
 
   return (
     <Popover
       open={open}
       onOpenChange={(next) => {
-        if (next) {
-          setFrom(period.range.from ?? today);
-          setTo(period.range.to ?? today);
-        }
+        if (next) draft.reset();
         setOpen(next);
       }}
     >
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={`Período: ${periodLabel(period)}`}
-          className="flex h-9 min-w-0 items-center gap-1.5 rounded-[10px] border border-[#ebe8f2] bg-white pl-2.5 pr-2 text-[13px] font-medium text-[#1c1a24] outline-none transition-transform duration-150 ease-out active:scale-[0.97] focus-visible:border-[#7c3aed] motion-reduce:active:scale-100"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b6878" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden="true">
-            <rect x="3" y="4.5" width="18" height="16" rx="2.5" />
-            <path d="M3 9.5h18M8 2.5v4M16 2.5v4" />
-          </svg>
-          <span className="max-w-[92px] truncate">{periodLabel(period)}</span>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8a8796" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden="true">
-            <path d="m7 10 5 5 5-5" />
-          </svg>
+        <button type="button" aria-label={`Período: ${periodLabel(period)}`} className="press inline-flex h-9 max-w-[140px] items-center gap-1.5 rounded-pill bg-surface-2 pl-3 pr-2.5 text-caption font-medium text-foreground">
+          <Icon name="calendar" size={12} className="text-muted-foreground" />
+          <span className="truncate">{periodLabel(period)}</span>
+          <Icon name="chevron-down" size={10} className="text-muted-foreground" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" collisionPadding={12} className="w-[min(18rem,calc(100vw-1.5rem))] p-2">
-        <div role="group" aria-label="Período" className="grid grid-cols-3 gap-1">
-          {PERIOD_OPTIONS.map((o) => (
-            <button
-              key={o.key}
-              type="button"
-              aria-pressed={period.key === o.key}
-              onClick={() => {
-                setPeriod({ key: o.key, range: { from: null, to: null } });
-                setOpen(false);
-              }}
-              className="h-11 rounded-lg text-sm text-[#5b5868] aria-pressed:bg-[#f3edff] aria-pressed:font-semibold aria-pressed:text-[#6d28d9]"
-            >
-              {o.label}
-            </button>
-          ))}
+      <PopoverContent align="end" collisionPadding={12} sideOffset={8} className="w-[min(20rem,calc(100vw-1.5rem))] rounded-card border-border bg-surface p-3 shadow-3">
+        <div role="group" aria-label="Período" className="grid grid-cols-3 gap-1.5">
+          {QUICK_OPTIONS.map((o) => {
+            const active = period.key === o.value;
+            return (
+              <button
+                key={o.value}
+                type="button"
+                aria-pressed={active}
+                onClick={() => {
+                  setPeriod({ key: o.value, range: { from: null, to: null } });
+                  setOpen(false);
+                }}
+                className={cn("h-11 rounded-xl text-sm font-medium transition-colors", active ? "bg-brand-soft text-brand ring-1 ring-inset ring-brand-ring" : "bg-surface-2 text-muted-foreground hover:text-foreground")}
+              >
+                {o.label}
+              </button>
+            );
+          })}
         </div>
-        <div className="mt-2 space-y-2 border-t border-[#ebe8f2] px-1 pb-1 pt-3">
-          <p className="text-xs font-medium text-[#6b6878]">Outro período</p>
-          <div className="grid grid-cols-2 gap-2">
-            <label className="block min-w-0 space-y-1 text-xs text-[#6b6878]">
-              De
-              <input type="date" value={from} max={to || today} onChange={(e) => setFrom(e.target.value)} className={DATE_INPUT_CLASS} />
-            </label>
-            <label className="block min-w-0 space-y-1 text-xs text-[#6b6878]">
-              Até
-              <input type="date" value={to} min={from || undefined} max={today} onChange={(e) => setTo(e.target.value)} className={DATE_INPUT_CLASS} />
-            </label>
-          </div>
-          <button
-            type="button"
-            disabled={!valid}
+        <div className="mt-3 space-y-3 border-t border-border pt-3">
+          <p className="text-caption font-semibold text-muted-foreground">Outro período</p>
+          <CustomRangeFields draft={draft} idPrefix="period-compact" />
+          <Button
+            size="full"
+            disabled={!draft.valid}
             onClick={() => {
-              setPeriod({ key: "custom", range: { from, to } });
+              draft.apply();
               setOpen(false);
             }}
-            className="h-11 w-full rounded-lg bg-[#7c3aed] text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             Aplicar
-          </button>
+          </Button>
         </div>
       </PopoverContent>
     </Popover>
   );
 }
 
-function WorkspaceButton() {
-  const { organizations, currentOrg, selectOrg, activeModuleKeys } = useOrganizations();
-  // A logo do workspace vive no perfil público do Venue (mesma query/cache do
-  // cabeçalho do Cardápio — trocar a logo lá atualiza aqui). Só busca com o
-  // módulo Venue ativo: org só de Tickets não tem perfil e tomaria 403.
-  const hasVenue = activeModuleKeys.includes("venue");
-  const { data: profile } = useVenuePublicProfile(hasVenue && currentOrg ? currentOrg.id : null);
-
-  if (!currentOrg) return null;
-
-  // fallback null: sem logo cadastrada mostra a inicial, não a logo da Nokta.
-  const logoUrl = resolveMediaUrl(profile?.logoUrl, null);
-  const initial = currentOrg.nome.trim().charAt(0).toUpperCase() || "?";
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          className="flex shrink-0 items-center gap-1.5 rounded-[10px] border-0 bg-transparent py-1 pl-1 pr-1.5 sm:gap-2.5 text-sm font-semibold text-[#1c1a24] outline-none hover:bg-[#f1eff6]"
-        >
-          {logoUrl ? (
-            <Image src={logoUrl} alt="" width={32} height={32} unoptimized className="h-8 w-8 rounded-lg object-cover" />
-          ) : (
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#f3edff] text-sm font-semibold text-[#7c3aed]" aria-hidden="true">
-              {initial}
-            </span>
-          )}
-          <span className="hidden max-w-[180px] truncate sm:inline">{currentOrg.nome}</span>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8a8796" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="m7 10 5 5 5-5" />
-          </svg>
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" collisionPadding={12} className="w-56 max-w-[calc(100vw-1.5rem)]">
-        {organizations.map((o) => (
-          <DropdownMenuItem
-            key={o.id}
-            onSelect={() => selectOrg(o.id)}
-            className={`min-h-11 sm:min-h-0 ${o.id === currentOrg.id ? "font-semibold" : ""}`}
-          >
-            <span className="truncate">{o.nome}</span>
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
 export function Topbar() {
-  const { user, isAuthResolved } = useAuth();
   const { currentOrg, loadingOrgs } = useOrganizations();
   const pathname = usePathname();
   const isOnboarding = pathname.startsWith("/dashboard/onboarding");
-
-  const showGreeting = isOnboarding || (isAuthResolved && !loadingOrgs && !currentOrg);
+  const showPeriod = !isOnboarding && !loadingOrgs && currentOrg !== null && routeUsesPeriod(pathname);
+  const title = resolveSectionTitle(pathname);
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-[#ebe8f2] bg-[#fbfaff] px-4 text-[#1c1a24] lg:h-16 lg:gap-6 lg:px-6">
+    <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-3 border-b border-border bg-surface px-4 text-foreground lg:px-6">
       {/* < lg: menu + logo. A sidebar fixa só existe a partir de lg. */}
       <div className="flex min-w-0 items-center gap-1 lg:hidden">
         <MobileNav />
-        <NoktaWordmark className="text-[30px]" />
+        <Link href="/dashboard/inicio" aria-label="Início" className="press flex items-center">
+          <BrandLogo variant="nokta" height={20} />
+        </Link>
       </div>
 
-      {showGreeting ? (
-        <div className="hidden min-w-0 lg:block">
-          <p className="flex items-center gap-1.5 text-sm font-bold text-[#1f1e2e]">Olá, {user?.nome}! 👋</p>
-          <p className="mt-0.5 text-xs text-[#898b98]">Bem-vindo à Nokta</p>
-        </div>
-      ) : (
-        // Não há chat dentro da Nokta: a conversa acontece no Claude do usuário,
-        // pelo conector configurado em Configurações → IA e conexões. Abaixo de
-        // lg o mesmo atalho fica dentro da gaveta do menu.
-        <div className="hidden min-w-0 items-center gap-3 lg:flex">
-          <p className="min-w-0 truncate text-[13.5px] text-[#5b5868]">
-            Conecte o dashboard da <span className="font-semibold text-[#1c1a24]">{currentOrg?.nome ?? "sua empresa"}</span> ao Claude
-          </p>
-          <Link
-            href="/dashboard/configuracoes?tab=ia"
-            className="flex h-[34px] shrink-0 items-center rounded-[10px] bg-[#1c1a24] px-3.5 text-[13px] font-semibold text-white transition-[background-color,transform] duration-150 ease-out hover:bg-black active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-600 motion-reduce:active:scale-100"
-          >
-            Conectar
-          </Link>
-        </div>
-      )}
+      <div className="hidden min-w-0 lg:block">
+        <h2 className="truncate text-base font-semibold tracking-tight text-foreground">{title}</h2>
+        {currentOrg ? <p className="truncate text-caption text-muted-foreground">{currentOrg.nome}</p> : null}
+      </div>
 
-      <div className="flex min-w-0 items-center gap-2 sm:gap-4">
-        {!showGreeting && (
+      <div className="ml-auto flex min-w-0 items-center gap-2 sm:gap-3">
+        {showPeriod ? (
           <>
-            <div className="min-w-0 xl:hidden">
+            <div className="min-w-0 lg:hidden">
               <CompactPeriodFilter />
             </div>
-            <div className="hidden xl:block">
+            <div className="hidden lg:block">
               <PeriodFilter />
             </div>
-            <Divider className="hidden xl:block" />
           </>
-        )}
-
-        <button
-          type="button"
-          aria-label="Notificações"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-0 bg-transparent text-[#3a3746] hover:bg-[#f1eff6]"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-            <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-          </svg>
-        </button>
-
-        <Divider className="hidden md:block" />
-
-        <button
-          type="button"
-          className="hidden h-[34px] items-center gap-[7px] rounded-lg border-0 bg-[#f3edff] px-3 text-[13px] font-medium text-[#7c3aed] hover:text-[#6d28d9] md:flex"
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="3" y="8" width="18" height="4" rx="1" />
-            <path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" />
-            <path d="M7.5 8a2.5 2.5 0 0 1 0-5C10 3 12 8 12 8s2-5 4.5-5a2.5 2.5 0 0 1 0 5" />
-          </svg>
-          Indique e ganhe
-        </button>
-
-        {!showGreeting && (
-          <>
-            <Divider className="hidden sm:block" />
-            <WorkspaceButton />
-          </>
-        )}
+        ) : null}
+        <ThemeToggle className="hidden lg:inline-flex" />
+        <UserMenu />
       </div>
     </header>
   );

@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
+import { StatusBadge, type Tone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ExternalLink, Loader2 } from "lucide-react";
+import { Callout } from "@/components/ui/callout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
-import { VERIFICATION_STATUS_LABEL, type LegalFinancialProfile } from "@/services/venue-legal-financial";
+import { VERIFICATION_STATUS_LABEL, type LegalFinancialProfile, type VerificationStatus } from "@/services/venue-legal-financial";
 import { useGenerateKycLink } from "../../../_hooks/use-legal-financial-settings";
 
 const RECIPIENT_STATUS_LABEL: Record<string, string> = {
@@ -26,6 +26,40 @@ const KYC_STATUS_LABEL: Record<string, string> = {
   APPROVED: "Aprovado",
   REJECTED: "Rejeitado",
 };
+
+const VERIFICATION_TONE: Record<VerificationStatus, Tone> = {
+  NOT_STARTED: "neutral",
+  PENDING: "warning",
+  UNDER_REVIEW: "warning",
+  VERIFIED: "success",
+  REJECTED: "danger",
+  SUSPENDED: "danger",
+  LEGACY_REVIEW_REQUIRED: "warning",
+  FINANCIAL_REVIEW_REQUIRED: "warning",
+};
+
+function recipientTone(status: string | null): Tone {
+  if (status === "active") return "success";
+  if (status === "refused" || status === "canceled" || status === "inactive") return "danger";
+  if (!status) return "neutral";
+  return "warning";
+}
+
+function kycTone(status: string | null): Tone {
+  if (status === "APPROVED") return "success";
+  if (status === "REJECTED") return "danger";
+  if (status === "PENDING") return "warning";
+  return "neutral";
+}
+
+function StatusItem({ label, tone, children }: { label: string; tone: Tone; children: string }) {
+  return (
+    <div className="surface-inset flex flex-col gap-2 rounded-xl p-4">
+      <p className="text-micro font-semibold uppercase tracking-wider text-subtle-foreground">{label}</p>
+      <StatusBadge tone={tone}>{children}</StatusBadge>
+    </div>
+  );
+}
 
 export function StepStatus({ orgId, profile }: { orgId: number; profile: LegalFinancialProfile | undefined }) {
   const generateKycLink = useGenerateKycLink(orgId);
@@ -70,75 +104,55 @@ export function StepStatus({ orgId, profile }: { orgId: number; profile: LegalFi
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Status</CardTitle>
-        <CardDescription>Acompanhamento do cadastro e da verificação de identidade (KYC) na Pagar.me.</CardDescription>
+        <div>
+          <CardTitle>Status da verificação</CardTitle>
+          <CardDescription>Acompanhamento do cadastro e da verificação de identidade (KYC) na Pagar.me.</CardDescription>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-5">
         {profile.recipientBlocked ? (
-          <div className="rounded-xl border border-red-300 bg-red-50 p-3.5">
-            <p className="text-sm font-medium text-red-900">Recebedor bloqueado</p>
-            <p className="mt-1 text-xs text-red-700">{profile.recipientBlockedReason ?? "Fale com o suporte da Nokta."}</p>
-          </div>
+          <Callout tone="danger" title="Recebedor bloqueado">
+            {profile.recipientBlockedReason ?? "Fale com o suporte da Nokta."}
+          </Callout>
         ) : null}
 
         <div className="grid gap-3 sm:grid-cols-3">
-          <div>
-            <Label className="text-xs text-black/50">Status interno</Label>
-            <div className="mt-1">
-              <Badge variant="outline">{VERIFICATION_STATUS_LABEL[profile.verificationStatus]}</Badge>
-            </div>
-          </div>
-          <div>
-            <Label className="text-xs text-black/50">Status na Pagar.me</Label>
-            <div className="mt-1">
-              <Badge variant="outline">{profile.recipientStatus ? (RECIPIENT_STATUS_LABEL[profile.recipientStatus] ?? profile.recipientStatus) : "Não criado"}</Badge>
-            </div>
-          </div>
-          <div>
-            <Label className="text-xs text-black/50">Verificação de identidade</Label>
-            <div className="mt-1">
-              <Badge variant="outline">{profile.kycStatus ? (KYC_STATUS_LABEL[profile.kycStatus] ?? profile.kycStatus) : "Não iniciado"}</Badge>
-            </div>
-          </div>
+          <StatusItem label="Status interno" tone={VERIFICATION_TONE[profile.verificationStatus]}>
+            {VERIFICATION_STATUS_LABEL[profile.verificationStatus]}
+          </StatusItem>
+          <StatusItem label="Status na Pagar.me" tone={recipientTone(profile.recipientStatus)}>
+            {profile.recipientStatus ? (RECIPIENT_STATUS_LABEL[profile.recipientStatus] ?? profile.recipientStatus) : "Não criado"}
+          </StatusItem>
+          <StatusItem label="Verificação de identidade" tone={kycTone(profile.kycStatus)}>
+            {profile.kycStatus ? (KYC_STATUS_LABEL[profile.kycStatus] ?? profile.kycStatus) : "Não iniciado"}
+          </StatusItem>
         </div>
 
-        {profile.recipientAttemptState === "RECIPIENT_ERROR" && profile.recipientLastError ? (
-          <p className="text-xs text-red-600">A última tentativa de criar o recebedor falhou: {profile.recipientLastError}</p>
-        ) : null}
+        {profile.recipientAttemptState === "RECIPIENT_ERROR" && profile.recipientLastError ? <Callout tone="danger">A última tentativa de criar o recebedor falhou: {profile.recipientLastError}</Callout> : null}
 
         {/* Recebedor já ativo na Pagar.me não precisa de prova de vida: o link só aparece enquanto o cadastro está em análise. */}
         {profile.hasRecipient && profile.recipientStatus !== "active" ? (
-          <div className="rounded-xl border border-[#ecebf1] bg-black/[0.02] p-3.5">
-            <p className="text-xs text-black/60">
-              Cadastro criado não significa saldo liberado — a Pagar.me pode pedir uma verificação de identidade adicional (prova de vida) antes de
-              liberar o recebedor por completo.
-            </p>
-            <div className="mt-3 flex items-center gap-3">
-              <Button size="sm" variant="outline" onClick={handleGenerateLink} disabled={generateKycLink.isPending}>
-                {generateKycLink.isPending ? (
-                  <span className="flex items-center gap-1.5">
-                    <Loader2 size={13} className="animate-spin" /> Gerando…
-                  </span>
-                ) : linkUrl && !linkExpired ? (
-                  "Gerar novo link"
-                ) : (
-                  "Gerar link de verificação"
-                )}
+          <Callout
+            tone="brand"
+            icon="id-card"
+            title="Prova de vida"
+            action={
+              <Button size="sm" variant="outline" onClick={handleGenerateLink} loading={generateKycLink.isPending}>
+                {linkUrl && !linkExpired ? "Gerar novo link" : "Gerar link de verificação"}
               </Button>
-              {linkUrl && !linkExpired ? (
-                <a
-                  href={linkUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#6d28d9]"
-                >
+            }
+          >
+            Cadastro criado não significa saldo liberado — a Pagar.me pode pedir uma verificação de identidade adicional antes de liberar o recebedor por completo.
+            {linkUrl && !linkExpired ? (
+              <span className="mt-2 flex flex-wrap items-center gap-3">
+                <a href={linkUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-caption font-semibold text-brand hover:underline">
                   Abrir verificação
-                  <ExternalLink size={12} />
+                  <Icon name="external" size={10} />
                 </a>
-              ) : null}
-              {countdown && !linkExpired ? <span className="text-xs text-black/40">Expira em {countdown}</span> : null}
-            </div>
-          </div>
+                {countdown ? <span className="text-caption text-subtle-foreground tnum">Expira em {countdown}</span> : null}
+              </span>
+            ) : null}
+          </Callout>
         ) : null}
       </CardContent>
     </Card>

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, FieldGroup } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { formatCnpj, formatCpf, normalizeDigits, validateCnpj, validateCpf } from "@/lib/br-data";
 import { toast } from "@/lib/toast";
 import type { LegalType } from "@/services/venue-legal-financial";
@@ -52,6 +52,7 @@ export function StepEntityDetails({
   const documentDigits = normalizeDigits(value.document);
   const documentValid = isCompany ? validateCnpj(documentDigits) : validateCpf(documentDigits);
   const keepsSavedDocument = !documentDigits && !!savedDocumentMasked;
+  const docLabel = isCompany ? "CNPJ" : "CPF";
 
   const annualRevenue = moneyToDecimal(value.annualRevenue);
 
@@ -73,84 +74,68 @@ export function StepEntityDetails({
     onSubmit({ ...value, annualRevenue });
   };
 
+  const documentHint = keepsSavedDocument ? `${docLabel} já salvo. Deixe em branco para manter, ou digite outro para trocar.` : value.document && documentValid ? `${docLabel} válido.` : undefined;
+  const documentError = value.document && !documentValid ? `${docLabel} inválido.` : undefined;
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{isCompany ? "Dados da empresa" : "Seus dados"}</CardTitle>
-        <CardDescription>{isCompany ? "Informações da pessoa jurídica exigidas pela Pagar.me." : "Nome legal e CPF."}</CardDescription>
+        <div>
+          <CardTitle>{isCompany ? "Dados da empresa" : "Seus dados"}</CardTitle>
+          <CardDescription>{isCompany ? "Informações da pessoa jurídica exigidas pela Pagar.me." : "Nome legal e CPF."}</CardDescription>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label>{isCompany ? "Razão social" : "Nome completo"}</Label>
-            <Input value={value.legalName} onChange={(e) => set("legalName", e.target.value)} placeholder={isCompany ? "Empresa LTDA" : "Nome civil completo"} />
-          </div>
+      <CardContent className="space-y-6">
+        <FieldGroup columns={2}>
+          <Field label={isCompany ? "Razão social" : "Nome completo"} htmlFor="entity-legal-name" required>
+            <Input id="entity-legal-name" value={value.legalName} onChange={(e) => set("legalName", e.target.value)} placeholder={isCompany ? "Empresa LTDA" : "Nome civil completo"} />
+          </Field>
           {isCompany ? (
-            <div className="space-y-1.5">
-              <Label>Nome fantasia</Label>
-              <Input value={value.tradeName} onChange={(e) => set("tradeName", e.target.value)} placeholder="Opcional" />
-            </div>
+            <Field label="Nome fantasia" htmlFor="entity-trade-name" optional>
+              <Input id="entity-trade-name" value={value.tradeName} onChange={(e) => set("tradeName", e.target.value)} />
+            </Field>
           ) : null}
-        </div>
+        </FieldGroup>
 
-        <div className="max-w-xs space-y-1.5">
-          <Label>{isCompany ? "CNPJ" : "CPF"}</Label>
-          <Input
-            value={isCompany ? formatCnpj(value.document) : formatCpf(value.document)}
-            onChange={(e) => set("document", e.target.value.replace(/\D/g, "").slice(0, isCompany ? 14 : 11))}
-            placeholder={savedDocumentMasked ?? (isCompany ? "00.000.000/0000-00" : "000.000.000-00")}
-            inputMode="numeric"
-            maxLength={isCompany ? 18 : 14}
-          />
-          {keepsSavedDocument ? (
-            <p className="text-xs text-black/50">{isCompany ? "CNPJ" : "CPF"} já salvo. Deixe em branco para manter, ou digite outro para trocar.</p>
-          ) : null}
-          {value.document ? (
-            <p className={documentValid ? "text-xs text-green-600" : "text-xs text-red-500"}>
-              {documentValid ? `${isCompany ? "CNPJ" : "CPF"} válido.` : `${isCompany ? "CNPJ" : "CPF"} inválido.`}
-            </p>
-          ) : null}
-        </div>
+        <Field label={docLabel} htmlFor="entity-document" required={!savedDocumentMasked} className="max-w-xs" hint={documentHint} error={documentError}>
+          <Input id="entity-document" value={isCompany ? formatCnpj(value.document) : formatCpf(value.document)} onChange={(e) => set("document", e.target.value.replace(/\D/g, "").slice(0, isCompany ? 14 : 11))} placeholder={savedDocumentMasked ?? (isCompany ? "00.000.000/0000-00" : "000.000.000-00")} inputMode="numeric" maxLength={isCompany ? 18 : 14} aria-invalid={documentError ? true : undefined} />
+        </Field>
 
         {isCompany ? (
           <>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Site (opcional)</Label>
-                <Input value={value.siteUrl} onChange={(e) => set("siteUrl", e.target.value)} placeholder="https://minhaempresa.com.br" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Faturamento anual (R$)</Label>
-                <Input value={value.annualRevenue} onChange={(e) => set("annualRevenue", maskMoney(e.target.value))} placeholder="500.000,00" inputMode="numeric" />
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Tipo societário (opcional)</Label>
-                <Input value={value.corporationType} onChange={(e) => set("corporationType", e.target.value)} placeholder="LTDA" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Data de abertura (opcional)</Label>
-                <Input type="date" value={value.foundingDate} onChange={(e) => set("foundingDate", e.target.value)} />
-              </div>
-            </div>
-            <div>
-              <Label className="mb-3 block text-xs text-black/50">Telefone da empresa</Label>
+            <FieldGroup columns={2}>
+              <Field label="Site" htmlFor="entity-site" optional>
+                <Input id="entity-site" type="url" value={value.siteUrl} onChange={(e) => set("siteUrl", e.target.value)} placeholder="https://minhaempresa.com.br" />
+              </Field>
+              <Field label="Faturamento anual" htmlFor="entity-revenue" required>
+                <Input id="entity-revenue" prefix="R$" value={value.annualRevenue} onChange={(e) => set("annualRevenue", maskMoney(e.target.value))} placeholder="500.000,00" inputMode="numeric" />
+              </Field>
+              <Field label="Tipo societário" htmlFor="entity-corporation" optional>
+                <Input id="entity-corporation" value={value.corporationType} onChange={(e) => set("corporationType", e.target.value)} placeholder="LTDA" />
+              </Field>
+              <Field label="Data de abertura" htmlFor="entity-founding" optional>
+                <Input id="entity-founding" type="date" value={value.foundingDate} onChange={(e) => set("foundingDate", e.target.value)} />
+              </Field>
+            </FieldGroup>
+
+            <fieldset className="space-y-3">
+              <legend className="text-sm font-semibold text-foreground">Telefone da empresa</legend>
               <PhoneFields value={value.phone} onChange={(phone) => set("phone", phone)} idPrefix="empresa-telefone" />
-            </div>
-            <div>
-              <Label className="mb-3 block text-xs text-black/50">Endereço da empresa</Label>
+            </fieldset>
+
+            <fieldset className="space-y-3">
+              <legend className="text-sm font-semibold text-foreground">Endereço da empresa</legend>
               <AddressFields value={value.address} onChange={(address) => set("address", address)} idPrefix="empresa-endereco" />
-            </div>
+            </fieldset>
           </>
         ) : null}
       </CardContent>
-      <CardFooter className="flex justify-between">
-        <Button type="button" variant="outline" onClick={onBack} disabled={submitting}>
+      <CardFooter className="justify-between">
+        <Button type="button" variant="ghost" onClick={onBack} disabled={submitting} leftIcon="arrow-left">
           Voltar
         </Button>
-        <Button onClick={handleSubmit} disabled={submitting}>
-          {submitting ? "Salvando…" : "Continuar"}
+        <Button onClick={handleSubmit} loading={submitting} rightIcon="arrow-right">
+          Continuar
         </Button>
       </CardFooter>
     </Card>

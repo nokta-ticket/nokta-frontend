@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
@@ -46,37 +46,55 @@ export function InviteMemberDialog({ orgId, open, onOpenChange }: { orgId: numbe
   };
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
-      <DialogContent>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        onOpenChange(v);
+        if (!v) reset();
+      }}
+    >
+      <DialogContent size="sm">
         <DialogHeader>
           <DialogTitle>Convidar membro</DialogTitle>
           <DialogDescription>A pessoa recebe um e-mail com um link para aceitar o convite.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="invite-email">E-mail</Label>
-            <Input id="invite-email" type="email" placeholder="nome@exemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </div>
+        <DialogBody>
+          <form
+            id="invite-member-form"
+            className="flex flex-col gap-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void handleSubmit();
+            }}
+          >
+            <Field label="E-mail" htmlFor="invite-email" required>
+              <Input id="invite-email" type="email" autoComplete="off" placeholder="nome@exemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} leftIcon="mail" />
+            </Field>
 
-          <div className="space-y-1.5">
-            <Label>Papel no Venue</Label>
-            <Select value={roleKey} onValueChange={(v) => setRoleKey(v as VenueRoleKey)}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Selecione um papel" /></SelectTrigger>
-              <SelectContent>
-                {(roles ?? []).map((r) => (
-                  <SelectItem key={r.key} value={r.key}>{r.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {selectedRole ? <p className="text-xs text-black/50">{selectedRole.description}</p> : null}
-          </div>
-        </div>
+            <Field label="Papel na operação" htmlFor="invite-role" required hint={selectedRole?.description}>
+              <Select value={roleKey} onValueChange={(v) => setRoleKey(v as VenueRoleKey)}>
+                <SelectTrigger id="invite-role" className="h-11 w-full rounded-input border-border bg-surface-2 px-3.5 md:h-10">
+                  <SelectValue placeholder="Selecione um papel" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(roles ?? []).map((r) => (
+                    <SelectItem key={r.key} value={r.key}>
+                      {r.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          </form>
+        </DialogBody>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={createInvitation.isPending}>
-            {createInvitation.isPending ? "Enviando…" : "Enviar convite"}
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          <Button type="submit" form="invite-member-form" loading={createInvitation.isPending} leftIcon="send">
+            Enviar convite
           </Button>
         </DialogFooter>
       </DialogContent>

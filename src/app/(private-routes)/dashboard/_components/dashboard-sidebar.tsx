@@ -3,59 +3,56 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
+import { Sheet, SheetClose, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { BrandLogo } from "@/components/brand/brand-logo";
+import { Icon } from "@/components/ui/icon";
+import { OrgSwitcher } from "./org-switcher";
+import { ThemeToggle } from "./theme-toggle";
 import { UnifiedSidebar } from "./unified-sidebar";
-import { UserMenu } from "./user-menu";
-import { NoktaWordmark } from "@/components/brand/nokta-wordmark";
 
-// Sidebar: logo → grupos de navegação por capacidade (Fase 4 — navegação
-// unificada definitiva; ver docs/platform/unified-navigation.md "Estruturas
-// transitórias removidas"). O fallback do switcher Tickets|Venue existiu
-// nas Fases 3-4 só como rede de segurança durante a migração; removido
-// depois de validado autenticado em produção. Rollback é por git revert.
-//
-// Card de perfil no rodapé (abaixo de Ajuda/Explore, dentro de
-// UnifiedSidebar): mesmo UserMenu da topbar, variant="sidebar" — evita
-// duas fontes de verdade pro mesmo dropdown de conta/logout.
-function SidebarInner() {
+/**
+ * Conteúdo da sidebar (desktop e gaveta do celular): logo → organização →
+ * grupos de navegação por capacidade → rodapé (Explore + ajuda). Fundo
+ * escuro SEMPRE (`sidebar-bg`), mesmo no tema claro do painel.
+ */
+function SidebarInner({ mobile = false }: { mobile?: boolean }) {
   return (
-    <>
-      {/* Mesma faixa de 64px do header (topbar h-16): o -mt-5 anula o p-5
-          do aside para a logo ficar no centro vertical do header. */}
-      <div className="-mt-5 mb-1 flex h-16 shrink-0 items-center justify-center">
-        <NoktaWordmark className="text-[46px]" />
+    <div className="flex h-full min-h-0 flex-col text-white">
+      <div className="flex h-16 shrink-0 items-center px-5">
+        <Link href="/dashboard/inicio" aria-label="Início" className="press text-white">
+          <BrandLogo variant="nokta" height={24} className="text-white" />
+        </Link>
+        {mobile ? (
+          <SheetClose className="ml-auto flex size-10 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white">
+            <Icon name="close" size={16} />
+            <span className="sr-only">Fechar menu</span>
+          </SheetClose>
+        ) : null}
       </div>
 
-      <UnifiedSidebar />
-
-      {/* No celular o atalho do conector sai da barra do topo (não cabe ao lado
-          de período e workspace) e fica aqui, junto do resto do menu. */}
-      <Link
-        href="/dashboard/configuracoes?tab=ia"
-        className="mt-3 flex h-11 shrink-0 items-center justify-center rounded-xl bg-[#1c1a24] text-[13.5px] font-semibold text-white transition-transform duration-150 ease-out active:scale-[0.97] motion-reduce:active:scale-100 lg:hidden"
-      >
-        Conectar ao Claude
-      </Link>
-
-      <div className="mt-3 border-t border-black/10 pt-3">
-        <UserMenu variant="sidebar" />
+      <div className="px-4 pb-4">
+        <OrgSwitcher />
       </div>
-    </>
+
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-4 [scrollbar-color:rgba(255,255,255,0.2)_transparent]">
+        <UnifiedSidebar
+          footer={
+            mobile ? (
+              <div className="flex items-center justify-between gap-3 rounded-xl px-3 py-1.5">
+                <span className="text-sm text-white/70">Tema do painel</span>
+                <ThemeToggle variant="sidebar" />
+              </div>
+            ) : null
+          }
+        />
+      </div>
+    </div>
   );
 }
 
 /**
- * Gaveta do menu no celular/tablet (< lg). O botão fica dentro da Topbar:
- * antes existia uma segunda faixa só para ele e a logo, e as duas faixas
- * juntas tomavam 136px de uma tela de 844px.
+ * Gaveta do menu no celular/tablet (< lg). O botão fica dentro da Topbar.
+ * Fecha sozinha ao trocar de rota.
  */
 export function MobileNav() {
   const pathname = usePathname();
@@ -68,18 +65,13 @@ export function MobileNav() {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Abrir menu" className="-ml-2 size-10 lg:hidden">
-          <Menu className="size-5 text-foreground" />
-        </Button>
+        <button type="button" aria-label="Abrir menu" className="-ml-2 flex size-10 items-center justify-center rounded-full text-foreground transition-colors hover:bg-surface-2 lg:hidden">
+          <Icon name="menu" size={18} />
+        </button>
       </SheetTrigger>
-      <SheetContent
-        side="left"
-        className="flex w-[min(20rem,calc(100vw-3rem))] flex-col gap-2 bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-sm"
-      >
-        <SheetHeader className="p-0">
-          <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
-        </SheetHeader>
-        <SidebarInner />
+      <SheetContent side="left" showCloseButton={false} className="sidebar-bg w-[min(20rem,88vw)] border-white/10 p-0 text-white">
+        <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
+        <SidebarInner mobile />
       </SheetContent>
     </Sheet>
   );
@@ -87,7 +79,7 @@ export function MobileNav() {
 
 export function DashboardSidebar() {
   return (
-    <aside className="hidden h-full w-[272px] flex-col gap-2 border-r border-black/10 bg-white p-5 text-sm lg:flex">
+    <aside className="sidebar-bg sticky top-0 hidden h-dvh w-[272px] shrink-0 flex-col border-r border-white/[0.06] lg:flex">
       <SidebarInner />
     </aside>
   );

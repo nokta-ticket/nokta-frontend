@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Ban } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useOrganizations } from "@/context/OrganizationContext";
 
 /**
@@ -16,15 +16,8 @@ export function WorkspaceBlockedGate({ children }: { children: ReactNode }) {
   if (!currentOrg || currentOrg.status === "ACTIVE") return <>{children}</>;
 
   return (
-    <div className="mx-auto flex max-w-md flex-col items-center gap-3 py-20 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#fcf5f6] text-[#9b1c35]">
-        <Ban className="h-6 w-6" />
-      </div>
-      <h1 className="text-lg font-semibold text-gray-900">Este workspace está bloqueado</h1>
-      <p className="text-sm text-gray-600">
-        {currentOrg.nome} está com o acesso suspenso pela Nokta. Nada foi apagado. Fale com o suporte para
-        regularizar.
-      </p>
+    <div className="mx-auto w-full max-w-md py-16">
+      <EmptyState icon="ban" title="Este workspace está bloqueado" description={`${currentOrg.nome} está com o acesso suspenso pela Nokta. Nada foi apagado — fale com o suporte para regularizar.`} />
     </div>
   );
 }

@@ -1,40 +1,30 @@
 "use client";
 
-import { CheckCircle2, Info } from "lucide-react";
+import { Callout } from "@/components/ui/callout";
+import { Icon } from "@/components/ui/icon";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { BusinessNeedGroup, BusinessNeedsActivationPreview } from "@/services/platform";
-import { BlockSkeleton } from "../states/loading-state";
 
 /** "Vamos preparar seu workspace com:" — resumo antes de confirmar (onboarding). */
-export function BusinessNeedActivationSummary({
-  groups,
-  preview,
-  isLoading,
-}: {
-  groups: BusinessNeedGroup[];
-  preview: BusinessNeedsActivationPreview | undefined;
-  isLoading: boolean;
-}) {
+export function BusinessNeedActivationSummary({ groups, preview, isLoading }: { groups: BusinessNeedGroup[]; preview: BusinessNeedsActivationPreview | undefined; isLoading: boolean }) {
   const labelOf = (key: string) => groups.flatMap((g) => g.capabilities).find((c) => c.key === key)?.label ?? key;
 
   if (isLoading || !preview) {
-    return <BlockSkeleton className="h-40" />;
+    return <Skeleton className="h-40 w-full rounded-card" />;
   }
 
   return (
     <div className="space-y-4">
-      <p className="text-sm font-medium text-gray-900">Vamos preparar seu workspace com:</p>
+      <p className="text-sm font-semibold text-foreground">Vamos preparar seu workspace com:</p>
 
       <div className="space-y-3">
         {preview.groups.map((group) => (
-          <div key={group.key} className="rounded-xl border border-black/10 p-3">
-            <p className="text-sm font-medium text-gray-900">{group.label}</p>
+          <div key={group.key} className="surface-inset rounded-xl p-3.5">
+            <p className="text-sm font-medium text-foreground">{group.label}</p>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {group.capabilityKeys.map((key) => (
-                <span
-                  key={key}
-                  className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700"
-                >
-                  <CheckCircle2 size={11} /> {labelOf(key)}
+                <span key={key} className="inline-flex items-center gap-1 rounded-pill bg-success-bg px-2 py-0.5 text-caption font-medium text-success ring-1 ring-inset ring-success-ring">
+                  <Icon name="check" size={9} /> {labelOf(key)}
                 </span>
               ))}
             </div>
@@ -43,15 +33,10 @@ export function BusinessNeedActivationSummary({
       </div>
 
       {preview.autoIncludedKeys.length > 0 ? (
-        <div className="flex items-start gap-2 rounded-lg border border-violet-200 bg-violet-50 p-3 text-xs text-violet-800">
-          <Info size={14} className="mt-0.5 shrink-0" />
-          <span>
-            Incluímos automaticamente: {preview.autoIncludedKeys.map((k) => labelOf(k)).join(", ")} — necessário para o que você escolheu funcionar.
-          </span>
-        </div>
+        <Callout tone="brand">Incluímos automaticamente: {preview.autoIncludedKeys.map((k) => labelOf(k)).join(", ")} — necessário para o que você escolheu funcionar.</Callout>
       ) : null}
 
-      <p className="text-xs text-black/50">Você poderá adicionar ou remover funcionalidades posteriormente em Explore a Nokta.</p>
+      <p className="text-caption text-subtle-foreground">Você pode adicionar ou remover funcionalidades depois em Explore a Nokta.</p>
     </div>
   );
 }

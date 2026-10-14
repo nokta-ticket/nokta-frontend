@@ -2,10 +2,10 @@
 
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { EmptyState } from "@/components/ui/empty-state";
 import { formatCentsBRL } from "@/services/venue-finance";
 import { ChartCard } from "./chart-card";
 import { BlockSkeleton } from "./states/loading-state";
-import { EmptyState } from "./states/empty-state";
 
 export interface FinanceTimelinePoint {
   date: string;
@@ -15,8 +15,8 @@ export interface FinanceTimelinePoint {
 
 function timelineConfig(resultLabel: string): ChartConfig {
   return {
-    revenueCents: { label: "Faturamento", color: "var(--primary)" },
-    resultCents: { label: resultLabel, color: "var(--color-chart-3)" },
+    revenueCents: { label: "Faturamento", color: "var(--chart-1)" },
+    resultCents: { label: resultLabel, color: "var(--chart-3)" },
   };
 }
 
@@ -42,7 +42,7 @@ function zeroSeries(dates: string[]): FinanceTimelinePoint[] {
 export function FinanceTimelineChart({
   data,
   isLoading,
-  title = "Desempenho Financeiro",
+  title = "Desempenho financeiro",
   description = "Faturamento e resultado nos últimos 7 dias",
   className,
   showResult = true,
@@ -74,17 +74,17 @@ export function FinanceTimelineChart({
       {isLoading ? (
         <BlockSkeleton className="h-64" />
       ) : !points || points.length === 0 ? (
-        <EmptyState title="Sem dados no período" description="Vendas e resultado aparecerão aqui conforme o movimento do período." />
+        <EmptyState compact icon="chart-line" title="Sem dados no período" description="Vendas e resultado aparecem aqui conforme o movimento do período." />
       ) : (
         <ChartContainer config={config} className="max-h-72 w-full">
           <AreaChart data={points} margin={{ left: 12, right: 12 }}>
             <defs>
               <linearGradient id="financeRevenueFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.18} />
-                <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
+                <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.22} />
+                <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid vertical={false} strokeDasharray="3 6" />
+            <CartesianGrid vertical={false} strokeDasharray="3 6" stroke="var(--border)" />
             <XAxis
               dataKey="date"
               tickLine={false}
@@ -93,13 +93,7 @@ export function FinanceTimelineChart({
               tickFormatter={(v: string) => formatDayMonth(v.replace("​", ""))}
               ticks={points.length === 2 && points[1].date.endsWith("​") ? [points[0].date] : undefined}
             />
-            <YAxis
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={formatMoney}
-              width={90}
-              domain={isEmpty ? [0, 100_000] : undefined}
-            />
+            <YAxis tickLine={false} axisLine={false} tickFormatter={formatMoney} width={90} domain={isEmpty ? [0, 100_000] : undefined} />
             <ChartTooltip
               content={
                 <ChartTooltipContent
@@ -107,34 +101,15 @@ export function FinanceTimelineChart({
                   formatter={(value, name) => (
                     <span className="flex w-full justify-between gap-4">
                       <span className="text-muted-foreground">{config[String(name)]?.label ?? name}</span>
-                      <span className="font-mono font-medium tabular-nums">{formatMoney(Number(value))}</span>
+                      <span className="tnum font-medium">{formatMoney(Number(value))}</span>
                     </span>
                   )}
                 />
               }
             />
             {showResult ? <ChartLegend content={<ChartLegendContent />} /> : null}
-            <Area
-              dataKey="revenueCents"
-              type="monotone"
-              stroke="var(--color-revenueCents)"
-              strokeWidth={3}
-              fill="url(#financeRevenueFill)"
-              dot={points.length === 1}
-              isAnimationActive={false}
-            />
-            {showResult ? (
-              <Area
-                dataKey="resultCents"
-                type="monotone"
-                stroke="var(--color-resultCents)"
-                strokeWidth={2}
-                fill="none"
-                strokeDasharray="5 5"
-                dot={false}
-                isAnimationActive={false}
-              />
-            ) : null}
+            <Area dataKey="revenueCents" type="monotone" stroke="var(--color-revenueCents)" strokeWidth={3} fill="url(#financeRevenueFill)" dot={points.length === 1} isAnimationActive={false} />
+            {showResult ? <Area dataKey="resultCents" type="monotone" stroke="var(--color-resultCents)" strokeWidth={2} fill="none" strokeDasharray="5 5" dot={false} isAnimationActive={false} /> : null}
           </AreaChart>
         </ChartContainer>
       )}

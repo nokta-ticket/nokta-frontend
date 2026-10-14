@@ -1,49 +1,63 @@
 "use client";
 
 import { useState } from "react";
-import { MoreVertical, ShieldCheck } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { StatusBadge, type Tone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { GenericStatusBadge } from "../../estoque/_components/stock-status-badge";
-import { EmptyState } from "../../_components/states/empty-state";
-import { TableSkeleton } from "../../_components/states/loading-state";
-import { ErrorState } from "../../_components/states/error-state";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeadCell, DataTableRow, DataTableShell, MobileCard, MobileCardList } from "@/components/ui/data-table";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
+import { RowsSkeleton } from "@/components/ui/skeleton";
 import { MEMBER_STATUS_LABEL, VENUE_ROLE_LABEL, type MemberStatus, type VenueTeamMember } from "@/services/venue-team";
 import { useVenueTeamMembers, useVenueTeamMutations } from "../_hooks/use-venue-team";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
 
-function statusTone(status: MemberStatus) {
-  if (status === "ACTIVE") return "success" as const;
-  if (status === "SUSPENDED") return "warning" as const;
-  if (status === "REMOVED") return "danger" as const;
-  return "neutral" as const;
-}
+const STATUS_TONE: Record<MemberStatus, Tone> = { ACTIVE: "success", INVITED: "neutral", SUSPENDED: "warning", REMOVED: "danger" };
 
 function initials(nome: string) {
   const parts = nome.trim().split(/\s+/);
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase();
 }
 
-export function MembersTab({ orgId, onOpenMember }: { orgId: number; onOpenMember: (memberId: number) => void }) {
+function MemberAvatar({ nome }: { nome: string }) {
+  return (
+    <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-caption font-semibold text-brand">
+      {initials(nome)}
+    </span>
+  );
+}
+
+function MemberIdentity({ member }: { member: VenueTeamMember }) {
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <MemberAvatar nome={member.nome} />
+      <div className="min-w-0">
+        <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-foreground">
+          <span className="truncate">{member.nome}</span>
+          {member.isOrgOwner ? <Icon name="crown" size={11} className="shrink-0 text-warning" aria-label="Proprietário" /> : null}
+        </p>
+        <p className="truncate text-caption text-muted-foreground">{member.email}</p>
+      </div>
+    </div>
+  );
+}
+
+export function MembersTab({ orgId, canManage, onOpenMember }: { orgId: number; canManage: boolean; onOpenMember: (memberId: number) => void }) {
   const { data: members, isLoading, isError, refetch } = useVenueTeamMembers(orgId);
   const { updateStatus, removeMember } = useVenueTeamMutations(orgId);
   const [confirmRemove, setConfirmRemove] = useState<VenueTeamMember | null>(null);
+  const [pendingStatusId, setPendingStatusId] = useState<number | null>(null);
 
   const handleStatus = async (member: VenueTeamMember, status: "ACTIVE" | "SUSPENDED") => {
+    setPendingStatusId(member.memberId);
     try {
       await updateStatus.mutateAsync({ memberId: member.memberId, status });
       toast.success(status === "SUSPENDED" ? "Membro suspenso." : "Membro reativado.");
     } catch (err) {
       toast.error(getErrorMessage(err, "Não foi possível atualizar o status."));
+    } finally {
+      setPendingStatusId(null);
     }
   };
 
@@ -52,87 +66,103 @@ export function MembersTab({ orgId, onOpenMember }: { orgId: number; onOpenMembe
     try {
       await removeMember.mutateAsync(confirmRemove.memberId);
       toast.success("Membro removido.");
-      setConfirmRemove(null);
     } catch (err) {
       toast.error(getErrorMessage(err, "Não foi possível remover o membro."));
+      throw err;
     }
   };
 
   if (isError) return <ErrorState description="Não foi possível carregar a equipe." onRetry={() => refetch()} />;
-  if (isLoading) return <TableSkeleton />;
+  if (isLoading) return <RowsSkeleton rows={4} />;
   if (!members || members.length === 0) {
-    return <EmptyState title="Nenhum membro ainda" description="Convide alguém para começar a montar a equipe desta organização." />;
+    return <EmptyState icon="users" title="Nenhum membro ainda" description="Convide alguém para começar a montar a equipe desta organização." />;
   }
+
+  const rowActions = (m: VenueTeamMember) => (
+    <>
+      <Button variant="subtle" size="icon-sm" aria-label={`Ver acesso de ${m.nome}`} title="Ver acesso" onClick={() => onOpenMember(m.memberId)}>
+        <Icon name="eye" size={14} />
+      </Button>
+      {canManage && !m.isOrgOwner ? (
+        <>
+          {m.status === "ACTIVE" ? (
+            <Button variant="subtle" size="icon-sm" aria-label={`Suspender ${m.nome}`} title="Suspender" loading={pendingStatusId === m.memberId} onClick={() => handleStatus(m, "SUSPENDED")} className="hover:text-warning">
+              <Icon name="ban" size={14} />
+            </Button>
+          ) : m.status === "SUSPENDED" ? (
+            <Button variant="subtle" size="icon-sm" aria-label={`Reativar ${m.nome}`} title="Reativar" loading={pendingStatusId === m.memberId} onClick={() => handleStatus(m, "ACTIVE")} className="hover:text-success">
+              <Icon name="check" size={14} />
+            </Button>
+          ) : null}
+          <Button variant="subtle" size="icon-sm" aria-label={`Remover ${m.nome}`} title="Remover" onClick={() => setConfirmRemove(m)} className="hover:bg-danger-bg hover:text-danger">
+            <Icon name="trash" size={14} />
+          </Button>
+        </>
+      ) : null}
+    </>
+  );
 
   return (
     <>
-      <div className="space-y-2">
-        {members.map((m) => (
-          <div key={m.memberId} className="flex items-center gap-3 rounded-xl border border-black/10 bg-white p-3">
-            <Avatar className="h-10 w-10">
-              <AvatarFallback>{initials(m.nome)}</AvatarFallback>
-            </Avatar>
+      <DataTableShell
+        maxHeight="calc(100dvh - 26rem)"
+        table={
+          <DataTable>
+            <DataTableHead>
+              <tr>
+                <DataTableHeadCell>Membro</DataTableHeadCell>
+                <DataTableHeadCell>Papel</DataTableHeadCell>
+                <DataTableHeadCell>Status</DataTableHeadCell>
+                <DataTableHeadCell align="right">Ações</DataTableHeadCell>
+              </tr>
+            </DataTableHead>
+            <DataTableBody>
+              {members.map((m, i) => (
+                <DataTableRow key={m.memberId} index={i} onClick={() => onOpenMember(m.memberId)}>
+                  <DataTableCell>
+                    <MemberIdentity member={m} />
+                  </DataTableCell>
+                  <DataTableCell className="text-muted-foreground">{m.isOrgOwner ? "Proprietário" : m.venueRole ? VENUE_ROLE_LABEL[m.venueRole] : "Sem papel"}</DataTableCell>
+                  <DataTableCell>
+                    <StatusBadge tone={STATUS_TONE[m.status]}>{MEMBER_STATUS_LABEL[m.status]}</StatusBadge>
+                  </DataTableCell>
+                  <DataTableCell align="right" stopPropagation>
+                    <div className="flex items-center justify-end gap-0.5">{rowActions(m)}</div>
+                  </DataTableCell>
+                </DataTableRow>
+              ))}
+            </DataTableBody>
+          </DataTable>
+        }
+        mobile={
+          <MobileCardList>
+            {members.map((m, i) => (
+              <MobileCard
+                key={m.memberId}
+                index={i}
+                leading={<MemberAvatar nome={m.nome} />}
+                title={m.nome}
+                subtitle={m.email}
+                badge={<StatusBadge tone={STATUS_TONE[m.status]}>{MEMBER_STATUS_LABEL[m.status]}</StatusBadge>}
+                meta={[{ label: "Papel", value: m.isOrgOwner ? "Proprietário" : m.venueRole ? VENUE_ROLE_LABEL[m.venueRole] : "Sem papel" }]}
+                onClick={() => onOpenMember(m.memberId)}
+                actions={rowActions(m)}
+              />
+            ))}
+          </MobileCardList>
+        }
+      />
 
-            <button className="min-w-0 flex-1 text-left" onClick={() => onOpenMember(m.memberId)}>
-              <div className="flex flex-wrap items-center gap-x-2">
-                <p className="max-w-full truncate font-medium text-gray-900">{m.nome}</p>
-                {m.isOrgOwner ? (
-                  <span className="flex items-center gap-1 text-xs font-medium text-violet-700">
-                    <ShieldCheck size={12} /> Proprietário
-                  </span>
-                ) : null}
-              </div>
-              <p className="truncate text-xs text-black/50">{m.email}</p>
-            </button>
-
-            <div className="hidden shrink-0 sm:block">{m.venueRole ? VENUE_ROLE_LABEL[m.venueRole] : "Sem papel"}</div>
-            <GenericStatusBadge label={MEMBER_STATUS_LABEL[m.status]} tone={statusTone(m.status)} />
-
-            {!m.isOrgOwner ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="Ações">
-                    <MoreVertical size={16} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onOpenMember(m.memberId)}>Ver acesso</DropdownMenuItem>
-                  {m.status === "ACTIVE" ? (
-                    <DropdownMenuItem onClick={() => handleStatus(m, "SUSPENDED")}>Suspender</DropdownMenuItem>
-                  ) : m.status === "SUSPENDED" ? (
-                    <DropdownMenuItem onClick={() => handleStatus(m, "ACTIVE")}>Reativar</DropdownMenuItem>
-                  ) : null}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-red-600" onClick={() => setConfirmRemove(m)}>
-                    Remover
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <div className="hidden w-9 sm:block" />
-            )}
-          </div>
-        ))}
-      </div>
-
-      <Dialog open={confirmRemove !== null} onOpenChange={(v) => !v && setConfirmRemove(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Remover {confirmRemove?.nome}?</DialogTitle>
-            <DialogDescription>
-              O acesso é revogado imediatamente. O histórico de ações continua preservado — a pessoa pode ser convidada de novo no futuro.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmRemove(null)}>
-              Cancelar
-            </Button>
-            <Button variant="destructive" onClick={handleRemove}>
-              Remover
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={confirmRemove !== null}
+        onOpenChange={(v) => !v && setConfirmRemove(null)}
+        danger
+        icon="trash"
+        title={`Remover ${confirmRemove?.nome ?? "membro"}?`}
+        description="O acesso é revogado imediatamente. O histórico de ações continua preservado — a pessoa pode ser convidada de novo no futuro."
+        confirmLabel="Remover"
+        onConfirm={handleRemove}
+      />
     </>
   );
 }

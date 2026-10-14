@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { GenericStatusBadge } from "../../estoque/_components/stock-status-badge";
-import { BlockSkeleton } from "../../_components/states/loading-state";
+import { Field } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Sheet, SheetBody, SheetContent, SheetDescription, SheetHeader, SheetSection, SheetTitle } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
+import { formatDateBR } from "@/lib/format";
 import { MEMBER_STATUS_LABEL, VENUE_ROLE_LABEL, type PermissionEffect, type VenueRoleKey } from "@/services/venue-team";
 import { venueMenuApi, type VenuePreparationStation } from "@/services/venue-menu";
 import { useVenuePermissionsCatalog, useVenueRolesCatalog, useVenueTeamMember, useVenueTeamMutations } from "../_hooks/use-venue-team";
@@ -35,15 +38,9 @@ function categoryOf(key: string): string {
   return CATEGORY_LABEL[prefix2] ?? CATEGORY_LABEL[parts[0]] ?? "Outros";
 }
 
-export function MemberDetailSheet({
-  orgId,
-  memberId,
-  onOpenChange,
-}: {
-  orgId: number;
-  memberId: number | null;
-  onOpenChange: (v: boolean) => void;
-}) {
+const SELECT_TRIGGER = "h-11 w-full rounded-input border-border bg-surface-2 px-3.5 md:h-10";
+
+export function MemberDetailSheet({ orgId, memberId, onOpenChange }: { orgId: number; memberId: number | null; onOpenChange: (v: boolean) => void }) {
   const { data: member, isLoading } = useVenueTeamMember(orgId, memberId);
   const { data: roles } = useVenueRolesCatalog(orgId);
   const { data: permissionsCatalog } = useVenuePermissionsCatalog(orgId);
@@ -65,7 +62,10 @@ export function MemberDetailSheet({
 
   useEffect(() => {
     if (member?.venueRole === "KITCHEN_BAR") {
-      venueMenuApi.listStations(orgId).then(setStations).catch(() => setStations([]));
+      venueMenuApi
+        .listStations(orgId)
+        .then(setStations)
+        .catch(() => setStations([]));
     }
   }, [orgId, member?.venueRole]);
 
@@ -110,120 +110,135 @@ export function MemberDetailSheet({
     grouped.set(cat, [...(grouped.get(cat) ?? []), p]);
   }
 
+  const statusTone = member?.status === "ACTIVE" ? "success" : member?.status === "SUSPENDED" ? "warning" : "danger";
+
   return (
     <Sheet open={memberId !== null} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
+      <SheetContent side="right" className="sm:max-w-lg">
         <SheetHeader>
           <SheetTitle>{member?.nome ?? "Membro"}</SheetTitle>
-          <SheetDescription>{member?.email}</SheetDescription>
+          <SheetDescription>{member?.email ?? "Carregando…"}</SheetDescription>
         </SheetHeader>
 
-        {isLoading || !member ? (
-          <div className="px-4"><BlockSkeleton className="h-64" /></div>
-        ) : (
-          <div className="space-y-6 px-4 pb-6">
-            <div className="flex items-center gap-2">
-              <GenericStatusBadge
-                label={MEMBER_STATUS_LABEL[member.status]}
-                tone={member.status === "ACTIVE" ? "success" : member.status === "SUSPENDED" ? "warning" : "danger"}
-              />
-              <span className="text-xs text-black/40">Entrou em {new Date(member.createdAt).toLocaleDateString("pt-BR")}</span>
+        <SheetBody>
+          {isLoading || !member ? (
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-40 rounded-pill" />
+              <Skeleton className="h-24 w-full rounded-xl" />
+              <Skeleton className="h-40 w-full rounded-xl" />
             </div>
-
-            <div className="space-y-1.5">
-              <p className="text-sm font-medium">Papel no Venue</p>
-              {member.isOrgOwner ? (
-                <p className="text-sm text-black/50">Proprietário da organização — acesso total, não pode ser alterado por aqui.</p>
-              ) : (
-                <Select value={member.venueRole ?? undefined} onValueChange={(v) => handleRoleChange(v as VenueRoleKey)}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Sem papel" /></SelectTrigger>
-                  <SelectContent>
-                    {(assignableRoles ?? []).map((r) => (
-                      <SelectItem key={r.key} value={r.key}>{r.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            {member.venueRole === "KITCHEN_BAR" ? (
-              <div className="space-y-1.5">
-                <p className="text-sm font-medium">Estações de preparo</p>
-                <p className="text-xs text-black/50">Sem nenhuma marcada, este membro não vê pedido nenhum na fila de preparo.</p>
-                <div className="space-y-2 rounded-lg border border-black/10 p-3">
-                  {stations.length === 0 ? (
-                    <p className="text-sm text-black/40">Nenhuma estação cadastrada no Cardápio.</p>
-                  ) : (
-                    stations.map((s) => (
-                      <label key={s.id} className="flex items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={selectedStationIds.includes(s.id)}
-                          onCheckedChange={(checked) =>
-                            setSelectedStationIds((prev) => (checked ? [...prev, s.id] : prev.filter((id) => id !== s.id)))
-                          }
-                        />
-                        {s.nome}
-                      </label>
-                    ))
-                  )}
-                </div>
-                <Button size="sm" variant="outline" onClick={handleSaveStations} disabled={assignStations.isPending}>
-                  Salvar estações
-                </Button>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center gap-3">
+                <StatusBadge tone={statusTone}>{MEMBER_STATUS_LABEL[member.status]}</StatusBadge>
+                {member.isOrgOwner ? (
+                  <StatusBadge tone="warning" dot={false}>
+                    <Icon name="crown" size={10} />
+                    Proprietário
+                  </StatusBadge>
+                ) : null}
+                <span className="text-caption text-muted-foreground">Entrou em {formatDateBR(member.createdAt)}</span>
               </div>
-            ) : null}
 
-            <div className="space-y-1.5">
-              <p className="text-sm font-medium">Permissões efetivas</p>
-              <div className="flex flex-wrap gap-1">
-                {member.effectivePermissions.length === 0 ? (
-                  <p className="text-sm text-black/40">Nenhuma.</p>
+              <SheetSection title="Papel na operação">
+                {member.isOrgOwner ? (
+                  <p className="text-sm text-muted-foreground">Proprietário da organização — acesso total, não pode ser alterado por aqui.</p>
                 ) : (
-                  member.effectivePermissions.map((p) => (
-                    <span key={p} className="rounded-full bg-black/5 px-2 py-0.5 text-xs text-black/60">{p}</span>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {!member.isOrgOwner ? (
-              <div className="space-y-2">
-                <Button size="sm" variant="ghost" onClick={() => setShowAdvanced((v) => !v)}>
-                  {showAdvanced ? "Ocultar" : "Mostrar"} permissões personalizadas
-                </Button>
-
-                {showAdvanced ? (
-                  <div className="space-y-4 rounded-lg border border-black/10 p-3">
-                    {[...grouped.entries()].map(([cat, perms]) => (
-                      <div key={cat} className="space-y-1.5">
-                        <p className="text-xs font-semibold text-black/50">{cat}</p>
-                        {perms?.map((p) => (
-                          <div key={p.key} className="flex items-center justify-between gap-2 text-sm">
-                            <span className="min-w-0 flex-1 truncate" title={p.description}>{p.description}</span>
-                            <Select
-                              value={choices[p.key] ?? "INHERITED"}
-                              onValueChange={(v) => setChoices((prev) => ({ ...prev, [p.key]: v as OverrideChoice }))}
-                            >
-                              <SelectTrigger className="w-36 shrink-0"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="INHERITED">Herdado</SelectItem>
-                                <SelectItem value="ALLOW">Permitido</SelectItem>
-                                <SelectItem value="DENY">Negado</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
+                  <Field hint="Define o conjunto padrão de permissões. Ajustes finos ficam em permissões personalizadas.">
+                    <Select value={member.venueRole ?? undefined} onValueChange={(v) => handleRoleChange(v as VenueRoleKey)} disabled={updateRole.isPending}>
+                      <SelectTrigger className={SELECT_TRIGGER}>
+                        <SelectValue placeholder="Sem papel" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(assignableRoles ?? []).map((r) => (
+                          <SelectItem key={r.key} value={r.key}>
+                            {r.label}
+                          </SelectItem>
                         ))}
-                      </div>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                )}
+              </SheetSection>
+
+              {member.venueRole === "KITCHEN_BAR" ? (
+                <SheetSection title="Estações de preparo">
+                  <p className="text-caption text-muted-foreground">Sem nenhuma marcada, este membro não vê pedido nenhum na fila de preparo.</p>
+                  <div className="mt-3 space-y-2">
+                    {stations.length === 0 ? (
+                      <p className="text-sm text-subtle-foreground">Nenhuma estação cadastrada no Cardápio.</p>
+                    ) : (
+                      stations.map((s) => (
+                        <label key={s.id} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg px-2 text-sm text-foreground transition-colors hover:bg-surface-2">
+                          <Checkbox checked={selectedStationIds.includes(s.id)} onCheckedChange={(checked) => setSelectedStationIds((prev) => (checked ? [...prev, s.id] : prev.filter((id) => id !== s.id)))} />
+                          {s.nome}
+                        </label>
+                      ))
+                    )}
+                  </div>
+                  <Button size="sm" variant="secondary" className="mt-3" onClick={handleSaveStations} loading={assignStations.isPending}>
+                    Salvar estações
+                  </Button>
+                </SheetSection>
+              ) : null}
+
+              <SheetSection title="Permissões efetivas">
+                {member.effectivePermissions.length === 0 ? (
+                  <p className="text-sm text-subtle-foreground">Nenhuma.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {member.effectivePermissions.map((p) => (
+                      <span key={p} className="rounded-pill bg-surface-2 px-2 py-0.5 font-mono text-micro text-muted-foreground">
+                        {p}
+                      </span>
                     ))}
-                    <Button size="sm" onClick={handleSavePermissions} disabled={setPermissions.isPending}>
-                      Salvar permissões
+                  </div>
+                )}
+              </SheetSection>
+
+              {!member.isOrgOwner ? (
+                <section className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <h4 className="text-sm font-semibold text-foreground">Permissões personalizadas</h4>
+                    <Button size="sm" variant="ghost" onClick={() => setShowAdvanced((v) => !v)} rightIcon={showAdvanced ? "chevron-up" : "chevron-down"}>
+                      {showAdvanced ? "Ocultar" : "Mostrar"}
                     </Button>
                   </div>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        )}
+
+                  {showAdvanced ? (
+                    <div className="surface-inset space-y-5 rounded-xl p-4">
+                      {[...grouped.entries()].map(([cat, perms]) => (
+                        <div key={cat} className="space-y-2">
+                          <p className="text-micro font-semibold uppercase tracking-wider text-subtle-foreground">{cat}</p>
+                          {perms?.map((p) => (
+                            <div key={p.key} className="flex items-center justify-between gap-3 text-sm">
+                              <span className="min-w-0 flex-1 truncate text-foreground" title={p.description}>
+                                {p.description}
+                              </span>
+                              <Select value={choices[p.key] ?? "INHERITED"} onValueChange={(v) => setChoices((prev) => ({ ...prev, [p.key]: v as OverrideChoice }))}>
+                                <SelectTrigger className="h-9 w-32 shrink-0 rounded-input border-border bg-surface-2 text-caption">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="INHERITED">Herdado</SelectItem>
+                                  <SelectItem value="ALLOW">Permitido</SelectItem>
+                                  <SelectItem value="DENY">Negado</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                      <Button size="sm" onClick={handleSavePermissions} loading={setPermissions.isPending}>
+                        Salvar permissões
+                      </Button>
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
+            </>
+          )}
+        </SheetBody>
       </SheetContent>
     </Sheet>
   );

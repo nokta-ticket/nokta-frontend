@@ -1,68 +1,47 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Callout } from "@/components/ui/callout";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import type { LegalFinancialDraft } from "@/services/venue-legal-financial";
+import { DefinitionItem, DefinitionList } from "../../../../_components/definition-list";
 
-export function StepReview({
-  draft,
-  onSubmit,
-  onBack,
-  submitting,
-}: {
-  draft: LegalFinancialDraft;
-  onSubmit: () => void;
-  onBack: () => void;
-  submitting: boolean;
-}) {
+export function StepReview({ draft, onSubmit, onBack, submitting }: { draft: LegalFinancialDraft; onSubmit: () => void; onBack: () => void; submitting: boolean }) {
   const isCompany = draft.legalType === "COMPANY";
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Revisão</CardTitle>
-        <CardDescription>
-          Confira os dados antes de criar o recebedor. Cadastro criado não significa saldo liberado — a Pagar.me ainda precisa concluir o KYC.
-        </CardDescription>
+        <div>
+          <CardTitle>Revisão</CardTitle>
+          <CardDescription>Confira os dados antes de criar o recebedor.</CardDescription>
+        </div>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <Label className="text-xs text-black/50">{isCompany ? "Razão social" : "Nome"}</Label>
-            <p className="text-sm font-medium">{draft.legalName || "—"}</p>
-          </div>
-          <div>
-            <Label className="text-xs text-black/50">{isCompany ? "CNPJ" : "CPF"}</Label>
-            <p className="text-sm font-medium">{draft.documentMasked ?? "—"}</p>
-          </div>
+        <DefinitionList>
+          <DefinitionItem label={isCompany ? "Razão social" : "Nome"} value={draft.legalName} />
+          <DefinitionItem label={isCompany ? "CNPJ" : "CPF"} value={draft.documentMasked} mono />
           {isCompany ? (
             <>
-              <div>
-                <Label className="text-xs text-black/50">Endereço do representante</Label>
-                <p className="text-sm font-medium">{draft.representative.motherName ? "Preenchido" : "—"}</p>
-              </div>
-              <div>
-                <Label className="text-xs text-black/50">Representante legal</Label>
-                <p className="text-sm font-medium">{draft.representative.documentMasked ?? "—"}</p>
-              </div>
+              <DefinitionItem label="Endereço do representante" value={draft.representative.motherName ? "Preenchido" : null} />
+              <DefinitionItem label="Representante legal" value={draft.representative.documentMasked} mono />
             </>
           ) : null}
-          <div>
-            <Label className="text-xs text-black/50">Conta bancária</Label>
-            <p className="text-sm font-medium">{draft.bankAccountMasked ?? "—"}</p>
-          </div>
-        </div>
+          <DefinitionItem label="Conta bancária" value={draft.bankAccountMasked} mono />
+        </DefinitionList>
 
-        <CardFooter className="flex justify-between p-0">
-          <Button type="button" variant="outline" onClick={onBack} disabled={submitting}>
-            Voltar
-          </Button>
-          <Button onClick={onSubmit} disabled={submitting}>
-            {submitting ? "Criando recebedor…" : "Criar recebedor"}
-          </Button>
-        </CardFooter>
+        <Callout tone="brand" icon="shield">
+          Cadastro criado não significa saldo liberado — a Pagar.me ainda precisa concluir o KYC. Você confirma o envio com uma verificação de segurança.
+        </Callout>
       </CardContent>
+      <CardFooter className="justify-between">
+        <Button type="button" variant="ghost" onClick={onBack} disabled={submitting} leftIcon="arrow-left">
+          Voltar
+        </Button>
+        <Button onClick={onSubmit} loading={submitting} leftIcon="check">
+          Criar recebedor
+        </Button>
+      </CardFooter>
     </Card>
   );
 }

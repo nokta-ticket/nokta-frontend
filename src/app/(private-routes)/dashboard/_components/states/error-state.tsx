@@ -1,23 +1,9 @@
-import { AlertCircle } from "lucide-react";
-import { PageState } from "@/components/ui/page-state";
+import { ErrorState as UiErrorState } from "@/components/ui/empty-state";
 
-/** Estado de erro padrão do dashboard, com retry opcional. */
-export function ErrorState({
-  title = "Algo deu errado",
-  description = "Não foi possível carregar os dados.",
-  onRetry,
-}: {
-  title?: string;
-  description?: string;
-  onRetry?: () => void;
-}) {
-  return (
-    <PageState
-      title={title}
-      description={description}
-      icon={<AlertCircle className="h-8 w-8 text-red-500" />}
-      actionLabel={onRetry ? "Tentar novamente" : undefined}
-      onAction={onRetry}
-    />
-  );
+/**
+ * Estado de erro padrão do dashboard, com retry opcional.
+ * @deprecated Use `ErrorState` de `@/components/ui/empty-state`.
+ */
+export function ErrorState({ title = "Algo deu errado", description = "Não foi possível carregar os dados.", onRetry }: { title?: string; description?: string; onRetry?: () => void }) {
+  return <UiErrorState title={title} description={description} onRetry={onRetry} />;
 }

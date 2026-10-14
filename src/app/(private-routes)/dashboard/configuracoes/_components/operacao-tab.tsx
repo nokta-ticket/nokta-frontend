@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
-import { BlockSkeleton } from "../../_components/states/loading-state";
 import { useUpdateVenueOperationSettings, useVenueOperationSettings } from "../_hooks/use-venue-settings";
 
 /** Converte basis points <-> percentual exibido (1000 bps = 10%). */
@@ -36,7 +37,7 @@ export function OperacaoTab({ orgId, canManage }: { orgId: number; canManage: bo
     }
   }, [data]);
 
-  if (isLoading) return <BlockSkeleton className="h-72" />;
+  if (isLoading) return <Skeleton className="h-72 rounded-card" />;
 
   const handleSave = () => {
     update.mutate(
@@ -52,24 +53,15 @@ export function OperacaoTab({ orgId, canManage }: { orgId: number; canManage: bo
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Taxa de serviço padrão</CardTitle>
-          <CardDescription>
-            Aplicada automaticamente a toda nova comanda aberta — nunca altera comandas já abertas.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="max-w-[200px] space-y-1.5">
-            <Label>Percentual (%)</Label>
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              step="0.5"
-              value={percent}
-              onChange={(e) => setPercent(e.target.value)}
-              disabled={!canManage}
-            />
+          <div>
+            <CardTitle>Taxa de serviço padrão</CardTitle>
+            <CardDescription>Aplicada automaticamente a toda nova comanda aberta — nunca altera comandas já abertas.</CardDescription>
           </div>
+        </CardHeader>
+        <CardContent>
+          <Field label="Percentual" htmlFor="service-charge" className="max-w-[200px]">
+            <Input id="service-charge" type="number" min={0} max={100} step="0.5" inputMode="decimal" suffix="%" value={percent} onChange={(e) => setPercent(e.target.value)} disabled={!canManage} />
+          </Field>
         </CardContent>
       </Card>
 
@@ -78,34 +70,39 @@ export function OperacaoTab({ orgId, canManage }: { orgId: number; canManage: bo
           <CardTitle>Pagamentos</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium">Exigir caixa aberto para registrar pagamento</p>
-              <p className="text-xs text-black/50">
-                Desative apenas se o estabelecimento não trabalha com caixa físico.
-              </p>
-            </div>
+          <label className="flex cursor-pointer items-center justify-between gap-4">
+            <span>
+              <span className="block text-sm font-medium text-foreground">Exigir caixa aberto para registrar pagamento</span>
+              <span className="mt-0.5 block text-caption text-muted-foreground">Desative apenas se o estabelecimento não trabalha com caixa físico.</span>
+            </span>
             <Switch checked={requireCash} onCheckedChange={setRequireCash} disabled={!canManage} />
-          </div>
+          </label>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Estoque negativo</CardTitle>
-          <CardDescription>Configurado por unidade.</CardDescription>
+          <div>
+            <CardTitle>Estoque negativo</CardTitle>
+            <CardDescription>Configurado por unidade, dentro do Estoque.</CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
           <Button variant="outline" asChild>
-            <Link href="/dashboard/estoque">Ir para Estoque</Link>
+            <Link href="/dashboard/estoque">
+              <Icon name="box" size={14} />
+              Ir para Estoque
+            </Link>
           </Button>
         </CardContent>
       </Card>
 
       {canManage ? (
-        <Button onClick={handleSave} disabled={update.isPending}>
-          {update.isPending ? "Salvando…" : "Salvar"}
-        </Button>
+        <div className="flex justify-end">
+          <Button onClick={handleSave} loading={update.isPending} leftIcon="save">
+            Salvar
+          </Button>
+        </div>
       ) : null}
     </div>
   );

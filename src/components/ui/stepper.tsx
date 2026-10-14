@@ -41,7 +41,7 @@ export function Stepper({ steps, orientation = "vertical", className }: { steps:
           <li key={i} className={cn("relative flex gap-3", orientation === "horizontal" && "md:flex-1 md:flex-col md:items-start md:gap-2")}>
             <div className={cn("flex flex-col items-center", orientation === "horizontal" && "md:w-full md:flex-row")}>
               {dot}
-              {!last ? <span className={cn("w-0.5 flex-1 rounded-full", lineClass, orientation === "vertical" ? "my-1 min-h-6" : "my-1 min-h-6 md:mx-2 md:my-0 md:h-0.5 md:w-auto md:flex-1")} aria-hidden /> : null}
+              {!last ? <span className={cn("w-0.5 flex-1 rounded-full", lineClass, orientation === "vertical" ? "my-1 min-h-6" : "my-1 min-h-6 md:mx-2 md:my-0 md:h-0.5 md:min-h-0 md:w-auto md:flex-1")} aria-hidden /> : null}
             </div>
             <div className={cn("min-w-0 pb-5", orientation === "horizontal" && "md:pb-0 md:pr-4")}>
               <p className={cn("text-sm font-medium", step.status === "upcoming" ? "text-muted-foreground" : "text-foreground")}>{step.label}</p>

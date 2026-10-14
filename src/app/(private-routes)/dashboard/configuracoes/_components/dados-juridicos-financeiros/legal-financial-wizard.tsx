@@ -4,18 +4,9 @@ import { useState } from "react";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
 import { useAuth } from "@/context/AuthContext";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DRAFT_STEP_ORDER, type DraftStep, type LegalFinancialDraft, type LegalFinancialProfile } from "@/services/venue-legal-financial";
-import {
-  STEP_UP_CANCELLED_MESSAGE,
-  useLegalFinancialDraft,
-  usePatchAddress,
-  usePatchBankAccount,
-  usePatchEntityDetails,
-  usePatchLegalRepresentative,
-  usePatchResponsibleType,
-  useSubmitLegalFinancialProfile,
-} from "../../_hooks/use-legal-financial-settings";
-import { BlockSkeleton } from "../../../_components/states/loading-state";
+import { STEP_UP_CANCELLED_MESSAGE, useLegalFinancialDraft, usePatchAddress, usePatchBankAccount, usePatchEntityDetails, usePatchLegalRepresentative, usePatchResponsibleType, useSubmitLegalFinancialProfile } from "../../_hooks/use-legal-financial-settings";
 import { WizardStepper } from "./_sections/wizard-stepper";
 import { StepResponsibleType } from "./_steps/step-responsible-type";
 import { StepEntityDetails, emptyEntityDetails } from "./_steps/step-entity-details";
@@ -57,15 +48,20 @@ export function LegalFinancialWizard({ orgId, profile }: { orgId: number; profil
   const patchBankAccount = usePatchBankAccount(orgId);
   const submit = useSubmitLegalFinancialProfile(orgId);
 
-  if (isLoading || !draft) return <BlockSkeleton className="h-72" />;
+  if (isLoading || !draft) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-20 rounded-card" />
+        <Skeleton className="h-72 rounded-card" />
+      </div>
+    );
+  }
 
   if (draft.formStatus === "SUBMITTED") {
     return <StepStatus orgId={orgId} profile={profile} />;
   }
 
-  const steps: { key: DraftStep; label: string }[] = (
-    draft.legalType === "COMPANY" ? DRAFT_STEP_ORDER : DRAFT_STEP_ORDER.filter((key) => key !== "LEGAL_REPRESENTATIVE")
-  ).map((key) => ({ key, label: STEP_LABELS[key] }));
+  const steps: { key: DraftStep; label: string }[] = (draft.legalType === "COMPANY" ? DRAFT_STEP_ORDER : DRAFT_STEP_ORDER.filter((key) => key !== "LEGAL_REPRESENTATIVE")).map((key) => ({ key, label: STEP_LABELS[key] }));
 
   const currentStep = viewedStep ?? draft.draftStep;
   const currentIndex = steps.findIndex((s) => s.key === currentStep);
@@ -91,11 +87,7 @@ export function LegalFinancialWizard({ orgId, profile }: { orgId: number; profil
           toast.success("Recebedor criado na Pagar.me.");
         } else {
           // recipient.error já é o texto do motivo (string), não um erro do axios: getErrorMessage o descartava e mostrava só o genérico.
-          toast.error(
-            result.recipient.error
-              ? `Dados salvos, mas o recebedor não foi criado: ${result.recipient.error}`
-              : "Dados salvos, mas não foi possível criar o recebedor agora. Tente novamente.",
-          );
+          toast.error(result.recipient.error ? `Dados salvos, mas o recebedor não foi criado: ${result.recipient.error}` : "Dados salvos, mas não foi possível criar o recebedor agora. Tente novamente.");
         }
       },
       onError: (err) => {
@@ -109,17 +101,7 @@ export function LegalFinancialWizard({ orgId, profile }: { orgId: number; profil
     <div className="space-y-4">
       <WizardStepper steps={steps} currentStep={currentStep} />
 
-      {currentStep === "RESPONSIBLE_TYPE" ? (
-        <StepResponsibleType
-          submitting={patchResponsibleType.isPending}
-          onChoose={(legalType) =>
-            patchResponsibleType.mutate(
-              { legalType },
-              { onSuccess: clearViewOverride, onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar.")) },
-            )
-          }
-        />
-      ) : null}
+      {currentStep === "RESPONSIBLE_TYPE" ? <StepResponsibleType submitting={patchResponsibleType.isPending} onChoose={(legalType) => patchResponsibleType.mutate({ legalType }, { onSuccess: clearViewOverride, onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar.")) })} /> : null}
 
       {currentStep === "ENTITY_DETAILS" && draft.legalType ? (
         <StepEntityDetails
@@ -170,25 +152,13 @@ export function LegalFinancialWizard({ orgId, profile }: { orgId: number; profil
           submitting={patchAddress.isPending}
           onBack={goBack}
           onSubmit={(value) => {
-            const payload =
-              draft.legalType === "COMPANY"
-                ? { representative: value.address, representativePhone: value.phone }
-                : { person: value.address, personPhone: value.phone };
+            const payload = draft.legalType === "COMPANY" ? { representative: value.address, representativePhone: value.phone } : { person: value.address, personPhone: value.phone };
             patchAddress.mutate(payload, { onSuccess: clearViewOverride, onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar.")) });
           }}
         />
       ) : null}
 
-      {currentStep === "BANK_ACCOUNT" ? (
-        <StepBankAccount
-          initialValue={emptyBankAccount()}
-          submitting={patchBankAccount.isPending}
-          onBack={goBack}
-          onSubmit={(value) =>
-            patchBankAccount.mutate(value, { onSuccess: clearViewOverride, onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar.")) })
-          }
-        />
-      ) : null}
+      {currentStep === "BANK_ACCOUNT" ? <StepBankAccount initialValue={emptyBankAccount()} submitting={patchBankAccount.isPending} onBack={goBack} onSubmit={(value) => patchBankAccount.mutate(value, { onSuccess: clearViewOverride, onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar.")) })} /> : null}
 
       {currentStep === "REVIEW" ? <StepReview draft={draft} onSubmit={handleSubmitFinal} onBack={goBack} submitting={submit.isPending} /> : null}
     </div>

@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/lib/toast";
 import type { LegalType } from "@/services/venue-legal-financial";
 import { AddressFields } from "../_sections/address-fields";
@@ -19,19 +18,7 @@ export function emptyAddressStep(): AddressStepFormState {
   return { address: emptyAddress(), phone: emptyPhone() };
 }
 
-export function StepAddress({
-  legalType,
-  initialValue,
-  onSubmit,
-  onBack,
-  submitting,
-}: {
-  legalType: LegalType;
-  initialValue: AddressStepFormState;
-  onSubmit: (value: AddressStepFormState) => void;
-  onBack: () => void;
-  submitting: boolean;
-}) {
+export function StepAddress({ legalType, initialValue, onSubmit, onBack, submitting }: { legalType: LegalType; initialValue: AddressStepFormState; onSubmit: (value: AddressStepFormState) => void; onBack: () => void; submitting: boolean }) {
   const [value, setValue] = useState(initialValue);
   const isCompany = legalType === "COMPANY";
 
@@ -48,25 +35,27 @@ export function StepAddress({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{isCompany ? "Endereço do representante legal" : "Seu endereço"}</CardTitle>
-        <CardDescription>
-          {isCompany ? "Endereço residencial do representante." : "Endereço residencial."}
-          {isCompany && !value.address.street ? " Se você já preencheu esta etapa antes, os campos aparecem vazios por segurança — é só preencher de novo." : null}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <AddressFields value={value.address} onChange={(address) => setValue((v) => ({ ...v, address }))} idPrefix="endereco" />
         <div>
-          <Label className="mb-3 block text-xs text-black/50">Telefone</Label>
-          <PhoneFields value={value.phone} onChange={(phone) => setValue((v) => ({ ...v, phone }))} idPrefix="endereco-telefone" />
+          <CardTitle>{isCompany ? "Endereço do representante legal" : "Seu endereço"}</CardTitle>
+          <CardDescription>
+            {isCompany ? "Endereço residencial do representante." : "Endereço residencial."}
+            {isCompany && !value.address.street ? " Se você já preencheu esta etapa antes, os campos aparecem vazios por segurança — é só preencher de novo." : null}
+          </CardDescription>
         </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <AddressFields value={value.address} onChange={(address) => setValue((v) => ({ ...v, address }))} idPrefix="endereco" />
+        <fieldset className="space-y-3">
+          <legend className="text-sm font-semibold text-foreground">Telefone</legend>
+          <PhoneFields value={value.phone} onChange={(phone) => setValue((v) => ({ ...v, phone }))} idPrefix="endereco-telefone" />
+        </fieldset>
       </CardContent>
-      <CardFooter className="flex justify-between">
-        <Button type="button" variant="outline" onClick={onBack} disabled={submitting}>
+      <CardFooter className="justify-between">
+        <Button type="button" variant="ghost" onClick={onBack} disabled={submitting} leftIcon="arrow-left">
           Voltar
         </Button>
-        <Button onClick={handleSubmit} disabled={submitting}>
-          {submitting ? "Salvando…" : "Continuar"}
+        <Button onClick={handleSubmit} loading={submitting} rightIcon="arrow-right">
+          Continuar
         </Button>
       </CardFooter>
     </Card>

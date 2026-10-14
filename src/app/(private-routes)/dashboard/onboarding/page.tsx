@@ -1,119 +1,61 @@
 "use client";
 
-import { Fragment, useEffect, useRef, useState } from "react";
-import Image from "next/image";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { BrandLogo } from "@/components/brand/brand-logo";
+import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Callout } from "@/components/ui/callout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
+import { Icon, type IconName } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Stepper } from "@/components/ui/stepper";
 import { useAuth } from "@/context/AuthContext";
 import { useOrganizations } from "@/context/OrganizationContext";
 import api, { getErrorMessage } from "@/lib/axios";
+import { cn } from "@/lib/cn";
 import { toast } from "@/lib/toast";
-import {
-  Boxes,
-  Calculator,
-  Calendar,
-  Check,
-  CheckCircle2,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ExternalLink,
-  FileText,
-  Grid2x2,
-  HelpCircle,
-  Info,
-  Layers,
-  Lightbulb,
-  ListChecks,
-  Lock,
-  Pencil,
-  RefreshCw,
-  ShieldCheck,
-  Sparkles,
-  Target,
-  User,
-  UsersRound,
-  UtensilsCrossed,
-} from "lucide-react";
-import {
-  createDefaultSelection,
-  flattenSelection,
-  type BusinessNeedSelectionState,
-} from "../_components/business-needs/business-need-groups-picker";
+import { createDefaultSelection, flattenSelection, type BusinessNeedSelectionState } from "../_components/business-needs/business-need-groups-picker";
 import { useActivateBusinessNeeds, useBusinessNeedsCatalog, usePreviewBusinessNeedsActivation } from "../_hooks/use-platform";
-import { BlockSkeleton } from "../_components/states/loading-state";
 import { OnboardingExtras } from "./_components/onboarding-extras";
 import type { BusinessNeedGroup, BusinessNeedKey } from "@/services/platform";
 
-const STEP_COUNT = 4;
+const STEP_LABELS = ["Identificação", "Operação", "Termos", "Resumo"] as const;
 
-const IDENTIFICATION_BENEFITS = [
-  {
-    icon: Grid2x2,
-    title: "Centralize tudo em um só lugar",
-    description: "Gerencie eventos, vendas, equipe e finanças.",
-  },
-  {
-    icon: UsersRound,
-    title: "Convide sua equipe",
-    description: "Defina papéis e permissões para cada pessoa.",
-  },
-  {
-    icon: Target,
-    title: "Escalável",
-    description: "Crie quantas organizações precisar.",
-  },
+const IDENTIFICATION_BENEFITS: { icon: IconName; title: string; description: string }[] = [
+  { icon: "grid", title: "Centralize tudo em um só lugar", description: "Gerencie eventos, vendas, equipe e finanças." },
+  { icon: "users", title: "Convide sua equipe", description: "Defina papéis e permissões para cada pessoa." },
+  { icon: "layers", title: "Escalável", description: "Crie quantas organizações precisar." },
 ];
 
-const IDENTIFICATION_NEXT_STEPS = [
-  {
-    icon: Sparkles,
-    title: "Crie sua primeira organização",
-    description: "Comece do zero e configure seu espaço.",
-  },
-  {
-    icon: UsersRound,
-    title: "Convide sua equipe",
-    description: "Chame pessoas para te ajudar a operar.",
-  },
-  {
-    icon: Lightbulb,
-    title: "Explore todos os recursos",
-    description: "Libere o potencial da Nokta.",
-  },
+const OPERATION_NEXT_STEPS: { icon: IconName; title: string; description: string }[] = [
+  { icon: "magic", title: "Mais clareza", description: "Veja no menu apenas os recursos usados no seu dia a dia." },
+  { icon: "layers", title: "Totalmente flexível", description: "Ative ou desative funcionalidades depois, em Explore a Nokta." },
+  { icon: "shield", title: "Sem impacto nos seus dados", description: "Ocultar um recurso não apaga cadastros nem configurações existentes." },
 ];
 
-const OPERATION_NEXT_STEPS = [
-  {
-    icon: Sparkles,
-    title: "Mais clareza",
-    description: "Veja no menu apenas os recursos usados no seu dia a dia.",
-  },
-  {
-    icon: Layers,
-    title: "Totalmente flexível",
-    description: "Ative ou desative funcionalidades depois, nas configurações.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Sem impacto nos seus dados",
-    description: "Ocultar um recurso não apaga cadastros nem configurações existentes.",
-  },
+const TERMS_NEXT_STEPS = [
+  { title: "Você revisará todas as escolhas", desc: "Na próxima etapa, você confere cada detalhe antes de criar sua organização." },
+  { title: "A organização será criada", desc: "Seu espaço será criado com os recursos selecionados." },
+  { title: "Painel organizado para você", desc: "O painel mostrará apenas as áreas e recursos que você ativou agora." },
+  { title: "Dados jurídicos depois", desc: "Quando precisar publicar eventos pagos, receber valores ou pedir saques, avisamos pra você concluir a verificação." },
 ];
 
-/** Tema visual (ícone + cores) por necessidade de negócio — mesma ordem/keys de BUSINESS_NEED_CATALOG (backend). */
-const BUSINESS_NEED_THEME: Record<BusinessNeedKey, { icon: typeof Calendar; iconBg: string; iconColor: string; border: string }> = {
-  EVENTS_TICKETING: { icon: Calendar, iconBg: "bg-[#F1ECFE]", iconColor: "text-[#7C3AED]", border: "border-[#CBBAF7]" },
-  RELATIONSHIP: { icon: UsersRound, iconBg: "bg-[#E4F6EF]", iconColor: "text-[#059669]", border: "border-[#B6E6D2]" },
-  OPERATION: { icon: Layers, iconBg: "bg-[#FEF0E2]", iconColor: "text-[#F97316]", border: "border-[#F7DBBB]" },
-  MENU_PRODUCTS: { icon: UtensilsCrossed, iconBg: "bg-[#E7F0FE]", iconColor: "text-[#2563EB]", border: "border-[#BED7F9]" },
-  STOCK_PURCHASING: { icon: Boxes, iconBg: "bg-[#ECEAFD]", iconColor: "text-[#5B4BD6]", border: "border-[#C7C0F4]" },
-  MANAGEMENT: { icon: Calculator, iconBg: "bg-[#FCE8F0]", iconColor: "text-[#DB2777]", border: "border-[#F5C2D9]" },
+/** Ícone por necessidade de negócio — mesma ordem/keys de BUSINESS_NEED_CATALOG (backend). */
+const BUSINESS_NEED_ICON: Record<BusinessNeedKey, IconName> = {
+  EVENTS_TICKETING: "ticket",
+  RELATIONSHIP: "user-group",
+  OPERATION: "chair",
+  MENU_PRODUCTS: "utensils",
+  STOCK_PURCHASING: "box",
+  MANAGEMENT: "chart-line",
 };
 
-/** Checkbox visual com estado indeterminado (parte dos recursos do grupo ativa) — `indeterminate` só existe como propriedade DOM, não como atributo HTML declarativo. */
+/** Marcador do card de grupo com estado indeterminado (parte dos recursos do grupo ativa). */
 function GroupCheckbox({ checked, indeterminate }: { checked: boolean; indeterminate: boolean }) {
   const ref = useRef<HTMLInputElement>(null);
 
@@ -122,18 +64,32 @@ function GroupCheckbox({ checked, indeterminate }: { checked: boolean; indetermi
   }, [indeterminate]);
 
   return (
-    <span
-      className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[5px] border-[1.6px] transition-colors ${
-        checked || indeterminate ? "border-transparent bg-gradient-to-br from-[#7C3AED] to-[#6D28D9]" : "border-[#DAD8E2] bg-white"
-      }`}
-    >
-      <input ref={ref} type="checkbox" checked={checked} readOnly className="sr-only" />
-      {indeterminate ? (
-        <span className="h-[2px] w-2.5 rounded-full bg-white" />
-      ) : checked ? (
-        <Check size={12} strokeWidth={3} className="text-white" />
-      ) : null}
+    <span className={cn("flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors", checked || indeterminate ? "border-brand bg-brand text-brand-foreground" : "border-border-strong bg-surface-2")}>
+      <input ref={ref} type="checkbox" checked={checked} readOnly tabIndex={-1} className="sr-only" />
+      {indeterminate ? <span className="h-0.5 w-2.5 rounded-full bg-current" /> : checked ? <Icon name="check" size={10} /> : null}
     </span>
+  );
+}
+
+/** Rótulo pequeno de etapa ("Vamos começar"), em vez de eyebrow colorido. */
+function StepEyebrow({ children }: { children: string }) {
+  return (
+    <StatusBadge tone="brand" dot={false}>
+      {children}
+    </StatusBadge>
+  );
+}
+
+/**
+ * Barra de ações do wizard: no celular fica fixa embaixo (com fundo sólido,
+ * em cima do conteúdo que rola); no desktop é só uma linha no fim do passo.
+ */
+function WizardActions({ children, note }: { children: ReactNode; note?: ReactNode }) {
+  return (
+    <div className="sticky bottom-0 z-10 -mx-4 mt-6 border-t border-border bg-surface/95 px-4 py-3 pb-safe backdrop-blur-md md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+      <div className="flex items-center justify-between gap-3">{children}</div>
+      {note ? <div className="mt-2 hidden md:block">{note}</div> : null}
+    </div>
   );
 }
 
@@ -142,44 +98,25 @@ function GroupCheckbox({ checked, indeterminate }: { checked: boolean; indetermi
  * card, logo abaixo da linha de 3 (xl:grid-cols-3) onde o grupo está,
  * de propósito: o card do grupo nunca muda de altura, então os cards
  * vizinhos da mesma linha do CSS Grid nunca esticam nem sobram espaços
- * vazios (regressão corrigida aqui — antes a lista de capacidades
- * expandia dentro do próprio card).
+ * vazios.
  */
-function GroupCustomizationPanel({
-  group,
-  selection,
-  setSelection,
-  onClose,
-}: {
-  group: BusinessNeedGroup;
-  selection: BusinessNeedSelectionState;
-  setSelection: (next: BusinessNeedSelectionState) => void;
-  onClose: () => void;
-}) {
-  const theme = BUSINESS_NEED_THEME[group.key];
+function GroupCustomizationPanel({ group, selection, setSelection, onClose }: { group: BusinessNeedGroup; selection: BusinessNeedSelectionState; setSelection: (next: BusinessNeedSelectionState) => void; onClose: () => void }) {
   const isSelected = selection.selectedGroupKeys.has(group.key);
   const deselected = selection.deselectedCapabilityKeysByGroup.get(group.key) ?? new Set<string>();
 
   return (
-    <div className="col-span-full rounded-[15px] border border-[#ECE6F8] bg-[#FBFAFE] p-[18px_20px_20px]">
-      <div className="flex items-center justify-between gap-4">
+    <div className="surface-inset scale-in col-span-full rounded-card p-5">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <div className="text-[14px] font-bold text-[#1a1626]">{group.label}</div>
-          <p className="mt-1 text-[11.5px] leading-[1.5] text-[#6b7280]">
-            Escolha individualmente os recursos deste grupo que você quer usar.
-          </p>
+          <p className="text-sm font-semibold text-foreground">{group.label}</p>
+          <p className="mt-0.5 text-caption text-muted-foreground">Escolha individualmente os recursos deste grupo que você quer usar.</p>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex shrink-0 items-center gap-1.5 rounded-[10px] bg-white px-3.5 py-2 text-[11.5px] font-semibold text-[#6d28d9] shadow-[0_1px_3px_rgba(80,40,160,0.12)] hover:brightness-105"
-        >
-          Concluir personalização
-          <Check size={13} strokeWidth={2.5} />
-        </button>
+        <Button type="button" size="sm" variant="secondary" onClick={onClose} rightIcon="check" className="shrink-0">
+          Concluir
+        </Button>
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-2.5 border-t border-[#f1eff5] pt-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-2 border-t border-border pt-4 sm:grid-cols-2 xl:grid-cols-3">
         {group.capabilities.map((capability) => {
           const checked = isSelected ? capability.required || !deselected.has(capability.key) : false;
           const interactive = !capability.required;
@@ -195,10 +132,7 @@ function GroupCustomizationPanel({
               const nextGroups = new Set(selection.selectedGroupKeys);
               nextGroups.add(group.key);
               const nextByGroup = new Map(selection.deselectedCapabilityKeysByGroup);
-              nextByGroup.set(
-                group.key,
-                new Set(group.capabilities.filter((c) => !c.required && c.key !== capability.key).map((c) => c.key)),
-              );
+              nextByGroup.set(group.key, new Set(group.capabilities.filter((c) => !c.required && c.key !== capability.key).map((c) => c.key)));
               setSelection({ ...selection, selectedGroupKeys: nextGroups, deselectedCapabilityKeysByGroup: nextByGroup });
               return;
             }
@@ -211,21 +145,10 @@ function GroupCustomizationPanel({
             setSelection({ ...selection, deselectedCapabilityKeysByGroup: nextByGroup });
           };
           return (
-            <button
-              key={capability.key}
-              type="button"
-              onClick={toggleCapability}
-              disabled={!interactive}
-              className={`flex items-start gap-2.5 text-left text-xs ${interactive ? "cursor-pointer" : "cursor-default"}`}
-            >
-              <span
-                className={`mt-0.5 flex h-[17px] w-[17px] shrink-0 items-center justify-center rounded-[5px] ${
-                  checked ? `${theme.iconColor} bg-current` : "border-[1.6px] border-[#D7D5E0] bg-white"
-                }`}
-              >
-                {checked && <Check size={11} strokeWidth={3} className="text-white" />}
-              </span>
-              <span className="text-[#1a1626]">{capability.label}</span>
+            <button key={capability.key} type="button" role="checkbox" aria-checked={checked} onClick={toggleCapability} disabled={!interactive} className={cn("flex min-h-11 items-center gap-2.5 rounded-xl px-2.5 text-left text-sm transition-colors", interactive ? "cursor-pointer hover:bg-surface-2" : "cursor-default")}>
+              <span className={cn("flex size-5 shrink-0 items-center justify-center rounded-md border transition-colors", checked ? "border-brand bg-brand text-brand-foreground" : "border-border-strong bg-surface-2")}>{checked ? <Icon name="check" size={10} /> : null}</span>
+              <span className="min-w-0 flex-1 text-foreground">{capability.label}</span>
+              {capability.required ? <Icon name="lock" size={10} className="text-subtle-foreground" aria-label="Necessário" /> : null}
             </button>
           );
         })}
@@ -235,26 +158,43 @@ function GroupCustomizationPanel({
 }
 
 function OnboardingStepper({ step }: { step: number }) {
+  return <Stepper orientation="horizontal" className="rounded-card border border-border bg-surface px-5 py-4 shadow-card md:[&_span[aria-hidden]]:min-h-0" steps={STEP_LABELS.map((label, index) => ({ label, status: index < step ? "done" : index === step ? "current" : "upcoming" }))} />;
+}
+
+/** Linha "título + descrição" com ícone inline (benefícios, próximos passos). */
+function BulletItem({ icon, title, description }: { icon: IconName; title: string; description: string }) {
   return (
-    <div className="mx-auto mb-8 flex w-full max-w-[340px] items-center justify-center">
-      {Array.from({ length: STEP_COUNT }, (_, i) => i).map((index) => {
-        const active = index === step;
-        return (
-          <div key={index} className="flex flex-1 items-center last:flex-initial">
-            <div
-              className={`flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition-colors ${
-                active
-                  ? "border-transparent bg-gradient-to-br from-violet-600 to-[#6d28d9] text-white shadow-[0_3px_8px_rgba(109,40,217,0.3)]"
-                  : "border-[#e7e5ee] bg-white text-[#b4b2be]"
-              }`}
-            >
-              {index + 1}
-            </div>
-            {index < STEP_COUNT - 1 && <div className="mx-1 h-[1.5px] flex-1 bg-[#e7e5ee]" />}
-          </div>
-        );
-      })}
+    <div className="flex items-start gap-3">
+      <Icon name={icon} size={16} className="mt-0.5 shrink-0 text-brand" />
+      <div>
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+        <p className="mt-0.5 text-caption text-muted-foreground">{description}</p>
+      </div>
     </div>
+  );
+}
+
+/** Card de confirmação da etapa "Termos": o card inteiro é o rótulo do checkbox. */
+function TermCard({ checked, onChange, icon, title, children }: { checked: boolean; onChange: (next: boolean) => void; icon: IconName; title: string; children: ReactNode }) {
+  return (
+    <label className={cn("flex cursor-pointer items-start gap-4 rounded-card border bg-surface p-5 shadow-card transition-colors", checked ? "border-brand/50 ring-1 ring-brand-ring" : "border-border hover:border-border-strong")}>
+      <Checkbox checked={checked} onCheckedChange={(v) => onChange(Boolean(v))} className="mt-1 size-5" />
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-2 text-base font-semibold text-foreground">
+          <Icon name={icon} size={15} className="text-brand" />
+          {title}
+        </span>
+        <span className="mt-1.5 block text-body text-muted-foreground">{children}</span>
+      </span>
+    </label>
+  );
+}
+
+function ExternalTextLink({ href, children }: { href: string; children: ReactNode }) {
+  return (
+    <Link href={href} target="_blank" className="font-medium text-brand underline underline-offset-2" onClick={(e) => e.stopPropagation()}>
+      {children}
+    </Link>
   );
 }
 
@@ -274,17 +214,14 @@ interface OnboardingProgress {
   skippedIdentification?: boolean;
   // Seleção de áreas/capacidades da etapa "Operação" — sem isso, um F5 (ou
   // fechar e voltar) entre "Operação" e "Resumo" perdia tudo que o usuário
-  // tinha marcado e a tela recaía no createDefaultSelection() do catálogo
-  // (só os grupos com defaultSelected=true, ex. "Gestão e Resultados").
+  // tinha marcado e a tela recaía no createDefaultSelection() do catálogo.
   selection?: SerializedSelection;
 }
 
 function serializeSelection(selection: BusinessNeedSelectionState): SerializedSelection {
   return {
     selectedGroupKeys: [...selection.selectedGroupKeys],
-    deselectedCapabilityKeysByGroup: Object.fromEntries(
-      [...selection.deselectedCapabilityKeysByGroup.entries()].map(([k, v]) => [k, [...v]]),
-    ),
+    deselectedCapabilityKeysByGroup: Object.fromEntries([...selection.deselectedCapabilityKeysByGroup.entries()].map(([k, v]) => [k, [...v]])),
   };
 }
 
@@ -294,12 +231,7 @@ function serializeSelection(selection: BusinessNeedSelectionState): SerializedSe
 function deserializeSelection(serialized: SerializedSelection | undefined | null): BusinessNeedSelectionState {
   return {
     selectedGroupKeys: new Set(Array.isArray(serialized?.selectedGroupKeys) ? serialized.selectedGroupKeys : []),
-    deselectedCapabilityKeysByGroup: new Map(
-      Object.entries(serialized?.deselectedCapabilityKeysByGroup ?? {}).map(([k, v]) => [
-        k,
-        new Set(Array.isArray(v) ? v : []),
-      ]),
-    ),
+    deselectedCapabilityKeysByGroup: new Map(Object.entries(serialized?.deselectedCapabilityKeysByGroup ?? {}).map(([k, v]) => [k, new Set(Array.isArray(v) ? v : [])])),
   };
 }
 
@@ -380,8 +312,7 @@ export default function PlatformOnboardingPage() {
   // Telefone já foi confirmado no cadastro (OTP via WhatsApp) — esta
   // reverificação só entra em cena se `telefoneVerificado` ficou `false`
   // por alguma inconsistência (ex.: usuário trocou o telefone em Perfil
-  // entre o cadastro e completar este onboarding, ver auth.service.ts
-  // `updateProfile`). Nunca é o caminho normal.
+  // entre o cadastro e completar este onboarding). Nunca é o caminho normal.
   const [phoneRecheckPhase, setPhoneRecheckPhase] = useState<PhoneRecheckPhase>("idle");
   const [phoneRecheckCode, setPhoneRecheckCode] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
@@ -396,9 +327,7 @@ export default function PlatformOnboardingPage() {
   // "Personalizar recursos" na etapa "Operação": qual grupo tem o painel de
   // capacidades individuais aberto (no máximo um por vez — abrir outro
   // fecha o anterior). Só controla se o painel aparece, não afeta a
-  // seleção em si. O painel fica fora do grid de cards (col-span-full,
-  // logo abaixo da linha do grupo) de propósito: os cards nunca mudam de
-  // altura, evitando o desalinhamento que expandir o card causava.
+  // seleção em si.
   const [customizingGroupKey, setCustomizingGroupKey] = useState<string | null>(null);
   const preview = usePreviewBusinessNeedsActivation(createdOrgId ?? -1);
   const activateNeeds = useActivateBusinessNeeds(createdOrgId ?? -1);
@@ -428,9 +357,7 @@ export default function PlatformOnboardingPage() {
       return;
     }
 
-    const deselectedCapabilityKeysByGroup = new Map(
-      [...deserialized.deselectedCapabilityKeysByGroup.entries()].filter(([k]) => selectedGroupKeys.has(k)),
-    );
+    const deselectedCapabilityKeysByGroup = new Map([...deserialized.deselectedCapabilityKeysByGroup.entries()].filter(([k]) => selectedGroupKeys.has(k)));
     setSelection({ selectedGroupKeys, deselectedCapabilityKeysByGroup });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog.data]);
@@ -439,10 +366,9 @@ export default function PlatformOnboardingPage() {
   // preview vem de usePreviewBusinessNeedsActivation, um useMutation — seu
   // resultado só existe na memória do componente (React Query nunca
   // persiste mutation entre remontagens), diferente de `selection`, que
-  // agora é restaurado do localStorage. goToSummary só chama
-  // preview.mutateAsync uma vez, ao avançar de "Termos" pra "Resumo"; sem
-  // isto, restaurar step=3 direto (F5) deixava preview.data vazio para
-  // sempre, mesmo com selection corretamente restaurado.
+  // é restaurado do localStorage. goToSummary só chama preview.mutateAsync
+  // uma vez, ao avançar de "Termos" pra "Resumo"; sem isto, restaurar
+  // step=3 direto (F5) deixava preview.data vazio para sempre.
   useEffect(() => {
     if (step !== 3 || !createdOrgId || !catalog.data || !selection) return;
     if (preview.data || preview.isPending || preview.isError) return;
@@ -458,28 +384,21 @@ export default function PlatformOnboardingPage() {
   // /produtor (nivelProdutor nulo/0) e ainda assim ter uma organização 100%
   // configurada pelo onboarding novo. `hasCompletedOnboardingOrg` é a fonte
   // real (mesmo campo que o backend calcula a partir de
-  // organization_capabilities, ver organizations.service.ts): existe pelo
-  // menos uma organização e nenhuma delas está com onboardingCompleted=false.
-  // Sem este OR, contas sem o sinal legado (como a maioria das criadas após
-  // a unificação) nunca batiam accessAlreadyActive e a tela renderizava a
-  // etapa 0 do zero mesmo com o onboarding real já concluído.
-  const hasCompletedOnboardingOrg =
-    !loadingOrgs && organizations.length > 0 && organizations.every((o) => o.onboardingCompleted);
+  // organization_capabilities): existe pelo menos uma organização e nenhuma
+  // delas está com onboardingCompleted=false.
+  const hasCompletedOnboardingOrg = !loadingOrgs && organizations.length > 0 && organizations.every((o) => o.onboardingCompleted);
   const accessAlreadyActive = (role === "PRODUTOR" && (nivelProdutor ?? 0) >= 1) || hasCompletedOnboardingOrg;
 
   // Recupera progresso salvo (F5 no meio do onboarding) — sem isso, um
   // reload no meio de "Operação"/"Termos"/"Resumo" perdia createdOrgId e a
   // tela caía em alreadyConfigured (redirect automático pra
-  // /dashboard/inicio, ver abaixo), dando a impressão de que tudo tinha sido
-  // concluído quando na real o usuário só recarregou a página.
+  // /dashboard/inicio, ver abaixo).
   //
-  // localStorage é só um atalho de UX (lembra também o passo exato dentro
-  // da etapa "Operação"/"Termos"/"Resumo") — não é a fonte de verdade. Ele
-  // não existe em outro navegador, aba anônima ou depois de limpar dados,
-  // e nesses casos o passo abaixo (organizations vindo do backend) sempre
+  // localStorage é só um atalho de UX — não é a fonte de verdade. Ele não
+  // existe em outro navegador, aba anônima ou depois de limpar dados, e
+  // nesses casos o passo abaixo (organizations vindo do backend) sempre
   // resolve pelo menos "existe organização sem nenhuma capacidade ativada
-  // pelo onboarding" -> volta pra etapa "Operação", nunca deixa redirecionar
-  // de volta por engano.
+  // pelo onboarding" -> volta pra etapa "Operação".
   useEffect(() => {
     if (progressChecked || loadingOrgs) return;
     const saved = loadProgress(userId);
@@ -502,8 +421,7 @@ export default function PlatformOnboardingPage() {
 
   // Preenche o campo de nome com o valor já salvo na organização — sem
   // isso, voltar da etapa "Operação" pra "Identificação" (ou dar F5 já
-  // com createdOrgId restaurado) mostrava o campo vazio em vez do nome
-  // que o usuário quer corrigir.
+  // com createdOrgId restaurado) mostrava o campo vazio.
   useEffect(() => {
     if (!createdOrgId || businessName) return;
     const org = organizations.find((o) => o.id === createdOrgId);
@@ -515,8 +433,7 @@ export default function PlatformOnboardingPage() {
     // Espera `selection` existir antes de salvar: no primeiro render após
     // restaurar/criar createdOrgId, selection ainda é null (o catálogo é
     // assíncrono) — salvar nesse instante gravaria `selection: undefined`
-    // por cima de uma seleção restaurada válida, apagando-a até o efeito de
-    // inicialização da seleção rodar de novo.
+    // por cima de uma seleção restaurada válida.
     if (createdOrgId && progressChecked && selection) {
       saveProgress(userId, {
         createdOrgId,
@@ -538,8 +455,7 @@ export default function PlatformOnboardingPage() {
 
   // Caminho "só falta criar workspace" (needsWorkspaceOnly, abaixo): o
   // workspace acabou de ser criado agora mesmo — segue direto pra etapa
-  // "Operação", sem repetir Identificação (já não faz sentido nesse
-  // caminho, o acesso já estava ativo antes desta tela).
+  // "Operação", sem repetir Identificação.
   useEffect(() => {
     if (createdOrgId && accessAlreadyActive && step < 1) {
       setStep(1);
@@ -552,14 +468,9 @@ export default function PlatformOnboardingPage() {
   // handleCreateWorkspace. Contas que ativaram o acesso antes dessa etapa
   // existir (ou cuja criação de workspace falhou naquele momento) ficam com
   // accessAlreadyActive=true e organizations=[]: sem esta checagem elas
-  // caíam em alreadyConfigured (abaixo) sem NUNCA ter a chance de criar um
-  // workspace.
+  // caíam em alreadyConfigured sem NUNCA ter a chance de criar um workspace.
   const needsWorkspaceOnly = accessAlreadyActive && !loadingOrgs && organizations.length === 0 && !createdOrgId;
-  // Nada a fazer aqui — segue direto pra /dashboard/inicio (useEffect
-  // abaixo). Existiu uma tela "Acesso já configurado" com um botão "Ir para
-  // o painel"; removida porque não tinha nenhuma ação real, só adicionava um
-  // clique a mais entre chegar em /dashboard/onboarding por engano (ver
-  // InicioDispatcher em dashboard/inicio/page.tsx) e o painel de verdade.
+  // Nada a fazer aqui — segue direto pra /dashboard/inicio (useEffect abaixo).
   const alreadyConfigured = accessAlreadyActive && progressChecked && !needsWorkspaceOnly && !createdOrgId;
 
   useEffect(() => {
@@ -574,8 +485,7 @@ export default function PlatformOnboardingPage() {
   // Termos de bilheteria (3º card) são sempre obrigatórios, mesmo sem o grupo
   // EVENTS_TICKETING selecionado agora — cobre ativar bilheteria depois pelo
   // Explore a Nokta, onde não existe (ainda) um modal de aceite de termos.
-  // `requiresTicketingTerms` só ajusta o texto de apoio do card, não se ele
-  // aparece nem se é obrigatório.
+  // `requiresTicketingTerms` só ajusta o texto de apoio do card.
   const requiresTicketingTerms = selection?.selectedGroupKeys.has("EVENTS_TICKETING") ?? false;
   const aceitouTermos = authorizedToAdminister && acknowledgedLegalData && acceptedSpecificTerms;
 
@@ -741,49 +651,40 @@ export default function PlatformOnboardingPage() {
   };
 
   if (loadingOrgs || !progressChecked || alreadyConfigured) {
-    return <div className="flex h-full items-center justify-center bg-gray-50" />;
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-20 rounded-card" />
+        <Skeleton className="h-96 rounded-card" />
+      </div>
+    );
   }
 
   if (needsWorkspaceOnly) {
     return (
-      <div className="flex h-full flex-col items-center justify-center bg-gray-50 px-4 py-12">
-        <div className="w-full max-w-lg">
-          <div className="mb-8 text-center">
-            <Image src="/logo-painel.svg" alt="Nokta" width={120} height={40} className="mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900">Só falta criar seu workspace</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              Seu acesso já está ativo. Informe o nome do negócio ou operação para continuar.
-            </p>
+      <div className="flex flex-1 flex-col items-center justify-center py-10">
+        <div className="w-full max-w-md">
+          <div className="mb-8 flex flex-col items-center text-center">
+            <BrandLogo variant="nokta" height={28} className="text-foreground" />
+            <h1 className="mt-6 text-display font-medium tracking-tight text-foreground">Só falta criar seu workspace</h1>
+            <p className="mt-2 text-body text-muted-foreground">Seu acesso já está ativo. Informe o nome do negócio ou operação para continuar.</p>
           </div>
 
-          <div className="rounded-3xl bg-white p-8 shadow-sm">
-            <div className="space-y-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">
-                <Check className="text-violet-600" size={22} />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="workspaceOnlyName" className="block text-sm font-medium text-gray-700">
-                  Nome do negócio ou operação
-                </label>
-                <Input
-                  id="workspaceOnlyName"
-                  value={businessName}
-                  onChange={(event) => setBusinessName(event.target.value)}
-                  placeholder="Ex.: Produtora Horizonte, Bar Central"
-                  className="h-11"
-                  autoFocus
-                  autoComplete="off"
-                />
-              </div>
-              <Button
-                onClick={handleCreateWorkspaceOnly}
-                disabled={businessName.trim().length < 2 || creatingWorkspaceOnly}
-                className="h-11 w-full bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
-              >
-                {creatingWorkspaceOnly ? "Criando..." : "Continuar"}
+          <Card accent className="p-6">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleCreateWorkspaceOnly();
+              }}
+              className="space-y-5"
+            >
+              <Field label="Nome do negócio ou operação" htmlFor="workspaceOnlyName" required>
+                <Input id="workspaceOnlyName" value={businessName} onChange={(event) => setBusinessName(event.target.value)} placeholder="Ex.: Produtora Horizonte, Bar Central" autoFocus autoComplete="off" />
+              </Field>
+              <Button type="submit" size="full" disabled={businessName.trim().length < 2} loading={creatingWorkspaceOnly} rightIcon="arrow-right">
+                Continuar
               </Button>
-            </div>
-          </div>
+            </form>
+          </Card>
         </div>
       </div>
     );
@@ -791,138 +692,53 @@ export default function PlatformOnboardingPage() {
 
   if (step === 0) {
     return (
-      <>
-      <div className="flex items-stretch gap-[22px]">
-        <section className="flex flex-1 flex-col rounded-[20px] border border-[#ecebf1] bg-white px-5 pb-6 pt-6 md:px-10 md:pb-8 md:pt-8">
-          <div className="flex flex-col items-start gap-[30px] lg:flex-row lg:gap-[44px]">
-            <div className="w-full lg:flex-[1_1_54%]">
-              <span className="inline-block rounded-full bg-[#f3efff] px-3 py-1.5 text-[11.5px] font-semibold text-[#6d28d9]">
-                Vamos começar
-              </span>
+      <div className="space-y-6">
+        <OnboardingStepper step={step} />
 
-              <h1 className="mt-4 text-[26px] font-extrabold leading-[1.15] tracking-[-0.02em] text-[#1a1626] md:text-[34px]">
-                Crie sua primeira <span className="block text-[#6d28d9]">organização</span>
-              </h1>
-
-              <p className="mt-3.5 max-w-[400px] text-[14.5px] leading-[1.6] text-[#6b7280]">
-                A organização é o espaço onde você gerencia eventos, equipe, operações e resultados.
-              </p>
-
-              <div className="mt-7 space-y-6">
-                {IDENTIFICATION_BENEFITS.map((benefit) => {
-                  const Icon = benefit.icon;
-                  return (
-                    <div key={benefit.title} className="flex items-start gap-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#f1ecfe] text-[#6d28d9]">
-                        <Icon size={19} strokeWidth={1.9} />
-                      </div>
-                      <div>
-                        <div className="text-[14.5px] font-semibold text-[#1a1626]">{benefit.title}</div>
-                        <div className="mt-0.5 text-[13px] leading-[1.5] text-[#6b7280]">{benefit.description}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1.1fr_1fr]">
+          <section className="space-y-6 lg:pt-4">
+            <StepEyebrow>Vamos começar</StepEyebrow>
+            <h1 className="text-display font-medium tracking-tight text-foreground">
+              Crie sua primeira <span className="text-brand">organização</span>
+            </h1>
+            <p className="max-w-md text-body text-muted-foreground">A organização é o espaço onde você gerencia eventos, equipe, operações e resultados.</p>
+            <div className="space-y-4">
+              {IDENTIFICATION_BENEFITS.map((benefit) => (
+                <BulletItem key={benefit.title} {...benefit} />
+              ))}
             </div>
+          </section>
 
-            <div className="w-full lg:flex-[1_1_46%]">
-              <OnboardingStepper step={step} />
-
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  handleCreateWorkspace();
-                }}
-                className="mx-auto max-w-[420px] rounded-2xl border border-[#e7e5ee] bg-white p-6 shadow-[0_6px_24px_rgba(30,20,60,0.05)]"
-              >
-                <h2 className="text-[18px] font-bold tracking-[-0.01em] text-[#1a1626]">Como deseja chamar sua organização?</h2>
-
-                <p className="mt-2 text-[12.5px] leading-[1.5] text-[#6b7280]">
-                  Pode ser o nome da sua produtora, estabelecimento, empresa ou o seu próprio nome.
-                </p>
-
-                <Input
-                  id="businessName"
-                  value={businessName}
-                  onChange={(event) => setBusinessName(event.target.value)}
-                  placeholder="Ex.: Produtora Horizonte, Bar Central ou Vitor Reis"
-                  autoComplete="organization"
-                  autoFocus
-                  className="mt-[18px] h-auto rounded-[11px] border-[#e7e5ee] px-[15px] py-[13px] text-[13.5px] placeholder:text-[#a9a7b3] focus-visible:border-violet-500 focus-visible:ring-[3px] focus-visible:ring-violet-500/15"
-                />
-
-                <Button
-                  type="submit"
-                  disabled={!canAdvance() || loading}
-                  className="mt-4 flex h-auto w-full items-center justify-center gap-2 rounded-[11px] bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] py-3.5 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(109,40,217,0.28)] transition hover:brightness-105 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45"
-                >
-                  {loading ? "Continuando..." : "Continuar"}
-                  {!loading && <ChevronRight className="h-4 w-4" />}
-                </Button>
-
-                <div className="mt-4 flex items-start gap-2.5 rounded-[11px] bg-[#f3efff] p-3.5">
-                  <Lock size={15} strokeWidth={1.9} className="mt-0.5 shrink-0 text-[#6d28d9]" />
-                  <p className="text-xs leading-[1.5] text-[#6d5b93]">
-                    <b className="font-semibold text-[#5b4a86]">Somente você pode criar organizações.</b>
-                    <br />
-                    Depois, poderá convidar sua equipe para colaborar.
-                  </p>
-                </div>
-              </form>
-            </div>
-          </div>
-        </section>
-
-        {/*
-          Largura calculada pra bater exatamente com a 3ª coluna da grid de
-          OnboardingExtras (1.1fr 1.55fr 1fr, gap 22px): col3 = (100% - 2×22px) × (1/3.65).
-          Valores fixos em px só coincidem numa resolução — isto acompanha
-          qualquer largura de tela, os dois blocos ficam sempre alinhados.
-        */}
-        <aside
-          className="hidden shrink-0 flex-col items-center rounded-[20px] border border-[#ecebf1] bg-white px-10 py-8 text-center xl:flex"
-          style={{ width: "calc((100% - 44px) * (1 / 3.65))" }}
-        >
-          <h3 className="text-[21px] font-bold text-[#1a1626]">Ainda não tem uma organização</h3>
-
-          <div className="my-8 flex w-full items-center justify-center">
-            <svg viewBox="0 0 200 170" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-auto w-[240px]">
-              <ellipse cx="100" cy="150" rx="70" ry="9" fill="#EDE7FE" />
-              <path d="M35 52h130l10 20H25l10-20Z" fill="#C4B5FD" />
-              <path d="M35 52h26l-4 20H31l4-20Z" fill="#A78BFA" />
-              <path d="M87 52h26l0 20H87l0-20Z" fill="#A78BFA" />
-              <path d="M139 52h26l4 20h-26l-4-20Z" fill="#A78BFA" />
-              <rect x="35" y="72" width="130" height="70" rx="6" fill="#EDE7FE" />
-              <rect x="35" y="72" width="130" height="70" rx="6" stroke="#C4B5FD" strokeWidth="2" />
-              <rect x="60" y="96" width="30" height="46" rx="4" fill="#C4B5FD" />
-              <circle cx="84" cy="120" r="2.2" fill="#7C3AED" />
-              <rect x="105" y="96" width="42" height="30" rx="4" fill="#fff" stroke="#C4B5FD" strokeWidth="2" />
-              <path d="M126 96v30M105 111h42" stroke="#C4B5FD" strokeWidth="2" />
-              <circle cx="150" cy="112" r="20" fill="#7C3AED" />
-              <path d="M150 104v16M142 112h16" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
-            </svg>
-          </div>
-
-          {IDENTIFICATION_NEXT_STEPS.map((next) => {
-            const Icon = next.icon;
-            return (
-              <div key={next.title} className="mb-7 flex w-full items-start gap-4 text-left last:mb-0">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#f1ecfe] text-[#6d28d9]">
-                  <Icon size={20} strokeWidth={1.9} />
-                </div>
-                <div>
-                  <div className="text-[15px] font-semibold text-[#1a1626]">{next.title}</div>
-                  <div className="mt-1 text-[13px] leading-[1.5] text-[#6b7280]">{next.description}</div>
-                </div>
+          <Card accent className="p-6">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleCreateWorkspace();
+              }}
+              className="space-y-5"
+            >
+              <div>
+                <h2 className="text-lg font-semibold tracking-tight text-foreground">Como deseja chamar sua organização?</h2>
+                <p className="mt-1 text-caption text-muted-foreground">Pode ser o nome da sua produtora, estabelecimento, empresa ou o seu próprio nome.</p>
               </div>
-            );
-          })}
-        </aside>
+
+              <Field label="Nome da organização" htmlFor="businessName" required>
+                <Input id="businessName" value={businessName} onChange={(event) => setBusinessName(event.target.value)} placeholder="Ex.: Produtora Horizonte, Bar Central ou Vitor Reis" autoComplete="organization" autoFocus />
+              </Field>
+
+              <Button type="submit" size="full" disabled={!canAdvance()} loading={loading} rightIcon="arrow-right">
+                Continuar
+              </Button>
+
+              <Callout tone="neutral" icon="lock">
+                <span className="font-semibold text-foreground">Somente você pode criar organizações.</span> Depois, poderá convidar sua equipe para colaborar.
+              </Callout>
+            </form>
+          </Card>
+        </div>
+
+        <OnboardingExtras />
       </div>
-
-      <OnboardingExtras />
-      </>
     );
   }
 
@@ -931,243 +747,159 @@ export default function PlatformOnboardingPage() {
     const selectedCount = selection?.selectedGroupKeys.size ?? 0;
 
     return (
-      <div className="flex h-full items-stretch gap-[22px]">
-        <section className="flex flex-1 flex-col rounded-[20px] border border-[#ecebf1] bg-white px-5 pb-6 pt-6 md:px-10 md:pb-8 md:pt-8">
-          <OnboardingStepper step={step} />
+      <div className="space-y-6">
+        <OnboardingStepper step={step} />
 
-          <div className="flex flex-1 flex-col items-start gap-9 lg:flex-row">
-            <div className="w-full space-y-6 lg:w-[280px] lg:shrink-0">
-              <div>
-                <span className="inline-block rounded-full bg-[#f3efff] px-3 py-1.5 text-[11.5px] font-semibold text-[#6d28d9]">
-                  Vamos continuar
-                </span>
-                <h1 className="mt-4 text-[24px] font-extrabold leading-[1.15] tracking-[-0.02em] text-[#1a1626] md:text-[27px]">
-                  Como funciona a sua <span className="text-[#6d28d9]">operação?</span>
-                </h1>
-                <p className="mt-3.5 text-[13.5px] leading-[1.6] text-[#6b7280]">
-                  Selecione os recursos que pretende utilizar agora. A Nokta personalizará seu painel para exibir somente o que fizer sentido para a sua operação.
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-[#ECE6F8] bg-[#F6F3FC] p-[18px]">
-                <div className="mb-3.5 flex items-center gap-2.5">
-                  <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#EDE7FE] text-[#6d28d9]">
-                    <Layers size={17} strokeWidth={1.9} />
-                  </div>
-                  <span className="text-[13px] font-semibold text-[#1a1626]">Sua organização</span>
-                </div>
-                <div className="text-[16px] font-bold text-[#1a1626]">{orgName}</div>
-                <p className="mt-1.5 text-xs leading-[1.5] text-[#6b7280]">
-                  Este é o nome que será mostrado no painel para você e para a sua equipe.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setStep(0)}
-                  className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-[#6d28d9] hover:underline"
-                >
-                  <Pencil size={13} />
-                  Editar nome de exibição
-                </button>
-                <div className="mt-4 flex items-start gap-2.5 rounded-[11px] bg-[#EFEAFA] p-3">
-                  <ShieldCheck size={14} strokeWidth={1.9} className="mt-0.5 shrink-0 text-[#6d28d9]" />
-                  <p className="text-[11px] leading-[1.5] text-[#5F5580]">
-                    O nome de exibição pode ser ajustado depois. Dados jurídicos, como razão social e CPF/CNPJ, são tratados à parte e podem exigir nova verificação após o KYC.
-                  </p>
-                </div>
-              </div>
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <aside className="space-y-5">
+            <div className="space-y-3">
+              <StepEyebrow>Vamos continuar</StepEyebrow>
+              <h1 className="text-display font-medium tracking-tight text-foreground">
+                Como funciona a sua <span className="text-brand">operação?</span>
+              </h1>
+              <p className="text-body text-muted-foreground">Selecione os recursos que pretende utilizar agora. A Nokta personaliza seu painel pra exibir só o que faz sentido pra sua operação.</p>
             </div>
 
-            <div className="flex w-full min-w-0 flex-1 flex-col">
-              <h2 className="text-[17px] font-bold tracking-[-0.01em] text-[#1a1626]">Selecione as áreas que fazem parte da sua operação</h2>
-              <p className="mt-1.5 text-[12.5px] text-[#6b7280]">
-                Clique no card para ativar todos os recursos do grupo ou personalize as funcionalidades individualmente.
-              </p>
+            <Card className="gap-3 p-5">
+              <p className="text-micro font-semibold uppercase tracking-wider text-subtle-foreground">Sua organização</p>
+              <p className="text-base font-semibold text-foreground">{orgName}</p>
+              <p className="text-caption text-muted-foreground">Este é o nome mostrado no painel pra você e pra sua equipe.</p>
+              <Button type="button" variant="link" size="sm" onClick={() => setStep(0)} leftIcon="edit" className="w-fit">
+                Editar nome de exibição
+              </Button>
+              <Callout tone="neutral" icon="shield" className="mt-1">
+                Dados jurídicos, como razão social e CPF/CNPJ, são tratados à parte e podem exigir nova verificação após o KYC.
+              </Callout>
+            </Card>
 
-              {catalog.isLoading || !selection ? (
-                <BlockSkeleton className="mt-5 h-72" />
-              ) : catalog.data ? (
-                <div className="mt-5 grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                  {catalog.data.map((group, index) => {
-                    const theme = BUSINESS_NEED_THEME[group.key];
-                    const Icon = theme.icon;
-                    const isSelected = selection.selectedGroupKeys.has(group.key);
-                    const deselected = selection.deselectedCapabilityKeysByGroup.get(group.key) ?? new Set<string>();
-                    const activeCount = group.capabilities.filter((c) => c.required || !deselected.has(c.key)).length;
-                    const totalCount = group.capabilities.length;
-                    const isPartial = isSelected && activeCount < totalCount;
-                    const isCustomizing = customizingGroupKey === group.key;
+            <div className="hidden space-y-4 lg:block">
+              {OPERATION_NEXT_STEPS.map((next) => (
+                <BulletItem key={next.title} {...next} />
+              ))}
+            </div>
+          </aside>
 
-                    const toggleCustomize = () => {
-                      setCustomizingGroupKey((prev) => (prev === group.key ? null : group.key));
-                    };
+          <section className="min-w-0">
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">Selecione as áreas que fazem parte da sua operação</h2>
+            <p className="mt-1 text-caption text-muted-foreground">Clique no card pra ativar todos os recursos do grupo, ou personalize as funcionalidades individualmente.</p>
 
-                    // Painel de personalização fica FORA do card (nunca faz o card
-                    // crescer) e é inserido logo após a linha de 3 (xl:grid-cols-3,
-                    // o layout de referência) onde o grupo aberto está — col-span-full
-                    // sempre quebra pra próxima linha do grid, então também funciona
-                    // nos breakpoints menores (sm:2col, mobile:1col), só não fica
-                    // "colado" exatamente na linha visual deles.
-                    const isEndOfRow = (index + 1) % 3 === 0;
-                    const isLastCard = index === catalog.data.length - 1;
-                    const customizingInThisRow =
-                      customizingGroupKey !== null &&
-                      catalog.data
-                        .slice(index - (index % 3), index + 1)
-                        .some((g) => g.key === customizingGroupKey) &&
-                      (isEndOfRow || isLastCard);
+            {catalog.isLoading || !selection ? (
+              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Skeleton key={i} className="h-52 rounded-card" />
+                ))}
+              </div>
+            ) : catalog.data ? (
+              <div className="mt-5 grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {catalog.data.map((group, index) => {
+                  const isSelected = selection.selectedGroupKeys.has(group.key);
+                  const deselected = selection.deselectedCapabilityKeysByGroup.get(group.key) ?? new Set<string>();
+                  const activeCount = group.capabilities.filter((c) => c.required || !deselected.has(c.key)).length;
+                  const totalCount = group.capabilities.length;
+                  const isPartial = isSelected && activeCount < totalCount;
+                  const isCustomizing = customizingGroupKey === group.key;
 
-                    return (
-                      <Fragment key={group.key}>
-                        <div
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => toggleBusinessNeedGroup(group.key)}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter" || event.key === " ") {
-                              event.preventDefault();
-                              toggleBusinessNeedGroup(group.key);
-                            }
-                          }}
-                          aria-pressed={isSelected}
-                          className={`relative cursor-pointer rounded-[15px] border p-[18px_16px_16px] transition-colors ${
-                            isSelected ? `${theme.border} bg-[#FBFAFE]` : "border-[#ecebf1] bg-white"
-                          } ${isCustomizing ? "ring-2 ring-[#7C3AED]/25" : ""}`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className={`flex h-11 w-11 items-center justify-center rounded-[13px] ${theme.iconBg} ${theme.iconColor}`}>
-                              <Icon size={22} strokeWidth={1.9} />
-                            </div>
+                  const toggleCustomize = () => {
+                    setCustomizingGroupKey((prev) => (prev === group.key ? null : group.key));
+                  };
 
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                toggleBusinessNeedGroup(group.key);
-                              }}
-                              className="flex items-center gap-2 text-[11.5px] font-semibold text-[#6b7280]"
-                            >
-                              Ativar este grupo
-                              <GroupCheckbox checked={isSelected && !isPartial} indeterminate={isPartial} />
-                            </button>
-                          </div>
+                  // Painel de personalização fica FORA do card (nunca faz o card
+                  // crescer) e é inserido logo após a linha de 3 (xl:grid-cols-3,
+                  // o layout de referência) onde o grupo aberto está — col-span-full
+                  // sempre quebra pra próxima linha do grid, então também funciona
+                  // nos breakpoints menores (sm:2col, mobile:1col).
+                  const isEndOfRow = (index + 1) % 3 === 0;
+                  const isLastCard = index === catalog.data.length - 1;
+                  const customizingInThisRow =
+                    customizingGroupKey !== null &&
+                    catalog.data
+                      .slice(index - (index % 3), index + 1)
+                      .some((g) => g.key === customizingGroupKey) &&
+                    (isEndOfRow || isLastCard);
 
-                          <div className="mt-3.5 text-[14px] font-bold text-[#1a1626]">{group.label}</div>
-                          <div className="mt-1.5 text-[11.5px] leading-[1.5] text-[#6b7280]">{group.description}</div>
-
-                          <span
-                            className={`mt-3.5 inline-flex w-fit items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                              isSelected ? `${theme.iconBg} ${theme.iconColor}` : "bg-black/[0.04] text-[#6b7280]"
-                            }`}
-                          >
-                            {isPartial ? `${activeCount} de ${totalCount} recursos` : `${totalCount} recursos incluídos`}
-                          </span>
-
-                          <p className="mt-2.5 text-[11px] leading-[1.5] text-[#9a98a6]">
-                            {group.capabilities.map((c) => c.label).join(", ")}.
-                          </p>
-
+                  return (
+                    <Fragment key={group.key}>
+                      <Card
+                        interactive
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => toggleBusinessNeedGroup(group.key)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            toggleBusinessNeedGroup(group.key);
+                          }
+                        }}
+                        aria-pressed={isSelected}
+                        className={cn("fade-up h-full cursor-pointer gap-3 p-4 text-left", isSelected && "border-brand/50 ring-1 ring-brand-ring", isCustomizing && "ring-2 ring-brand/40")}
+                        style={{ ["--i" as string]: index } as never}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <Icon name={BUSINESS_NEED_ICON[group.key]} size={18} className="mt-0.5 text-brand" />
                           <button
                             type="button"
                             onClick={(event) => {
                               event.stopPropagation();
-                              toggleCustomize();
+                              toggleBusinessNeedGroup(group.key);
                             }}
-                            className="-m-2.5 mt-1 flex items-center gap-1 p-2.5 text-[11.5px] font-semibold text-[#6d28d9] hover:underline"
+                            aria-pressed={isSelected}
+                            className="flex items-center gap-2 text-caption font-semibold text-muted-foreground"
                           >
-                            Personalizar recursos
-                            <ChevronDown size={13} className={`transition-transform ${isCustomizing ? "rotate-180" : ""}`} />
+                            {isSelected ? "Ativo" : "Ativar grupo"}
+                            <GroupCheckbox checked={isSelected && !isPartial} indeterminate={isPartial} />
                           </button>
                         </div>
 
-                        {customizingInThisRow ? (
-                          <GroupCustomizationPanel
-                            group={catalog.data.find((g) => g.key === customizingGroupKey)!}
-                            selection={selection}
-                            setSelection={setSelection}
-                            onClose={() => setCustomizingGroupKey(null)}
-                          />
-                        ) : null}
-                      </Fragment>
-                    );
-                  })}
-                </div>
-              ) : null}
+                        <div>
+                          <p className="text-base font-semibold text-foreground">{group.label}</p>
+                          <p className="mt-1 text-caption leading-snug text-muted-foreground">{group.description}</p>
+                        </div>
 
-              <div className="mt-auto">
-                <div className="mt-8 flex items-start gap-3 rounded-[13px] border border-[#E9E1FB] bg-[#f3efff] p-3.5">
-                  <div className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg bg-white text-[#6d28d9] shadow-[0_2px_5px_rgba(80,40,160,0.12)]">
-                    <Info size={15} />
-                  </div>
-                  <div>
-                    <div className="text-[13px] font-bold text-[#3A2E63]">Seu painel ficará mais organizado</div>
-                    <p className="mt-0.5 text-xs leading-[1.55] text-[#6A5E90]">
-                      Os recursos não selecionados ficam ocultos para reduzir a poluição visual. Você poderá ativá-los depois em Configurações, sem refazer o cadastro nem perder informações.
-                    </p>
-                  </div>
-                </div>
+                        <StatusBadge tone={isSelected ? "brand" : "neutral"} dot={false} className="w-fit">
+                          {isPartial ? `${activeCount} de ${totalCount} recursos` : `${totalCount} recursos incluídos`}
+                        </StatusBadge>
 
-                <div className="mt-5">
-                  <Button
-                    onClick={goToTerms}
-                    disabled={!canAdvance()}
-                    className="flex h-11 w-full items-center justify-center gap-2 bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] text-white hover:brightness-105 disabled:cursor-not-allowed"
-                  >
-                    {selectedCount > 0
-                      ? `Continuar com ${selectedCount} ${selectedCount > 1 ? "áreas selecionadas" : "área selecionada"}`
-                      : "Continuar"}
-                    <ChevronRight size={16} />
-                  </Button>
-                </div>
+                        <p className="text-caption leading-snug text-subtle-foreground">{group.capabilities.map((c) => c.label).join(", ")}.</p>
+
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            toggleCustomize();
+                          }}
+                          aria-expanded={isCustomizing}
+                          className="mt-auto -mx-2 -mb-2 flex h-9 w-fit items-center gap-1.5 rounded-lg px-2 text-caption font-semibold text-brand transition-colors hover:bg-brand-soft"
+                        >
+                          Personalizar recursos
+                          <Icon name="chevron-down" size={10} className={cn("transition-transform", isCustomizing && "rotate-180")} />
+                        </button>
+                      </Card>
+
+                      {customizingInThisRow ? <GroupCustomizationPanel group={catalog.data.find((g) => g.key === customizingGroupKey)!} selection={selection} setSelection={setSelection} onClose={() => setCustomizingGroupKey(null)} /> : null}
+                    </Fragment>
+                  );
+                })}
               </div>
-            </div>
-          </div>
-        </section>
+            ) : null}
 
-        <aside className="hidden w-[288px] shrink-0 flex-col justify-center rounded-[20px] border border-[#ECE6F8] bg-[#F6F3FC] px-6 py-8 xl:flex">
-          <h3 className="text-[16px] font-bold leading-[1.3] tracking-[-0.01em] text-[#1a1626]">
-            Um painel feito para a sua operação
-          </h3>
-          <p className="mt-3 text-[12.5px] leading-[1.6] text-[#6b7280]">
-            Ao finalizar, a navegação será organizada de acordo com os recursos selecionados
-            {selectedCount > 0 ? ` (${selectedCount} selecionado${selectedCount > 1 ? "s" : ""})` : ""}. Você começa com uma área mais simples e ativa novas funcionalidades conforme precisar.
-          </p>
+            <Callout tone="brand" title="Seu painel fica mais organizado" className="mt-6">
+              Os recursos não selecionados ficam ocultos pra reduzir a poluição visual. Você pode ativá-los depois em Explore a Nokta, sem refazer o cadastro nem perder informações.
+            </Callout>
 
-          <div className="my-6 flex w-full items-center justify-center">
-            <svg viewBox="0 0 240 180" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-auto w-full max-w-[210px]">
-              <ellipse cx="120" cy="150" rx="95" ry="18" fill="#ECE6F8" />
-              <circle cx="205" cy="52" r="4" fill="#C4B5FD" />
-              <path d="M30 60v10M25 65h10" stroke="#C4B5FD" strokeWidth="2" strokeLinecap="round" />
-              <rect x="66" y="34" width="120" height="86" rx="12" fill="#EDE7FE" />
-              <rect x="48" y="52" width="120" height="80" rx="12" fill="#fff" stroke="#DED3F6" strokeWidth="1.6" />
-              <rect x="48" y="52" width="120" height="20" rx="12" fill="#F4EFFD" />
-              <circle cx="60" cy="62" r="2.4" fill="#C4B5FD" />
-              <circle cx="69" cy="62" r="2.4" fill="#D9CDF3" />
-              <circle cx="78" cy="62" r="2.4" fill="#E5DCF6" />
-              <rect x="62" y="86" width="15" height="15" rx="4" fill="#7C3AED" />
-              <path d="m66 93.5 2.5 2.5 4-4.5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              <rect x="84" y="90" width="62" height="6" rx="3" fill="#E3D9F8" />
-              <rect x="62" y="108" width="15" height="15" rx="4" fill="#A78BFA" />
-              <path d="m66 115.5 2.5 2.5 4-4.5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              <rect x="84" y="112" width="48" height="6" rx="3" fill="#ECE4FA" />
-              <path d="M150 108l26 10-11 3-3 11-12-24Z" fill="#6D28D9" stroke="#fff" strokeWidth="2" strokeLinejoin="round" />
-            </svg>
-          </div>
-
-          {OPERATION_NEXT_STEPS.map((next) => {
-            const Icon = next.icon;
-            return (
-              <div key={next.title} className="mb-5 flex w-full items-start gap-3 text-left last:mb-0">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] bg-[#EDE7FE] text-[#6d28d9]">
-                  <Icon size={16} strokeWidth={1.9} />
-                </div>
-                <div>
-                  <div className="text-[13px] font-semibold text-[#1a1626]">{next.title}</div>
-                  <div className="mt-0.5 text-xs leading-[1.5] text-[#6b7280]">{next.description}</div>
-                </div>
-              </div>
-            );
-          })}
-        </aside>
+            <WizardActions>
+              {!skippedIdentification ? (
+                <Button type="button" variant="ghost" onClick={() => setStep(0)} leftIcon="arrow-left">
+                  Voltar
+                </Button>
+              ) : (
+                <span />
+              )}
+              <Button onClick={goToTerms} disabled={!canAdvance()} rightIcon="arrow-right" className="min-w-0 flex-1 md:flex-initial">
+                <span className="truncate">{selectedCount > 0 ? `Continuar com ${selectedCount} ${selectedCount > 1 ? "áreas" : "área"}` : "Continuar"}</span>
+              </Button>
+            </WizardActions>
+          </section>
+        </div>
       </div>
     );
   }
@@ -1178,347 +910,184 @@ export default function PlatformOnboardingPage() {
     const selectedGroups = catalog.data?.filter((g) => selection?.selectedGroupKeys.has(g.key)) ?? [];
 
     return (
-      <div>
+      <div className="space-y-6">
         <OnboardingStepper step={step} />
 
-        <div className="grid grid-cols-1 items-start gap-7 xl:grid-cols-[290px_minmax(0,1fr)_300px]">
-        {/* ── Coluna esquerda: resumo ───────────────────────────────── */}
-        <div className="flex flex-col">
-          <span className="inline-block w-fit rounded-full bg-[#f3efff] px-3 py-1.5 text-[11.5px] font-semibold text-[#6d28d9]">
-            Vamos continuar
-          </span>
-          <h1 className="mt-4 text-[26px] font-extrabold leading-[1.18] tracking-[-0.02em] text-[#1a1626]">
-            Antes de concluir, confirme sua <span className="text-[#6d28d9]">responsabilidade</span>
-          </h1>
-          <p className="mt-3.5 text-[13.5px] leading-[1.6] text-[#6b7280]">
-            Você será o responsável inicial por esta organização e poderá convidar outras pessoas para ajudar na gestão.
-          </p>
+        <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[280px_minmax(0,1fr)_300px]">
+          {/* ── Coluna esquerda: resumo ───────────────────────────────── */}
+          <aside className="space-y-5">
+            <div className="space-y-3">
+              <StepEyebrow>Vamos continuar</StepEyebrow>
+              <h1 className="text-display font-medium tracking-tight text-foreground">
+                Antes de concluir, confirme sua <span className="text-brand">responsabilidade</span>
+              </h1>
+              <p className="text-body text-muted-foreground">Você será o responsável inicial por esta organização e poderá convidar outras pessoas pra ajudar na gestão.</p>
+            </div>
 
-          <div className="mt-6 rounded-2xl border border-[#ece6f8] bg-[#fcfbfe] p-5">
-            <div className="mb-4 text-xs font-semibold text-[#6d28d9] opacity-85">Resumo da organização</div>
-            <div className="mb-4 flex items-center gap-2.5 border-b border-[#efecf6] pb-4">
-              <div className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-[11px] bg-[#ede7fe] text-[#6d28d9]">
-                <Grid2x2 size={19} strokeWidth={1.8} />
-              </div>
-              <div className="text-[15px] font-bold text-[#1a1626]">{orgName}</div>
-            </div>
-            <div className="mb-3.5">
-              <div className="mb-1 text-[11px] text-[#9a98a6]">Responsável inicial</div>
-              <div className="text-[13.5px] font-semibold text-[#1a1626]">{fullName || "—"}</div>
-            </div>
-            <div className="mb-3.5">
-              <div className="mb-1 text-[11px] text-[#9a98a6]">Acesso</div>
-              <span className="inline-block rounded-full bg-[#f3efff] px-2.5 py-1 text-xs font-semibold text-[#6d28d9]">Owner</span>
-            </div>
-            <div className="mb-4">
-              <div className="mb-2.5 text-[11px] text-[#9a98a6]">Áreas selecionadas</div>
-              {selectedGroups.map((group) => {
-                const theme = BUSINESS_NEED_THEME[group.key];
-                const Icon = theme.icon;
-                return (
-                  <div key={group.key} className="mb-2 flex items-center gap-2 text-[13px] text-[#2d2a3a] last:mb-0">
-                    <Icon size={16} strokeWidth={1.8} className="shrink-0 text-[#6d28d9]" />
-                    {group.label}
-                  </div>
-                );
-              })}
-            </div>
-            <button
-              type="button"
-              onClick={() => setStep(0)}
-              className="mb-3 flex w-full items-center justify-center gap-1.5 rounded-[11px] border border-[#e7e5ee] bg-white p-2.5 text-[13px] font-semibold text-[#1a1626] transition hover:bg-[#faf9fd]"
-            >
-              <Pencil size={14} className="text-[#6d28d9]" />
-              Editar nome
-            </button>
-            <button
-              type="button"
-              onClick={() => setStep(1)}
-              className="block w-full text-center text-[12.5px] font-semibold text-[#6d28d9]"
-            >
-              Alterar áreas selecionadas
-            </button>
-          </div>
-        </div>
-
-        {/* ── Coluna central: confirmações ─────────────────────────── */}
-        <div>
-          <h2 className="text-[19px] font-bold tracking-[-0.01em] text-[#1a1626]">Confirmações necessárias</h2>
-
-          {phoneNeedsRecheck ? (
-            <div className="mt-5 space-y-4 rounded-2xl border border-[#ecebf1] bg-white p-6">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-violet-100">
-                <FileText className="text-violet-600" size={22} />
+            <Card className="gap-4 p-5">
+              <p className="text-micro font-semibold uppercase tracking-wider text-subtle-foreground">Resumo da organização</p>
+              <div className="flex items-center gap-3 border-b border-border pb-4">
+                <Icon name="building" size={18} className="text-brand" />
+                <p className="text-base font-semibold text-foreground">{orgName}</p>
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Confirme seu telefone</h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Identificamos uma pendência na verificação do seu telefone. Confirme novamente para continuar.
+                <p className="text-micro font-semibold uppercase tracking-wider text-subtle-foreground">Responsável inicial</p>
+                <p className="mt-1 flex items-center gap-2 text-sm font-medium text-foreground">
+                  {fullName || "—"}
+                  <StatusBadge tone="brand" dot={false}>
+                    Owner
+                  </StatusBadge>
                 </p>
               </div>
-
-              {!showPhoneCodeInput ? (
-                <Button
-                  onClick={handleSendPhoneRecheckCode}
-                  disabled={isSendingPhoneCode}
-                  className="h-11 w-full bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
-                >
-                  {isSendingPhoneCode ? "Enviando..." : "Enviar código no WhatsApp"}
+              <div>
+                <p className="text-micro font-semibold uppercase tracking-wider text-subtle-foreground">Áreas selecionadas</p>
+                <ul className="mt-2 space-y-1.5">
+                  {selectedGroups.map((group) => (
+                    <li key={group.key} className="flex items-center gap-2 text-sm text-foreground">
+                      <Icon name={BUSINESS_NEED_ICON[group.key]} size={13} className="text-brand" />
+                      {group.label}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="flex flex-col gap-2 border-t border-border pt-4">
+                <Button type="button" variant="outline" size="sm" onClick={() => setStep(0)} leftIcon="edit">
+                  Editar nome
                 </Button>
-              ) : (
-                <>
-                  <div className="space-y-2">
-                    <label htmlFor="phoneRecheckCode" className="block text-sm font-medium text-gray-700">
-                      Código recebido
-                    </label>
-                    <Input
-                      id="phoneRecheckCode"
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={8}
-                      value={phoneRecheckCode}
-                      onChange={(event) => setPhoneRecheckCode(event.target.value.replace(/\D/g, ""))}
-                      placeholder="000000"
-                      className="h-11 text-center font-mono text-xl tracking-widest"
-                      autoFocus
-                    />
+                <Button type="button" variant="ghost" size="sm" onClick={() => setStep(1)}>
+                  Alterar áreas selecionadas
+                </Button>
+              </div>
+            </Card>
+          </aside>
+
+          {/* ── Coluna central: confirmações ─────────────────────────── */}
+          <section className="min-w-0">
+            <h2 className="text-lg font-semibold tracking-tight text-foreground">Confirmações necessárias</h2>
+
+            {phoneNeedsRecheck ? (
+              <Card accent className="mt-4 p-6">
+                <div className="flex items-start gap-3">
+                  <Icon name="phone" size={18} className="mt-0.5 text-brand" />
+                  <div>
+                    <h3 className="text-base font-semibold text-foreground">Confirme seu telefone</h3>
+                    <p className="mt-1 text-body text-muted-foreground">Identificamos uma pendência na verificação do seu telefone. Confirme novamente para continuar.</p>
                   </div>
-                  <Button
-                    onClick={handleConfirmPhoneRecheck}
-                    disabled={isVerifyingPhoneCode || phoneRecheckCode.length < 4}
-                    className="h-11 w-full bg-violet-600 text-white hover:bg-violet-700 disabled:cursor-not-allowed"
-                  >
-                    {isVerifyingPhoneCode ? "Verificando..." : "Confirmar código"}
-                  </Button>
-                  <div className="flex justify-end text-xs text-gray-500">
-                    <button
-                      type="button"
-                      onClick={handleSendPhoneRecheckCode}
-                      disabled={resendTimer > 0 || isSendingPhoneCode}
-                      className="flex items-center gap-1 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <RefreshCw size={12} />
-                      {resendTimer > 0 ? `Reenviar em ${resendTimer}s` : "Reenviar código"}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          ) : (
-            <>
-              <p className="mt-1.5 text-[13px] text-[#6b7280]">
-                Para criar sua organização, precisamos que você confirme os itens abaixo.
-              </p>
+                </div>
 
-              <div className="mt-5 space-y-4">
-                {/* Card 1: autorização */}
-                <label className="flex cursor-pointer items-start gap-4 rounded-2xl border border-[#ecebf1] bg-white p-[22px_24px]">
-                  <span
-                    className={`mt-0.5 flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg ${
-                      authorizedToAdminister ? "bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] shadow-[0_3px_7px_rgba(109,40,217,0.35)]" : "border-[1.6px] border-[#dad8e2] bg-white"
-                    }`}
-                  >
-                    {authorizedToAdminister && <Check size={15} strokeWidth={3} className="text-white" />}
-                  </span>
-                  <span className="flex flex-1 items-start gap-4">
-                    <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[14px] bg-[#ede7fe] text-[#6d28d9]">
-                      <ShieldCheck size={24} strokeWidth={1.8} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="mb-1.5 block text-[15px] font-bold text-[#1a1626]">Autorização para administrar</span>
-                      <span className="block text-[13px] leading-[1.55] text-[#6b7280]">
-                        Confirmo que tenho autorização para criar e administrar esta organização. Sou responsável pelas
-                        informações cadastradas e pelos acessos concedidos à equipe. Li e aceito os{" "}
-                        <Link href="/termos" target="_blank" className="font-medium text-[#6d28d9] underline" onClick={(e) => e.stopPropagation()}>
-                          Termos de Uso
-                        </Link>{" "}
-                        e a{" "}
-                        <Link href="/privacidade" target="_blank" className="font-medium text-[#6d28d9] underline" onClick={(e) => e.stopPropagation()}>
-                          Política de Privacidade
-                        </Link>{" "}
-                        da Nokta.
-                      </span>
-                    </span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={authorizedToAdminister}
-                    onChange={(event) => setAuthorizedToAdminister(event.target.checked)}
-                    className="sr-only"
-                  />
-                </label>
+                <div className="mt-5 space-y-4">
+                  {!showPhoneCodeInput ? (
+                    <Button onClick={handleSendPhoneRecheckCode} loading={isSendingPhoneCode} size="full" leftIcon="whatsapp">
+                      Enviar código no WhatsApp
+                    </Button>
+                  ) : (
+                    <>
+                      <Field label="Código recebido" htmlFor="phoneRecheckCode">
+                        <Input id="phoneRecheckCode" type="text" inputMode="numeric" maxLength={8} value={phoneRecheckCode} onChange={(event) => setPhoneRecheckCode(event.target.value.replace(/\D/g, ""))} placeholder="000000" className="text-center font-mono text-xl tracking-widest" autoFocus />
+                      </Field>
+                      <Button onClick={handleConfirmPhoneRecheck} disabled={phoneRecheckCode.length < 4} loading={isVerifyingPhoneCode} size="full">
+                        Confirmar código
+                      </Button>
+                      <div className="flex justify-end">
+                        <Button type="button" variant="link" size="sm" onClick={handleSendPhoneRecheckCode} disabled={resendTimer > 0 || isSendingPhoneCode} leftIcon="refresh">
+                          {resendTimer > 0 ? `Reenviar em ${resendTimer}s` : "Reenviar código"}
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </Card>
+            ) : (
+              <>
+                <p className="mt-1 text-caption text-muted-foreground">Para criar sua organização, precisamos que você confirme os itens abaixo.</p>
 
-                {/* Card 2: dados jurídicos/financeiros (também exige confirmação) */}
-                <label className="flex cursor-pointer items-start gap-4 rounded-2xl border border-[#ecebf1] bg-white p-[22px_24px]">
-                  <span
-                    className={`mt-0.5 flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg ${
-                      acknowledgedLegalData ? "bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] shadow-[0_3px_7px_rgba(109,40,217,0.35)]" : "border-[1.6px] border-[#dad8e2] bg-white"
-                    }`}
-                  >
-                    {acknowledgedLegalData && <Check size={15} strokeWidth={3} className="text-white" />}
-                  </span>
-                  <span className="flex flex-1 items-start gap-4">
-                    <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[14px] bg-[#ede7fe] text-[#6d28d9]">
-                      <FileText size={24} strokeWidth={1.8} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="mb-1.5 block text-[15px] font-bold text-[#1a1626]">Dados jurídicos e financeiros</span>
-                      <span className="block text-[13px] leading-[1.55] text-[#6b7280]">
-                        Para publicar eventos pagos, receber valores ou solicitar saques, será necessário informar e
-                        verificar os dados do responsável PF ou da empresa PJ.
-                      </span>
-                      <span className="mt-3.5 flex items-start gap-2 rounded-[11px] bg-[#f6f3fc] p-[11px_14px]">
-                        <Info size={15} className="mt-0.5 shrink-0 text-[#6d28d9]" />
-                        <span className="text-xs leading-[1.5] text-[#5f5580]">
-                          Esses dados poderão ser configurados depois, quando forem necessários.
-                        </span>
-                      </span>
-                    </span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={acknowledgedLegalData}
-                    onChange={(event) => setAcknowledgedLegalData(event.target.checked)}
-                    className="sr-only"
-                  />
-                </label>
+                <div className="mt-5 space-y-3">
+                  <TermCard checked={authorizedToAdminister} onChange={setAuthorizedToAdminister} icon="shield" title="Autorização para administrar">
+                    Confirmo que tenho autorização para criar e administrar esta organização. Sou responsável pelas informações cadastradas e pelos acessos concedidos à equipe. Li e aceito os <ExternalTextLink href="/termos">Termos de Uso</ExternalTextLink> e a <ExternalTextLink href="/privacidade">Política de Privacidade</ExternalTextLink> da Nokta.
+                  </TermCard>
 
-                {/* Card 3: termos de bilheteria — sempre visível e obrigatório, mesmo sem
-                    ter selecionado o grupo de Eventos/Bilheteria agora. Cobre o caso de
-                    ativar bilheteria depois pelo Explore a Nokta, onde não existe (ainda)
-                    um modal de aceite de termos — assinar aqui evita esse buraco. */}
-                <label className="flex cursor-pointer items-start gap-4 rounded-2xl border border-[#ecebf1] bg-white p-[22px_24px]">
-                  <span
-                    className={`mt-0.5 flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-lg ${
-                      acceptedSpecificTerms ? "bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] shadow-[0_3px_7px_rgba(109,40,217,0.35)]" : "border-[1.6px] border-[#dad8e2] bg-white"
-                    }`}
-                  >
-                    {acceptedSpecificTerms && <Check size={15} strokeWidth={3} className="text-white" />}
-                  </span>
-                  <span className="flex flex-1 items-start gap-4">
-                    <span className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[14px] bg-[#ede7fe] text-[#6d28d9]">
-                      <ListChecks size={24} strokeWidth={1.8} />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="mb-1.5 block text-[15px] font-bold text-[#1a1626]">
-                        Termos específicos de eventos e bilheteria
-                      </span>
-                      <span className="block text-[13px] leading-[1.55] text-[#6b7280]">
-                        {requiresTicketingTerms
-                          ? "Como você selecionou recursos de eventos e bilheteria, é necessário confirmar a leitura dos termos abaixo."
-                          : "Mesmo que você não use bilheteria agora, esses termos valem para quando ativar esse recurso depois — confirme a leitura para evitar essa etapa novamente no futuro."}
-                      </span>
-                      <span className="mt-3.5 block rounded-xl bg-[#f6f3fc] p-4">
-                        <span className="mb-1.5 block text-[13.5px] font-bold text-[#1a1626]">Operação de eventos e bilheteria</span>
-                        <span className="mb-3.5 block text-[12.5px] leading-[1.55] text-[#6b7280]">
-                          Confirmo que li e aceito os Termos de Bilheteria e a Política de Cancelamentos, Reembolsos e
-                          Chargebacks da Nokta.
-                        </span>
-                        <Link
-                          href="/termos-bilheteria"
-                          target="_blank"
-                          onClick={(e) => e.stopPropagation()}
-                          className="mb-2.5 flex items-center justify-between gap-2.5 text-[12.5px] font-semibold text-[#6d28d9]"
-                        >
-                          <span className="flex items-center gap-2">
-                            <FileText size={15} strokeWidth={1.8} />
+                  <TermCard checked={acknowledgedLegalData} onChange={setAcknowledgedLegalData} icon="file-lines" title="Dados jurídicos e financeiros">
+                    Para publicar eventos pagos, receber valores ou solicitar saques, será necessário informar e verificar os dados do responsável PF ou da empresa PJ.
+                    <span className="mt-2 block text-caption text-subtle-foreground">Esses dados podem ser configurados depois, quando forem necessários.</span>
+                  </TermCard>
+
+                  {/* Termos de bilheteria — sempre visível e obrigatório, mesmo sem
+                      ter selecionado o grupo de Eventos/Bilheteria agora. Cobre o caso de
+                      ativar bilheteria depois pelo Explore a Nokta, onde não existe (ainda)
+                      um modal de aceite de termos. */}
+                  <TermCard checked={acceptedSpecificTerms} onChange={setAcceptedSpecificTerms} icon="ticket" title="Termos específicos de eventos e bilheteria">
+                    {requiresTicketingTerms ? "Como você selecionou recursos de eventos e bilheteria, é necessário confirmar a leitura dos termos abaixo." : "Mesmo que você não use bilheteria agora, esses termos valem para quando ativar esse recurso depois — confirme a leitura para evitar essa etapa novamente no futuro."}
+                    <span className="surface-inset mt-3 block rounded-xl p-4">
+                      <span className="block text-sm font-semibold text-foreground">Operação de eventos e bilheteria</span>
+                      <span className="mt-1 block text-caption text-muted-foreground">Confirmo que li e aceito os Termos de Bilheteria e a Política de Cancelamentos, Reembolsos e Chargebacks da Nokta.</span>
+                      <span className="mt-3 flex flex-col gap-2">
+                        <Link href="/termos-bilheteria" target="_blank" onClick={(e) => e.stopPropagation()} className="inline-flex items-center justify-between gap-2 text-caption font-semibold text-brand hover:underline">
+                          <span className="inline-flex items-center gap-2">
+                            <Icon name="file-lines" size={12} />
                             Ver Termos de Bilheteria
                           </span>
-                          <ExternalLink size={14} />
+                          <Icon name="external" size={10} />
                         </Link>
-                        <Link
-                          href="/politica-de-cancelamento"
-                          target="_blank"
-                          onClick={(e) => e.stopPropagation()}
-                          className="flex items-center justify-between gap-2.5 text-[12.5px] font-semibold text-[#6d28d9]"
-                        >
-                          <span className="flex items-center gap-2">
-                            <FileText size={15} strokeWidth={1.8} />
+                        <Link href="/politica-de-cancelamento" target="_blank" onClick={(e) => e.stopPropagation()} className="inline-flex items-center justify-between gap-2 text-caption font-semibold text-brand hover:underline">
+                          <span className="inline-flex items-center gap-2">
+                            <Icon name="file-lines" size={12} />
                             Ver Política de Cancelamentos, Reembolsos e Chargebacks
                           </span>
-                          <ExternalLink size={14} />
+                          <Icon name="external" size={10} />
                         </Link>
                       </span>
                     </span>
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={acceptedSpecificTerms}
-                    onChange={(event) => setAcceptedSpecificTerms(event.target.checked)}
-                    className="sr-only"
-                  />
-                </label>
-              </div>
+                  </TermCard>
+                </div>
 
-              <div className="mt-5 flex items-center gap-2 text-[12.5px] text-[#6b7280]">
-                <Lock size={15} className="text-[#9a98a6]" />
-                Você poderá revisar e editar tudo antes da criação final da organização.
-              </div>
+                <p className="mt-4 flex items-center gap-2 text-caption text-muted-foreground">
+                  <Icon name="lock" size={12} className="text-subtle-foreground" />
+                  Você pode revisar e editar tudo antes da criação final da organização.
+                </p>
 
-              <div className="mt-5 flex items-center justify-between gap-3.5">
-                <Button variant="outline" onClick={() => setStep(1)} className="h-11">
-                  <ChevronLeft size={16} className="mr-1" />
-                  Voltar para operação
-                </Button>
-                <Button
-                  onClick={goToSummary}
-                  disabled={!canAdvance() || preview.isPending}
-                  className="h-11 bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] text-white hover:brightness-105 disabled:cursor-not-allowed"
-                >
-                  {preview.isPending ? "Preparando..." : "Continuar para revisão"}
-                  {!preview.isPending && <ChevronRight size={16} className="ml-1" />}
-                </Button>
-              </div>
-            </>
-          )}
-        </div>
+                <WizardActions>
+                  <Button variant="ghost" onClick={() => setStep(1)} leftIcon="arrow-left">
+                    Voltar
+                  </Button>
+                  <Button onClick={goToSummary} disabled={!canAdvance()} loading={preview.isPending} rightIcon="arrow-right">
+                    Continuar para revisão
+                  </Button>
+                </WizardActions>
+              </>
+            )}
+          </section>
 
-        {/* ── Coluna direita: o que acontece depois ────────────────── */}
-        <aside className="hidden rounded-[20px] border border-[#ece6f8] bg-[#f6f3fc] p-[24px_22px] xl:block">
-          <h3 className="mb-5 text-base font-bold tracking-[-0.01em] text-[#1a1626]">O que acontece depois?</h3>
-
-          {[
-            { title: "Você revisará todas as escolhas", desc: "Na próxima etapa, você poderá conferir cada detalhe antes de criar sua organização." },
-            { title: "A organização será criada", desc: "Seu espaço será criado com os recursos selecionados." },
-            { title: "Painel organizado para você", desc: "O dashboard mostrará apenas as áreas e recursos que você ativou agora." },
-            { title: "Dados jurídicos depois", desc: "Quando precisar publicar eventos pagos, receber valores ou solicitar saques, avisaremos para você concluir a verificação." },
-          ].map((item, index) => (
-            <div key={item.title} className="mb-[18px] flex items-start gap-3 last:mb-0">
-              <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] text-xs font-bold text-white shadow-[0_2px_6px_rgba(109,40,217,0.35)]">
-                {index + 1}
+          {/* ── Coluna direita: o que acontece depois ────────────────── */}
+          <aside className="hidden xl:block">
+            <Card className="gap-5 p-5">
+              <h3 className="text-base font-semibold text-foreground">O que acontece depois?</h3>
+              <ol className="space-y-4">
+                {TERMS_NEXT_STEPS.map((item, index) => (
+                  <li key={item.title} className="flex items-start gap-3">
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-soft text-caption font-semibold text-brand tnum">{index + 1}</span>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                      <p className="mt-0.5 text-caption text-muted-foreground">{item.desc}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <Callout tone="neutral" icon="shield" title="Seus dados estão seguros">
+                Seguimos as melhores práticas de segurança e proteção de dados. Leia nossa <ExternalTextLink href="/privacidade">Política de Privacidade</ExternalTextLink>.
+              </Callout>
+              <div className="flex items-start gap-3 border-t border-border pt-4">
+                <Icon name="question" size={16} className="mt-0.5 text-brand" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Dúvidas?</p>
+                  <p className="mt-0.5 text-caption text-muted-foreground">Acesse nossa Central de Ajuda sempre que precisar.</p>
+                  <a href="mailto:contato@noktatickets.com.br" className="mt-1.5 inline-flex items-center gap-1.5 text-caption font-semibold text-brand hover:underline">
+                    Falar com o suporte
+                    <Icon name="external" size={10} />
+                  </a>
+                </div>
               </div>
-              <div>
-                <div className="text-[13px] font-bold text-[#1a1626]">{item.title}</div>
-                <div className="mt-0.5 text-xs leading-[1.5] text-[#6b7280]">{item.desc}</div>
-              </div>
-            </div>
-          ))}
-
-          <div className="my-5 flex items-start gap-2.5 rounded-[13px] border border-[#ece6f8] bg-white p-3.5">
-            <ShieldCheck size={18} strokeWidth={1.8} className="mt-0.5 shrink-0 text-[#6d28d9]" />
-            <div>
-              <div className="mb-0.5 text-xs font-bold text-[#1a1626]">Seus dados estão seguros</div>
-              <div className="text-[11.5px] leading-[1.5] text-[#6b7280]">
-                Seguimos as melhores práticas de segurança e proteção de dados. Leia nossa{" "}
-                <Link href="/privacidade" target="_blank" className="font-semibold text-[#6d28d9] underline">
-                  Política de Privacidade.
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-2.5">
-            <HelpCircle size={18} strokeWidth={1.8} className="mt-0.5 shrink-0 text-[#6d28d9]" />
-            <div>
-              <div className="mb-0.5 text-[13px] font-bold text-[#1a1626]">Dúvidas?</div>
-              <div className="mb-2 text-xs leading-[1.5] text-[#6b7280]">Acesse nossa Central de Ajuda sempre que precisar.</div>
-              <a href="mailto:contato@noktatickets.com.br" className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-[#6d28d9]">
-                Ir para a Central de Ajuda
-                <ExternalLink size={13} />
-              </a>
-            </div>
-          </div>
-        </aside>
+            </Card>
+          </aside>
         </div>
       </div>
     );
@@ -1533,363 +1102,254 @@ export default function PlatformOnboardingPage() {
   const totalCapabilities = preview.data?.allCapabilityKeys.length ?? 0;
   const activeAreasCount = previewGroups.length;
 
+  const summaryCard = (icon: IconName, title: string, action: ReactNode, body: ReactNode) => (
+    <Card className="gap-0 p-0">
+      <CardHeader className="pb-0">
+        <div className="flex items-center gap-2.5">
+          <Icon name={icon} size={16} className="text-brand" />
+          <CardTitle>{title}</CardTitle>
+        </div>
+        {action}
+      </CardHeader>
+      <CardContent className="pt-4">{body}</CardContent>
+    </Card>
+  );
+
   return (
-    <div>
+    <div className="space-y-6">
       <OnboardingStepper step={step} />
 
-      <div className="grid grid-cols-1 items-start gap-7 xl:grid-cols-[296px_minmax(0,1fr)_300px]">
-        {/* ── Coluna esquerda ───────────────────────────────────────── */}
-        <aside className="flex flex-col">
-          <span className="inline-block w-fit rounded-full bg-[#f3efff] px-3 py-1.5 text-[11.5px] font-semibold text-[#6d28d9]">
-            Vamos finalizar
-          </span>
-          <h1 className="mt-4 text-[27px] font-extrabold leading-[1.15] tracking-[-0.02em] text-[#1a1626]">
-            Tudo certo para <span className="text-[#6d28d9]">começar?</span>
-          </h1>
-          <p className="mt-3.5 text-[13.5px] leading-[1.6] text-[#6b7280]">
-            Revise as informações abaixo. Você poderá ajustar configurações e ativar novos recursos depois.
-          </p>
+      <div className="space-y-3">
+        <StepEyebrow>Vamos finalizar</StepEyebrow>
+        <h1 className="text-display font-medium tracking-tight text-foreground">
+          Tudo certo para <span className="text-brand">começar?</span>
+        </h1>
+        <p className="max-w-2xl text-body text-muted-foreground">Revise as informações abaixo. Você pode ajustar configurações e ativar novos recursos depois.</p>
+      </div>
 
-          <div className="mt-2 rounded-[15px] border border-[#ece6f8] bg-[#f6f3fc] p-4">
-            <div className="mb-2 flex items-center gap-2">
-              <ShieldCheck size={17} className="text-[#6d28d9]" />
-              <div className="text-[13px] font-bold text-[#1a1626]">Seus dados estão seguros</div>
-            </div>
-            <p className="mb-2 text-xs leading-[1.55] text-[#6b7280]">
-              Usamos as melhores práticas de segurança e proteção de dados.
-            </p>
-            <Link href="/privacidade" target="_blank" className="inline-flex items-center gap-1 text-xs font-semibold text-[#6d28d9]">
-              Política de Privacidade
-              <ExternalLink size={12} />
-            </Link>
-          </div>
-        </aside>
-
+      <div className="grid grid-cols-1 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         {/* ── Coluna central ────────────────────────────────────────── */}
-        <main>
-          <div className="mb-5">
-            <h2 className="text-[18px] font-bold tracking-[-0.01em] text-[#1a1626]">Revise os detalhes da sua organização</h2>
-            <p className="mt-1.5 text-[12.5px] text-[#6b7280]">Confira tudo antes de criar sua organização na Nokta.</p>
-          </div>
-
-          {/* Organização */}
-          <div className="mb-4 rounded-2xl border border-[#ecebf1] bg-white p-[22px_24px]">
-            <div className="flex items-start gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[13px] bg-[#ede7fe] text-[#6d28d9]">
-                <Grid2x2 size={22} strokeWidth={1.9} />
+        <section className="min-w-0 space-y-4">
+          {summaryCard(
+            "building",
+            "Organização",
+            <Button type="button" variant="outline" size="sm" onClick={() => setStep(0)} leftIcon="edit">
+              Editar nome
+            </Button>,
+            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <dt className="text-micro font-semibold uppercase tracking-wider text-subtle-foreground">Nome da organização</dt>
+                <dd className="mt-1 text-sm font-medium text-foreground">{orgName}</dd>
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-[15.5px] font-bold text-[#1a1626]">Organização</h3>
-                  <button
-                    type="button"
-                    onClick={() => setStep(0)}
-                    className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[10px] border border-[#e5ddf6] bg-white px-3.5 py-2 text-[12.5px] font-semibold text-[#6d28d9] transition hover:bg-[#fcfbfe]"
-                  >
-                    <Pencil size={14} />
-                    Editar nome
-                  </button>
-                </div>
-                <div className="mt-4">
-                  <div className="mb-1 text-[11.5px] uppercase tracking-[0.03em] text-[#9a98a6]">Nome da organização</div>
-                  <div className="text-sm font-semibold text-[#1a1626]">{orgName}</div>
-                </div>
-                <div className="mt-3.5">
-                  <div className="mb-1 text-[11.5px] uppercase tracking-[0.03em] text-[#9a98a6]">Responsável inicial</div>
-                  <div className="flex items-center gap-2">
-                    <User size={16} className="text-[#6b7280]" />
-                    <span className="text-sm font-semibold text-[#1a1626]">{fullName || "—"}</span>
-                    <span className="inline-block rounded-full bg-[#ede7fe] px-2.5 py-1 text-[10.5px] font-semibold text-[#6d28d9]">Owner</span>
+              <div>
+                <dt className="text-micro font-semibold uppercase tracking-wider text-subtle-foreground">Responsável inicial</dt>
+                <dd className="mt-1 flex items-center gap-2 text-sm font-medium text-foreground">
+                  <Icon name="user" size={13} className="text-muted-foreground" />
+                  {fullName || "—"}
+                  <StatusBadge tone="brand" dot={false}>
+                    Owner
+                  </StatusBadge>
+                </dd>
+              </div>
+            </dl>,
+          )}
+
+          {summaryCard(
+            "layers",
+            "Áreas da operação",
+            <Button type="button" variant="outline" size="sm" onClick={() => setStep(1)} leftIcon="edit">
+              Editar recursos
+            </Button>,
+            preview.isPending || !catalog.data ? (
+              <Skeleton className="h-24 rounded-xl" />
+            ) : (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                {previewGroups.map((group) => (
+                  <div key={group.key}>
+                    <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                      <Icon name={BUSINESS_NEED_ICON[group.key as BusinessNeedKey] ?? "layers"} size={13} className="text-brand" />
+                      {group.label}
+                    </p>
+                    <ul className="mt-2 space-y-1.5">
+                      {group.capabilityKeys.map((key) => (
+                        <li key={key} className="flex items-center gap-2 text-caption text-foreground">
+                          <Icon name="check-circle" size={12} className="shrink-0 text-success" />
+                          {labelOf(key)}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                </div>
+                ))}
+              </div>
+            ),
+          )}
+
+          {summaryCard(
+            "shield",
+            "Responsabilidades e termos",
+            <Button type="button" variant="outline" size="sm" onClick={() => setReviewingTerms(true)} leftIcon="clipboard-check">
+              Revisar termos
+            </Button>,
+            <ul className="space-y-3">
+              {[
+                { text: "Confirmo que tenho autorização para criar e administrar esta organização.", sub: "Sou responsável pelas informações cadastradas e pelos acessos concedidos à equipe." },
+                { text: "Entendo que os dados jurídicos e financeiros serão necessários para publicar eventos pagos, receber valores ou solicitar saques." },
+                { text: "Li e aceito os termos aplicáveis aos recursos selecionados." },
+              ].map((item) => (
+                <li key={item.text} className="flex items-start gap-2.5">
+                  <Icon name="check-circle" size={14} className="mt-0.5 shrink-0 text-success" />
+                  <div className="text-caption text-foreground">
+                    {item.text}
+                    {item.sub ? <span className="mt-0.5 block text-subtle-foreground">{item.sub}</span> : null}
+                  </div>
+                </li>
+              ))}
+            </ul>,
+          )}
+
+          {summaryCard(
+            "file-lines",
+            "Dados jurídicos e financeiros",
+            <StatusBadge tone="warning">Opcional agora</StatusBadge>,
+            <div className="space-y-3">
+              <p className="text-caption text-muted-foreground">Para criar sua organização, você não precisa desses dados agora. Eles só são exigidos quando você for publicar eventos pagos, receber valores ou solicitar saques — momento em que faremos a verificação (KYC) do responsável, como pessoa física, ou da empresa, como pessoa jurídica.</p>
+              <Callout tone="brand">Quer adiantar? Você pode iniciar a verificação jurídica agora, ao criar a organização, ou deixar pra quando precisar movimentar valores.</Callout>
+            </div>,
+          )}
+
+          <div className="sticky bottom-0 z-10 -mx-4 border-t border-border bg-surface/95 px-4 py-3 pb-safe backdrop-blur-md md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+            <div className="flex flex-col-reverse items-stretch gap-3 md:flex-row md:items-start md:justify-between">
+              <Button variant="ghost" onClick={() => setStep(2)} disabled={finishing} leftIcon="arrow-left" className="hidden md:inline-flex">
+                Voltar
+              </Button>
+              <div className="flex min-w-0 flex-col gap-2 md:min-w-[320px]">
+                <Button size="lg" onClick={() => handleFinish()} loading={finishing} leftIcon="bolt">
+                  Criar organização
+                </Button>
+                <Button variant="outline" onClick={() => handleFinish("/dashboard/configuracoes?tab=juridico-financeiro")} disabled={finishing}>
+                  Criar e verificar dados jurídicos agora
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setStep(2)} disabled={finishing} leftIcon="arrow-left" className="md:hidden">
+                  Voltar
+                </Button>
               </div>
             </div>
+            <p className="mt-3 hidden items-center justify-end gap-1.5 text-caption text-muted-foreground md:flex">
+              <Icon name="lock" size={11} />
+              Ao criar, você concorda com os{" "}
+              <Link href="/termos" target="_blank" className="inline-flex items-center gap-1 font-semibold text-brand hover:underline">
+                termos aplicáveis
+                <Icon name="external" size={10} />
+              </Link>
+            </p>
           </div>
+        </section>
 
-          {/* Áreas da operação */}
-          <div className="mb-4 rounded-2xl border border-[#ecebf1] bg-white p-[22px_24px]">
-            <div className="flex items-start gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[13px] bg-[#ede7fe] text-[#6d28d9]">
-                <Boxes size={22} strokeWidth={1.9} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-[15.5px] font-bold text-[#1a1626]">Áreas da operação</h3>
-                  <button
-                    type="button"
-                    onClick={() => setStep(1)}
-                    className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[10px] border border-[#e5ddf6] bg-white px-3.5 py-2 text-[12.5px] font-semibold text-[#6d28d9] transition hover:bg-[#fcfbfe]"
-                  >
-                    <Pencil size={14} />
-                    Editar recursos
-                  </button>
-                </div>
-                {preview.isPending || !catalog.data ? (
-                  <BlockSkeleton className="mt-4 h-24" />
-                ) : (
-                  <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2">
-                    {previewGroups.map((group) => {
-                      const theme = BUSINESS_NEED_THEME[group.key as BusinessNeedKey];
-                      const Icon = theme?.icon ?? Boxes;
-                      return (
-                        <div key={group.key}>
-                          <div className="mb-3 flex items-center gap-2">
-                            <Icon size={16} strokeWidth={1.9} className="text-[#6d28d9]" />
-                            <div className="text-[13px] font-bold text-[#1a1626]">{group.label}</div>
-                          </div>
-                          {group.capabilityKeys.map((key) => (
-                            <div key={key} className="mb-2 flex items-center gap-2 text-[12.5px] text-[#2d2a3a] last:mb-0">
-                              <CheckCircle2 size={15} strokeWidth={2.2} className="shrink-0 text-[#059669]" />
-                              {labelOf(key)}
-                            </div>
-                          ))}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+        {/* ── Coluna direita ────────────────────────────────────────── */}
+        <aside className="hidden xl:block">
+          <Card accent className="gap-5 p-5">
+            <div>
+              <h3 className="text-base font-semibold text-foreground">O que será criado agora</h3>
+              <p className="mt-1.5 text-caption text-muted-foreground">Um espaço chamado {orgName}, administrado inicialmente por você, com o painel organizado conforme as áreas selecionadas.</p>
             </div>
-          </div>
 
-          {/* Responsabilidades e termos */}
-          <div className="mb-4 rounded-2xl border border-[#ecebf1] bg-white p-[22px_24px]">
-            <div className="flex items-start gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[13px] bg-[#ede7fe] text-[#6d28d9]">
-                <ShieldCheck size={22} strokeWidth={1.9} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-3">
-                  <h3 className="text-[15.5px] font-bold text-[#1a1626]">Responsabilidades e termos</h3>
-                  <button
-                    type="button"
-                    onClick={() => setReviewingTerms(true)}
-                    className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[10px] border border-[#e5ddf6] bg-white px-3.5 py-2 text-[12.5px] font-semibold text-[#6d28d9] transition hover:bg-[#fcfbfe]"
-                  >
-                    <ListChecks size={14} />
-                    Revisar termos
-                  </button>
-                </div>
-                <div className="mt-4 space-y-3">
-                  <div className="flex items-start gap-2.5">
-                    <CheckCircle2 size={16} strokeWidth={2.2} className="mt-0.5 shrink-0 text-[#059669]" />
-                    <div className="text-[12.5px] leading-[1.5] text-[#2d2a3a]">
-                      Confirmo que tenho autorização para criar e administrar esta organização.
-                      <span className="mt-0.5 block text-[11.5px] text-[#6b7280]">
-                        Sou responsável pelas informações cadastradas e pelos acessos concedidos à equipe.
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2.5">
-                    <CheckCircle2 size={16} strokeWidth={2.2} className="mt-0.5 shrink-0 text-[#059669]" />
-                    <div className="text-[12.5px] leading-[1.5] text-[#2d2a3a]">
-                      Entendo que os dados jurídicos e financeiros serão necessários para publicar eventos pagos, receber
-                      valores ou solicitar saques.
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2.5">
-                    <CheckCircle2 size={16} strokeWidth={2.2} className="mt-0.5 shrink-0 text-[#059669]" />
-                    <div className="text-[12.5px] leading-[1.5] text-[#2d2a3a]">
-                      Li e aceito os termos aplicáveis aos recursos selecionados.
-                    </div>
-                  </div>
+            <div className="flex flex-col items-center">
+              <div className="surface-inset flex w-full items-center gap-3 rounded-xl p-3.5">
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-caption font-bold text-brand">{initials}</span>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-foreground">{fullName || "—"}</p>
+                  <p className="text-micro uppercase tracking-wider text-subtle-foreground">Owner</p>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Dados jurídicos e financeiros */}
-          <div className="mb-5 rounded-2xl border border-[#ecebf1] bg-white p-[22px_24px]">
-            <div className="flex items-start gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[13px] bg-[#ede7fe] text-[#6d28d9]">
-                <FileText size={22} strokeWidth={1.9} />
+              <Icon name="chevron-down" size={12} className="my-1.5 text-subtle-foreground" />
+              <div className="surface-inset flex w-full items-center gap-3 rounded-xl p-3.5">
+                <Icon name="building" size={16} className="shrink-0 text-brand" />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-foreground">{orgName}</p>
+                  <p className="text-caption text-muted-foreground">Sua organização</p>
+                </div>
               </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-[15.5px] font-bold text-[#1a1626]">Dados jurídicos e financeiros</h3>
-                <span className="mt-2.5 mb-2 inline-block rounded-full bg-[#fef3e2] px-2.5 py-1 text-[11px] font-semibold text-[#b45309]">
-                  Opcional agora
-                </span>
-                <p className="text-[12.5px] leading-[1.55] text-[#6b7280]">
-                  Para criar sua organização, você não precisa desses dados agora. Eles só são exigidos quando você for
-                  publicar eventos pagos, receber valores ou solicitar saques — momento em que faremos a verificação (KYC)
-                  do responsável, como pessoa física, ou da empresa, como pessoa jurídica.
-                </p>
-                <div className="mt-3 flex items-start gap-2 rounded-[11px] border border-[#ece6f8] bg-[#f6f3fc] p-[11px_13px]">
-                  <Info size={15} className="mt-0.5 shrink-0 text-[#6d28d9]" />
-                  <p className="text-xs leading-[1.55] text-[#5f5580]">
-                    Quer adiantar? Você pode iniciar a verificação jurídica agora, ao criar a organização, ou deixar para
-                    quando precisar movimentar valores.
+              <Icon name="chevron-down" size={12} className="my-1.5 text-subtle-foreground" />
+              <div className="surface-inset flex w-full flex-col gap-2.5 rounded-xl p-3.5">
+                <div className="flex flex-wrap gap-2">
+                  {previewGroups.slice(0, 3).map((group) => (
+                    <span key={group.key} className="flex size-8 items-center justify-center rounded-lg bg-brand-soft text-brand">
+                      <Icon name={BUSINESS_NEED_ICON[group.key as BusinessNeedKey] ?? "layers"} size={13} />
+                    </span>
+                  ))}
+                  {previewGroups.length > 3 ? (
+                    <span className="flex size-8 items-center justify-center rounded-lg bg-surface-2 text-muted-foreground">
+                      <Icon name="chevron-right" size={11} />
+                    </span>
+                  ) : null}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground tnum">
+                    {activeAreasCount} {activeAreasCount === 1 ? "área ativa" : "áreas ativas"}
+                  </p>
+                  <p className="text-caption text-muted-foreground tnum">
+                    {totalCapabilities} {totalCapabilities === 1 ? "recurso visível" : "recursos visíveis"}
                   </p>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Ações */}
-          <div className="flex flex-col-reverse items-stretch justify-between gap-4 sm:flex-row sm:items-start">
-            <Button variant="outline" onClick={() => setStep(2)} disabled={finishing} className="h-11">
-              <ChevronLeft size={16} className="mr-1" />
-              Voltar
-            </Button>
-            <div className="flex min-w-0 flex-col gap-2.5 sm:min-w-[300px]">
-              <Button
-                onClick={() => handleFinish()}
-                disabled={finishing}
-                className="h-[52px] w-full bg-gradient-to-br from-[#7c3aed] to-[#6d28d9] text-white hover:brightness-105 disabled:cursor-not-allowed"
-              >
-                {finishing ? "Configurando..." : "Criar organização"}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => handleFinish("/dashboard/configuracoes?tab=juridico-financeiro")}
-                disabled={finishing}
-                className="h-11 w-full border-[1.5px] border-[#d9cdf3] text-[#6d28d9] hover:bg-[#fcfbfe] disabled:cursor-not-allowed"
-              >
-                {finishing ? "Configurando..." : "Criar e verificar dados jurídicos agora"}
-              </Button>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Próximos passos após a criação</p>
+              <ul className="mt-3 space-y-2.5">
+                {["Seu painel será configurado com as áreas e recursos que você escolheu.", "Você poderá convidar sua equipe e definir permissões.", "Complete os dados jurídicos quando precisar publicar eventos pagos ou solicitar saques."].map((text) => (
+                  <li key={text} className="flex items-start gap-2.5 text-caption text-foreground">
+                    <Icon name="check" size={11} className="mt-1 shrink-0 text-brand" />
+                    {text}
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
-          <div className="mt-3 flex items-center justify-end gap-1.5 text-[11.5px] text-[#6b7280]">
-            <Lock size={13} />
-            Ao criar, você concorda com os{" "}
-            <Link href="/termos" target="_blank" className="inline-flex items-center gap-1 font-semibold text-[#6d28d9]">
-              termos aplicáveis
-              <ExternalLink size={11} />
-            </Link>
-          </div>
-        </main>
 
-        {/* ── Coluna direita ────────────────────────────────────────── */}
-        <aside className="hidden rounded-[20px] border border-[#ece6f8] bg-[#f6f3fc] p-[24px_22px] xl:block">
-          <h3 className="text-base font-bold tracking-[-0.01em] text-[#1a1626]">O que será criado agora</h3>
-          <p className="mt-3 text-[12.5px] leading-[1.6] text-[#6b7280]">
-            Um espaço chamado {orgName}, administrado inicialmente por você, com o painel organizado conforme as áreas
-            selecionadas.
-          </p>
-
-          <div className="mt-4 flex flex-col items-center">
-            <div className="flex w-full items-center gap-3 rounded-[13px] border border-[#ece6f8] bg-white p-3.5">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#e5e3ec] text-xs font-bold text-[#6b6878]">
-                {initials}
-              </div>
+            <div className="flex items-start gap-3 border-t border-border pt-4">
+              <Icon name="question" size={16} className="mt-0.5 text-brand" />
               <div>
-                <div className="text-[13px] font-semibold text-[#1a1626]">{fullName || "—"}</div>
-                <span className="mt-0.5 inline-block rounded-full bg-[#ede7fe] px-2 py-0.5 text-[10px] font-semibold text-[#6d28d9]">
-                  Owner
-                </span>
+                <p className="text-sm font-semibold text-foreground">Dúvidas?</p>
+                <p className="mt-0.5 text-caption text-muted-foreground">Nossa Central de Ajuda está sempre por perto.</p>
+                <a href="mailto:contato@noktatickets.com.br" className="mt-1.5 inline-flex items-center gap-1.5 text-caption font-semibold text-brand hover:underline">
+                  Falar com o suporte
+                  <Icon name="external" size={10} />
+                </a>
               </div>
             </div>
-            <ChevronDown size={16} className="my-1 text-[#c4bcd4]" />
-            <div className="flex w-full items-center gap-3 rounded-[13px] border border-[#ece6f8] bg-white p-3.5">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] bg-[#ede7fe] text-[#6d28d9]">
-                <Grid2x2 size={19} />
-              </div>
-              <div>
-                <div className="text-[13px] font-semibold text-[#1a1626]">{orgName}</div>
-                <div className="text-[11.5px] text-[#6b7280]">Sua organização</div>
-              </div>
-            </div>
-            <ChevronDown size={16} className="my-1 text-[#c4bcd4]" />
-            <div className="flex w-full flex-col items-start gap-2.5 rounded-[13px] border border-[#ece6f8] bg-white p-3.5">
-              <div className="flex gap-2">
-                {previewGroups.slice(0, 3).map((group) => {
-                  const theme = BUSINESS_NEED_THEME[group.key as BusinessNeedKey];
-                  const Icon = theme?.icon ?? Boxes;
-                  return (
-                    <div key={group.key} className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-[#f3efff] text-[#6d28d9]">
-                      <Icon size={15} />
-                    </div>
-                  );
-                })}
-                {previewGroups.length > 3 && (
-                  <div className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-[#ede7fe] text-[#6d28d9]">
-                    <ChevronRight size={15} />
-                  </div>
-                )}
-              </div>
-              <div>
-                <div className="text-[13px] font-bold text-[#1a1626]">
-                  {activeAreasCount} {activeAreasCount === 1 ? "área ativa" : "áreas ativas"}
-                </div>
-                <div className="text-[11.5px] text-[#6b7280]">
-                  {totalCapabilities} {totalCapabilities === 1 ? "recurso visível" : "recursos visíveis"}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mb-3.5 mt-6 text-sm font-bold text-[#1a1626]">Próximos passos após a criação</div>
-          {[
-            "Seu painel será configurado com as áreas e recursos que você escolheu.",
-            "Você poderá convidar sua equipe e definir permissões.",
-            "Complete os dados jurídicos quando precisar publicar eventos pagos ou solicitar saques.",
-          ].map((text) => (
-            <div key={text} className="mb-3.5 flex items-start gap-2.5 last:mb-0">
-              <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#e7dffa] text-[#6d28d9]">
-                <Check size={12} strokeWidth={3} />
-              </div>
-              <p className="text-xs leading-[1.5] text-[#2d2a3a]">{text}</p>
-            </div>
-          ))}
-
-          <div className="mt-2 border-t border-[#ece6f8] pt-[18px]">
-            <div className="mb-1.5 flex items-center gap-2">
-              <HelpCircle size={18} className="text-[#6d28d9]" />
-              <div className="text-[13.5px] font-bold text-[#1a1626]">Dúvidas?</div>
-            </div>
-            <p className="mb-2 text-xs leading-[1.55] text-[#6b7280]">Nossa Central de Ajuda está sempre por perto.</p>
-            <a href="mailto:contato@noktatickets.com.br" className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-[#6d28d9]">
-              Ir para a Central de Ajuda
-              <ExternalLink size={13} />
-            </a>
-          </div>
+          </Card>
         </aside>
       </div>
 
       {/* Modal "Revisar termos" — somente leitura, o que já foi confirmado na etapa Termos */}
       <Dialog open={reviewingTerms} onOpenChange={setReviewingTerms}>
-        <DialogContent className="max-w-lg">
+        <DialogContent size="md">
           <DialogHeader>
             <DialogTitle>Termos confirmados</DialogTitle>
+            <DialogDescription>O que você aceitou na etapa anterior. Pra mudar, volte pra etapa Termos.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
+          <DialogBody className="gap-4">
             <div className="flex items-start gap-2.5">
-              <CheckCircle2 size={16} strokeWidth={2.2} className="mt-0.5 shrink-0 text-[#059669]" />
-              <div className="text-[13px] leading-[1.5] text-[#2d2a3a]">
-                Autorização para administrar esta organização — Li e aceito os{" "}
-                <Link href="/termos" target="_blank" className="font-medium text-[#6d28d9] underline">
-                  Termos de Uso
-                </Link>{" "}
-                e a{" "}
-                <Link href="/privacidade" target="_blank" className="font-medium text-[#6d28d9] underline">
-                  Política de Privacidade
-                </Link>{" "}
-                da Nokta.
-              </div>
+              <Icon name="check-circle" size={14} className="mt-0.5 shrink-0 text-success" />
+              <p className="text-caption text-foreground">
+                Autorização para administrar esta organização — Li e aceito os <ExternalTextLink href="/termos">Termos de Uso</ExternalTextLink> e a <ExternalTextLink href="/privacidade">Política de Privacidade</ExternalTextLink> da Nokta.
+              </p>
             </div>
             <div className="flex items-start gap-2.5">
-              <CheckCircle2 size={16} strokeWidth={2.2} className="mt-0.5 shrink-0 text-[#059669]" />
-              <div className="text-[13px] leading-[1.5] text-[#2d2a3a]">
-                Ciência de que dados jurídicos e financeiros serão necessários para publicar eventos pagos, receber
-                valores ou solicitar saques.
-              </div>
+              <Icon name="check-circle" size={14} className="mt-0.5 shrink-0 text-success" />
+              <p className="text-caption text-foreground">Ciência de que dados jurídicos e financeiros serão necessários para publicar eventos pagos, receber valores ou solicitar saques.</p>
             </div>
             <div className="flex items-start gap-2.5">
-              <CheckCircle2 size={16} strokeWidth={2.2} className="mt-0.5 shrink-0 text-[#059669]" />
-              <div className="text-[13px] leading-[1.5] text-[#2d2a3a]">
-                Termos específicos de eventos e bilheteria — Li e aceito os{" "}
-                <Link href="/termos-bilheteria" target="_blank" className="font-medium text-[#6d28d9] underline">
-                  Termos de Bilheteria
-                </Link>{" "}
-                e a{" "}
-                <Link href="/politica-de-cancelamento" target="_blank" className="font-medium text-[#6d28d9] underline">
-                  Política de Cancelamentos, Reembolsos e Chargebacks
-                </Link>{" "}
-                da Nokta.
-              </div>
+              <Icon name="check-circle" size={14} className="mt-0.5 shrink-0 text-success" />
+              <p className="text-caption text-foreground">
+                Termos específicos de eventos e bilheteria — Li e aceito os <ExternalTextLink href="/termos-bilheteria">Termos de Bilheteria</ExternalTextLink> e a <ExternalTextLink href="/politica-de-cancelamento">Política de Cancelamentos, Reembolsos e Chargebacks</ExternalTextLink> da Nokta.
+              </p>
             </div>
-          </div>
-          <div className="mt-2 flex justify-end">
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setReviewingTerms(false)}>
+              Fechar
+            </Button>
             <Button
               variant="outline"
               onClick={() => {
@@ -1899,7 +1359,7 @@ export default function PlatformOnboardingPage() {
             >
               Alterar respostas
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

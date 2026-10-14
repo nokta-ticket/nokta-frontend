@@ -1,64 +1,40 @@
-import {
-  CalendarClock,
-  CalendarDays,
-  ChartColumn,
-  ChefHat,
-  CircleDollarSign,
-  ClipboardCheck,
-  Contact,
-  CreditCard,
-  Download,
-  Hourglass,
-  Home,
-  LayoutGrid,
-  ListPlus,
-  Megaphone,
-  NotebookText,
-  Package,
-  PackagePlus,
-  ScanLine,
-  Settings,
-  ShoppingBag,
-  Star,
-  Tablet,
-  Ticket,
-  Truck,
-  Users,
-  Wallet,
-  type LucideIcon,
-} from "lucide-react";
+import { Icon, type IconName } from "@/components/ui/icon";
 import type { IconKey } from "../_lib/navigation-presentation";
 
-const ICONS: Record<IconKey, LucideIcon> = {
-  home: Home,
-  calendar: CalendarDays,
-  ticket: Ticket,
-  scan: ScanLine,
-  megaphone: Megaphone,
-  reservation: CalendarClock,
-  waitlist: Hourglass,
-  guests: ClipboardCheck,
-  customers: Contact,
-  star: Star,
-  tables: LayoutGrid,
-  orders: ChefHat,
-  cash: Wallet,
-  card: CreditCard,
-  menu: NotebookText,
-  product: ShoppingBag,
-  modifier: ListPlus,
-  inventory: Package,
-  purchase: PackagePlus,
-  supplier: Truck,
-  dollar: CircleDollarSign,
-  chart: ChartColumn,
-  export: Download,
-  users: Users,
-  settings: Settings,
-  tablet: Tablet,
+/**
+ * Ícone de cada item da navegação unificada. A chave (`iconKey`) vem de
+ * navigation-presentation.ts; aqui ela vira um nome do registry único de
+ * ícones (`@/components/ui/icon`, FontAwesome). Nunca lucide.
+ */
+export const NAV_ICON_NAME: Record<IconKey, IconName> = {
+  home: "home",
+  calendar: "calendar",
+  ticket: "ticket",
+  scan: "qr",
+  megaphone: "megaphone",
+  reservation: "calendar-check",
+  waitlist: "clock",
+  guests: "clipboard-check",
+  customers: "id-card",
+  star: "star",
+  tables: "chair",
+  orders: "utensils",
+  cash: "wallet",
+  card: "credit-card",
+  menu: "file-lines",
+  product: "tags",
+  modifier: "plus-circle",
+  inventory: "box",
+  purchase: "cart",
+  supplier: "truck",
+  dollar: "sack-dollar",
+  chart: "chart-line",
+  export: "download",
+  users: "users",
+  settings: "settings",
+  tablet: "tablet",
 };
 
-export function UnifiedNavIcon({ iconKey, size = 16, className }: { iconKey: IconKey; size?: number; className?: string }) {
-  const Icon = ICONS[iconKey];
-  return <Icon size={size} className={className} />;
+export function UnifiedNavIcon({ iconKey, size = 15, className }: { iconKey: IconKey; size?: number; className?: string }) {
+  return <Icon name={NAV_ICON_NAME[iconKey]} size={size} fw className={className} />;
 }

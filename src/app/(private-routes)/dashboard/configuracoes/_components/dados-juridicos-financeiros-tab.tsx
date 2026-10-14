@@ -1,6 +1,7 @@
 "use client";
 
-import { BlockSkeleton } from "../../_components/states/loading-state";
+import { Callout } from "@/components/ui/callout";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useLegalFinancialProfile } from "../_hooks/use-legal-financial-settings";
 import { LegalFinancialWizard } from "./dados-juridicos-financeiros/legal-financial-wizard";
 
@@ -15,10 +16,14 @@ import { LegalFinancialWizard } from "./dados-juridicos-financeiros/legal-financ
 export function DadosJuridicosFinanceirosTab({ orgId, canManage }: { orgId: number; canManage: boolean }) {
   const { data: profile, isLoading } = useLegalFinancialProfile(orgId);
 
-  if (isLoading) return <BlockSkeleton className="h-72" />;
+  if (isLoading) return <Skeleton className="h-72 rounded-card" />;
 
   if (!canManage) {
-    return <p className="text-sm text-black/50">Aguardando o responsável pela organização concluir a verificação financeira.</p>;
+    return (
+      <Callout tone="neutral" icon="lock" title="Verificação a cargo do responsável">
+        Aguardando o responsável pela organização concluir a verificação financeira.
+      </Callout>
+    );
   }
 
   return <LegalFinancialWizard orgId={orgId} profile={profile} />;

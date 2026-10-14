@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Field, FieldGroup } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
 import type { VenueLocation, CreateVenueLocationPayload } from "@/services/venue-operation";
@@ -77,114 +77,108 @@ export function LocationFormDialog({ orgId, location, open, onOpenChange }: Prop
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle>{location ? "Editar unidade" : "Nova unidade"}</DialogTitle>
+          <DialogDescription>{location ? "Dados e preferências de reserva desta unidade." : "Toda operação (mesas, caixa, horários) fica dentro de uma unidade."}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label>Nome</Label>
-            <Input value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
-          </div>
+        <DialogBody>
+          <form
+            id="location-form"
+            className="flex flex-col gap-5"
+            onSubmit={(e) => {
+              e.preventDefault();
+              handleSubmit();
+            }}
+          >
+            <Field label="Nome" htmlFor="loc-nome" required>
+              <Input id="loc-nome" value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Ex.: Unidade Centro" />
+            </Field>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label>Telefone</Label>
-              <Input value={form.telefone ?? ""} onChange={(e) => setForm((f) => ({ ...f, telefone: e.target.value }))} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Timezone</Label>
-              <Input value={form.timezone ?? ""} onChange={(e) => setForm((f) => ({ ...f, timezone: e.target.value }))} />
-            </div>
-          </div>
+            <FieldGroup columns={2}>
+              <Field label="Telefone" htmlFor="loc-telefone" optional>
+                <Input id="loc-telefone" type="tel" value={form.telefone ?? ""} onChange={(e) => setForm((f) => ({ ...f, telefone: e.target.value }))} />
+              </Field>
+              <Field label="Fuso horário" htmlFor="loc-timezone" hint="Formato IANA, ex.: America/Sao_Paulo">
+                <Input id="loc-timezone" value={form.timezone ?? ""} onChange={(e) => setForm((f) => ({ ...f, timezone: e.target.value }))} />
+              </Field>
+            </FieldGroup>
 
-          <div className="space-y-1.5">
-            <Label>Endereço</Label>
-            <Input value={form.endereco ?? ""} onChange={(e) => setForm((f) => ({ ...f, endereco: e.target.value }))} />
-          </div>
+            <Field label="Endereço" htmlFor="loc-endereco" optional>
+              <Input id="loc-endereco" value={form.endereco ?? ""} onChange={(e) => setForm((f) => ({ ...f, endereco: e.target.value }))} />
+            </Field>
 
-          <div className="space-y-1.5">
-            <Label>Descrição</Label>
-            <Input value={form.descricao ?? ""} onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))} />
-          </div>
+            <Field label="Descrição" htmlFor="loc-descricao" optional>
+              <Input id="loc-descricao" value={form.descricao ?? ""} onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))} />
+            </Field>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="space-y-1.5">
-              <Label>Duração padrão da reserva (min)</Label>
-              <Input
-                type="number"
-                min={1}
-                value={form.defaultReservationDurationMinutes ?? 120}
-                onChange={(e) => setForm((f) => ({ ...f, defaultReservationDurationMinutes: Number(e.target.value) }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Antecedência mínima (min)</Label>
-              <Input
-                type="number"
-                min={0}
-                value={form.reservationMinAdvanceMinutes ?? 0}
-                onChange={(e) => setForm((f) => ({ ...f, reservationMinAdvanceMinutes: Number(e.target.value) }))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Tolerância de atraso (min)</Label>
-              <Input
-                type="number"
-                min={0}
-                value={form.reservationLateToleranceMinutes ?? ""}
-                placeholder="Opcional"
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    reservationLateToleranceMinutes: e.target.value === "" ? undefined : Number(e.target.value),
-                  }))
-                }
-              />
-            </div>
-          </div>
+            <fieldset className="space-y-3">
+              <legend className="text-sm font-semibold text-foreground">Reservas</legend>
+              <FieldGroup columns={3}>
+                <Field label="Duração padrão" htmlFor="loc-duration">
+                  <Input id="loc-duration" type="number" min={1} inputMode="numeric" suffix="min" value={form.defaultReservationDurationMinutes ?? 120} onChange={(e) => setForm((f) => ({ ...f, defaultReservationDurationMinutes: Number(e.target.value) }))} />
+                </Field>
+                <Field label="Antecedência mínima" htmlFor="loc-advance">
+                  <Input id="loc-advance" type="number" min={0} inputMode="numeric" suffix="min" value={form.reservationMinAdvanceMinutes ?? 0} onChange={(e) => setForm((f) => ({ ...f, reservationMinAdvanceMinutes: Number(e.target.value) }))} />
+                </Field>
+                <Field label="Tolerância de atraso" htmlFor="loc-tolerance" optional>
+                  <Input
+                    id="loc-tolerance"
+                    type="number"
+                    min={0}
+                    inputMode="numeric"
+                    suffix="min"
+                    value={form.reservationLateToleranceMinutes ?? ""}
+                    placeholder="Sem limite"
+                    onChange={(e) =>
+                      setForm((f) => ({
+                        ...f,
+                        reservationLateToleranceMinutes: e.target.value === "" ? undefined : Number(e.target.value),
+                      }))
+                    }
+                  />
+                </Field>
+              </FieldGroup>
+            </fieldset>
 
-          {location ? (
-            <div className="space-y-1.5 border-t pt-4">
-              <Label>Código do estabelecimento na Cielo (EC)</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={merchantCode}
-                  onChange={(e) => setMerchantCode(e.target.value)}
-                  placeholder="Ex.: 1006993336"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={setCieloMerchantCode.isPending || !merchantCode.trim()}
-                  onClick={() =>
-                    setCieloMerchantCode.mutate(
-                      { locationId: location.id, cieloMerchantCode: merchantCode.trim() },
-                      {
-                        onSuccess: () => toast.success("Código do estabelecimento salvo."),
-                        onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar o código.")),
-                      },
-                    )
-                  }
-                >
-                  {setCieloMerchantCode.isPending ? "Salvando…" : "Salvar código"}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Identifica esta unidade como recebedora nas cobranças via terminal Cielo (app Nokta POS). Não é uma
-                senha — é só o número do estabelecimento cadastrado na sua conta Cielo.
-              </p>
-            </div>
-          ) : null}
-        </div>
+            {location ? (
+              <fieldset className="space-y-3 border-t border-border pt-5">
+                <legend className="text-sm font-semibold text-foreground">Terminal Cielo</legend>
+                <Field label="Código do estabelecimento na Cielo (EC)" htmlFor="loc-cielo" hint="Identifica esta unidade como recebedora nas cobranças via terminal Cielo (app Nokta POS). Não é uma senha — é só o número do estabelecimento cadastrado na sua conta Cielo.">
+                  <div className="flex gap-2">
+                    <Input id="loc-cielo" value={merchantCode} onChange={(e) => setMerchantCode(e.target.value)} placeholder="Ex.: 1006993336" inputMode="numeric" />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="shrink-0"
+                      loading={setCieloMerchantCode.isPending}
+                      disabled={!merchantCode.trim()}
+                      onClick={() =>
+                        setCieloMerchantCode.mutate(
+                          { locationId: location.id, cieloMerchantCode: merchantCode.trim() },
+                          {
+                            onSuccess: () => toast.success("Código do estabelecimento salvo."),
+                            onError: (err) => toast.error(getErrorMessage(err, "Não foi possível salvar o código.")),
+                          },
+                        )
+                      }
+                    >
+                      Salvar código
+                    </Button>
+                  </div>
+                </Field>
+              </fieldset>
+            ) : null}
+          </form>
+        </DialogBody>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isPending}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} disabled={isPending}>
-            {isPending ? "Salvando…" : "Salvar"}
+          <Button type="submit" form="location-form" loading={isPending} leftIcon="save">
+            {location ? "Salvar alterações" : "Criar unidade"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,9 +1,10 @@
 "use client";
 
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatCentsBRL } from "@/services/venue-finance";
-import { cn } from "@/lib/utils";
-import { BlockSkeleton } from "./states/loading-state";
+import { cn } from "@/lib/cn";
 
 /** Variação do mês corrente sobre o mês anterior inteiro, com uma casa decimal ("+19,6%"). Sem teto: passar de 100% aparece. */
 export function formatMonthDelta(currentCents: number, previousCents: number): string | null {
@@ -18,56 +19,40 @@ export function formatMonthDelta(currentCents: number, previousCents: number): s
  * o antigo anel de progresso, que limitava tudo a 100% e escondia quando o
  * mês já tinha passado o anterior.
  */
-export function MonthRevenueCard({
-  currentCents,
-  previousCents,
-  isLoading,
-  hideValues = false,
-  className,
-}: {
-  currentCents: number | undefined;
-  previousCents: number | undefined;
-  isLoading: boolean;
-  hideValues?: boolean;
-  className?: string;
-}) {
+export function MonthRevenueCard({ currentCents, previousCents, isLoading, hideValues = false, className }: { currentCents: number | undefined; previousCents: number | undefined; isLoading: boolean; hideValues?: boolean; className?: string }) {
   const current = currentCents ?? 0;
   const previous = previousCents ?? 0;
   const delta = formatMonthDelta(current, previous);
   const up = current >= previous;
-  const money = cn("font-poppins tabular-nums transition-[filter] duration-200", hideValues && "blur-md select-none");
+  const money = cn("tabular-nums transition-[filter] duration-200", hideValues && "blur-md select-none");
 
   return (
-    <section aria-labelledby="home-month" className={cn("flex flex-col rounded-[20px] border border-[#ebe8f2] bg-white p-6", className)}>
-      <h2 id="home-month" className="text-[17px] font-semibold text-foreground">
+    <Card accent className={cn("gap-3 p-5", className)} aria-labelledby="home-month">
+      <h2 id="home-month" className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+        <Icon name="calendar" size={14} />
         Este mês
       </h2>
       {isLoading ? (
-        <BlockSkeleton className="mt-4 h-20" />
+        <Skeleton className="h-16 w-full rounded-xl" />
       ) : (
         <>
-          <p className={cn(money, "mt-4 text-[30px] font-bold leading-none tracking-tight text-foreground")}>{formatCentsBRL(current)}</p>
+          <p className={cn(money, "text-stat font-medium leading-none tracking-tight text-foreground")}>{formatCentsBRL(current)}</p>
           {delta ? (
-            <p className="mt-3 flex items-center gap-2 text-[13.5px]">
-              <span
-                className={cn(
-                  "flex items-center gap-1 rounded-md px-1.5 py-0.5 font-poppins text-[13px] font-semibold tabular-nums",
-                  up ? "bg-emerald-50 text-emerald-700" : "bg-[#fcf5f6] text-[#9b1c35]",
-                )}
-              >
-                {up ? <TrendingUp size={14} strokeWidth={1.8} /> : <TrendingDown size={14} strokeWidth={1.8} />}
+            <p className="flex items-center gap-2 text-caption text-muted-foreground">
+              <span className={cn("inline-flex items-center gap-1 rounded-pill px-2 py-0.5 text-micro font-semibold tabular-nums", up ? "bg-success-bg text-success" : "bg-danger-bg text-danger")}>
+                <Icon name={up ? "trend-up" : "trend-down"} size={10} />
                 {delta}
               </span>
-              <span className="text-black/60">vs. mês anterior</span>
+              vs. mês anterior
             </p>
           ) : (
-            <p className="mt-3 text-[13.5px] text-black/60">Sem faturamento no mês anterior para comparar.</p>
+            <p className="text-caption text-muted-foreground">Sem faturamento no mês anterior para comparar.</p>
           )}
-          <p className="mt-auto pt-4 text-[13px] text-black/60">
-            Mês anterior inteiro: <span className={cn(money, "font-semibold text-black/75")}>{formatCentsBRL(previous)}</span>
+          <p className="mt-auto pt-2 text-caption text-subtle-foreground">
+            Mês anterior inteiro: <span className={cn(money, "font-semibold text-muted-foreground")}>{formatCentsBRL(previous)}</span>
           </p>
         </>
       )}
-    </section>
+    </Card>
   );
 }

@@ -1,10 +1,11 @@
 "use client";
 
-import type { ReactNode } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { BlockSkeleton } from "../../_components/states/loading-state";
-import { EmptyState } from "../../_components/states/empty-state";
+import { Badge, StatusBadge } from "@/components/ui/badge";
+import { Callout } from "@/components/ui/callout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { DefinitionItem, DefinitionList } from "../../_components/definition-list";
 import { useVenueOrganizationDetails } from "../_hooks/use-venue-settings";
 
 const MODULE_LABEL: Record<string, string> = {
@@ -15,53 +16,49 @@ const MODULE_LABEL: Record<string, string> = {
 };
 
 export function OrganizacaoTab({ orgId }: { orgId: number }) {
-  const { data, isLoading, isError } = useVenueOrganizationDetails(orgId);
+  const { data, isLoading, isError, refetch } = useVenueOrganizationDetails(orgId);
 
-  if (isLoading) return <BlockSkeleton className="h-72" />;
+  if (isLoading) return <Skeleton className="h-72 rounded-card" />;
   if (isError || !data) {
-    return <EmptyState title="Não foi possível carregar" description="Tente novamente em instantes." />;
+    return <ErrorState description="Não foi possível carregar os dados da organização." onRetry={() => refetch()} />;
   }
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Dados da organização</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label="Nome" value={data.nome} />
-          <Field label="Tipo" value={data.tipo === "PF" ? "Pessoa física" : "Pessoa jurídica"} />
-          <Field label="Documento" value={data.documento ?? "Não informado"} />
-          <Field label="Proprietário" value={`${data.owner.nome} ${data.owner.sobrenome ?? ""}`.trim()} />
-          <Field label="E-mail do proprietário" value={data.owner.email} />
-          <Field label="Status" value={<Badge variant="outline">{data.status}</Badge>} />
-        </div>
+  const active = data.status === "ACTIVE";
 
-        <div>
-          <p className="mb-2 text-sm font-medium text-black/70">Módulos ativos</p>
-          <div className="flex flex-wrap gap-2">
-            {data.modules.map((m) => (
-              <Badge key={m.module} variant="secondary">
-                {MODULE_LABEL[m.module] ?? m.module}
-              </Badge>
-            ))}
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <div>
+            <CardTitle>Dados da organização</CardTitle>
+            <CardDescription>Como ela aparece pra equipe e nos documentos.</CardDescription>
           </div>
-        </div>
+          <StatusBadge tone={active ? "success" : "danger"}>{active ? "Ativa" : data.status}</StatusBadge>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <DefinitionList>
+            <DefinitionItem label="Nome" value={data.nome} />
+            <DefinitionItem label="Tipo" value={data.tipo === "PF" ? "Pessoa física" : "Pessoa jurídica"} />
+            <DefinitionItem label="Documento" value={data.documento} mono />
+            <DefinitionItem label="Proprietário" value={`${data.owner.nome} ${data.owner.sobrenome ?? ""}`.trim()} />
+            <DefinitionItem label="E-mail do proprietário" value={data.owner.email} />
+            <DefinitionItem label="Criada em" value={new Date(data.createdAt).toLocaleDateString("pt-BR")} />
+          </DefinitionList>
 
-        <p className="text-xs text-black/40">
-          Alterar nome, tipo ou documento exige um fluxo de verificação que ainda não está disponível — fale com o
-          suporte se precisar corrigir esses dados.
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
+          <div>
+            <p className="text-micro font-semibold uppercase tracking-wider text-subtle-foreground">Módulos ativos</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {data.modules.map((m) => (
+                <Badge key={m.module} variant="secondary">
+                  {MODULE_LABEL[m.module] ?? m.module}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-function Field({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div>
-      <p className="text-xs font-medium text-black/50">{label}</p>
-      <div className="mt-0.5 text-sm text-black/90">{value}</div>
+      <Callout tone="neutral">Alterar nome, tipo ou documento exige um fluxo de verificação que ainda não está disponível — fale com o suporte se precisar corrigir esses dados.</Callout>
     </div>
   );
 }

@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { QrCode, ShieldCheck, Wifi } from "lucide-react";
 import { IDetectedBarcode, Scanner } from "@yudiel/react-qr-scanner";
-import { Input } from "@/components/ui/input";
+import { BrandLogo } from "@/components/brand/brand-logo";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Field } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
+import { Input } from "@/components/ui/input";
 import { toast } from "@/lib/toast";
 import { redeemPairingCode } from "@/lib/access/sync";
 import { getDeviceConfig, saveDeviceConfig } from "@/lib/access/db";
@@ -21,8 +24,7 @@ import { getDeviceConfig, saveDeviceConfig } from "@/lib/access/db";
  * - URL do Access Hub (`http://IP:porta`, QR "Conectar a este Hub" exibido
  *   na tela `/` do próprio Hub): grava/atualiza `pairedHubUrl` no
  *   deviceConfig já existente — passo OPCIONAL e posterior, só depois de
- *   já ter um deviceToken (o Hub reusa a mesma autenticação, só muda o
- *   baseURL das chamadas — ver src/lib/access/sync.ts).
+ *   já ter um deviceToken (ver src/lib/access/sync.ts).
  */
 export default function AccessPairingPage() {
   const router = useRouter();
@@ -85,50 +87,48 @@ export default function AccessPairingPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-950 px-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl p-8 shadow-xl space-y-6">
-        <div className="flex flex-col items-center gap-2 text-center">
-          <ShieldCheck className="h-10 w-10 text-violet-600" />
-          <h1 className="text-xl font-semibold">Conectar à operação</h1>
-          <p className="text-sm text-muted-foreground">
-            Digite o código de 6 dígitos exibido na tela do produtor, ou escaneie um QR — de pareamento ou de um Access Hub local.
-          </p>
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-10 text-foreground">
+      <BrandLogo variant="nokta" height={24} className="mb-8 text-foreground" />
+      <Card accent className="w-full max-w-sm gap-6 p-6 sm:p-8">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <span className="flex size-14 items-center justify-center rounded-full bg-brand-soft text-brand">
+            <Icon name="shield" size={24} />
+          </span>
+          <h1 className="text-title font-semibold tracking-tight">Conectar à operação</h1>
+          <p className="text-body text-muted-foreground">Digite o código de 6 dígitos exibido na tela do produtor, ou escaneie um QR — de pareamento ou de um Access Hub local.</p>
         </div>
 
-        <Input
-          placeholder="000000"
-          value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-          className="text-center text-2xl font-mono tracking-widest h-14"
-          inputMode="numeric"
-          maxLength={6}
-        />
-
-        <Button onClick={handleManualSubmit} disabled={loading || code.length !== 6} className="w-full bg-violet-600 text-white hover:bg-violet-700">
-          {loading ? "Conectando..." : "Conectar"}
-        </Button>
-
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full flex items-center justify-center gap-2"
-          onClick={() => setIsScanning((v) => !v)}
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleManualSubmit();
+          }}
         >
-          <QrCode className="w-4 h-4" />
+          <Field label="Código de pareamento" htmlFor="pairing-code">
+            <Input id="pairing-code" placeholder="000000" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} className="h-14 text-center font-mono text-2xl tracking-[0.4em] md:h-14 md:text-2xl" inputMode="numeric" maxLength={6} autoComplete="one-time-code" />
+          </Field>
+
+          <Button type="submit" size="full" loading={loading} disabled={code.length !== 6} leftIcon="plug">
+            Conectar
+          </Button>
+        </form>
+
+        <Button type="button" variant="outline" size="full" onClick={() => setIsScanning((v) => !v)} leftIcon={isScanning ? "close" : "qr"}>
           {isScanning ? "Fechar câmera" : "Escanear QR"}
         </Button>
 
-        {isScanning && (
-          <div className="rounded-lg overflow-hidden">
-            <Scanner sound={false} onScan={handleScan} />
+        {isScanning ? (
+          <div className="aspect-square overflow-hidden rounded-card border border-border bg-surface-2">
+            <Scanner sound={false} onScan={handleScan} styles={{ container: { width: "100%", height: "100%" } }} />
           </div>
-        )}
+        ) : null}
 
-        <p className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
-          <Wifi className="h-3.5 w-3.5" />
-          Conectar a um Access Hub é opcional — só necessário se este evento usa um Hub local para operar sem internet.
+        <p className="flex items-start gap-2 text-caption text-muted-foreground">
+          <Icon name="info" size={12} className="mt-0.5 shrink-0" />
+          Conectar a um Access Hub é opcional — só necessário se este evento usa um Hub local pra operar sem internet.
         </p>
-      </div>
+      </Card>
     </div>
   );
 }
