@@ -62,6 +62,8 @@ const publicRoutes = [
   // LP institucional: em produção entra pelo rewrite de "/" no host
   // nokta.live, mas o caminho direto também é público (localhost/preview).
   { path: "/institucional", whenAutenticated: "next" },
+  // Relatório do rebranding (2026-10): público, fora do índice (noindex).
+  { path: "/rebranding", whenAutenticated: "next" },
   { path: "/ajuda", whenAutenticated: "next" },
   // Descadastro da divulgação de um produtor: quem clica é o cliente dele,
   // que não tem conta no painel. O token assinado é a prova de origem.
