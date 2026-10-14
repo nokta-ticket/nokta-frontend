@@ -1,36 +1,34 @@
 "use client";
 
-import { GenericStatusBadge } from "../../estoque/_components/stock-status-badge";
-import { EmptyState } from "../../_components/states/empty-state";
-import { TableSkeleton } from "../../_components/states/loading-state";
-import { ORG_PROMOTER_STATUS_LABEL, type OrganizationPromoterStatus } from "@/services/promoters";
+import { ORG_PROMOTER_STATUS_LABEL } from "@/services/promoters";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
+import { RowsSkeleton } from "@/components/ui/skeleton";
+import { StatusBadge } from "@/components/ui/badge";
+import { ORG_PROMOTER_TONE } from "../../promotores/_components/promoter-meta";
 import { useMyPromoterOrganizations } from "../_hooks/use-my-promoter";
-
-function statusTone(status: OrganizationPromoterStatus) {
-  if (status === "ACTIVE") return "success" as const;
-  if (status === "INVITED") return "neutral" as const;
-  if (status === "SUSPENDED") return "warning" as const;
-  return "danger" as const;
-}
 
 export function OrganizacoesTab() {
   const { data: organizations, isLoading } = useMyPromoterOrganizations(true);
 
-  if (isLoading) return <TableSkeleton />;
+  if (isLoading) return <RowsSkeleton rows={3} />;
   if (!organizations || organizations.length === 0) {
-    return <EmptyState title="Nenhuma organização ainda" description="Organizações que já te convidaram como promoter aparecem aqui, mesmo depois de um vínculo terminar." />;
+    return <EmptyState icon="building" title="Nenhuma organização ainda" description="Organizações que já te convidaram como promoter aparecem aqui, mesmo depois de um vínculo terminar." />;
   }
 
   return (
-    <div className="space-y-2">
-      {organizations.map((org) => (
-        <div key={org.id} className="flex items-center gap-3 rounded-xl border border-black/10 bg-white p-3">
+    <div className="grid gap-3 md:grid-cols-2">
+      {organizations.map((org, i) => (
+        <article key={org.id} className="fade-up flex items-center gap-3 rounded-card border border-border bg-surface p-4 shadow-card" style={{ ["--i" as string]: i } as never}>
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand">
+            <Icon name="building" size={15} />
+          </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate font-medium text-gray-900">{org.organization.nome}</p>
-            <p className="truncate text-xs text-black/50">Convidado em {new Date(org.invitedAt).toLocaleDateString("pt-BR")}</p>
+            <p className="truncate text-sm font-semibold text-foreground">{org.organization.nome}</p>
+            <p className="text-caption text-muted-foreground">Convidado em {new Date(org.invitedAt).toLocaleDateString("pt-BR")}</p>
           </div>
-          <GenericStatusBadge label={ORG_PROMOTER_STATUS_LABEL[org.status]} tone={statusTone(org.status)} />
-        </div>
+          <StatusBadge tone={ORG_PROMOTER_TONE[org.status]}>{ORG_PROMOTER_STATUS_LABEL[org.status]}</StatusBadge>
+        </article>
       ))}
     </div>
   );

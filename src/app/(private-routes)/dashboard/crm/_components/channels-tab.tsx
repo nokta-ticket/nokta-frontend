@@ -2,15 +2,23 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, Loader2, RefreshCw } from "lucide-react";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/cn";
 import { crmKeys, type CrmChannel } from "@/services/crm";
 import { crmMarketingApi, crmMarketingKeys, formatMicros, type CrmChannelsOverview, type CrmDnsRecord } from "@/services/crm-marketing";
-import { BlockSkeleton } from "../../_components/states/loading-state";
-import { Pill, PRESSABLE, SURFACE, fmtDate, fmtTime } from "../../financeiro/_components/finance-ui";
-import { BTN_PRIMARY, BTN_SECONDARY, ChannelIcon, FIELD, LINK, ReadOnlyNote, formatPhone, num } from "./crm-ui";
+import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { CopyField } from "@/components/ui/copy-field";
+import { ErrorState } from "@/components/ui/empty-state";
+import { Field } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatusBadge } from "@/components/ui/badge";
+import { fmtDate, fmtTime } from "../../financeiro/_components/finance-ui";
+import { ChannelIcon, Note, ReadOnlyNote, formatPhone, num } from "./crm-ui";
 import { ACCOUNT_STATUS, Blockers } from "./marketing-ui";
 
 const RECORD_PURPOSE: Record<CrmDnsRecord["purpose"], string> = {
@@ -33,28 +41,19 @@ export function ChannelsTab({ orgId, canManage }: { orgId: number; canManage: bo
 
   if (overview.isLoading) {
     return (
-      <div className="grid gap-4 2xl:grid-cols-2">
-        <BlockSkeleton className="h-[420px] rounded-[20px]" />
-        <BlockSkeleton className="h-[420px] rounded-[20px]" />
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Skeleton className="h-[420px] rounded-card" />
+        <Skeleton className="h-[420px] rounded-card" />
       </div>
     );
   }
-  if (!overview.data) {
-    return (
-      <div className={cn(SURFACE, "px-6 py-14 text-center")}>
-        <p className="text-[14px] text-[#5f5c6b]">Não foi possível carregar os canais.</p>
-        <button type="button" onClick={() => void overview.refetch()} className={cn(LINK, "mt-2", PRESSABLE)}>
-          Tentar de novo
-        </button>
-      </div>
-    );
-  }
+  if (!overview.data) return <ErrorState title="Não foi possível carregar os canais" onRetry={() => void overview.refetch()} />;
 
   return (
     <div className="space-y-4">
       {!canManage ? <ReadOnlyNote>Você pode consultar os canais. Só o proprietário do workspace configura o remetente de e-mail e conecta o WhatsApp.</ReadOnlyNote> : null}
       {/* Sem permissão, os botões de alterar somem (o backend recusa de qualquer forma). */}
-      <div className={cn("grid items-start gap-4 2xl:grid-cols-2", !canManage && "[&_[data-manage]]:hidden")}>
+      <div className={cn("grid items-start gap-4 xl:grid-cols-2", !canManage && "[&_[data-manage]]:hidden")}>
         <EmailChannel orgId={orgId} data={overview.data.email} credits={credits.data?.email} onChange={apply} />
         <WhatsappChannel orgId={orgId} data={overview.data.whatsapp} rates={credits.data?.whatsapp} onChange={apply} />
       </div>
@@ -64,26 +63,24 @@ export function ChannelsTab({ orgId, canManage }: { orgId: number; canManage: bo
 
 function ChannelCard({ channel, title, status, children }: { channel: CrmChannel; title: string; status: ReactNode; children: ReactNode }) {
   return (
-    <section className={cn(SURFACE, "overflow-hidden")}>
-      <header className="flex items-center justify-between gap-3 border-b border-[#ebe8f2] px-5 py-4 sm:px-6">
-        <h2 className="flex items-center gap-2.5 text-[16px] font-semibold text-[#1c1a24]">
-          <span className="text-[#7c3aed]">
-            <ChannelIcon channel={channel} size={18} />
-          </span>
+    <Card className="fade-up">
+      <CardHeader className="border-b border-border pb-4">
+        <CardTitle className="flex items-center gap-2.5">
+          <ChannelIcon channel={channel} size={16} className="text-brand" />
           {title}
-        </h2>
+        </CardTitle>
         {status}
-      </header>
-      <div className="space-y-5 px-5 py-5 sm:px-6">{children}</div>
-    </section>
+      </CardHeader>
+      <CardContent className="space-y-5">{children}</CardContent>
+    </Card>
   );
 }
 
 function Detail({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-4 py-2.5">
-      <dt className="text-[13.5px] text-[#5f5c6b]">{label}</dt>
-      <dd className="min-w-0 truncate text-right text-[14px] font-medium text-[#1c1a24]">{value}</dd>
+      <dt className="text-caption text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 truncate text-right text-sm font-medium text-foreground">{value}</dd>
     </div>
   );
 }
@@ -98,6 +95,7 @@ function EmailChannel({ orgId, data, credits, onChange }: { orgId: number; data:
   const sender = data.sender;
   const [editing, setEditing] = useState(!sender);
   const [showRecords, setShowRecords] = useState(sender?.status !== "CONNECTED");
+  const [removing, setRemoving] = useState(false);
   const [form, setForm] = useState({ fromName: sender?.fromName ?? "", localPart: sender?.localPart ?? "", domain: sender?.domain ?? "", replyTo: sender?.replyTo ?? "" });
   useEffect(() => {
     setEditing(!sender);
@@ -124,31 +122,33 @@ function EmailChannel({ orgId, data, credits, onChange }: { orgId: number; data:
     },
     onError,
   });
-  const remove = useMutation({ mutationFn: () => crmMarketingApi.removeEmailSender(orgId), onSuccess: (d) => (onChange(d), toast.success("Remetente removido.")), onError });
+  const remove = useMutation({ mutationFn: () => crmMarketingApi.removeEmailSender(orgId), onSuccess: (d) => (onChange(d), toast.success("Remetente removido")), onError });
 
-  const status = !data.available ? <Pill tone="neutral">Em breve</Pill> : sender ? <Pill tone={ACCOUNT_STATUS[sender.status].tone}>{sender.status === "CONNECTED" ? "Verificado" : sender.status === "PENDING" ? "Aguardando DNS" : ACCOUNT_STATUS[sender.status].label}</Pill> : <Pill tone="neutral">Não configurado</Pill>;
+  const status = !data.available ? <StatusBadge tone="neutral">Em breve</StatusBadge> : sender ? <StatusBadge tone={ACCOUNT_STATUS[sender.status].tone}>{sender.status === "CONNECTED" ? "Verificado" : sender.status === "PENDING" ? "Aguardando DNS" : ACCOUNT_STATUS[sender.status].label}</StatusBadge> : <StatusBadge tone="neutral">Não configurado</StatusBadge>;
 
   return (
     <ChannelCard channel="EMAIL" title="E-mail" status={status}>
       {!data.available ? (
-        <p className="rounded-[14px] bg-[#faf8ff] px-4 py-3.5 text-[14px] leading-relaxed text-[#3a3746]">
-          O envio de e-mail pelo seu domínio ainda está sendo habilitado pela Nokta. Quando abrir, você cadastra aqui o endereço remetente (por exemplo, <span className="font-medium">parceria@suaempresa.com.br</span>) e verifica o domínio.
-        </p>
+        <Callout tone="neutral">
+          O envio de e-mail pelo seu domínio ainda está sendo habilitado pela Nokta. Quando abrir, você cadastra aqui o endereço remetente (por exemplo, <span className="font-medium text-foreground">parceria@suaempresa.com.br</span>) e verifica o domínio.
+        </Callout>
       ) : (
         <>
           {sender && !editing ? (
             <>
-              <dl className="divide-y divide-[#f2f0f7]">
+              <dl className="divide-y divide-border">
                 <Detail label="Remetente" value={`${sender.fromName ?? ""} <${sender.address}>`} />
                 <Detail label="Respostas vão para" value={sender.replyTo ?? sender.address} />
                 <Detail label="Domínio" value={sender.domain} />
-                <Detail label="Situação no provedor de e-mail" value={sender.status === "CONNECTED" ? "Domínio verificado" : "Aguardando os registros de DNS"} />
+                <Detail label="Situação no provedor" value={sender.status === "CONNECTED" ? "Domínio verificado" : "Aguardando os registros de DNS"} />
               </dl>
               <div data-manage className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => setEditing(true)} className={cn(BTN_SECONDARY, PRESSABLE)}>
+                <Button variant="outline" size="sm" leftIcon="edit" onClick={() => setEditing(true)}>
                   Alterar remetente
-                </button>
-                <RemoveButton label="Remover" pending={remove.isPending} onConfirm={() => remove.mutate()} />
+                </Button>
+                <Button variant="destructive-soft" size="sm" onClick={() => setRemoving(true)}>
+                  Remover
+                </Button>
               </div>
             </>
           ) : (
@@ -160,28 +160,27 @@ function EmailChannel({ orgId, data, credits, onChange }: { orgId: number; data:
                 save.mutate();
               }}
             >
-              <Field label="Nome que aparece para quem recebe">
-                <input value={form.fromName} onChange={(e) => setForm({ ...form, fromName: e.target.value })} maxLength={60} placeholder="Ex.: Fervo Produções" className={cn(FIELD, "w-full px-3.5")} />
+              <Field label="Nome que aparece pra quem recebe" htmlFor="email-from">
+                <Input id="email-from" value={form.fromName} onChange={(e) => setForm({ ...form, fromName: e.target.value })} maxLength={60} placeholder="Ex.: Fervo Produções" />
               </Field>
-              <Field label="Endereço remetente" hint="Use um domínio da sua empresa. Um subdomínio só para divulgação (como news.suaempresa.com.br) protege a reputação do seu e-mail do dia a dia.">
+              <Field label="Endereço remetente" hint="Use um domínio da sua empresa. Um subdomínio só pra divulgação (como news.suaempresa.com.br) protege a reputação do seu e-mail do dia a dia.">
                 <div className="flex items-center gap-2">
-                  <input aria-label="Antes do @" value={form.localPart} onChange={(e) => setForm({ ...form, localPart: e.target.value })} maxLength={64} placeholder="parceria" className={cn(FIELD, "w-full min-w-0 flex-1 px-3.5")} />
-                  <span className="text-[15px] text-[#6b6878]">@</span>
-                  <input aria-label="Domínio" value={form.domain} onChange={(e) => setForm({ ...form, domain: e.target.value })} maxLength={253} placeholder="suaempresa.com.br" className={cn(FIELD, "w-full min-w-0 flex-[1.4] px-3.5")} />
+                  <Input aria-label="Antes do @" value={form.localPart} onChange={(e) => setForm({ ...form, localPart: e.target.value })} maxLength={64} placeholder="parceria" className="min-w-0 flex-1" />
+                  <span className="text-sm text-muted-foreground">@</span>
+                  <Input aria-label="Domínio" value={form.domain} onChange={(e) => setForm({ ...form, domain: e.target.value })} maxLength={253} placeholder="suaempresa.com.br" className="min-w-0 flex-[1.4]" />
                 </div>
               </Field>
-              <Field label="E-mail que recebe as respostas" hint="Opcional. Se ficar vazio, as respostas vão para o próprio remetente.">
-                <input type="email" value={form.replyTo} onChange={(e) => setForm({ ...form, replyTo: e.target.value })} maxLength={254} placeholder="contato@suaempresa.com.br" className={cn(FIELD, "w-full px-3.5")} />
+              <Field label="E-mail que recebe as respostas" htmlFor="email-reply" optional hint="Se ficar vazio, as respostas vão pro próprio remetente.">
+                <Input id="email-reply" type="email" value={form.replyTo} onChange={(e) => setForm({ ...form, replyTo: e.target.value })} maxLength={254} placeholder="contato@suaempresa.com.br" />
               </Field>
               <div className="flex gap-2">
-                <button type="submit" disabled={save.isPending || !form.fromName.trim() || !form.localPart.trim() || !form.domain.trim()} className={cn(BTN_PRIMARY, PRESSABLE)}>
-                  {save.isPending ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : null}
+                <Button type="submit" leftIcon="save" loading={save.isPending} disabled={!form.fromName.trim() || !form.localPart.trim() || !form.domain.trim()}>
                   Salvar remetente
-                </button>
+                </Button>
                 {sender ? (
-                  <button type="button" onClick={() => setEditing(false)} className={cn(BTN_SECONDARY, PRESSABLE)}>
+                  <Button type="button" variant="ghost" onClick={() => setEditing(false)}>
                     Cancelar
-                  </button>
+                  </Button>
                 ) : null}
               </div>
             </form>
@@ -191,125 +190,74 @@ function EmailChannel({ orgId, data, credits, onChange }: { orgId: number; data:
             <div>
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
-                  <h3 className="text-[15px] font-semibold text-[#1c1a24]">Registros de DNS</h3>
-                  <p className="mt-0.5 max-w-[62ch] text-[13.5px] leading-relaxed text-[#5f5c6b]">
-                    {sender.status === "CONNECTED" ? "O domínio está verificado. Mantenha estes registros: sem eles o envio para." : (
+                  <h3 className="text-sm font-semibold text-foreground">Registros de DNS</h3>
+                  <Note className="mt-0.5 max-w-[62ch]">
+                    {sender.status === "CONNECTED" ? (
+                      "O domínio está verificado. Mantenha estes registros: sem eles o envio para."
+                    ) : (
                       <>
-                        Crie estes registros onde o domínio <span className="font-medium text-[#1c1a24]">{sender.domain}</span> é gerenciado. Não apague os que já existem.
+                        Crie estes registros onde o domínio <span className="font-medium text-foreground">{sender.domain}</span> é gerenciado. Não apague os que já existem.
                       </>
                     )}
-                  </p>
+                  </Note>
                 </div>
-                <button data-manage type="button" disabled={verify.isPending} onClick={() => verify.mutate()} className={cn(BTN_SECONDARY, PRESSABLE)}>
-                  {verify.isPending ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={15} strokeWidth={1.8} aria-hidden="true" />}
+                <Button data-manage variant="outline" size="sm" leftIcon="refresh" loading={verify.isPending} onClick={() => verify.mutate()}>
                   Verificar agora
-                </button>
+                </Button>
               </div>
               {showRecords ? (
-                <ul className="mt-3 divide-y divide-[#f2f0f7] rounded-[14px] border border-[#ebe8f2]">
+                <ul className="mt-3 divide-y divide-border rounded-xl border border-border">
                   {sender.records.map((r) => (
-                    <DnsRow key={`${r.type}-${r.name}`} record={r} />
+                    <li key={`${r.type}-${r.name}`} className="space-y-1.5 px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-medium text-foreground">
+                          {RECORD_PURPOSE[r.purpose]} <span className="text-caption text-muted-foreground">· {r.type}</span>
+                        </span>
+                        <StatusBadge tone={r.required ? "brand" : "neutral"} dot={false}>
+                          {r.required ? "Obrigatório" : "Recomendado"}
+                        </StatusBadge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-10 shrink-0 text-caption text-muted-foreground">Nome</span>
+                        <CopyField value={r.name} mono size="sm" className="min-w-0 flex-1" />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-10 shrink-0 text-caption text-muted-foreground">Valor</span>
+                        <CopyField value={r.value} mono size="sm" className="min-w-0 flex-1" />
+                      </div>
+                    </li>
                   ))}
                 </ul>
               ) : (
-                <button type="button" onClick={() => setShowRecords(true)} className={cn(LINK, "mt-3", PRESSABLE)}>
+                <Button variant="link" size="sm" className="mt-2" onClick={() => setShowRecords(true)}>
                   Ver os {sender.records.length} registros
-                </button>
+                </Button>
               )}
-              <p className="mt-2 text-[12.5px] text-[#6b6878]">{checkedAt(sender.lastCheckedAt)}</p>
-              {sender.lastError ? <p className="mt-1 text-[13px] text-[#9b1c35]">A verificação falhou: {sender.lastError}</p> : null}
+              <Note className="mt-2">{checkedAt(sender.lastCheckedAt)}</Note>
+              {sender.lastError ? <p className="mt-1 text-caption text-danger">A verificação falhou: {sender.lastError}</p> : null}
             </div>
           ) : null}
 
-          {sender && sender.status !== "CONNECTED" ? <Blockers items={data.pending} title="Falta para enviar e-mail" /> : null}
+          {sender && sender.status !== "CONNECTED" ? <Blockers items={data.pending} title="Falta pra enviar e-mail" /> : null}
         </>
       )}
 
-      <div className="border-t border-[#f2f0f7] pt-4">
-        <h3 className="text-[15px] font-semibold text-[#1c1a24]">Créditos de e-mail</h3>
+      <div className="border-t border-border pt-4">
+        <h3 className="text-sm font-semibold text-foreground">Créditos de e-mail</h3>
         {credits ? (
-          <dl className="mt-1 divide-y divide-[#f2f0f7]">
+          <dl className="mt-1 divide-y divide-border">
             <Detail label="Franquia deste mês" value={credits.freeMonthly ? `${num(credits.freeRemaining)} de ${num(credits.freeMonthly)} e-mails` : "Sem franquia"} />
             <Detail label="Seus créditos" value={`${num(credits.paidBalance)} e-mails`} />
             <Detail label="Preço do crédito" value={credits.creditPriceMicros === null ? "Ainda não definido" : `${formatMicros(credits.creditPriceMicros)} por e-mail`} />
           </dl>
         ) : (
-          <BlockSkeleton className="mt-2 h-24" />
+          <Skeleton className="mt-2 h-24 rounded-xl" />
         )}
-        <p className="mt-2 text-[13px] leading-relaxed text-[#6b6878]">Cada e-mail enviado usa 1 crédito, primeiro da franquia do mês. E-mail que falha antes de sair devolve o crédito.</p>
+        <Note className="mt-2">Cada e-mail enviado usa 1 crédito, primeiro da franquia do mês. E-mail que falha antes de sair devolve o crédito.</Note>
       </div>
+
+      <ConfirmDialog open={removing} onOpenChange={setRemoving} danger icon="mail" title="Remover o remetente?" description="Campanhas por e-mail param até você configurar outro remetente e verificar o domínio de novo." confirmLabel="Remover" onConfirm={() => remove.mutateAsync()} />
     </ChannelCard>
-  );
-}
-
-function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-[13.5px] font-semibold text-[#1c1a24]">{label}</span>
-      {children}
-      {hint ? <span className="mt-1.5 block text-[13px] leading-relaxed text-[#6b6878]">{hint}</span> : null}
-    </label>
-  );
-}
-
-function DnsRow({ record }: { record: CrmDnsRecord }) {
-  return (
-    <li className="px-4 py-3">
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-[13.5px] font-medium text-[#1c1a24]">
-          {RECORD_PURPOSE[record.purpose]} <span className="font-poppins text-[12.5px] font-medium text-[#6b6878]">· {record.type}</span>
-        </span>
-        <Pill tone={record.required ? "violet" : "neutral"}>{record.required ? "Obrigatório" : "Recomendado"}</Pill>
-      </div>
-      <CopyLine label="Nome" value={record.name} />
-      <CopyLine label="Valor" value={record.value} />
-    </li>
-  );
-}
-
-function CopyLine({ label, value }: { label: string; value: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <div className="mt-1.5 flex items-center gap-2">
-      <span className="w-11 shrink-0 text-[12.5px] text-[#6b6878]">{label}</span>
-      <code className="min-w-0 flex-1 truncate rounded-md bg-[#f7f6fa] px-2 py-1 font-mono text-[12.5px] text-[#1c1a24]">{value}</code>
-      <button
-        type="button"
-        aria-label={`Copiar ${label.toLowerCase()}`}
-        onClick={() => {
-          void navigator.clipboard.writeText(value).then(() => {
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
-          });
-        }}
-        className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#5b5868] outline-none hover:bg-[#f3f1f8] focus-visible:ring-2 focus-visible:ring-[#7c3aed]", PRESSABLE)}
-      >
-        {copied ? <Check size={15} strokeWidth={2.2} className="text-emerald-700" aria-hidden="true" /> : <Copy size={15} strokeWidth={1.8} aria-hidden="true" />}
-      </button>
-    </div>
-  );
-}
-
-function RemoveButton({ label, pending, onConfirm }: { label: string; pending: boolean; onConfirm: () => void }) {
-  const [open, setOpen] = useState(false);
-  if (!open) {
-    return (
-      <button type="button" onClick={() => setOpen(true)} className={cn(BTN_SECONDARY, "text-[#9b1c35]", PRESSABLE)}>
-        {label}
-      </button>
-    );
-  }
-  return (
-    <span className="flex items-center gap-3 rounded-[10px] bg-[#fcf5f6] px-3 text-[13.5px]">
-      <span className="text-[#3a3746]">Tem certeza?</span>
-      <button type="button" onClick={() => setOpen(false)} className={cn(LINK, "text-[#5f5c6b]", PRESSABLE)}>
-        Voltar
-      </button>
-      <button type="button" disabled={pending} onClick={onConfirm} className={cn(LINK, "flex items-center gap-1 text-[#9b1c35] hover:text-[#7f1529]", PRESSABLE)}>
-        {pending ? <Loader2 size={13} className="animate-spin" aria-hidden="true" /> : null}
-        {label}
-      </button>
-    </span>
   );
 }
 
@@ -386,71 +334,64 @@ function runEmbeddedSignup(signup: { appId: string; configId: string; graphVersi
 
 function WhatsappChannel({ orgId, data, rates, onChange }: { orgId: number; data: CrmChannelsOverview["whatsapp"]; rates?: { marketingRateMicros: number | null; utilityRateMicros: number | null; ratesCheckedAt: string | null }; onChange: (d: CrmChannelsOverview) => void }) {
   const account = data.account;
+  const [disconnecting, setDisconnecting] = useState(false);
   const onError = (error: unknown) => toast.error(getErrorMessage(error, "Não foi possível concluir."));
   const connect = useMutation({
     mutationFn: async () => crmMarketingApi.connectWhatsapp(orgId, await runEmbeddedSignup(data.signup!)),
-    onSuccess: (d) => (onChange(d), toast.success("WhatsApp Business conectado.")),
+    onSuccess: (d) => (onChange(d), toast.success("WhatsApp Business conectado")),
     onError,
   });
-  const sync = useMutation({ mutationFn: () => crmMarketingApi.syncWhatsapp(orgId), onSuccess: (d) => (onChange(d), toast.success("Dados atualizados com a Meta.")), onError });
-  const disconnect = useMutation({ mutationFn: () => crmMarketingApi.disconnectWhatsapp(orgId), onSuccess: (d) => (onChange(d), toast.success("WhatsApp desconectado.")), onError });
+  const sync = useMutation({ mutationFn: () => crmMarketingApi.syncWhatsapp(orgId), onSuccess: (d) => (onChange(d), toast.success("Dados atualizados com a Meta")), onError });
+  const disconnect = useMutation({ mutationFn: () => crmMarketingApi.disconnectWhatsapp(orgId), onSuccess: (d) => (onChange(d), toast.success("WhatsApp desconectado")), onError });
 
-  const status = !data.available ? <Pill tone="neutral">Em breve</Pill> : account ? <Pill tone={ACCOUNT_STATUS[account.status].tone}>{ACCOUNT_STATUS[account.status].label}</Pill> : <Pill tone="neutral">Não conectado</Pill>;
+  const status = !data.available ? <StatusBadge tone="neutral">Em breve</StatusBadge> : account ? <StatusBadge tone={ACCOUNT_STATUS[account.status].tone}>{ACCOUNT_STATUS[account.status].label}</StatusBadge> : <StatusBadge tone="neutral">Não conectado</StatusBadge>;
 
   return (
     <ChannelCard channel="WHATSAPP" title="WhatsApp Business" status={status}>
       {!data.available ? (
-        <p className="rounded-[14px] bg-[#faf8ff] px-4 py-3.5 text-[14px] leading-relaxed text-[#3a3746]">
-          A conexão oficial com a Meta ainda está sendo habilitada pela Nokta. Quando abrir, você conecta aqui o número do WhatsApp Business da sua empresa, direto pela tela da Meta.
-        </p>
+        <Callout tone="neutral">A conexão oficial com a Meta ainda está sendo habilitada pela Nokta. Quando abrir, você conecta aqui o número do WhatsApp Business da sua empresa, direto pela tela da Meta.</Callout>
       ) : account ? (
         <>
-          <dl className="divide-y divide-[#f2f0f7]">
+          <dl className="divide-y divide-border">
             <Detail label="Número" value={formatPhone(account.phoneNumber) || account.phoneNumber} />
             <Detail label="Nome verificado" value={account.verifiedName ?? "Ainda não verificado"} />
             <Detail label="Conta" value={account.businessName ?? "Não informado"} />
             <Detail label="Qualidade do número" value={QUALITY[account.qualityRating ?? "UNKNOWN"] ?? account.qualityRating} />
             <Detail label="Limite de envio" value={limitLabel(account.messagingLimitTier)} />
-            <Detail label="Forma de pagamento na Meta" value={account.hasFunding ? "Cadastrada" : <span className="text-[#9b1c35]">Não cadastrada</span>} />
+            <Detail label="Forma de pagamento na Meta" value={account.hasFunding ? "Cadastrada" : <span className="text-danger">Não cadastrada</span>} />
           </dl>
-          <p className="text-[12.5px] leading-relaxed text-[#6b6878]">
-            Todos estes dados foram lidos da sua conta na Meta. {checkedAt(account.lastCheckedAt)}; a Nokta relê sozinha algumas vezes por dia. Qualidade e limite são definidos pela Meta e mudam com o tempo.
-          </p>
-          {account.lastError ? <p className="text-[13px] text-[#9b1c35]">A última consulta à Meta falhou: {account.lastError}</p> : null}
+          <Note>Todos estes dados foram lidos da sua conta na Meta. {checkedAt(account.lastCheckedAt)}; a Nokta relê sozinha algumas vezes por dia. Qualidade e limite são definidos pela Meta e mudam com o tempo.</Note>
+          {account.lastError ? <p className="text-caption text-danger">A última consulta à Meta falhou: {account.lastError}</p> : null}
           <div data-manage className="flex flex-wrap gap-2">
-            <button type="button" disabled={sync.isPending} onClick={() => sync.mutate()} className={cn(BTN_SECONDARY, PRESSABLE)}>
-              {sync.isPending ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={15} strokeWidth={1.8} aria-hidden="true" />}
+            <Button variant="outline" size="sm" leftIcon="refresh" loading={sync.isPending} onClick={() => sync.mutate()}>
               Atualizar com a Meta
-            </button>
-            <RemoveButton label="Desconectar" pending={disconnect.isPending} onConfirm={() => disconnect.mutate()} />
+            </Button>
+            <Button variant="destructive-soft" size="sm" onClick={() => setDisconnecting(true)}>
+              Desconectar
+            </Button>
           </div>
-          <Blockers items={data.pending} title="Falta para enviar por WhatsApp" />
+          <Blockers items={data.pending} title="Falta pra enviar por WhatsApp" />
         </>
       ) : (
         <>
-          <p className="max-w-[62ch] text-[14px] leading-relaxed text-[#3a3746]">
-            Conecte o WhatsApp Business da sua empresa pela tela oficial da Meta. Você escolhe ou cadastra o número lá, e a Nokta recebe só a permissão de enviar os modelos que você aprovar.
-          </p>
-          <button data-manage type="button" disabled={connect.isPending || !data.signup} onClick={() => connect.mutate()} className={cn(BTN_PRIMARY, PRESSABLE)}>
-            {connect.isPending ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : null}
+          <p className="max-w-[62ch] text-sm leading-relaxed text-foreground">Conecte o WhatsApp Business da sua empresa pela tela oficial da Meta. Você escolhe ou cadastra o número lá, e a Nokta recebe só a permissão de enviar os modelos que você aprovar.</p>
+          <Button data-manage leftIcon="whatsapp" loading={connect.isPending} disabled={!data.signup} onClick={() => connect.mutate()}>
             Conectar WhatsApp Business
-          </button>
+          </Button>
         </>
       )}
 
-      <div className="border-t border-[#f2f0f7] pt-4">
-        <h3 className="text-[15px] font-semibold text-[#1c1a24]">Quem paga as mensagens</h3>
-        <p className="mt-1.5 max-w-[66ch] text-[13.5px] leading-relaxed text-[#3a3746]">
-          Você. A Meta cobra cada mensagem direto na forma de pagamento da sua conta do WhatsApp Business. A Nokta não cobra, não repassa e não adianta esse valor.
-        </p>
-        <dl className="mt-1 divide-y divide-[#f2f0f7]">
-          <Detail label="Divulgação, estimativa por mensagem" value={rates?.marketingRateMicros == null ? "Sem estimativa cadastrada" : `cerca de ${formatMicros(rates.marketingRateMicros)}`} />
-          <Detail label="Serviço, estimativa por mensagem" value={rates?.utilityRateMicros == null ? "Sem estimativa cadastrada" : `cerca de ${formatMicros(rates.utilityRateMicros)}`} />
+      <div className="border-t border-border pt-4">
+        <h3 className="text-sm font-semibold text-foreground">Quem paga as mensagens</h3>
+        <p className="mt-1.5 max-w-[66ch] text-caption leading-relaxed text-foreground">Você. A Meta cobra cada mensagem direto na forma de pagamento da sua conta do WhatsApp Business. A Nokta não cobra, não repassa e não adianta esse valor.</p>
+        <dl className="mt-1 divide-y divide-border">
+          <Detail label="Divulgação, por mensagem" value={rates?.marketingRateMicros == null ? "Sem estimativa cadastrada" : `cerca de ${formatMicros(rates.marketingRateMicros)}`} />
+          <Detail label="Serviço, por mensagem" value={rates?.utilityRateMicros == null ? "Sem estimativa cadastrada" : `cerca de ${formatMicros(rates.utilityRateMicros)}`} />
         </dl>
-        <p className="mt-2 text-[13px] leading-relaxed text-[#6b6878]">
-          Estimativa pelos valores de tabela da Meta para o Brasil{rates?.ratesCheckedAt ? `, cadastrados pela Nokta em ${fmtDate(rates.ratesCheckedAt)}` : ""}. Não é o valor da sua conta: o que você paga de verdade é o que aparece na sua fatura da Meta.
-        </p>
+        <Note className="mt-2">Estimativa pelos valores de tabela da Meta pro Brasil{rates?.ratesCheckedAt ? `, cadastrados pela Nokta em ${fmtDate(rates.ratesCheckedAt)}` : ""}. Não é o valor da sua conta: o que você paga de verdade é o que aparece na sua fatura da Meta.</Note>
       </div>
+
+      <ConfirmDialog open={disconnecting} onOpenChange={setDisconnecting} danger icon="whatsapp" title="Desconectar o WhatsApp Business?" description="Campanhas por WhatsApp param até você conectar de novo. Os modelos aprovados continuam na sua conta da Meta." confirmLabel="Desconectar" onConfirm={() => disconnect.mutateAsync()} />
     </ChannelCard>
   );
 }

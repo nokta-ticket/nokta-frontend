@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
+import { toast } from "@/lib/toast";
+import { cn } from "@/lib/cn";
 import type { EventPromoterAssignment, OrganizationPromoter, PromoterOrganizationEvent, UpsertAssignmentPayload } from "@/services/promoters";
+import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field, FieldGroup } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { SelectInput } from "@/components/ui/select-input";
+import { SwitchRow } from "@/components/ui/switch-row";
 import { usePromoterMutations } from "../_hooks/use-promoters";
 
 interface FormState {
@@ -118,49 +121,24 @@ function previewSentence(form: FormState): string {
     const unit = form.commissionType === "PERCENTAGE" ? "% do valor líquido" : "por ingresso vendido";
     parts.push(`o promoter acumula ${form.commissionValue}${form.commissionType === "PERCENTAGE" ? "" : " reais"}${unit === "% do valor líquido" ? unit : ` ${unit}`} em comissão pendente`);
   }
-  if (parts.length === 0) {
-    return `${sentence}, a venda é atribuída ao promoter, mas sem desconto nem comissão configurados.`;
-  }
+  if (parts.length === 0) return `${sentence}, a venda é atribuída ao promoter, mas sem desconto nem comissão configurados.`;
   return `${sentence}, ${parts.join(" e ")}.`;
 }
 
-export function AssignmentDialog({
-  orgId,
-  open,
-  onOpenChange,
-  promoters,
-  events,
-  editingAssignment,
-  fixedEventId,
-}: {
-  orgId: number;
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  promoters: OrganizationPromoter[];
-  events: PromoterOrganizationEvent[];
-  editingAssignment: EventPromoterAssignment | null;
-  fixedEventId?: number;
-}) {
+export function AssignmentDialog({ orgId, open, onOpenChange, promoters, events, editingAssignment, fixedEventId }: { orgId: number; open: boolean; onOpenChange: (v: boolean) => void; promoters: OrganizationPromoter[]; events: PromoterOrganizationEvent[]; editingAssignment: EventPromoterAssignment | null; fixedEventId?: number }) {
   const { createAssignment, updateAssignment } = usePromoterMutations(orgId);
   const [form, setForm] = useState<FormState>(emptyForm);
 
   useEffect(() => {
-    if (editingAssignment) {
-      setForm(assignmentToForm(editingAssignment));
-    } else {
-      setForm({ ...emptyForm, eventId: fixedEventId ? String(fixedEventId) : "" });
-    }
+    if (editingAssignment) setForm(assignmentToForm(editingAssignment));
+    else setForm({ ...emptyForm, eventId: fixedEventId ? String(fixedEventId) : "" });
   }, [editingAssignment, fixedEventId, open]);
 
   const selectedEvent = events.find((e) => String(e.id) === form.eventId);
-
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
 
   const toggleEligibleTicket = (ticketId: number) => {
-    setForm((f) => ({
-      ...f,
-      eligibleTicketIds: f.eligibleTicketIds.includes(ticketId) ? f.eligibleTicketIds.filter((id) => id !== ticketId) : [...f.eligibleTicketIds, ticketId],
-    }));
+    setForm((f) => ({ ...f, eligibleTicketIds: f.eligibleTicketIds.includes(ticketId) ? f.eligibleTicketIds.filter((id) => id !== ticketId) : [...f.eligibleTicketIds, ticketId] }));
   };
 
   const handleSubmit = async () => {
@@ -189,11 +167,8 @@ export function AssignmentDialog({
       payload.discountType = form.discountType;
       payload.discountScope = form.discountScope;
       payload.discountTrigger = form.discountTrigger;
-      if (form.discountType === "PERCENTAGE") {
-        payload.discountBasisPoints = Math.round(Number(form.discountValue.replace(",", ".")) * 100);
-      } else {
-        payload.discountFixedCents = Math.round(Number(form.discountValue.replace(",", ".")) * 100);
-      }
+      if (form.discountType === "PERCENTAGE") payload.discountBasisPoints = Math.round(Number(form.discountValue.replace(",", ".")) * 100);
+      else payload.discountFixedCents = Math.round(Number(form.discountValue.replace(",", ".")) * 100);
       if (form.discountMaxUses) payload.discountMaxUses = Number(form.discountMaxUses);
       if (form.discountMaxUsesPerCustomer) payload.discountMaxUsesPerCustomer = Number(form.discountMaxUsesPerCustomer);
       if (form.discountMaxDiscountValue) payload.discountMaxDiscountCentsPerUse = Math.round(Number(form.discountMaxDiscountValue.replace(",", ".")) * 100);
@@ -203,20 +178,17 @@ export function AssignmentDialog({
 
     if (form.commissionEnabled) {
       payload.commissionType = form.commissionType;
-      if (form.commissionType === "PERCENTAGE") {
-        payload.commissionPercentageBasisPoints = Math.round(Number(form.commissionValue.replace(",", ".")) * 100);
-      } else {
-        payload.commissionFixedCents = Math.round(Number(form.commissionValue.replace(",", ".")) * 100);
-      }
+      if (form.commissionType === "PERCENTAGE") payload.commissionPercentageBasisPoints = Math.round(Number(form.commissionValue.replace(",", ".")) * 100);
+      else payload.commissionFixedCents = Math.round(Number(form.commissionValue.replace(",", ".")) * 100);
     }
 
     try {
       if (editingAssignment) {
         await updateAssignment.mutateAsync({ assignmentId: editingAssignment.id, payload });
-        toast.success("Vínculo atualizado.");
+        toast.success("Vínculo atualizado");
       } else {
         await createAssignment.mutateAsync({ ...payload, organizationPromoterId: Number(form.organizationPromoterId), eventId: Number(form.eventId) });
-        toast.success("Vínculo criado.");
+        toast.success("Vínculo criado");
       }
       onOpenChange(false);
     } catch (err) {
@@ -228,185 +200,121 @@ export function AssignmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+      <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle>{editingAssignment ? "Editar vínculo" : "Novo vínculo promoter × evento"}</DialogTitle>
-          <DialogDescription>Configure como este promoter atribui vendas neste evento — canais, desconto opcional e comissão opcional são independentes.</DialogDescription>
+          <DialogDescription>Como este promoter atribui vendas neste evento — canais, desconto e comissão são independentes.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5">
+        <DialogBody>
           {!editingAssignment ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label>Promoter</Label>
-                <Select value={form.organizationPromoterId} onValueChange={(v) => set("organizationPromoterId", v)}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    {promoters.filter((p) => p.status === "ACTIVE").map((p) => (
-                      <SelectItem key={p.id} value={String(p.id)}>{p.promoterProfile?.displayName ?? p.inviteEmail}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Evento</Label>
-                <Select value={form.eventId} onValueChange={(v) => set("eventId", v)} disabled={!!fixedEventId}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    {events.map((e) => (
-                      <SelectItem key={e.id} value={String(e.id)}>{e.nome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            <FieldGroup columns={2}>
+              <Field label="Promoter" htmlFor="vinc-promoter" required>
+                <SelectInput id="vinc-promoter" value={form.organizationPromoterId} onValueChange={(v) => set("organizationPromoterId", v)} placeholder="Selecione" options={promoters.filter((p) => p.status === "ACTIVE").map((p) => ({ value: String(p.id), label: p.promoterProfile?.displayName ?? p.inviteEmail }))} />
+              </Field>
+              <Field label="Evento" htmlFor="vinc-evento" required>
+                <SelectInput id="vinc-evento" value={form.eventId} onValueChange={(v) => set("eventId", v)} disabled={!!fixedEventId} placeholder="Selecione" options={events.map((e) => ({ value: String(e.id), label: e.nome }))} />
+              </Field>
+            </FieldGroup>
           ) : null}
 
-          <div className="space-y-2">
-            <Label>Canais de atribuição</Label>
-            <div className="flex items-center gap-2">
-              <Checkbox id="linkEnabled" checked={form.linkEnabled} onCheckedChange={(v) => set("linkEnabled", !!v)} />
-              <Label htmlFor="linkEnabled" className="font-normal">Link exclusivo</Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox id="codeEnabled" checked={form.codeEnabled} onCheckedChange={(v) => set("codeEnabled", !!v)} />
-              <Label htmlFor="codeEnabled" className="font-normal">Código do promoter</Label>
-            </div>
+          <section className="space-y-2">
+            <h4 className="text-sm font-semibold text-foreground">Canais de atribuição</h4>
+            <SwitchRow label="Link exclusivo" description="Um link com ?ref= do promoter" checked={form.linkEnabled} onCheckedChange={(v) => set("linkEnabled", v)} />
+            <SwitchRow label="Código do promoter" description="Quem compra digita no checkout" checked={form.codeEnabled} onCheckedChange={(v) => set("codeEnabled", v)} />
             {form.codeEnabled ? (
-              <Input placeholder="Ex.: JOAO10" value={form.code} onChange={(e) => set("code", e.target.value.toUpperCase())} className="mt-1 max-w-xs" />
+              <Field label="Código" htmlFor="vinc-code" required className="sm:max-w-xs">
+                <Input id="vinc-code" placeholder="Ex.: JOAO10" value={form.code} onChange={(e) => set("code", e.target.value.toUpperCase())} className="font-mono uppercase" />
+              </Field>
             ) : null}
-          </div>
+          </section>
 
-          <div className="space-y-2 rounded-lg border border-black/10 p-3">
-            <div className="flex items-center gap-2">
-              <Checkbox id="discountEnabled" checked={form.discountEnabled} onCheckedChange={(v) => set("discountEnabled", !!v)} />
-              <Label htmlFor="discountEnabled" className="font-normal">Oferecer desconto para quem compra</Label>
-            </div>
+          <section className="space-y-3">
+            <SwitchRow label="Oferecer desconto pra quem compra" checked={form.discountEnabled} onCheckedChange={(v) => set("discountEnabled", v)} />
             {form.discountEnabled ? (
-              <div className="grid gap-3 pt-2 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label>Tipo</Label>
-                  <Select value={form.discountType} onValueChange={(v) => set("discountType", v as FormState["discountType"])}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PERCENTAGE">Percentual (%)</SelectItem>
-                      <SelectItem value="FIXED">Valor fixo (R$)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Valor do desconto</Label>
-                  <Input value={form.discountValue} onChange={(e) => set("discountValue", e.target.value)} placeholder={form.discountType === "PERCENTAGE" ? "10" : "20,00"} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Aplicado</Label>
-                  <Select value={form.discountScope} onValueChange={(v) => set("discountScope", v as FormState["discountScope"])}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ORDER">Uma vez por pedido</SelectItem>
-                      <SelectItem value="PER_TICKET">Por ingresso</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Vale para</Label>
-                  <Select value={form.discountTrigger} onValueChange={(v) => set("discountTrigger", v as FormState["discountTrigger"])}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="LINK">Só quem veio pelo link</SelectItem>
-                      <SelectItem value="CODE">Só quem digitou o código</SelectItem>
-                      <SelectItem value="BOTH">Link ou código</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Limite total de usos</Label>
-                  <Input value={form.discountMaxUses} onChange={(e) => set("discountMaxUses", e.target.value)} placeholder="Sem limite" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Limite por cliente</Label>
-                  <Input value={form.discountMaxUsesPerCustomer} onChange={(e) => set("discountMaxUsesPerCustomer", e.target.value)} placeholder="Sem limite" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Teto de desconto por uso (R$)</Label>
-                  <Input value={form.discountMaxDiscountValue} onChange={(e) => set("discountMaxDiscountValue", e.target.value)} placeholder="Sem teto" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Máx. de ingressos por uso</Label>
-                  <Input value={form.discountMaxTicketsPerUse} onChange={(e) => set("discountMaxTicketsPerUse", e.target.value)} placeholder="Sem limite" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Pedido mínimo (R$)</Label>
-                  <Input value={form.discountMinOrderValue} onChange={(e) => set("discountMinOrderValue", e.target.value)} placeholder="Sem mínimo" />
-                </div>
-              </div>
+              <FieldGroup columns={2} className={cn("rounded-xl border border-border p-4")}>
+                <Field label="Tipo" htmlFor="desc-tipo">
+                  <SelectInput id="desc-tipo" value={form.discountType} onValueChange={(v) => set("discountType", v as FormState["discountType"])} options={[{ value: "PERCENTAGE", label: "Percentual (%)" }, { value: "FIXED", label: "Valor fixo (R$)" }]} />
+                </Field>
+                <Field label="Valor do desconto" htmlFor="desc-valor">
+                  <Input id="desc-valor" inputMode="decimal" prefix={form.discountType === "PERCENTAGE" ? "%" : "R$"} value={form.discountValue} onChange={(e) => set("discountValue", e.target.value)} placeholder={form.discountType === "PERCENTAGE" ? "10" : "20,00"} />
+                </Field>
+                <Field label="Aplicado" htmlFor="desc-scope">
+                  <SelectInput id="desc-scope" value={form.discountScope} onValueChange={(v) => set("discountScope", v as FormState["discountScope"])} options={[{ value: "ORDER", label: "Uma vez por pedido" }, { value: "PER_TICKET", label: "Por ingresso" }]} />
+                </Field>
+                <Field label="Vale para" htmlFor="desc-trigger">
+                  <SelectInput id="desc-trigger" value={form.discountTrigger} onValueChange={(v) => set("discountTrigger", v as FormState["discountTrigger"])} options={[{ value: "LINK", label: "Só quem veio pelo link" }, { value: "CODE", label: "Só quem digitou o código" }, { value: "BOTH", label: "Link ou código" }]} />
+                </Field>
+                <Field label="Limite total de usos" htmlFor="desc-max" optional>
+                  <Input id="desc-max" inputMode="numeric" value={form.discountMaxUses} onChange={(e) => set("discountMaxUses", e.target.value)} placeholder="Sem limite" />
+                </Field>
+                <Field label="Limite por cliente" htmlFor="desc-max-cli" optional>
+                  <Input id="desc-max-cli" inputMode="numeric" value={form.discountMaxUsesPerCustomer} onChange={(e) => set("discountMaxUsesPerCustomer", e.target.value)} placeholder="Sem limite" />
+                </Field>
+                <Field label="Teto de desconto por uso" htmlFor="desc-teto" optional>
+                  <Input id="desc-teto" inputMode="decimal" prefix="R$" value={form.discountMaxDiscountValue} onChange={(e) => set("discountMaxDiscountValue", e.target.value)} placeholder="Sem teto" />
+                </Field>
+                <Field label="Máx. de ingressos por uso" htmlFor="desc-max-ing" optional>
+                  <Input id="desc-max-ing" inputMode="numeric" value={form.discountMaxTicketsPerUse} onChange={(e) => set("discountMaxTicketsPerUse", e.target.value)} placeholder="Sem limite" />
+                </Field>
+                <Field label="Pedido mínimo" htmlFor="desc-min" optional>
+                  <Input id="desc-min" inputMode="decimal" prefix="R$" value={form.discountMinOrderValue} onChange={(e) => set("discountMinOrderValue", e.target.value)} placeholder="Sem mínimo" />
+                </Field>
+              </FieldGroup>
             ) : null}
-          </div>
+          </section>
 
-          <div className="space-y-2 rounded-lg border border-black/10 p-3">
-            <div className="flex items-center gap-2">
-              <Checkbox id="commissionEnabled" checked={form.commissionEnabled} onCheckedChange={(v) => set("commissionEnabled", !!v)} />
-              <Label htmlFor="commissionEnabled" className="font-normal">Gerar comissão para o promoter</Label>
-            </div>
+          <section className="space-y-3">
+            <SwitchRow label="Gerar comissão pro promoter" checked={form.commissionEnabled} onCheckedChange={(v) => set("commissionEnabled", v)} />
             {form.commissionEnabled ? (
-              <div className="grid gap-3 pt-2 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label>Tipo</Label>
-                  <Select value={form.commissionType} onValueChange={(v) => set("commissionType", v as FormState["commissionType"])}>
-                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PERCENTAGE">Percentual do valor líquido (%)</SelectItem>
-                      <SelectItem value="FIXED_PER_TICKET">Valor fixo por ingresso (R$)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Valor da comissão</Label>
-                  <Input value={form.commissionValue} onChange={(e) => set("commissionValue", e.target.value)} placeholder={form.commissionType === "PERCENTAGE" ? "10" : "5,00"} />
-                </div>
-              </div>
+              <FieldGroup columns={2} className="rounded-xl border border-border p-4">
+                <Field label="Tipo" htmlFor="com-tipo">
+                  <SelectInput id="com-tipo" value={form.commissionType} onValueChange={(v) => set("commissionType", v as FormState["commissionType"])} options={[{ value: "PERCENTAGE", label: "Percentual do valor líquido (%)" }, { value: "FIXED_PER_TICKET", label: "Valor fixo por ingresso (R$)" }]} />
+                </Field>
+                <Field label="Valor da comissão" htmlFor="com-valor">
+                  <Input id="com-valor" inputMode="decimal" prefix={form.commissionType === "PERCENTAGE" ? "%" : "R$"} value={form.commissionValue} onChange={(e) => set("commissionValue", e.target.value)} placeholder={form.commissionType === "PERCENTAGE" ? "10" : "5,00"} />
+                </Field>
+              </FieldGroup>
             ) : null}
-          </div>
+          </section>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="space-y-1.5">
-              <Label>Janela de atribuição (dias)</Label>
-              <Input value={form.attributionWindowDays} onChange={(e) => set("attributionWindowDays", e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Início da vigência</Label>
-              <Input type="date" value={form.startsAt} onChange={(e) => set("startsAt", e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Fim da vigência</Label>
-              <Input type="date" value={form.endsAt} onChange={(e) => set("endsAt", e.target.value)} />
-            </div>
-          </div>
+          <FieldGroup columns={3}>
+            <Field label="Janela de atribuição (dias)" htmlFor="vinc-janela">
+              <Input id="vinc-janela" inputMode="numeric" value={form.attributionWindowDays} onChange={(e) => set("attributionWindowDays", e.target.value)} />
+            </Field>
+            <Field label="Início da vigência" htmlFor="vinc-inicio" optional>
+              <Input id="vinc-inicio" type="date" value={form.startsAt} onChange={(e) => set("startsAt", e.target.value)} />
+            </Field>
+            <Field label="Fim da vigência" htmlFor="vinc-fim" optional>
+              <Input id="vinc-fim" type="date" value={form.endsAt} onChange={(e) => set("endsAt", e.target.value)} />
+            </Field>
+          </FieldGroup>
 
           {selectedEvent && selectedEvent.tickets.length > 0 ? (
-            <div className="space-y-1.5">
-              <Label>Restringir a lotes específicos (opcional — vazio = todos os lotes)</Label>
-              <div className="flex flex-wrap gap-3 rounded-lg border border-black/10 p-3">
+            <Field label="Restringir a lotes específicos" optional hint="Vazio = todos os lotes.">
+              <div className="flex flex-wrap gap-2 rounded-xl border border-border p-3">
                 {selectedEvent.tickets.map((t) => (
-                  <div key={t.id} className="flex items-center gap-2">
-                    <Checkbox
-                      id={`ticket-${t.id}`}
-                      checked={form.eligibleTicketIds.includes(t.id)}
-                      onCheckedChange={() => toggleEligibleTicket(t.id)}
-                    />
-                    <Label htmlFor={`ticket-${t.id}`} className="font-normal">{t.nome ?? `Lote ${t.lote}`}</Label>
-                  </div>
+                  <label key={t.id} className="flex cursor-pointer items-center gap-2 rounded-pill border border-border bg-surface-2 px-3 py-1.5 text-caption font-medium text-foreground">
+                    <Checkbox id={`ticket-${t.id}`} checked={form.eligibleTicketIds.includes(t.id)} onCheckedChange={() => toggleEligibleTicket(t.id)} />
+                    {t.nome ?? `Lote ${t.lote}`}
+                  </label>
                 ))}
               </div>
-            </div>
+            </Field>
           ) : null}
 
-          <div className="rounded-lg bg-black/5 p-3 text-sm text-black/70">{previewSentence(form)}</div>
-        </div>
+          <Callout tone="info" icon="lightbulb">
+            {previewSentence(form)}
+          </Callout>
+        </DialogBody>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={isPending}>{isPending ? "Salvando…" : "Salvar vínculo"}</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancelar
+          </Button>
+          <Button leftIcon="save" onClick={handleSubmit} loading={isPending}>
+            Salvar vínculo
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

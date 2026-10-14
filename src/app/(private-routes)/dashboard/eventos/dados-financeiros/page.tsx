@@ -2,24 +2,21 @@
 
 import Link from "next/link";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { PageState } from "@/components/ui/page-state";
 import api, { getErrorMessage } from "@/lib/axios";
-import {
-  formatCnpj,
-  formatCpf,
-  maskPhone,
-  normalizeDigits,
-  validateCnpj,
-  validateCpf,
-  validatePixKey,
-} from "@/lib/br-data";
+import { formatCnpj, formatCpf, maskPhone, normalizeDigits, validateCnpj, validateCpf, validatePixKey } from "@/lib/br-data";
 import { toast } from "@/lib/toast";
-import { AlertCircle, CheckCircle2, Loader2, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChoiceCard } from "@/components/ui/choice-card";
+import { DetailGrid, DetailItem, BooleanValue } from "@/components/ui/detail-list";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
+import { Field } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
+import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatusBadge, type Tone } from "@/components/ui/badge";
 
 type TipoPessoa = "PF" | "PJ";
 type SolicitationStatus = 1 | 2 | 3;
@@ -34,60 +31,24 @@ type ProducerFinanceData = {
   nivelProdutor: number | null;
   platformFeePercent: number;
   withdrawalDelayDays: number;
-  solicitacaoAtual: {
-    id: number;
-    status: SolicitationStatus;
-    tipo: string;
-    createdAt: string;
-    dataResposta: string | null;
-  } | null;
+  solicitacaoAtual: { id: number; status: SolicitationStatus; tipo: string; createdAt: string; dataResposta: string | null } | null;
 };
 
-const NIVEL_INFO: Record<number, { label: string; color: string; description: string }> = {
-  1: {
-    label: "Nivel 1",
-    color: "bg-gray-100 text-gray-700",
-    description: "Pode criar eventos gratuitos.",
-  },
-  2: {
-    label: "Nivel 2",
-    color: "bg-blue-100 text-blue-700",
-    description: "Pode criar eventos pagos e receber repasses.",
-  },
-  3: {
-    label: "Nivel 3",
-    color: "bg-purple-100 text-purple-700",
-    description: "Conta confiavel com beneficios extras.",
-  },
+const NIVEL_INFO: Record<number, { label: string; tone: Tone; description: string }> = {
+  1: { label: "Nível 1", tone: "neutral", description: "Pode criar eventos gratuitos." },
+  2: { label: "Nível 2", tone: "info", description: "Pode criar eventos pagos e receber repasses." },
+  3: { label: "Nível 3", tone: "brand", description: "Conta confiável com benefícios extras." },
 };
 
-const SOLICITATION_INFO: Record<
-  SolicitationStatus,
-  { label: string; tone: string; description: string }
-> = {
-  1: {
-    label: "Em analise",
-    tone: "border-amber-200 bg-amber-50 text-amber-800",
-    description: "Os dados estao bloqueados ate a resposta da revisao manual.",
-  },
-  2: {
-    label: "Aprovada",
-    tone: "border-green-200 bg-green-50 text-green-800",
-    description: "Sua conta esta liberada para operacao paga.",
-  },
-  3: {
-    label: "Rejeitada",
-    tone: "border-red-200 bg-red-50 text-red-800",
-    description: "Revise os dados e envie uma nova solicitacao de verificacao.",
-  },
+const SOLICITATION_INFO: Record<SolicitationStatus, { label: string; tone: Tone; description: string }> = {
+  1: { label: "Em análise", tone: "warning", description: "Os dados ficam bloqueados até a resposta da revisão manual." },
+  2: { label: "Aprovada", tone: "success", description: "Sua conta está liberada para operação paga." },
+  3: { label: "Rejeitada", tone: "danger", description: "Revise os dados e envie uma nova solicitação de verificação." },
 };
 
 function formatDate(value?: string | null) {
   if (!value) return null;
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }
 
 export default function DadosFinanceirosPage() {
@@ -104,7 +65,6 @@ export default function DadosFinanceirosPage() {
   async function load() {
     setLoading(true);
     setError(null);
-
     try {
       const response = await api.get<ProducerFinanceData>("/produtor/dados-financeiros");
       const payload = response.data;
@@ -115,9 +75,7 @@ export default function DadosFinanceirosPage() {
       setChavePix(payload.chavePix ?? "");
     } catch (loadError) {
       setData(null);
-      setError(
-        getErrorMessage(loadError, "Nao foi possivel carregar os dados financeiros.")
-      );
+      setError(getErrorMessage(loadError, "Não foi possível carregar os dados financeiros."));
     } finally {
       setLoading(false);
     }
@@ -134,21 +92,9 @@ export default function DadosFinanceirosPage() {
 
   const handleSave = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    if (tipoPessoa === "PF" && !cpfValid) {
-      toast.error("Informe um CPF valido.");
-      return;
-    }
-
-    if (tipoPessoa === "PJ" && !cnpjValid) {
-      toast.error("Informe um CNPJ valido.");
-      return;
-    }
-
-    if (!pixValid) {
-      toast.error("Informe uma chave PIX valida.");
-      return;
-    }
+    if (tipoPessoa === "PF" && !cpfValid) return toast.error("Informe um CPF válido.");
+    if (tipoPessoa === "PJ" && !cnpjValid) return toast.error("Informe um CNPJ válido.");
+    if (!pixValid) return toast.error("Informe uma chave PIX válida.");
 
     setSaving(true);
     try {
@@ -158,16 +104,15 @@ export default function DadosFinanceirosPage() {
         cnpj: tipoPessoa === "PJ" ? normalizeDigits(cnpj) : undefined,
         chavePix: chavePix.trim(),
       });
-
       const payload = response.data;
       setData(payload);
       setTipoPessoa(payload.tipoPessoa ?? "PF");
       setCpf(payload.cpf ? formatCpf(payload.cpf) : "");
       setCnpj(payload.cnpj ? formatCnpj(payload.cnpj) : "");
       setChavePix(payload.chavePix ?? "");
-      toast.success("Dados financeiros salvos.");
-    } catch (error) {
-      toast.error(getErrorMessage(error, "Nao foi possivel salvar os dados."));
+      toast.success("Dados financeiros salvos");
+    } catch (saveError) {
+      toast.error(getErrorMessage(saveError, "Não foi possível salvar os dados."));
     } finally {
       setSaving(false);
     }
@@ -175,243 +120,158 @@ export default function DadosFinanceirosPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="flex items-center gap-3 text-sm text-gray-500">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          Carregando dados financeiros...
+      <div className="mx-auto max-w-4xl space-y-6">
+        <PageHeader back="/dashboard/eventos" title="Dados financeiros" />
+        <div className="grid gap-4 md:grid-cols-2">
+          <Skeleton className="h-32 rounded-card" />
+          <Skeleton className="h-32 rounded-card" />
         </div>
+        <Skeleton className="h-80 rounded-card" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <PageState
-        title="Nao foi possivel carregar os dados financeiros"
-        description={error}
-        icon={<AlertCircle className="h-8 w-8 text-red-500" />}
-        actionLabel="Tentar novamente"
-        onAction={() => void load()}
-      />
+      <div className="mx-auto max-w-4xl space-y-6">
+        <PageHeader back="/dashboard/eventos" title="Dados financeiros" />
+        <ErrorState title="Não foi possível carregar os dados financeiros" description={error} onRetry={() => void load()} />
+      </div>
     );
   }
 
   if (!data) {
     return (
-      <PageState
-        title="Nenhum dado financeiro encontrado"
-        description="Cadastre seus documentos e a chave PIX para liberar os recursos da conta."
-        actionLabel="Atualizar"
-        onAction={() => void load()}
-      />
+      <div className="mx-auto max-w-4xl space-y-6">
+        <PageHeader back="/dashboard/eventos" title="Dados financeiros" />
+        <EmptyState icon="wallet" title="Nenhum dado financeiro encontrado" description="Cadastre seus documentos e a chave PIX para liberar os recursos da conta." action={<Button variant="outline" leftIcon="refresh" onClick={() => void load()}>Atualizar</Button>} />
+      </div>
     );
   }
 
   const nivelInfo = NIVEL_INFO[data.nivelProdutor ?? 1] ?? NIVEL_INFO[1];
-  const solicitationInfo = data.solicitacaoAtual
-    ? SOLICITATION_INFO[data.solicitacaoAtual.status]
-    : null;
-  const canRequestVerification =
-    (data.nivelProdutor ?? 1) < 2 && !pendingSolicitation && Boolean(data.telefoneVerificado);
+  const solicitationInfo = data.solicitacaoAtual ? SOLICITATION_INFO[data.solicitacaoAtual.status] : null;
+  const canRequestVerification = (data.nivelProdutor ?? 1) < 2 && !pendingSolicitation && Boolean(data.telefoneVerificado);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 px-4 py-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dados financeiros</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Revise documento, PIX, taxa e janela de saque da sua conta.
-        </p>
-      </div>
+    <div className="mx-auto max-w-4xl space-y-6">
+      <PageHeader back="/dashboard/eventos" title="Dados financeiros" description="Documento, PIX, taxa e janela de saque da sua conta." badge={<StatusBadge tone={nivelInfo.tone}>{nivelInfo.label}</StatusBadge>} />
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="flex items-start gap-3 p-4">
-          <ShieldCheck className="mt-0.5 h-8 w-8 text-violet-600" />
-          <div>
-            <Badge className={`${nivelInfo.color} border-0 text-xs`}>{nivelInfo.label}</Badge>
-            <p className="mt-2 text-sm text-gray-700">{nivelInfo.description}</p>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-            Regras atuais da conta
-          </p>
-          <div className="mt-3 space-y-2 text-sm text-gray-700">
-            <p>Você recebe o <strong>valor integral do ingresso</strong>. As taxas são pagas pelo comprador.</p>
-            <p>Janela minima para saque: <strong>{data.withdrawalDelayDays} dias</strong></p>
-          </div>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-            Verificacao de telefone
-          </p>
-          <div className="mt-3 flex items-start gap-3">
-            {data.telefoneVerificado ? (
-              <CheckCircle2 className="mt-0.5 h-5 w-5 text-green-600" />
-            ) : (
-              <AlertCircle className="mt-0.5 h-5 w-5 text-amber-600" />
-            )}
-            <div className="text-sm text-gray-700">
-              <p>
-                {data.telefone ? maskPhone(data.telefone) : "Nenhum telefone cadastrado"}
-              </p>
-              <p className="mt-1 text-xs text-gray-500">
-                {data.telefoneVerificado
-                  ? "Telefone verificado por SMS."
-                  : "Telefone ainda precisa ser confirmado por SMS."}
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-            Status da solicitacao
-          </p>
-          {solicitationInfo ? (
-            <div className={`mt-3 rounded-2xl border p-4 text-sm ${solicitationInfo.tone}`}>
-              <p className="font-medium">{solicitationInfo.label}</p>
-              <p className="mt-1">{solicitationInfo.description}</p>
-              {data.solicitacaoAtual?.createdAt && (
-                <p className="mt-2 text-xs">
-                  Enviado em {formatDate(data.solicitacaoAtual.createdAt)}
-                </p>
-              )}
-              {data.solicitacaoAtual?.dataResposta && (
-                <p className="mt-1 text-xs">
-                  Respondido em {formatDate(data.solicitacaoAtual.dataResposta)}
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="mt-3 rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-              Nenhuma solicitacao aberta no momento.
-            </div>
-          )}
-        </Card>
-      </div>
-
-      {!data.telefoneVerificado && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          Confirme o telefone antes de enviar sua verificacao de conta.
-          <div className="mt-3">
-            <Link href="/dashboard/eventos/verificar-conta">
-              <Button variant="outline" className="h-10 border-amber-300 bg-white text-amber-800">
-                Ir para verificacao
-              </Button>
-            </Link>
-          </div>
-        </div>
-      )}
-
-      {canRequestVerification && (
-        <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-          Sua conta ainda nao esta liberada para eventos pagos.
-          <div className="mt-3">
-            <Link href="/dashboard/eventos/verificar-conta">
-              <Button variant="outline" className="h-10 border-blue-300 bg-white text-blue-800">
-                Solicitar verificacao
-              </Button>
-            </Link>
-          </div>
-        </div>
-      )}
-
-      <form onSubmit={handleSave} className="space-y-5 rounded-3xl border border-gray-100 bg-white p-8 shadow-sm">
-        <div className="space-y-2">
-          <Label>Tipo de pessoa</Label>
-          <div className="grid grid-cols-2 gap-3">
-            {(["PF", "PJ"] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setTipoPessoa(value)}
-                disabled={pendingSolicitation}
-                className={`h-11 rounded-xl border font-medium text-sm transition-all ${
-                  tipoPessoa === value
-                    ? "border-violet-600 bg-violet-50 text-violet-700"
-                    : "border-gray-200 bg-white text-gray-700"
-                } disabled:cursor-not-allowed disabled:opacity-60`}
-              >
-                {value === "PF" ? "Pessoa fisica" : "Pessoa juridica"}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {tipoPessoa === "PF" ? (
-          <div className="space-y-2">
-            <Label htmlFor="cpf">CPF</Label>
-            <Input
-              id="cpf"
-              value={cpf}
-              onChange={(event) => setCpf(formatCpf(event.target.value))}
-              placeholder="000.000.000-00"
-              inputMode="numeric"
-              maxLength={14}
-              disabled={pendingSolicitation}
-            />
-            {cpf && (
-              <p className={`text-xs ${cpfValid ? "text-green-600" : "text-red-500"}`}>
-                {cpfValid ? "CPF valido." : "CPF invalido."}
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <Label htmlFor="cnpj">CNPJ</Label>
-            <Input
-              id="cnpj"
-              value={cnpj}
-              onChange={(event) => setCnpj(formatCnpj(event.target.value))}
-              placeholder="00.000.000/0000-00"
-              inputMode="numeric"
-              maxLength={18}
-              disabled={pendingSolicitation}
-            />
-            {cnpj && (
-              <p className={`text-xs ${cnpjValid ? "text-green-600" : "text-red-500"}`}>
-                {cnpjValid ? "CNPJ valido." : "CNPJ invalido."}
-              </p>
-            )}
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <Label htmlFor="chavePix">Chave PIX</Label>
-          <Input
-            id="chavePix"
-            value={chavePix}
-            onChange={(event) => setChavePix(event.target.value)}
-            placeholder="CPF, CNPJ, email, telefone ou chave aleatoria"
-            disabled={pendingSolicitation}
-          />
-          {chavePix && (
-            <p className={`text-xs ${pixValid ? "text-green-600" : "text-red-500"}`}>
-              {pixValid ? "Chave PIX valida." : "Chave PIX invalida."}
-            </p>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <Link href="/dashboard/eventos" className="sm:flex-1">
-            <Button type="button" variant="outline" className="h-11 w-full">
-              Voltar ao painel
+      {!data.telefoneVerificado ? (
+        <Callout
+          tone="warning"
+          title="Confirme o telefone antes de pedir a verificação"
+          action={
+            <Button asChild variant="outline" size="sm">
+              <Link href="/dashboard/eventos/verificar-conta">Ir para verificação</Link>
             </Button>
-          </Link>
-          <Button
-            type="submit"
-            disabled={saving || pendingSolicitation}
-            className="h-11 sm:flex-1"
-          >
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {saving ? "Salvando..." : "Salvar dados"}
-          </Button>
-        </div>
-      </form>
+          }
+        >
+          A verificação de conta exige um celular confirmado por SMS.
+        </Callout>
+      ) : null}
+
+      {canRequestVerification ? (
+        <Callout
+          tone="info"
+          icon="shield"
+          title="Sua conta ainda não está liberada para eventos pagos"
+          action={
+            <Button asChild size="sm">
+              <Link href="/dashboard/eventos/verificar-conta">Solicitar verificação</Link>
+            </Button>
+          }
+        >
+          Leva poucos minutos: documento, chave PIX e aceite dos termos.
+        </Callout>
+      ) : null}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="fade-up">
+          <CardHeader>
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Icon name="shield" size={15} className="text-brand" />
+                Conta e regras
+              </CardTitle>
+              <CardDescription>{nivelInfo.description}</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <DetailGrid columns={2}>
+              <DetailItem label="Você recebe" icon="sack-dollar" value="Valor integral do ingresso" />
+              <DetailItem label="Janela de saque" icon="clock" value={`${data.withdrawalDelayDays} dias após o evento`} />
+              <DetailItem label="Telefone" icon="phone" value={data.telefone ? maskPhone(data.telefone) : null} />
+              <DetailItem label="Telefone verificado" icon="check-circle">
+                <BooleanValue value={data.telefoneVerificado} yes="Verificado por SMS" no="Ainda não confirmado" />
+              </DetailItem>
+            </DetailGrid>
+            <p className="mt-3 text-caption text-muted-foreground">As taxas de serviço e processamento são pagas pelo comprador, por cima do ingresso.</p>
+          </CardContent>
+        </Card>
+
+        <Card className="fade-up" style={{ ["--i" as string]: 1 } as never}>
+          <CardHeader>
+            <div>
+              <CardTitle>Verificação da conta</CardTitle>
+              <CardDescription>Status da última solicitação.</CardDescription>
+            </div>
+            {solicitationInfo ? <StatusBadge tone={solicitationInfo.tone}>{solicitationInfo.label}</StatusBadge> : null}
+          </CardHeader>
+          <CardContent className="pt-4">
+            {solicitationInfo ? (
+              <Callout tone={solicitationInfo.tone} title={solicitationInfo.label}>
+                {solicitationInfo.description}
+                {data.solicitacaoAtual?.createdAt ? <span className="mt-1 block text-caption tnum">Enviada em {formatDate(data.solicitacaoAtual.createdAt)}</span> : null}
+                {data.solicitacaoAtual?.dataResposta ? <span className="block text-caption tnum">Respondida em {formatDate(data.solicitacaoAtual.dataResposta)}</span> : null}
+              </Callout>
+            ) : (
+              <p className="text-sm text-muted-foreground">Nenhuma solicitação aberta no momento.</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="fade-up" style={{ ["--i" as string]: 2 } as never}>
+        <form onSubmit={handleSave} className="contents">
+          <CardHeader>
+            <div>
+              <CardTitle>Documento e chave PIX</CardTitle>
+              <CardDescription>{pendingSolicitation ? "Bloqueado enquanto a verificação estiver em análise." : "É pra essa chave que os saques vão."}</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <Field label="Tipo de pessoa">
+              <div role="radiogroup" className="grid grid-cols-2 gap-3">
+                <ChoiceCard selected={tipoPessoa === "PF"} onSelect={() => setTipoPessoa("PF")} disabled={pendingSolicitation} icon="user" title="Pessoa física" description="CPF" />
+                <ChoiceCard selected={tipoPessoa === "PJ"} onSelect={() => setTipoPessoa("PJ")} disabled={pendingSolicitation} icon="building" title="Pessoa jurídica" description="CNPJ" />
+              </div>
+            </Field>
+
+            {tipoPessoa === "PF" ? (
+              <Field label="CPF" htmlFor="cpf" error={cpf && !cpfValid ? "CPF inválido." : undefined} hint={cpf && cpfValid ? "CPF válido." : undefined} className="sm:max-w-sm">
+                <Input id="cpf" value={cpf} onChange={(event) => setCpf(formatCpf(event.target.value))} placeholder="000.000.000-00" inputMode="numeric" maxLength={14} disabled={pendingSolicitation} aria-invalid={Boolean(cpf && !cpfValid)} />
+              </Field>
+            ) : (
+              <Field label="CNPJ" htmlFor="cnpj" error={cnpj && !cnpjValid ? "CNPJ inválido." : undefined} hint={cnpj && cnpjValid ? "CNPJ válido." : undefined} className="sm:max-w-sm">
+                <Input id="cnpj" value={cnpj} onChange={(event) => setCnpj(formatCnpj(event.target.value))} placeholder="00.000.000/0000-00" inputMode="numeric" maxLength={18} disabled={pendingSolicitation} aria-invalid={Boolean(cnpj && !cnpjValid)} />
+              </Field>
+            )}
+
+            <Field label="Chave PIX" htmlFor="chavePix" error={chavePix && !pixValid ? "Chave PIX inválida." : undefined} hint={chavePix && pixValid ? "Chave PIX válida." : "CPF, CNPJ, e-mail, telefone ou chave aleatória."} className="sm:max-w-md">
+              <Input id="chavePix" leftIcon="pix" value={chavePix} onChange={(event) => setChavePix(event.target.value)} placeholder="Sua chave PIX" disabled={pendingSolicitation} aria-invalid={Boolean(chavePix && !pixValid)} />
+            </Field>
+          </CardContent>
+          <CardFooter className="justify-end">
+            <Button asChild variant="ghost">
+              <Link href="/dashboard/eventos">Voltar</Link>
+            </Button>
+            <Button type="submit" leftIcon="save" loading={saving} disabled={pendingSolicitation}>
+              Salvar dados
+            </Button>
+          </CardFooter>
+        </form>
+      </Card>
     </div>
   );
 }

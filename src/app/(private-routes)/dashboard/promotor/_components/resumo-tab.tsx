@@ -1,18 +1,26 @@
 "use client";
 
-import { MetricCard } from "../../_components/metric-card";
-import { MetricsSkeleton } from "../../_components/states/loading-state";
-import { EmptyState } from "../../_components/states/empty-state";
-import { formatCents } from "@/services/promoters";
+import { Callout } from "@/components/ui/callout";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatCard } from "@/components/ui/stat-card";
 import { useMyPromoterAnalytics } from "../_hooks/use-my-promoter";
 
 export function ResumoTab() {
   const { data: metrics, isLoading } = useMyPromoterAnalytics(true);
 
-  if (isLoading || !metrics) return <MetricsSkeleton count={8} />;
+  if (isLoading || !metrics) {
+    return (
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <Skeleton key={i} className="h-28 rounded-card" />
+        ))}
+      </div>
+    );
+  }
 
   if (metrics.length === 0) {
-    return <EmptyState title="Nenhuma atividade ainda" description="Suas métricas aparecem aqui depois do primeiro clique ou venda atribuída a você." />;
+    return <EmptyState icon="chart-line" title="Nenhuma atividade ainda" description="Suas métricas aparecem aqui depois do primeiro clique ou venda atribuída a você." />;
   }
 
   const totals = metrics.reduce(
@@ -26,30 +34,24 @@ export function ResumoTab() {
       commissionAdjustmentCents: acc.commissionAdjustmentCents + m.commissionAdjustmentCents,
       netBalanceCents: acc.netBalanceCents + m.netBalanceCents,
     }),
-    {
-      cliquesBrutos: 0, pedidosPagos: 0, ingressos: 0,
-      commissionPendingCents: 0, commissionAvailableCents: 0, commissionSettledCents: 0,
-      commissionAdjustmentCents: 0, netBalanceCents: 0,
-    },
+    { cliquesBrutos: 0, pedidosPagos: 0, ingressos: 0, commissionPendingCents: 0, commissionAvailableCents: 0, commissionSettledCents: 0, commissionAdjustmentCents: 0, netBalanceCents: 0 },
   );
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-        <MetricCard label="Cliques" value={String(totals.cliquesBrutos)} />
-        <MetricCard label="Pedidos pagos atribuídos a você" value={String(totals.pedidosPagos)} />
-        <MetricCard label="Ingressos vendidos" value={String(totals.ingressos)} />
-        <MetricCard label="Comissão pendente" value={formatCents(totals.commissionPendingCents)} />
-        <MetricCard label="Comissão disponível para acerto" value={formatCents(totals.commissionAvailableCents)} />
-        <MetricCard label="Comissão já acertada" value={formatCents(totals.commissionSettledCents)} />
-        <MetricCard label="Ajustes (estorno/chargeback após acerto)" value={formatCents(totals.commissionAdjustmentCents)} />
-        <MetricCard label="Saldo líquido" value={formatCents(totals.netBalanceCents)} />
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <StatCard label="Cliques" icon="link" value={totals.cliquesBrutos} />
+        <StatCard label="Pedidos pagos" icon="receipt" value={totals.pedidosPagos} hint="Atribuídos a você" />
+        <StatCard label="Ingressos vendidos" icon="ticket" value={totals.ingressos} />
+        <StatCard label="Saldo líquido" icon="scale" format="currency" value={totals.netBalanceCents / 100} hint="Disponível + acertada + ajustes" />
+        <StatCard label="Comissão pendente" icon="clock" format="currency" value={totals.commissionPendingCents / 100} hint="Pode reverter se a venda cancelar" />
+        <StatCard label="Disponível pra acerto" icon="hand-dollar" format="currency" value={totals.commissionAvailableCents / 100} />
+        <StatCard label="Já acertada" icon="check-circle" format="currency" value={totals.commissionSettledCents / 100} hint="Confirmada pela organização" />
+        <StatCard label="Ajustes" icon="undo" format="currency" value={totals.commissionAdjustmentCents / 100} hint="Estornos após acerto" />
       </div>
-      <p className="text-xs text-black/50">
-        &quot;Pendente&quot; é o que ainda pode ser revertido se a venda for cancelada. &quot;Disponível&quot; é o que já pode entrar num acerto. &quot;Acertada&quot; é o que a organização já
-        confirmou e (quando marcado) pagou por fora do sistema. &quot;Ajustes&quot; são correções de vendas já acertadas que depois foram estornadas/contestadas — descontam de um
-        próximo acerto e podem deixar o saldo líquido negativo.
-      </p>
+      <Callout tone="neutral" icon="lightbulb">
+        “Pendente” ainda pode ser revertido se a venda for cancelada. “Disponível” já pode entrar num acerto. “Acertada” é o que a organização confirmou e (quando marcado) pagou por fora. “Ajustes” são vendas já acertadas que depois foram estornadas ou contestadas — descontam de um próximo acerto e podem deixar o saldo negativo.
+      </Callout>
     </div>
   );
 }

@@ -1,12 +1,11 @@
 "use client";
 
 import { useOrganizations } from "@/context/OrganizationContext";
-import { useRequireWorkspace } from "../_components/require-workspace-provider";
 import { Button } from "@/components/ui/button";
-import { PageContainer } from "../_components/page/page-container";
-import { PageHeader } from "../_components/page/page-header";
-import { EmptyState } from "../_components/states/empty-state";
-import { BlockSkeleton } from "../_components/states/loading-state";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useRequireWorkspace } from "../_components/require-workspace-provider";
 import { selectFinanceDispatch } from "../_lib/finance-dispatch";
 import TicketsInsightsPage from "./_tickets/tickets-insights-content";
 import VenueInsightsPage from "./_venue/venue-insights-content";
@@ -18,30 +17,24 @@ export default function InsightsPage() {
 
   if (loadingOrgs || loadingModules) {
     return (
-      <PageContainer>
+      <div className="space-y-6">
         <PageHeader title="Insights" />
-        <BlockSkeleton className="h-96" />
-      </PageContainer>
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-28 rounded-card" />
+          ))}
+        </div>
+        <Skeleton className="h-80 rounded-card" />
+      </div>
     );
   }
 
   if (!currentOrg) {
     return (
-      <PageContainer>
-        <PageHeader
-          title="Insights"
-          description="Analise o desempenho comercial e operacional do negócio."
-          actions={
-            <Button onClick={() => guard(() => {})}>Criar workspace</Button>
-          }
-        />
-        <EmptyState
-          title="Nada por aqui ainda"
-          description="Crie seu workspace para analisar o desempenho comercial e operacional do negócio."
-          actionLabel="Criar workspace"
-          onAction={() => guard(() => {})}
-        />
-      </PageContainer>
+      <div className="space-y-6">
+        <PageHeader title="Insights" />
+        <EmptyState icon="chart-line" title="Nada por aqui ainda" description="Crie seu workspace para analisar o desempenho comercial e operacional do negócio." action={<Button onClick={() => guard(() => undefined)}>Criar workspace</Button>} />
+      </div>
     );
   }
 
@@ -59,9 +52,9 @@ export default function InsightsPage() {
   if (dispatch === "tickets") return <TicketsInsightsPage />;
 
   return (
-    <PageContainer>
-      <PageHeader title="Insights" description="Analise o desempenho comercial e operacional do negócio." />
-      <EmptyState title="Nada ativo ainda" description="Ative Eventos e ingressos ou a Operação em Explore a Nokta para ver os Insights." />
-    </PageContainer>
+    <div className="space-y-6">
+      <PageHeader title="Insights" />
+      <EmptyState icon="chart-line" title="Nada ativo ainda" description="Ative Eventos e ingressos ou a Operação em Explore a Nokta para ver os Insights." />
+    </div>
   );
 }

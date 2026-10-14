@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertCircle, CalendarCheck, DollarSign, Ticket, TicketCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { PageState } from "@/components/ui/page-state";
 import { useOrganizations } from "@/context/OrganizationContext";
 import api, { getErrorMessage } from "@/lib/axios";
-import { PageContainer } from "../../_components/page/page-container";
-import { PageHeader } from "../../_components/page/page-header";
-import MetricCard from "./_components/metric-card";
+import { cn } from "@/lib/cn";
+import { Button } from "@/components/ui/button";
+import { ErrorState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatCard } from "@/components/ui/stat-card";
 import { ChartAreaIngressos } from "./_components/chart-area-ingressos";
 
 interface MetricsResponse {
@@ -28,16 +28,14 @@ export default function TicketsInsightsPage() {
   const [metrics, setMetrics] = useState<MetricsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   async function fetchMetrics() {
     if (!currentOrg) return;
     setLoading(true);
     setError(null);
-
     try {
-      const { data } = await api.get<MetricsResponse>("/produtor/metrics", {
-        params: { organizationId: currentOrg.id },
-      });
+      const { data } = await api.get<MetricsResponse>("/produtor/metrics", { params: { organizationId: currentOrg.id } });
       setMetrics(data);
     } catch (err) {
       setMetrics(null);
@@ -54,94 +52,39 @@ export default function TicketsInsightsPage() {
 
   if (!currentOrg) return null;
 
-  if (loading) {
-    return (
-      <PageContainer>
-        <PageHeader title="Insights — Tickets" description="Desempenho de vendas de ingressos." />
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="rounded-2xl border bg-card p-5 shadow-sm">
-              <div className="mb-4 h-4 w-24 animate-pulse rounded bg-muted" />
-              <div className="h-8 w-20 animate-pulse rounded bg-muted" />
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 rounded-2xl border bg-card p-6 shadow-sm">
-          <div className="mb-4 h-5 w-40 animate-pulse rounded bg-muted" />
-          <div className="h-64 animate-pulse rounded bg-muted" />
-        </div>
-      </PageContainer>
-    );
-  }
+  const refresh = () => {
+    void fetchMetrics();
+    setRefreshKey((k) => k + 1);
+  };
 
-  if (error) {
-    return (
-      <PageContainer>
-        <PageHeader title="Insights — Tickets" description="Desempenho de vendas de ingressos." />
-        <PageState
-          title="Não foi possível carregar as métricas"
-          description={error}
-          icon={<AlertCircle className="h-8 w-8 text-red-500" />}
-          actionLabel="Tentar novamente"
-          onAction={() => void fetchMetrics()}
-        />
-      </PageContainer>
-    );
-  }
-
-  if (!metrics) {
-    return (
-      <PageContainer>
-        <PageHeader title="Insights — Tickets" description="Desempenho de vendas de ingressos." />
-        <PageState
-          title="Sem métricas disponíveis"
-          description="Os indicadores aparecerão aqui quando seus eventos tiverem atividade."
-          actionLabel="Atualizar"
-          onAction={() => void fetchMetrics()}
-        />
-      </PageContainer>
-    );
-  }
+  const sold = metrics?.ingressosVendidos ?? 0;
+  const available = metrics?.ingressosDisponiveis ?? 0;
+  const capacity = sold + available;
 
   return (
-    <PageContainer>
-      <PageHeader title="Insights — Tickets" description="Desempenho de vendas de ingressos desta organização." />
+    <div className="space-y-6">
+      <PageHeader
+        title="Insights"
+        description="Desempenho de vendas de ingressos desta organização."
+        actions={
+          <Button variant="subtle" size="icon" aria-label="Atualizar métricas" title="Atualizar" onClick={refresh}>
+            <Icon name="refresh" size={14} className={cn(loading && "animate-spin")} />
+          </Button>
+        }
+      />
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-        <MetricCard
-          title="Ingressos vendidos"
-          value={metrics.ingressosVendidos.toString()}
-          icon={<TicketCheck className="h-5 w-5 text-green-500" />}
-        />
-        <MetricCard
-          title="Ingressos disponíveis"
-          value={metrics.ingressosDisponiveis.toString()}
-          icon={<Ticket className="h-5 w-5 text-yellow-500" />}
-        />
-        <MetricCard
-          title="Arrecadação total"
-          value={`R$ ${metrics.arrecadacaoTotal.toLocaleString("pt-BR", {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2,
-          })}`}
-          icon={<DollarSign className="h-5 w-5 text-blue-500" />}
-        />
-        <MetricCard
-          title="Eventos criados"
-          value={metrics.eventosCriados.toString()}
-          icon={<CalendarCheck className="h-5 w-5 text-purple-500" />}
-        />
-      </div>
+      {error ? (
+        <ErrorState title="Não foi possível carregar as métricas" description={error} onRetry={refresh} />
+      ) : (
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+          <StatCard label="Ingressos vendidos" icon="ticket" value={metrics?.ingressosVendidos} loading={loading} hint={capacity > 0 ? `${Math.round((sold / capacity) * 100)}% da capacidade` : undefined} />
+          <StatCard label="Ingressos disponíveis" icon="ticket-simple" value={metrics?.ingressosDisponiveis} loading={loading} hint="Ainda à venda" />
+          <StatCard label="Arrecadação" icon="sack-dollar" format="currency" value={metrics?.arrecadacaoTotal} loading={loading} hint="Valor dos ingressos vendidos" />
+          <StatCard label="Eventos criados" icon="calendar" value={metrics?.eventosCriados} loading={loading} />
+        </div>
+      )}
 
-      <div className="mt-4 flex justify-end">
-        <Button variant="outline" onClick={() => void fetchMetrics()}>
-          Atualizar métricas
-        </Button>
-      </div>
-
-      <div className="mt-4">
-        <ChartAreaIngressos organizationId={currentOrg.id} />
-      </div>
-    </PageContainer>
+      <ChartAreaIngressos key={refreshKey} organizationId={currentOrg.id} />
+    </div>
   );
 }

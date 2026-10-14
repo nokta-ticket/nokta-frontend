@@ -2,77 +2,46 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  ArrowDownLeft,
-  ArrowRight,
-  ArrowUpRight,
-  BarChart3,
-  CalendarDays,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  CreditCard,
-  Info,
-  Loader2,
-  MoreVertical,
-  Search,
-  Ticket,
-} from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useOrganizations } from "@/context/OrganizationContext";
 import { periodLabel, periodToFinanceParams, usePeriod, type PeriodKey } from "@/context/PeriodContext";
 import { useStepUp } from "@/components/session/step-up-modal";
 import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/cn";
 import { STEP_UP_TOKEN_HEADER } from "@/services/step-up";
-import {
-  ticketsStatementApi,
-  type StatementRow,
-  type StatementRowStatus,
-  type StatementRowType,
-  type TicketsEventBalance,
-  type TicketsFinanceOverview,
-  type TicketsStatementParams,
-  type TicketsStatementSummary,
-} from "@/services/tickets-finance";
-import { EmptyState } from "../../_components/states/empty-state";
-import { BlockSkeleton } from "../../_components/states/loading-state";
-import {
-  DOTTED,
-  FeeLine,
-  HoverDetail,
-  InfoTip,
-  LOSS_TEXT,
-  PANORAMA,
-  Pill,
-  PRESSABLE,
-  SURFACE,
-  brl,
-  fmtDate,
-  fmtDay,
-  fmtDayShort,
-  fmtTime,
-  type PillTone,
-} from "../_components/finance-ui";
+import { ticketsStatementApi, type StatementRow, type StatementRowStatus, type StatementRowType, type TicketsEventBalance, type TicketsFinanceOverview, type TicketsStatementParams, type TicketsStatementSummary } from "@/services/tickets-finance";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeadCell, DataTablePagination, DataTableRow, DataTableShell, MobileCard, MobileCardList } from "@/components/ui/data-table";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
+import { Icon, type IconName } from "@/components/ui/icon";
+import { NativeSelect } from "@/components/ui/native-select";
+import { PageHeader } from "@/components/ui/page-header";
+import { SearchInput } from "@/components/ui/search-input";
+import { Sheet, SheetBody, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatCard } from "@/components/ui/stat-card";
+import { StatusBadge, type Tone } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DOTTED, FeeLine, HoverDetail, InfoTip, brl, fmtDate, fmtDay, fmtDayShort, fmtTime } from "../_components/finance-ui";
 
 type TabKey = "statement" | "events" | "withdrawals" | "chargebacks";
 
-const TYPE_PILL: Record<StatementRowType, { label: string; tone: PillTone }> = {
+const TYPE_META: Record<StatementRowType, { label: string; tone: Tone }> = {
   SALE: { label: "Venda", tone: "success" },
-  REFUND: { label: "Estorno", tone: "loss" },
-  CHARGEBACK: { label: "Contestação", tone: "loss" },
-  WITHDRAWAL: { label: "Saque", tone: "violet" },
+  REFUND: { label: "Estorno", tone: "danger" },
+  CHARGEBACK: { label: "Contestação", tone: "danger" },
+  WITHDRAWAL: { label: "Saque", tone: "brand" },
 };
 // "Em custódia" aparece em quase toda linha: neutro. Cor só onde é exceção.
-const STATUS_PILL: Record<StatementRowStatus, { label: string; tone: PillTone }> = {
+const STATUS_META: Record<StatementRowStatus, { label: string; tone: Tone }> = {
   CUSTODY: { label: "Em custódia", tone: "neutral" },
   RELEASED: { label: "Liberado", tone: "success" },
   COMPLETED: { label: "Concluído", tone: "neutral" },
-  IN_PROGRESS: { label: "Em andamento", tone: "violet" },
-  DEBITED: { label: "Descontado", tone: "loss" },
-  FAILED: { label: "Falhou", tone: "loss" },
+  IN_PROGRESS: { label: "Em andamento", tone: "info" },
+  DEBITED: { label: "Descontado", tone: "danger" },
+  FAILED: { label: "Falhou", tone: "danger" },
 };
 
 const PERIOD_OPTIONS: { key: PeriodKey; label: string }[] = [
@@ -99,7 +68,7 @@ function RowFees({ row }: { row: StatementRow }) {
   if (row.type === "REFUND") {
     return (
       <div className="space-y-2.5">
-        <p className="font-semibold">Estorno {row.reference}</p>
+        <p className="font-semibold text-foreground">Estorno {row.reference}</p>
         {f.commissionCents !== 0 && <FeeLine title="Comissão Nokta devolvida" hint={`${f.commissionPercent}% · volta para você`} value={brl(f.commissionCents)} />}
         {f.buyerServiceFeeCents !== 0 && <FeeLine title="Taxa de serviço" hint="Devolvida ao comprador pela Nokta" value={brl(f.buyerServiceFeeCents)} muted />}
       </div>
@@ -108,7 +77,7 @@ function RowFees({ row }: { row: StatementRow }) {
   if (row.type === "CHARGEBACK") {
     return (
       <div className="space-y-2.5">
-        <p className="font-semibold">Contestação {row.reference}</p>
+        <p className="font-semibold text-foreground">Contestação {row.reference}</p>
         <FeeLine title="Processamento Pagar.me" hint="Não é devolvido na contestação" value={brl(f.producerGatewayFeeCents)} />
         <FeeLine title="Taxa de serviço devolvida" hint="Já somada no valor bruto da linha" value={brl(f.buyerServiceFeeCents)} muted />
       </div>
@@ -117,17 +86,17 @@ function RowFees({ row }: { row: StatementRow }) {
   return (
     <div className="space-y-2.5">
       <div>
-        <p className="font-semibold">Taxas do pedido {row.reference}</p>
-        <p className="text-[12.5px] text-[#6b6878]">
+        <p className="font-semibold text-foreground">Taxas do pedido {row.reference}</p>
+        <p className="text-caption text-muted-foreground">
           {row.quantity ?? 1} ingresso{(row.quantity ?? 1) > 1 ? "s" : ""} · {brl(row.grossCents)}
         </p>
       </div>
       {f.commissionCents !== 0 && <FeeLine title="Comissão Nokta" hint={`${f.commissionPercent}% · descontada do seu valor`} value={brl(f.commissionCents)} />}
       <FeeLine title="Taxa de serviço" hint="Paga pelo comprador, por cima do ingresso" value={brl(f.buyerServiceFeeCents)} muted />
       <FeeLine title="Processamento Pagar.me" hint="Pago pelo comprador, por cima do ingresso" value={brl(f.buyerGatewayFeeCents)} muted />
-      <div className="flex justify-between gap-3 border-t border-[#f2f0f7] pt-2.5 font-semibold">
+      <div className="flex justify-between gap-3 border-t border-border pt-2.5 font-semibold text-foreground">
         <span>Descontado de você</span>
-        <span className="font-poppins tabular-nums">{brl(row.feeCents)}</span>
+        <span className="tnum">{brl(row.feeCents)}</span>
       </div>
     </div>
   );
@@ -138,74 +107,42 @@ function SummaryFees({ summary, label }: { summary: TicketsStatementSummary; lab
   return (
     <div className="space-y-2.5">
       <div>
-        <p className="font-semibold">Taxas do período</p>
-        <p className="text-[12.5px] text-[#6b6878]">{label}</p>
+        <p className="font-semibold text-foreground">Taxas do período</p>
+        <p className="text-caption text-muted-foreground">{label}</p>
       </div>
       {f.commissionCents !== 0 && <FeeLine title="Comissão Nokta" hint="Descontada do seu valor (já com estornos)" value={brl(f.commissionCents)} />}
       {f.producerGatewayFeeCents !== 0 && <FeeLine title="Processamento em contestações" hint="Não devolvido pela Pagar.me" value={brl(f.producerGatewayFeeCents)} />}
       <FeeLine title="Taxa de serviço" hint="Paga pelos compradores, por cima do ingresso" value={brl(f.buyerServiceFeeCents)} muted />
       <FeeLine title="Processamento Pagar.me" hint="Pago pelos compradores, por cima do ingresso" value={brl(f.buyerGatewayFeeCents)} muted />
-      <div className="flex justify-between gap-3 border-t border-[#f2f0f7] pt-2.5 font-semibold">
+      <div className="flex justify-between gap-3 border-t border-border pt-2.5 font-semibold text-foreground">
         <span>Descontado de você</span>
-        <span className="font-poppins tabular-nums">{brl(summary.feeCents)}</span>
+        <span className="tnum">{brl(summary.feeCents)}</span>
       </div>
     </div>
-  );
-}
-
-// ── Cards ──
-function BalanceCard({
-  title,
-  info,
-  value,
-  footer,
-  loss = false,
-  className,
-}: {
-  className?: string;
-  title: string;
-  info: string;
-  value: string;
-  footer: ReactNode;
-  loss?: boolean;
-}) {
-  return (
-    <section className={cn(SURFACE, "flex min-w-0 flex-col justify-between gap-3 p-4 sm:gap-4 sm:p-6", className)}>
-      <div className="flex items-center gap-1.5 text-[14px] font-medium text-[#3a3746]">
-        {title}
-        <InfoTip label={`O que é ${title.toLowerCase()}`} text={info} />
-      </div>
-      <div>
-        <p className={cn("font-poppins text-[20px] font-bold leading-none tabular-nums sm:text-[30px]", loss && LOSS_TEXT)}>{value}</p>
-        <div className="mt-2">{footer}</div>
-      </div>
-    </section>
   );
 }
 
 function CardLink({ onClick, children }: { onClick: () => void; children: ReactNode }) {
   return (
-    <button type="button" onClick={onClick} className={cn("flex items-center gap-1 rounded-md text-left text-[13px] font-medium text-violet-700 hover:text-violet-800", PRESSABLE)}>
+    <button type="button" onClick={onClick} className="press flex items-center gap-1 rounded-md text-left text-caption font-medium text-brand hover:underline">
       <span>{children}</span>
-      <ChevronRight size={14} strokeWidth={2} aria-hidden="true" />
+      <Icon name="chevron-right" size={10} />
     </button>
   );
 }
 
-function SummaryItem({ icon, iconClass, label, value, hint, divider }: { icon: ReactNode; iconClass: string; label: ReactNode; value: ReactNode; hint: string; divider: string }) {
+function SummaryItem({ icon, label, value, hint, tone }: { icon: IconName; label: ReactNode; value: ReactNode; hint: string; tone?: "in" | "out" }) {
   return (
-    <div className={cn("flex min-w-0 items-center gap-4 p-4 sm:p-5", divider)}>
-      <span className={cn("hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl sm:flex", iconClass)}>{icon}</span>
-      <div className="min-w-0">
-        <div className="text-[13.5px] text-[#5f5c6b]">{label}</div>
-        <div className="font-poppins text-[18px] font-bold tabular-nums sm:text-[22px]">{value}</div>
-        <p className="text-[12.5px] leading-snug text-[#6b6878]">{hint}</p>
+    <div className="flex min-w-0 flex-col gap-1 px-4 py-4 sm:px-5">
+      <div className="flex items-center gap-1.5 text-caption font-medium text-muted-foreground">
+        <Icon name={icon} size={12} />
+        {label}
       </div>
+      <div className={cn("text-stat font-medium leading-none tracking-tight tnum", tone === "in" ? "text-money-in" : tone === "out" ? "text-money-out" : "text-foreground")}>{value}</div>
+      <p className="text-caption text-subtle-foreground">{hint}</p>
     </div>
   );
 }
-
-const TH = "px-5 py-3 font-semibold";
 
 export default function TicketsFinanceiroPage({ contextSwitch }: { contextSwitch?: ReactNode }) {
   const { currentOrg } = useOrganizations();
@@ -250,17 +187,7 @@ export default function TicketsFinanceiroPage({ contextSwitch }: { contextSwitch
     enabled: orgId !== null,
   });
 
-  const statementParams: TicketsStatementParams = {
-    ...periodParams,
-    eventId,
-    type: type || undefined,
-    status: status || undefined,
-    search: search || undefined,
-    page,
-    perPage,
-    sort,
-    dir,
-  };
+  const statementParams: TicketsStatementParams = { ...periodParams, eventId, type: type || undefined, status: status || undefined, search: search || undefined, page, perPage, sort, dir };
   const statement = useQuery({
     queryKey: keys.statement(orgId ?? -1, statementParams),
     queryFn: () => ticketsStatementApi.getStatement(orgId as number, statementParams),
@@ -319,11 +246,7 @@ export default function TicketsFinanceiroPage({ contextSwitch }: { contextSwitch
           { label: "Conta de destino", value: preview?.bankAccountLast4 ? `•••• ${preview.bankAccountLast4}` : "Chave Pix cadastrada" },
         ],
       });
-      await api.post(
-        `/produtor/eventos/${target.eventId}/confirmar-saque`,
-        { withdrawalId: saque.id, organizationId: orgId },
-        { headers: { [STEP_UP_TOKEN_HEADER]: stepUpToken } },
-      );
+      await api.post(`/produtor/eventos/${target.eventId}/confirmar-saque`, { withdrawalId: saque.id, organizationId: orgId }, { headers: { [STEP_UP_TOKEN_HEADER]: stepUpToken } });
       toast.success("Saque confirmado. O valor cai no Pix em até 2 dias úteis.");
       setChooseOpen(false);
     } catch (error) {
@@ -354,134 +277,76 @@ export default function TicketsFinanceiroPage({ contextSwitch }: { contextSwitch
   if (!orgId) return null;
 
   const forbidden = (overview.error as { response?: { status?: number } } | null)?.response?.status === 403;
+  const canWithdraw = !active && withdrawable.length > 0 && requestingEventId === null;
 
   return (
     <div className="space-y-6">
-      {/* Contexto + evento */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>{contextSwitch}</div>
-        <label className="relative flex h-11 w-full items-center rounded-[12px] border border-[#e6e2ef] bg-white pl-10 pr-3 sm:w-[260px]">
-          <Ticket size={17} strokeWidth={1.8} className="pointer-events-none absolute left-3.5 text-[#6b6878]" aria-hidden="true" />
-          <span className="sr-only">Evento</span>
-          <select
-            value={eventId ?? ""}
-            onChange={(e) => {
-              setEventId(e.target.value ? Number(e.target.value) : undefined);
-              setPage(1);
-            }}
-            className="h-full w-full appearance-none bg-transparent pr-6 text-base font-medium outline-none sm:text-[14px]"
-          >
-            <option value="">Todos os eventos</option>
-            {(allEvents.data?.events ?? []).map((e) => (
-              <option key={e.eventId} value={e.eventId}>
-                {e.eventName}
-              </option>
-            ))}
-          </select>
-          <ChevronDown size={16} className="pointer-events-none absolute right-3 text-[#6b6878]" aria-hidden="true" />
-        </label>
-      </div>
+      <PageHeader
+        title="Financeiro"
+        actions={
+          <>
+            {contextSwitch}
+            <NativeSelect
+              aria-label="Evento"
+              value={eventId ?? ""}
+              onChange={(e) => {
+                setEventId(e.target.value ? Number(e.target.value) : undefined);
+                setPage(1);
+              }}
+              className="w-full sm:w-[260px]"
+            >
+              <option value="">Todos os eventos</option>
+              {(allEvents.data?.events ?? []).map((e) => (
+                <option key={e.eventId} value={e.eventId}>
+                  {e.eventName}
+                </option>
+              ))}
+            </NativeSelect>
+          </>
+        }
+      />
 
       {forbidden ? (
-        <EmptyState title="Sem acesso ao financeiro" description="Só o proprietário ou um gerente do workspace vê o financeiro de ingressos." />
+        <EmptyState icon="lock" title="Sem acesso ao financeiro" description="Só o proprietário ou um gerente do workspace vê o financeiro de ingressos." />
       ) : overview.isError ? (
-        <div className={cn(SURFACE, "flex flex-col items-center gap-3 px-6 py-12 text-center")}>
-          <p className="text-[14px] text-[#5f5c6b]">Não foi possível carregar o financeiro agora.</p>
-          <button type="button" onClick={() => void overview.refetch()} className={cn("rounded-[10px] bg-[#1c1a24] px-4 py-2 text-[13.5px] font-semibold text-white", PRESSABLE)}>
-            Tentar de novo
-          </button>
-        </div>
+        <ErrorState title="Não foi possível carregar o financeiro agora" onRetry={() => void overview.refetch()} />
       ) : !data ? (
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 2xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <BlockSkeleton key={i} className={cn("h-[140px] rounded-[20px]", i === 0 && "col-span-2 sm:col-span-1")} />
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-36 rounded-card" />
           ))}
         </div>
       ) : (
         <>
           {/* Cards de saldo */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 2xl:grid-cols-4">
-            <section className={cn(PANORAMA, "col-span-2 flex flex-col justify-between gap-4 p-6 sm:col-span-1")}>
-              <div className="flex items-center gap-1.5 text-[14px] font-medium text-white/80">
-                Saldo disponível
-                <InfoTip dark label="O que é saldo disponível" text="Dinheiro de eventos que já passaram da custódia. Você pode transferir para o seu Pix agora." />
-              </div>
-              <div className="flex items-end justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="font-poppins text-[30px] font-bold leading-none tabular-nums">{brl(data.totals.availableCents)}</p>
-                  <p className="mt-2 text-[13px] text-white/65">
-                    {active ? "Novo saque liberado quando o atual concluir" : data.totals.availableCents > 0 ? "Disponível para saque agora" : "Nada disponível para saque agora"}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={onSacar}
-                  disabled={Boolean(active) || withdrawable.length === 0 || requestingEventId !== null}
-                  className={cn(
-                    "flex h-10 shrink-0 items-center gap-1.5 rounded-[10px] bg-white px-4 text-[14px] font-semibold text-[#1c1a24] hover:bg-[#f1ecff] disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/70",
-                    PRESSABLE,
-                  )}
-                >
-                  {requestingEventId !== null ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : null}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
+            <StatCard className="card-accent" label="Saldo disponível" icon="wallet" format="currency" value={data.totals.availableCents / 100} hint={active ? "Novo saque liberado quando o atual concluir" : data.totals.availableCents > 0 ? "Disponível para sacar agora" : "Nada disponível pra saque agora"}>
+              <div className="mt-1 flex items-center gap-2">
+                <Button size="sm" leftIcon="money-transfer" onClick={onSacar} disabled={!canWithdraw} loading={requestingEventId !== null} title={!canWithdraw ? (active ? "Já existe um saque em andamento" : "Sem saldo liberado") : undefined}>
                   Sacar
-                  <ArrowRight size={15} strokeWidth={2} aria-hidden="true" />
-                </button>
+                </Button>
+                <InfoTip label="O que é saldo disponível" text="Dinheiro de eventos que já passaram da custódia. Você pode transferir para o seu Pix agora." />
               </div>
-            </section>
-
-            <BalanceCard
-              title="Em custódia"
-              info="Vendas de eventos que ainda não aconteceram ou aconteceram há pouco. Cada evento libera alguns dias depois da data dele (o padrão é 7)."
-              value={brl(data.totals.custodyCents)}
-              footer={
-                <CardLink onClick={() => setTab("events")}>
-                  {data.totals.custodyEventCount > 0
-                    ? `${data.totals.custodyEventCount} evento${data.totals.custodyEventCount > 1 ? "s" : ""}${data.totals.nextReleaseAt ? ` · próxima liberação ${fmtDayShort(data.totals.nextReleaseAt)}` : ""}`
-                    : "Ver por evento"}
-                </CardLink>
-              }
-            />
-            <BalanceCard
-              title="Saque em andamento"
-              info="Saque já solicitado e confirmado, a caminho do seu Pix. Só é possível ter um saque em andamento por vez."
-              value={brl(active?.amountCents ?? 0)}
-              footer={<CardLink onClick={() => setTab("withdrawals")}>{active ? `Solicitado em ${fmtDate(active.requestedAt).slice(0, 5)} · ver saques` : "Ver saques"}</CardLink>}
-            />
-            <BalanceCard
-              className="col-span-2 sm:col-span-1"
-              title="Contestações"
-              info="Compras que o comprador contestou no banco ou no cartão (chargeback). O valor e as taxas são descontados do seu saldo."
-              value={brl(data.chargebacks.totalCents)}
-              loss={data.chargebacks.count > 0}
-              footer={<CardLink onClick={() => setTab("chargebacks")}>{data.chargebacks.count > 0 ? `${data.chargebacks.count} no período · ver detalhes` : "Nenhuma no período"}</CardLink>}
-            />
+            </StatCard>
+            <StatCard label="Em custódia" icon="lock" format="currency" value={data.totals.custodyCents / 100} hint="Libera alguns dias depois de cada evento">
+              <CardLink onClick={() => setTab("events")}>{data.totals.custodyEventCount > 0 ? `${data.totals.custodyEventCount} evento${data.totals.custodyEventCount > 1 ? "s" : ""}${data.totals.nextReleaseAt ? ` · próxima liberação ${fmtDayShort(data.totals.nextReleaseAt)}` : ""}` : "Ver por evento"}</CardLink>
+            </StatCard>
+            <StatCard label="Saque em andamento" icon="money-transfer" format="currency" value={(active?.amountCents ?? 0) / 100} hint="A caminho do seu Pix">
+              <CardLink onClick={() => setTab("withdrawals")}>{active ? `Solicitado em ${fmtDate(active.requestedAt).slice(0, 5)} · ver saques` : "Ver saques"}</CardLink>
+            </StatCard>
+            <StatCard label="Contestações" icon="warning" format="currency" value={Math.abs(data.chargebacks.totalCents) / 100} hint={data.chargebacks.count > 0 ? "Descontado do seu saldo" : "Nenhuma no período"}>
+              <CardLink onClick={() => setTab("chargebacks")}>{data.chargebacks.count > 0 ? `${data.chargebacks.count} no período · ver detalhes` : "Ver histórico"}</CardLink>
+            </StatCard>
           </div>
 
-          {/* Abas */}
-          <div role="tablist" aria-label="Seções do financeiro" className="scrollbar-hide flex gap-1 overflow-x-auto border-b border-[#ebe8f2]">
-            {(
-              [
-                ["statement", "Extrato"],
-                ["events", "Por evento"],
-                ["withdrawals", "Saques"],
-                ["chargebacks", "Contestações"],
-              ] as [TabKey, string][]
-            ).map(([k, l]) => (
-              <button
-                key={k}
-                type="button"
-                role="tab"
-                aria-selected={tab === k}
-                onClick={() => setTab(k)}
-                className={cn(
-                  "shrink-0 whitespace-nowrap px-3 pb-3 pt-1 text-[15px] font-semibold transition-colors",
-                  tab === k ? "text-[#1c1a24] shadow-[inset_0_-2px_0_#7c3aed]" : "text-[#6b6878] hover:text-[#1c1a24]",
-                )}
-              >
-                {l}
-              </button>
-            ))}
-          </div>
+          <Tabs value={tab} onValueChange={(v) => setTab(v as TabKey)} className="-mx-4 px-4 lg:mx-0 lg:px-0">
+            <TabsList variant="line" aria-label="Seções do financeiro">
+              <TabsTrigger value="statement">Extrato</TabsTrigger>
+              <TabsTrigger value="events">Por evento</TabsTrigger>
+              <TabsTrigger value="withdrawals">Saques</TabsTrigger>
+              <TabsTrigger value="chargebacks">Contestações</TabsTrigger>
+            </TabsList>
+          </Tabs>
 
           {tab === "statement" && (
             <StatementTab
@@ -489,6 +354,7 @@ export default function TicketsFinanceiroPage({ contextSwitch }: { contextSwitch
               rows={statement.data?.rows}
               total={statement.data?.total ?? 0}
               loading={statement.isLoading}
+              fetching={statement.isFetching}
               label={label}
               period={period.key}
               onPeriod={(k) => {
@@ -544,32 +410,25 @@ export default function TicketsFinanceiroPage({ contextSwitch }: { contextSwitch
       <DetailSheet row={detail} onClose={() => setDetail(null)} />
 
       <Dialog open={chooseOpen} onOpenChange={setChooseOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent size="md">
           <DialogHeader>
             <DialogTitle>De qual evento você quer sacar?</DialogTitle>
             <DialogDescription>O saque é feito por evento. Depois que ele concluir, você pode sacar o próximo.</DialogDescription>
           </DialogHeader>
-          <ul className="mt-2 divide-y divide-[#f2f0f7] rounded-[14px] border border-[#ebe8f2]">
+          <DialogBody className="gap-2">
             {withdrawable.map((e) => (
-              <li key={e.eventId}>
-                <button
-                  type="button"
-                  disabled={requestingEventId !== null}
-                  onClick={() => void requestWithdrawal(e)}
-                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-[#faf8ff] disabled:opacity-60"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate font-medium">{e.eventName}</span>
-                    <span className="block text-[12.5px] text-[#6b6878]">Evento em {fmtDay(e.eventDate)}</span>
-                  </span>
-                  <span className="flex shrink-0 items-center gap-2 font-poppins font-semibold tabular-nums">
-                    {requestingEventId === e.eventId ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : null}
-                    {brl(e.availableCents)}
-                  </span>
-                </button>
-              </li>
+              <button key={e.eventId} type="button" disabled={requestingEventId !== null} onClick={() => void requestWithdrawal(e)} className="press flex w-full items-center justify-between gap-3 rounded-xl border border-border bg-surface-2/60 px-4 py-3 text-left transition-colors hover:border-border-strong hover:bg-surface-2 disabled:opacity-60">
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold text-foreground">{e.eventName}</span>
+                  <span className="block text-caption text-muted-foreground">Evento em {fmtDay(e.eventDate)}</span>
+                </span>
+                <span className="flex shrink-0 items-center gap-2 font-semibold text-money-in tnum">
+                  {requestingEventId === e.eventId ? <Icon name="loader" size={13} className="animate-spin" /> : null}
+                  {brl(e.availableCents)}
+                </span>
+              </button>
             ))}
-          </ul>
+          </DialogBody>
         </DialogContent>
       </Dialog>
     </div>
@@ -582,6 +441,7 @@ function StatementTab(props: {
   rows?: StatementRow[];
   total: number;
   loading: boolean;
+  fetching: boolean;
   label: string;
   period: PeriodKey;
   onPeriod: (k: PeriodKey) => void;
@@ -603,428 +463,309 @@ function StatementTab(props: {
 }) {
   const { summary, rows, total, page, perPage } = props;
   const pages = Math.max(1, Math.ceil(total / perPage));
-  const from = total ? (page - 1) * perPage + 1 : 0;
-  const to = Math.min(page * perPage, total);
-  const nums = [...new Set([1, page - 1, page, page + 1, pages])].filter((p) => p >= 1 && p <= pages).sort((a, b) => a - b);
-  const arrow = (k: "date" | "gross" | "net") => (
-    <span aria-hidden="true" className={props.sort === k ? "text-[#7c3aed]" : "text-[#a19eae]"}>
-      {props.sort === k ? (props.dir === "desc" ? "↓" : "↑") : "↕"}
-    </span>
+  const hasFilters = Boolean(props.type || props.status || props.searchInput);
+
+  const sortHead = (key: "date" | "gross" | "net", label: string, align: "left" | "right" = "left") => (
+    <DataTableHeadCell align={align}>
+      <button type="button" onClick={() => props.onSort(key)} className={cn("inline-flex items-center gap-1 uppercase tracking-[0.08em] hover:text-foreground", props.sort === key && "text-foreground")}>
+        {label}
+        <Icon name={props.sort === key ? (props.dir === "desc" ? "arrow-down" : "arrow-up") : "sort"} size={9} className={props.sort === key ? "text-brand" : "text-subtle-foreground"} />
+      </button>
+    </DataTableHeadCell>
   );
-  const SELECT = "h-11 rounded-[12px] border border-[#e6e2ef] bg-white px-3 text-base outline-none sm:text-[14px]";
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Resumo do período */}
-      <section aria-label="Resumo do período" className={cn(SURFACE, "grid grid-cols-2 overflow-hidden 2xl:grid-cols-4")}>
-        <SummaryItem
-          icon={<ArrowUpRight size={20} strokeWidth={1.8} />}
-          iconClass="bg-emerald-50 text-emerald-700"
-          label="Entradas"
-          value={summary ? brl(summary.inCents) : "…"}
-          hint="Vendas de ingressos"
-          divider="border-b border-r border-[#f2f0f7] 2xl:border-b-0"
-        />
-        <SummaryItem
-          icon={<ArrowDownLeft size={20} strokeWidth={1.8} />}
-          iconClass="bg-[#fcf2f4] text-[#9b1c35]"
-          label="Saídas"
-          value={summary ? brl(summary.outCents) : "…"}
-          hint="Estornos e contestações"
-          divider="border-b border-[#f2f0f7] 2xl:border-b-0 2xl:border-r"
-        />
-        <SummaryItem
-          icon={<CreditCard size={20} strokeWidth={1.8} />}
-          iconClass="bg-[#f4f2f8] text-[#5b5868]"
-          label={
-            <span className="flex items-center gap-1.5">
-              Taxas
-              {summary ? (
-                <HoverDetail label="Ver detalhe das taxas" trigger={<Info size={15} strokeWidth={1.8} className="text-[#6b6878]" aria-hidden="true" />} className="flex h-5 w-5 items-center justify-center">
+      <Card aria-label="Resumo do período" className="fade-up">
+        <CardContent className="grid grid-cols-2 divide-y divide-border p-0 sm:[&>*:nth-child(odd)]:border-r xl:grid-cols-4 xl:divide-y-0 xl:[&>*:not(:last-child)]:border-r">
+          <SummaryItem icon="trend-up" label="Entradas" value={summary ? brl(summary.inCents) : "…"} hint="Vendas de ingressos" tone="in" />
+          <SummaryItem icon="trend-down" label="Saídas" value={summary ? brl(summary.outCents) : "…"} hint="Estornos e contestações" tone={summary && summary.outCents !== 0 ? "out" : undefined} />
+          <SummaryItem
+            icon="receipt"
+            label={
+              <span className="flex items-center gap-1.5">
+                Taxas
+                {summary ? (
+                  <HoverDetail label="Ver detalhe das taxas" trigger={<Icon name="info" size={12} className="text-subtle-foreground" />} className="flex h-4 w-4 items-center justify-center">
+                    <SummaryFees summary={summary} label={props.label} />
+                  </HoverDetail>
+                ) : null}
+              </span>
+            }
+            value={
+              summary ? (
+                <HoverDetail label="Ver detalhe das taxas" trigger={<span className={DOTTED}>{brl(summary.feeCents)}</span>} align="start">
                   <SummaryFees summary={summary} label={props.label} />
                 </HoverDetail>
-              ) : null}
-            </span>
-          }
-          value={
-            summary ? (
-              <HoverDetail label="Ver detalhe das taxas" trigger={<span className={DOTTED}>{brl(summary.feeCents)}</span>} align="start">
-                <SummaryFees summary={summary} label={props.label} />
-              </HoverDetail>
-            ) : (
-              "…"
-            )
-          }
-          hint="Toque no valor para ver cada taxa"
-          divider="border-r border-[#f2f0f7]"
-        />
-        <SummaryItem
-          icon={<BarChart3 size={20} strokeWidth={1.8} />}
-          iconClass="bg-[#f3edff] text-[#7c3aed]"
-          label="Líquido"
-          value={summary ? brl(summary.netCents) : "…"}
-          hint="Entradas − saídas − taxas"
-          divider=""
-        />
-      </section>
+              ) : (
+                "…"
+              )
+            }
+            hint="Toque no valor pra ver cada taxa"
+          />
+          <SummaryItem icon="scale" label="Líquido" value={summary ? brl(summary.netCents) : "…"} hint="Entradas − saídas − taxas" />
+        </CardContent>
+      </Card>
 
       {/* Filtros */}
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
-        <label className="relative flex h-11 items-center rounded-[12px] border border-[#e6e2ef] bg-white pl-10 pr-3 xl:w-[230px]">
-          <CalendarDays size={17} strokeWidth={1.8} className="pointer-events-none absolute left-3.5 text-[#6b6878]" aria-hidden="true" />
-          <span className="sr-only">Período</span>
-          <select
-            value={props.period}
-            onChange={(e) => props.onPeriod(e.target.value as PeriodKey)}
-            className="h-full w-full appearance-none bg-transparent pr-6 text-base font-medium outline-none sm:text-[14px]"
-          >
+      <div className="flex flex-col gap-2 xl:flex-row xl:items-center">
+        <SearchInput value={props.searchInput} onChange={props.onSearch} placeholder="Pedido ou comprador" className="w-full xl:max-w-md xl:flex-1" />
+        <div className="grid grid-cols-3 gap-2 xl:flex">
+          <NativeSelect aria-label="Período" value={props.period} onChange={(e) => props.onPeriod(e.target.value as PeriodKey)} className="xl:w-[170px]">
             {PERIOD_OPTIONS.map((o) => (
               <option key={o.key} value={o.key}>
                 {o.label}
               </option>
             ))}
             {props.period === "custom" ? <option value="custom">{props.label}</option> : null}
-          </select>
-          <ChevronDown size={16} className="pointer-events-none absolute right-3 text-[#6b6878]" aria-hidden="true" />
-        </label>
-        <label className="relative flex h-11 shrink-0 items-center rounded-[12px] border border-[#e6e2ef] bg-white pl-10 pr-4 xl:flex-1">
-          <Search size={17} strokeWidth={1.8} className="pointer-events-none absolute left-3.5 text-[#6b6878]" aria-hidden="true" />
-          <span className="sr-only">Pesquisar</span>
-          <input
-            type="search"
-            value={props.searchInput}
-            onChange={(e) => props.onSearch(e.target.value)}
-            placeholder="Pesquisar por pedido ou comprador"
-            className="h-full w-full bg-transparent text-base outline-none placeholder:text-[#8a8796] sm:text-[14px]"
-          />
-        </label>
-        <div className="flex gap-3">
-          <select aria-label="Tipo" value={props.type} onChange={(e) => props.onType(e.target.value as StatementRowType | "")} className={cn(SELECT, "flex-1 xl:w-[170px] xl:flex-none")}>
+          </NativeSelect>
+          <NativeSelect aria-label="Tipo" value={props.type} onChange={(e) => props.onType(e.target.value as StatementRowType | "")} className="xl:w-[160px]">
             <option value="">Todos os tipos</option>
             <option value="SALE">Vendas</option>
             <option value="REFUND">Estornos</option>
             <option value="CHARGEBACK">Contestações</option>
             <option value="WITHDRAWAL">Saques</option>
-          </select>
-          <select aria-label="Status" value={props.status} onChange={(e) => props.onStatus(e.target.value as StatementRowStatus | "")} className={cn(SELECT, "flex-1 xl:w-[170px] xl:flex-none")}>
+          </NativeSelect>
+          <NativeSelect aria-label="Status" value={props.status} onChange={(e) => props.onStatus(e.target.value as StatementRowStatus | "")} className="xl:w-[160px]">
             <option value="">Todos os status</option>
             <option value="CUSTODY">Em custódia</option>
             <option value="RELEASED">Liberado</option>
             <option value="IN_PROGRESS">Em andamento</option>
             <option value="COMPLETED">Concluído</option>
             <option value="DEBITED">Descontado</option>
-          </select>
+          </NativeSelect>
         </div>
       </div>
 
-      {/* Tabela */}
-      <div className={cn(SURFACE, "overflow-hidden")}>
-        {props.loading && !rows ? (
-          <div className="space-y-3 p-5">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <BlockSkeleton key={i} className="h-11" />
-            ))}
-          </div>
-        ) : !rows || rows.length === 0 ? (
-          <div className="px-6 py-14 text-center">
-            <p className="text-[14px] text-[#5f5c6b]">Nenhuma transação com esses filtros no período.</p>
-            <button type="button" onClick={props.onClear} className={cn("mt-2 rounded-md text-[13.5px] font-semibold text-violet-700", PRESSABLE)}>
-              Limpar filtros
-            </button>
-          </div>
-        ) : (
-          <>
-            <table className="hidden w-full text-left text-[14px] lg:table">
-              <thead className="bg-[#fbfaff] text-[13px] text-[#5f5c6b]">
-                <tr className="border-b border-[#ebe8f2]">
-                  <th scope="col" className={cn(TH, "w-[9%]")}>
-                    <button type="button" onClick={() => props.onSort("date")} className="flex items-center gap-1">
-                      Data {arrow("date")}
-                    </button>
-                  </th>
-                  <th scope="col" className={cn(TH, "w-[17%]")}>Evento</th>
-                  <th scope="col" className={cn(TH, "w-[17%]")}>Transação</th>
-                  <th scope="col" className={cn(TH, "w-[10%]")}>Tipo</th>
-                  <th scope="col" className={cn(TH, "w-[11%] text-right")}>
-                    <button type="button" onClick={() => props.onSort("gross")} className="ml-auto flex items-center gap-1">
-                      Valor bruto {arrow("gross")}
-                    </button>
-                  </th>
-                  <th scope="col" className={cn(TH, "w-[9%] text-right")}>Taxas</th>
-                  <th scope="col" className={cn(TH, "w-[11%] text-right")}>
-                    <button type="button" onClick={() => props.onSort("net")} className="ml-auto flex items-center gap-1">
-                      Valor líquido {arrow("net")}
-                    </button>
-                  </th>
-                  <th scope="col" className={cn(TH, "w-[12%] pl-10")}>Status</th>
-                  <th scope="col" className="w-[56px] px-3 py-3">
-                    <span className="sr-only">Ações</span>
-                  </th>
+      {props.loading && !rows ? (
+        <Skeleton className="h-80 rounded-card" />
+      ) : !rows || rows.length === 0 ? (
+        <EmptyState icon="receipt" title={hasFilters ? "Nenhuma transação com esses filtros" : "Nenhuma transação no período"} description={hasFilters ? "Tente outro termo ou limpe os filtros." : "As vendas aparecem aqui assim que alguém comprar."} action={hasFilters ? <Button variant="outline" onClick={props.onClear}>Limpar filtros</Button> : undefined} />
+      ) : (
+        <DataTableShell
+          className={cn(props.fetching && "opacity-80 transition-opacity")}
+          table={
+            <DataTable>
+              <DataTableHead>
+                <tr>
+                  {sortHead("date", "Data")}
+                  <DataTableHeadCell>Evento</DataTableHeadCell>
+                  <DataTableHeadCell>Transação</DataTableHeadCell>
+                  <DataTableHeadCell>Tipo</DataTableHeadCell>
+                  {sortHead("gross", "Bruto", "right")}
+                  <DataTableHeadCell align="right">Taxas</DataTableHeadCell>
+                  {sortHead("net", "Líquido", "right")}
+                  <DataTableHeadCell>Status</DataTableHeadCell>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-[#f2f0f7]">
-                {rows.map((r) => (
-                  <tr key={r.key} className="cursor-pointer hover:bg-[#faf8ff]" onClick={() => props.onOpen(r)}>
-                    <td className="px-5 py-3 font-poppins text-[13.5px] tabular-nums">
-                      <span className="block">{fmtDate(r.occurredAt)}</span>
-                      <span className="block text-[12.5px] text-[#6b6878]">{fmtTime(r.occurredAt)}</span>
-                    </td>
-                    <td className="px-5 py-3">{r.eventName}</td>
-                    <td className="px-5 py-3">
-                      <span className="block font-poppins font-medium tabular-nums">{r.reference}</span>
-                      <span className="block text-[12.5px] text-[#5f5c6b]">{describe(r)}</span>
-                    </td>
-                    <td className="px-5 py-3">
-                      <Pill tone={TYPE_PILL[r.type].tone}>{TYPE_PILL[r.type].label}</Pill>
-                    </td>
-                    <td className="px-5 py-3 text-right font-poppins tabular-nums">{brl(r.grossCents)}</td>
-                    <td className="px-5 py-3 text-right font-poppins tabular-nums text-[#5f5c6b]">
+              </DataTableHead>
+              <DataTableBody>
+                {rows.map((r, i) => (
+                  <DataTableRow key={r.key} index={i} onClick={() => props.onOpen(r)}>
+                    <DataTableCell className="whitespace-nowrap tnum">
+                      {fmtDate(r.occurredAt)}
+                      <span className="block text-caption text-muted-foreground">{fmtTime(r.occurredAt)}</span>
+                    </DataTableCell>
+                    <DataTableCell className="max-w-[220px] truncate">{r.eventName}</DataTableCell>
+                    <DataTableCell>
+                      <span className="block font-medium tnum">{r.reference}</span>
+                      <span className="block text-caption text-muted-foreground">{describe(r)}</span>
+                    </DataTableCell>
+                    <DataTableCell>
+                      <StatusBadge tone={TYPE_META[r.type].tone} dot={false}>
+                        {TYPE_META[r.type].label}
+                      </StatusBadge>
+                    </DataTableCell>
+                    <DataTableCell num>{brl(r.grossCents)}</DataTableCell>
+                    <DataTableCell num className="text-muted-foreground" stopPropagation>
                       {r.type === "WITHDRAWAL" ? (
                         brl(0)
                       ) : (
-                        <HoverDetail label={`Ver taxas do pedido ${r.reference}`} trigger={<span className={cn(DOTTED, "hover:text-[#1c1a24]")}>{brl(r.feeCents)}</span>}>
+                        <HoverDetail label={`Ver taxas do pedido ${r.reference}`} trigger={<span className={cn(DOTTED, "hover:text-foreground")}>{brl(r.feeCents)}</span>}>
                           <RowFees row={r} />
                         </HoverDetail>
                       )}
-                    </td>
-                    <td className={cn("px-5 py-3 text-right font-poppins font-semibold tabular-nums", r.type === "CHARGEBACK" && LOSS_TEXT)}>{brl(r.netCents)}</td>
-                    <td className="py-3 pl-10 pr-5">
-                      <Pill tone={STATUS_PILL[r.status].tone}>{STATUS_PILL[r.status].label}</Pill>
-                    </td>
-                    <td className="px-3 py-3">
-                      <button
-                        type="button"
-                        aria-label={`Ver detalhes de ${r.reference}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          props.onOpen(r);
-                        }}
-                        className={cn("flex h-9 w-9 items-center justify-center rounded-lg text-[#5b5868] hover:bg-[#f3f1f8]", PRESSABLE)}
-                      >
-                        <MoreVertical size={18} aria-hidden="true" />
-                      </button>
-                    </td>
-                  </tr>
+                    </DataTableCell>
+                    <DataTableCell num className={cn("font-semibold", r.netCents > 0 ? "text-money-in" : r.netCents < 0 ? "text-money-out" : "")}>
+                      {brl(r.netCents)}
+                    </DataTableCell>
+                    <DataTableCell>
+                      <StatusBadge tone={STATUS_META[r.status].tone}>{STATUS_META[r.status].label}</StatusBadge>
+                    </DataTableCell>
+                  </DataTableRow>
                 ))}
-              </tbody>
-            </table>
-            <ul className="divide-y divide-[#f2f0f7] lg:hidden">
-              {rows.map((r) => (
-                <li key={r.key}>
-                  <button type="button" onClick={() => props.onOpen(r)} className="flex w-full items-start justify-between gap-3 px-4 py-3.5 text-left hover:bg-[#faf8ff]">
-                    <span className="min-w-0">
-                      <span className="flex items-center gap-2">
-                        <span className="font-poppins font-medium tabular-nums">{r.reference}</span>
-                        <Pill tone={TYPE_PILL[r.type].tone}>{TYPE_PILL[r.type].label}</Pill>
-                      </span>
-                      <span className="mt-1 block truncate text-[13px] text-[#5f5c6b]">
-                        {r.eventName} · {fmtDate(r.occurredAt).slice(0, 5)} {fmtTime(r.occurredAt)}
-                      </span>
-                    </span>
-                    <span className="shrink-0 text-right">
-                      <span className={cn("block font-poppins font-semibold tabular-nums", r.type === "CHARGEBACK" && LOSS_TEXT)}>{brl(r.netCents)}</span>
-                      <span className="mt-1 block">
-                        <Pill tone={STATUS_PILL[r.status].tone}>{STATUS_PILL[r.status].label}</Pill>
-                      </span>
-                    </span>
-                  </button>
-                </li>
+              </DataTableBody>
+            </DataTable>
+          }
+          mobile={
+            <MobileCardList>
+              {rows.map((r, i) => (
+                <MobileCard
+                  key={r.key}
+                  index={i}
+                  onClick={() => props.onOpen(r)}
+                  title={r.reference}
+                  subtitle={`${r.eventName} · ${fmtDate(r.occurredAt).slice(0, 5)} ${fmtTime(r.occurredAt)}`}
+                  badge={<StatusBadge tone={STATUS_META[r.status].tone}>{STATUS_META[r.status].label}</StatusBadge>}
+                  meta={[
+                    { label: "Tipo", value: TYPE_META[r.type].label },
+                    { label: "Líquido", value: <span className={cn("font-semibold", r.netCents > 0 ? "text-money-in" : r.netCents < 0 ? "text-money-out" : "")}>{brl(r.netCents)}</span>, num: true },
+                  ]}
+                />
               ))}
-            </ul>
-          </>
-        )}
-      </div>
-
-      {/* Paginação */}
-      {total > 0 ? (
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="font-poppins text-[13.5px] tabular-nums text-[#5f5c6b]">
-            Mostrando {from}–{to} de {total} transações
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <select aria-label="Itens por página" value={perPage} onChange={(e) => props.onPerPage(Number(e.target.value))} className="h-9 rounded-[10px] border border-[#e6e2ef] bg-white px-3 text-base sm:text-[13.5px]">
-              <option value={10}>10 por página</option>
-              <option value={25}>25 por página</option>
-              <option value={50}>50 por página</option>
-            </select>
-            <nav aria-label="Páginas" className="flex items-center gap-1">
-              <PageButton label="Página anterior" disabled={page === 1} onClick={() => props.onPage(page - 1)}>
-                <ChevronLeft size={16} aria-hidden="true" />
-              </PageButton>
-              {nums.map((n, i) => (
-                <span key={n} className="flex items-center gap-1">
-                  {i > 0 && n - nums[i - 1] > 1 ? <span className="px-1 text-[#6b6878]">…</span> : null}
-                  <PageButton current={n === page} onClick={() => props.onPage(n)}>
-                    {n}
-                  </PageButton>
-                </span>
-              ))}
-              <PageButton label="Próxima página" disabled={page === pages} onClick={() => props.onPage(page + 1)}>
-                <ChevronRight size={16} aria-hidden="true" />
-              </PageButton>
-            </nav>
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function PageButton({ children, onClick, disabled, current, label }: { children: ReactNode; onClick: () => void; disabled?: boolean; current?: boolean; label?: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      aria-current={current ? "page" : undefined}
-      className={cn(
-        "flex h-9 min-w-9 items-center justify-center rounded-lg px-2 font-poppins text-[13.5px] font-medium tabular-nums disabled:cursor-not-allowed disabled:opacity-40",
-        current ? "bg-[#7c3aed] text-white" : "text-[#3a3746] hover:bg-[#f3f1f8]",
-        PRESSABLE,
+            </MobileCardList>
+          }
+          footer={
+            total > 0 ? (
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <NativeSelect aria-label="Itens por página" value={perPage} onChange={(e) => props.onPerPage(Number(e.target.value))} className="w-full sm:w-[150px] [&_select]:h-9 [&_select]:text-caption">
+                  <option value={10}>10 por página</option>
+                  <option value={25}>25 por página</option>
+                  <option value={50}>50 por página</option>
+                </NativeSelect>
+                <DataTablePagination page={page} lastPage={pages} total={total} perPage={perPage} noun="transações" onPageChange={props.onPage} />
+              </div>
+            ) : undefined
+          }
+        />
       )}
-    >
-      {children}
-    </button>
+    </div>
   );
 }
 
 // ── Aba Por evento ──
 function EventsTab({ events, onPick }: { events: TicketsEventBalance[]; onPick: (eventId: number) => void }) {
   if (events.length === 0) {
-    return <EmptyState title="Nenhum evento com vendas" description="Quando seus eventos tiverem pagamentos confirmados, o saldo de cada um aparece aqui." />;
+    return <EmptyState icon="calendar" title="Nenhum evento com vendas" description="Quando seus eventos tiverem pagamentos confirmados, o saldo de cada um aparece aqui." />;
   }
   const t = (k: keyof TicketsEventBalance) => events.reduce((s, e) => s + (e[k] as number), 0);
-  const situation = (e: TicketsEventBalance): { label: string; tone: PillTone } =>
-    e.released ? (e.availableCents > 0 ? { label: `Liberado em ${fmtDayShort(e.releaseAt)}`, tone: "success" } : { label: "Tudo sacado", tone: "neutral" }) : { label: `Em custódia até ${fmtDayShort(e.releaseAt)}`, tone: "neutral" };
-  const NUM = "px-5 py-3 text-right font-poppins tabular-nums";
+  const situation = (e: TicketsEventBalance): { label: string; tone: Tone } => (e.released ? (e.availableCents > 0 ? { label: `Liberado em ${fmtDayShort(e.releaseAt)}`, tone: "success" } : { label: "Tudo sacado", tone: "neutral" }) : { label: `Em custódia até ${fmtDayShort(e.releaseAt)}`, tone: "neutral" });
+  const muted = (v: number) => (v ? "" : "text-subtle-foreground");
+
   return (
     <div className="space-y-3">
-      <div className={cn(SURFACE, "overflow-hidden")}>
-        <table className="hidden w-full text-left text-[14px] lg:table">
-          <thead className="bg-[#fbfaff] text-[13px] text-[#5f5c6b]">
-            <tr className="border-b border-[#ebe8f2]">
-              <th scope="col" className={TH}>Evento</th>
-              <th scope="col" className={TH}>Situação</th>
-              <th scope="col" className={cn(TH, "text-right")}>Vendas</th>
-              <th scope="col" className={cn(TH, "text-right")}>Comissão</th>
-              <th scope="col" className={cn(TH, "text-right")}>Estornos e contestações</th>
-              <th scope="col" className={cn(TH, "text-right")}>Líquido</th>
-              <th scope="col" className={cn(TH, "text-right")}>Sacado</th>
-              <th scope="col" className={cn(TH, "text-right")}>Em saque</th>
-              <th scope="col" className={cn(TH, "text-right")}>Em custódia</th>
-              <th scope="col" className={cn(TH, "text-right")}>Disponível</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#f2f0f7]">
-            {events.map((e) => {
+      <DataTableShell
+        maxHeight="none"
+        table={
+          <DataTable>
+            <DataTableHead>
+              <tr>
+                <DataTableHeadCell>Evento</DataTableHeadCell>
+                <DataTableHeadCell>Situação</DataTableHeadCell>
+                <DataTableHeadCell align="right">Vendas</DataTableHeadCell>
+                <DataTableHeadCell align="right">Comissão</DataTableHeadCell>
+                <DataTableHeadCell align="right">Estornos</DataTableHeadCell>
+                <DataTableHeadCell align="right">Líquido</DataTableHeadCell>
+                <DataTableHeadCell align="right">Sacado</DataTableHeadCell>
+                <DataTableHeadCell align="right">Em saque</DataTableHeadCell>
+                <DataTableHeadCell align="right">Custódia</DataTableHeadCell>
+                <DataTableHeadCell align="right">Disponível</DataTableHeadCell>
+              </tr>
+            </DataTableHead>
+            <DataTableBody>
+              {events.map((e, i) => {
+                const s = situation(e);
+                return (
+                  <DataTableRow key={e.eventId} index={i} onClick={() => onPick(e.eventId)}>
+                    <DataTableCell>
+                      <span className="block font-medium">{e.eventName}</span>
+                      <span className="block text-caption text-muted-foreground tnum">Evento em {fmtDay(e.eventDate)}</span>
+                    </DataTableCell>
+                    <DataTableCell>
+                      <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
+                    </DataTableCell>
+                    <DataTableCell num>{brl(e.salesCents)}</DataTableCell>
+                    <DataTableCell num className="text-muted-foreground">{brl(-e.commissionCents)}</DataTableCell>
+                    <DataTableCell num className={e.refundsCents + e.chargebacksCents < 0 ? "text-money-out" : "text-subtle-foreground"}>{brl(e.refundsCents + e.chargebacksCents)}</DataTableCell>
+                    <DataTableCell num className="font-semibold">{brl(e.netCents)}</DataTableCell>
+                    <DataTableCell num className="text-muted-foreground">{brl(-e.withdrawnCents)}</DataTableCell>
+                    <DataTableCell num className={e.inTransitCents ? "font-semibold text-brand" : "text-subtle-foreground"}>{brl(-e.inTransitCents)}</DataTableCell>
+                    <DataTableCell num className={cn(e.custodyCents && "font-semibold", muted(e.custodyCents))}>{brl(e.custodyCents)}</DataTableCell>
+                    <DataTableCell num className={cn(e.availableCents && "font-semibold text-money-in", muted(e.availableCents))}>{brl(e.availableCents)}</DataTableCell>
+                  </DataTableRow>
+                );
+              })}
+              <tr className="bg-surface-2/60 font-semibold">
+                <DataTableCell>Total</DataTableCell>
+                <DataTableCell />
+                <DataTableCell num>{brl(t("salesCents"))}</DataTableCell>
+                <DataTableCell num>{brl(-t("commissionCents"))}</DataTableCell>
+                <DataTableCell num>{brl(t("refundsCents") + t("chargebacksCents"))}</DataTableCell>
+                <DataTableCell num>{brl(t("netCents"))}</DataTableCell>
+                <DataTableCell num>{brl(-t("withdrawnCents"))}</DataTableCell>
+                <DataTableCell num>{brl(-t("inTransitCents"))}</DataTableCell>
+                <DataTableCell num>{brl(t("custodyCents"))}</DataTableCell>
+                <DataTableCell num className="text-money-in">{brl(t("availableCents"))}</DataTableCell>
+              </tr>
+            </DataTableBody>
+          </DataTable>
+        }
+        mobile={
+          <MobileCardList>
+            {events.map((e, i) => {
               const s = situation(e);
-              return (
-                <tr key={e.eventId} className="cursor-pointer hover:bg-[#faf8ff]" onClick={() => onPick(e.eventId)}>
-                  <td className="px-5 py-3">
-                    <span className="block font-medium">{e.eventName}</span>
-                    <span className="block font-poppins text-[12.5px] tabular-nums text-[#6b6878]">Evento em {fmtDay(e.eventDate)}</span>
-                  </td>
-                  <td className="px-5 py-3">
-                    <Pill tone={s.tone}>{s.label}</Pill>
-                  </td>
-                  <td className={NUM}>{brl(e.salesCents)}</td>
-                  <td className={cn(NUM, "text-[#5f5c6b]")}>{brl(-e.commissionCents)}</td>
-                  <td className={cn(NUM, e.refundsCents + e.chargebacksCents < 0 ? LOSS_TEXT : "text-[#6b6878]")}>{brl(e.refundsCents + e.chargebacksCents)}</td>
-                  <td className={cn(NUM, "font-semibold")}>{brl(e.netCents)}</td>
-                  <td className={cn(NUM, "text-[#5f5c6b]")}>{brl(-e.withdrawnCents)}</td>
-                  <td className={cn(NUM, e.inTransitCents ? "font-semibold text-[#6d28d9]" : "text-[#6b6878]")}>{brl(-e.inTransitCents)}</td>
-                  <td className={cn(NUM, e.custodyCents ? "font-semibold" : "text-[#6b6878]")}>{brl(e.custodyCents)}</td>
-                  <td className={cn(NUM, e.availableCents ? "font-semibold" : "text-[#6b6878]")}>{brl(e.availableCents)}</td>
-                </tr>
-              );
+              return <MobileCard key={e.eventId} index={i} onClick={() => onPick(e.eventId)} title={e.eventName} subtitle={`Evento em ${fmtDay(e.eventDate)}`} badge={<StatusBadge tone={s.tone}>{s.label}</StatusBadge>} meta={[{ label: e.released ? "Disponível" : "Em custódia", value: <span className="font-semibold">{brl(e.released ? e.availableCents : e.custodyCents)}</span>, num: true }, { label: "Líquido", value: brl(e.netCents), num: true }]} />;
             })}
-          </tbody>
-          <tfoot className="border-t border-[#ebe8f2] bg-[#fbfaff] font-semibold">
-            <tr>
-              <td className="px-5 py-3">Total</td>
-              <td />
-              <td className={NUM}>{brl(t("salesCents"))}</td>
-              <td className={NUM}>{brl(-t("commissionCents"))}</td>
-              <td className={NUM}>{brl(t("refundsCents") + t("chargebacksCents"))}</td>
-              <td className={NUM}>{brl(t("netCents"))}</td>
-              <td className={NUM}>{brl(-t("withdrawnCents"))}</td>
-              <td className={NUM}>{brl(-t("inTransitCents"))}</td>
-              <td className={NUM}>{brl(t("custodyCents"))}</td>
-              <td className={NUM}>{brl(t("availableCents"))}</td>
-            </tr>
-          </tfoot>
-        </table>
-        <ul className="divide-y divide-[#f2f0f7] lg:hidden">
-          {events.map((e) => {
-            const s = situation(e);
-            return (
-              <li key={e.eventId}>
-                <button type="button" onClick={() => onPick(e.eventId)} className="flex w-full items-start justify-between gap-3 px-4 py-3.5 text-left hover:bg-[#faf8ff]">
-                  <span className="min-w-0">
-                    <span className="block font-medium">{e.eventName}</span>
-                    <span className="mt-1 block">
-                      <Pill tone={s.tone}>{s.label}</Pill>
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-right">
-                    <span className="block font-poppins font-semibold tabular-nums">{brl(e.released ? e.availableCents : e.custodyCents)}</span>
-                    <span className="block text-[12.5px] text-[#6b6878]">{e.released ? "disponível" : "em custódia"}</span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-      <p className="text-[13px] text-[#5f5c6b]">Valores de agora, desde o início das vendas de cada evento. Clique em um evento para ver o extrato dele.</p>
+          </MobileCardList>
+        }
+      />
+      <p className="text-caption text-muted-foreground">Valores de agora, desde o início das vendas de cada evento. Toque num evento pra ver o extrato dele.</p>
     </div>
   );
 }
 
 // ── Abas Saques e Contestações ──
 function HistoryTable({ kind, rows, loading, onOpen }: { kind: "withdrawals" | "chargebacks"; rows?: StatementRow[]; loading: boolean; onOpen: (r: StatementRow) => void }) {
-  if (loading && !rows) return <BlockSkeleton className="h-64 rounded-[20px]" />;
+  if (loading && !rows) return <Skeleton className="h-64 rounded-card" />;
   if (!rows || rows.length === 0) {
-    return kind === "withdrawals" ? (
-      <EmptyState title="Nenhum saque ainda" description="Quando você sacar o saldo de um evento, o saque aparece aqui com a situação." />
-    ) : (
-      <EmptyState title="Nenhuma contestação" description="Quando um comprador contestar uma compra no cartão, ela aparece aqui com o valor descontado." />
-    );
+    return kind === "withdrawals" ? <EmptyState icon="money-transfer" title="Nenhum saque ainda" description="Quando você sacar o saldo de um evento, o saque aparece aqui com a situação." /> : <EmptyState icon="warning" title="Nenhuma contestação" description="Quando um comprador contestar uma compra no cartão, ela aparece aqui com o valor descontado." />;
   }
+  const amount = (r: StatementRow) => brl(kind === "withdrawals" ? -r.netCents : r.netCents);
   return (
     <div className="space-y-3">
-      <div className={cn(SURFACE, "overflow-hidden")}>
-        <table className="w-full text-left text-[14px]">
-          <thead className="bg-[#fbfaff] text-[13px] text-[#5f5c6b]">
-            <tr className="border-b border-[#ebe8f2]">
-              <th scope="col" className={TH}>{kind === "withdrawals" ? "Solicitado em" : "Data"}</th>
-              <th scope="col" className={TH}>{kind === "withdrawals" ? "Saque" : "Pedido"}</th>
-              <th scope="col" className={cn(TH, "hidden md:table-cell")}>Evento</th>
-              {kind === "chargebacks" ? <th scope="col" className={cn(TH, "hidden lg:table-cell")}>Motivo</th> : null}
-              <th scope="col" className={cn(TH, "text-right")}>{kind === "withdrawals" ? "Valor" : "Descontado"}</th>
-              <th scope="col" className={cn(TH, "hidden md:table-cell")}>Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#f2f0f7]">
-            {rows.map((r) => (
-              <tr key={r.key} className="cursor-pointer hover:bg-[#faf8ff]" onClick={() => onOpen(r)}>
-                <td className="px-5 py-3 font-poppins tabular-nums">
-                  {fmtDate(r.occurredAt)} <span className="text-[#6b6878]">{fmtTime(r.occurredAt)}</span>
-                </td>
-                <td className="px-5 py-3 font-poppins font-medium tabular-nums">{r.reference}</td>
-                <td className="hidden px-5 py-3 md:table-cell">{r.eventName}</td>
-                {kind === "chargebacks" ? <td className={cn("hidden px-5 py-3 lg:table-cell", !r.reason && "text-[#6b6878]")}>{r.reason ?? "Não informado pela operadora"}</td> : null}
-                <td className={cn("px-5 py-3 text-right font-poppins font-semibold tabular-nums", kind === "chargebacks" && LOSS_TEXT)}>{brl(kind === "withdrawals" ? -r.netCents : r.netCents)}</td>
-                <td className="hidden px-5 py-3 md:table-cell">
-                  <Pill tone={STATUS_PILL[r.status].tone}>{STATUS_PILL[r.status].label}</Pill>
-                </td>
+      <DataTableShell
+        maxHeight="none"
+        table={
+          <DataTable>
+            <DataTableHead>
+              <tr>
+                <DataTableHeadCell>{kind === "withdrawals" ? "Solicitado em" : "Data"}</DataTableHeadCell>
+                <DataTableHeadCell>{kind === "withdrawals" ? "Saque" : "Pedido"}</DataTableHeadCell>
+                <DataTableHeadCell>Evento</DataTableHeadCell>
+                {kind === "chargebacks" ? <DataTableHeadCell>Motivo</DataTableHeadCell> : null}
+                <DataTableHeadCell align="right">{kind === "withdrawals" ? "Valor" : "Descontado"}</DataTableHeadCell>
+                <DataTableHeadCell>Status</DataTableHeadCell>
               </tr>
+            </DataTableHead>
+            <DataTableBody>
+              {rows.map((r, i) => (
+                <DataTableRow key={r.key} index={i} onClick={() => onOpen(r)}>
+                  <DataTableCell className="whitespace-nowrap tnum">
+                    {fmtDate(r.occurredAt)} <span className="text-muted-foreground">{fmtTime(r.occurredAt)}</span>
+                  </DataTableCell>
+                  <DataTableCell className="font-medium tnum">{r.reference}</DataTableCell>
+                  <DataTableCell>{r.eventName}</DataTableCell>
+                  {kind === "chargebacks" ? <DataTableCell className={cn(!r.reason && "text-subtle-foreground")}>{r.reason ?? "Não informado pela operadora"}</DataTableCell> : null}
+                  <DataTableCell num className={cn("font-semibold", kind === "chargebacks" && "text-money-out")}>
+                    {amount(r)}
+                  </DataTableCell>
+                  <DataTableCell>
+                    <StatusBadge tone={STATUS_META[r.status].tone}>{STATUS_META[r.status].label}</StatusBadge>
+                  </DataTableCell>
+                </DataTableRow>
+              ))}
+            </DataTableBody>
+          </DataTable>
+        }
+        mobile={
+          <MobileCardList>
+            {rows.map((r, i) => (
+              <MobileCard key={r.key} index={i} onClick={() => onOpen(r)} title={r.reference} subtitle={`${r.eventName} · ${fmtDate(r.occurredAt)}`} badge={<StatusBadge tone={STATUS_META[r.status].tone}>{STATUS_META[r.status].label}</StatusBadge>} meta={[{ label: kind === "withdrawals" ? "Valor" : "Descontado", value: <span className={cn("font-semibold", kind === "chargebacks" && "text-money-out")}>{amount(r)}</span>, num: true }, ...(kind === "chargebacks" ? [{ label: "Motivo", value: r.reason ?? "Não informado" }] : [])]} />
             ))}
-          </tbody>
-        </table>
-      </div>
-      {kind === "chargebacks" ? <p className="text-[13px] text-[#5f5c6b]">O motivo vem da operadora do cartão. Quando ela não informa, aparece &quot;Não informado&quot;.</p> : null}
+          </MobileCardList>
+        }
+      />
+      {kind === "chargebacks" ? <p className="text-caption text-muted-foreground">O motivo vem da operadora do cartão. Quando ela não informa, aparece “Não informado”.</p> : null}
     </div>
   );
 }
@@ -1032,38 +773,40 @@ function HistoryTable({ kind, rows, loading, onOpen }: { kind: "withdrawals" | "
 // ── Detalhe lateral ──
 function DetailLine({ label, value, strong }: { label: string; value: ReactNode; strong?: boolean }) {
   return (
-    <div className={cn("flex justify-between gap-4 border-b border-[#f2f0f7] py-2.5 last:border-0", strong && "font-semibold")}>
-      <dt className="text-[#5f5c6b]">{label}</dt>
-      <dd className="text-right font-poppins font-medium tabular-nums">{value}</dd>
+    <div className={cn("flex justify-between gap-4 border-b border-border py-2.5 last:border-0", strong && "font-semibold")}>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="text-right font-medium text-foreground tnum">{value}</dd>
     </div>
   );
 }
 
 function DetailSheet({ row, onClose }: { row: StatementRow | null; onClose: () => void }) {
-  const title = row ? `${TYPE_PILL[row.type].label} ${row.reference}` : "";
+  const title = row ? `${TYPE_META[row.type].label} ${row.reference}` : "";
   return (
     <Sheet open={row !== null} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-[460px]">
+      <SheetContent side="right">
         {row ? (
           <>
-            <SheetHeader className="border-b border-[#ebe8f2] pb-4">
+            <SheetHeader className="border-b border-border">
               <SheetTitle>{title}</SheetTitle>
             </SheetHeader>
-            <div className="px-4 pb-6 text-[14px]">
-              <p className={cn("font-poppins text-[30px] font-bold leading-none tabular-nums", row.type === "CHARGEBACK" && LOSS_TEXT)}>
-                {row.netCents > 0 ? "+ " : ""}
-                {brl(row.netCents)}
-              </p>
-              <p className="mt-2 text-[13px] text-[#5f5c6b]">
-                {row.eventName} · {fmtDate(row.occurredAt)} às {fmtTime(row.occurredAt)}
-              </p>
-              <div className="mt-3">
-                <Pill tone={STATUS_PILL[row.status].tone}>{STATUS_PILL[row.status].label}</Pill>
+            <SheetBody className="text-sm">
+              <div>
+                <p className={cn("text-stat-lg font-medium leading-none tracking-tight tnum", row.netCents > 0 ? "text-money-in" : row.netCents < 0 ? "text-money-out" : "text-foreground")}>
+                  {row.netCents > 0 ? "+ " : ""}
+                  {brl(row.netCents)}
+                </p>
+                <p className="mt-2 text-caption text-muted-foreground">
+                  {row.eventName} · {fmtDate(row.occurredAt)} às {fmtTime(row.occurredAt)}
+                </p>
+                <div className="mt-3">
+                  <StatusBadge tone={STATUS_META[row.status].tone}>{STATUS_META[row.status].label}</StatusBadge>
+                </div>
               </div>
 
               {row.type === "SALE" && (
                 <>
-                  <dl className="mt-5">
+                  <dl>
                     {row.buyerName ? <DetailLine label="Comprador" value={row.buyerName} /> : null}
                     <DetailLine label="Ingressos" value={row.quantity ?? 1} />
                     <DetailLine label="Valor dos ingressos" value={brl(row.grossCents)} />
@@ -1071,10 +814,10 @@ function DetailSheet({ row, onClose }: { row: StatementRow | null; onClose: () =
                     <DetailLine label="Entra no seu saldo" value={brl(row.netCents)} strong />
                     {row.releaseAt ? <DetailLine label={row.status === "CUSTODY" ? "Libera em" : "Liberado em"} value={fmtDay(row.releaseAt)} /> : null}
                   </dl>
-                  <div className="mt-5 rounded-[12px] bg-[#faf8ff] px-4 py-3 text-[13px] leading-relaxed text-[#5f5c6b]">
+                  <div className="surface-inset rounded-xl px-4 py-3 text-caption leading-relaxed text-muted-foreground">
                     <p className="flex justify-between gap-3">
                       <span>Taxa de serviço + processamento</span>
-                      <span className="font-poppins font-medium tabular-nums text-[#1c1a24]">{brl(row.fees.buyerServiceFeeCents + row.fees.buyerGatewayFeeCents)}</span>
+                      <span className="font-medium text-foreground tnum">{brl(row.fees.buyerServiceFeeCents + row.fees.buyerGatewayFeeCents)}</span>
                     </p>
                     <p className="mt-1">Pagas pelo comprador, por cima do ingresso. Não saem do seu valor.</p>
                   </div>
@@ -1082,23 +825,21 @@ function DetailSheet({ row, onClose }: { row: StatementRow | null; onClose: () =
               )}
               {row.type === "CHARGEBACK" && (
                 <>
-                  <dl className="mt-5">
+                  <dl>
                     <DetailLine label="Ingresso e taxa de serviço devolvidos" value={brl(row.grossCents)} />
                     <DetailLine label="Processamento Pagar.me" value={brl(row.fees.producerGatewayFeeCents)} />
                     <DetailLine label="Total descontado" value={brl(row.netCents)} strong />
                   </dl>
-                  <dl className="mt-5">
+                  <dl>
                     {row.buyerName ? <DetailLine label="Comprador" value={row.buyerName} /> : null}
                     <DetailLine label="Ingressos cancelados" value={row.quantity ?? 1} />
                     <DetailLine label="Motivo" value={row.reason ?? "Não informado pela operadora"} />
                   </dl>
-                  <p className="mt-5 text-[13px] leading-relaxed text-[#5f5c6b]">
-                    O comprador contestou a compra no banco ou no cartão. O ingresso foi cancelado e, pela regra atual, o produtor arca com o valor devolvido, incluindo a taxa de serviço e o processamento.
-                  </p>
+                  <p className="text-caption leading-relaxed text-muted-foreground">O comprador contestou a compra no banco ou no cartão. O ingresso foi cancelado e, pela regra atual, o produtor arca com o valor devolvido, incluindo a taxa de serviço e o processamento.</p>
                 </>
               )}
               {row.type === "REFUND" && (
-                <dl className="mt-5">
+                <dl>
                   {row.buyerName ? <DetailLine label="Comprador" value={row.buyerName} /> : null}
                   <DetailLine label="Ingressos estornados" value={row.quantity ?? 1} />
                   <DetailLine label="Valor dos ingressos" value={brl(row.grossCents)} />
@@ -1108,12 +849,12 @@ function DetailSheet({ row, onClose }: { row: StatementRow | null; onClose: () =
                 </dl>
               )}
               {row.type === "WITHDRAWAL" && (
-                <dl className="mt-5">
+                <dl>
                   <DetailLine label="Destino" value="Pix cadastrado em Dados jurídicos e financeiros" />
                   <DetailLine label="Saldo de origem" value={row.eventName} />
                 </dl>
               )}
-            </div>
+            </SheetBody>
           </>
         ) : null}
       </SheetContent>

@@ -1,108 +1,119 @@
 "use client";
 
 import { useState } from "react";
-import { Copy } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { EmptyState } from "../../_components/states/empty-state";
-import { TableSkeleton } from "../../_components/states/loading-state";
-import { COMMISSION_STATUS_LABEL, formatCents } from "@/services/promoters";
-import { useMyPromoterEvents, useMyPromoterSales } from "../_hooks/use-my-promoter";
 import { toast } from "@/lib/toast";
-
-function publicEventUrl(publicToken: string, slugOrId: string | number) {
-  return `https://www.noktatickets.com.br/evento/${slugOrId}?ref=${publicToken}`;
-}
+import { cn } from "@/lib/cn";
+import { formatEventDate } from "@/lib/format";
+import { COMMISSION_STATUS_LABEL, formatCents } from "@/services/promoters";
+import { Button } from "@/components/ui/button";
+import { CopyField } from "@/components/ui/copy-field";
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeadCell, DataTableRow, DataTableShell, MobileCard, MobileCardList } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
+import { RowsSkeleton, Skeleton } from "@/components/ui/skeleton";
+import { StatusBadge } from "@/components/ui/badge";
+import { COMMISSION_TONE, fmtDate, publicEventUrl } from "../../promotores/_components/promoter-meta";
+import { useMyPromoterEvents, useMyPromoterSales } from "../_hooks/use-my-promoter";
 
 export function LinksVendasTab() {
   const { data: events, isLoading: loadingEvents } = useMyPromoterEvents(true);
   const [eventId, setEventId] = useState<number | undefined>(undefined);
   const { data: sales, isLoading: loadingSales } = useMyPromoterSales(true, eventId);
 
-  const copy = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success("Copiado.");
+  const copy = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Copiado");
+    } catch {
+      toast.error("Não foi possível copiar.");
+    }
   };
 
   return (
-    <div className="space-y-5">
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-gray-900">Seus links e códigos ativos</h3>
+    <div className="space-y-6">
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold text-foreground">Seus links e códigos ativos</h3>
         {loadingEvents ? (
-          <TableSkeleton rows={3} />
+          <RowsSkeleton rows={2} />
         ) : !events || events.length === 0 ? (
-          <EmptyState title="Nenhum evento ativo" description="Quando uma organização te vincular a um evento, o link/código aparece aqui." />
+          <EmptyState icon="link" title="Nenhum evento ativo" description="Quando uma organização te vincular a um evento, o link e o código aparecem aqui." />
         ) : (
-          <div className="space-y-2">
-            {events.map((ev) => (
-              <div
-                key={ev.id}
-                className={`flex flex-wrap items-center gap-3 rounded-xl border border-black/10 bg-white p-3 ${eventId === ev.eventId ? "ring-2 ring-violet-500" : ""}`}
-                role="button"
-                tabIndex={0}
-                onClick={() => setEventId(ev.eventId === eventId ? undefined : ev.eventId)}
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-gray-900">{ev.event.nome}</p>
-                  <p className="truncate text-xs text-black/50">
-                    {ev.discountEnabled ? "Com desconto para quem compra" : "Sem desconto"} · {ev.commissionEnabled ? "gera comissão" : "sem comissão"}
-                  </p>
-                </div>
-                {ev.linkEnabled && ev.publicToken ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => { e.stopPropagation(); copy(publicEventUrl(ev.publicToken as string, ev.event.slug ?? ev.eventId)); }}
-                  >
-                    <Copy size={14} /> Copiar link
-                  </Button>
-                ) : null}
-                {ev.codeEnabled && ev.code ? (
-                  <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); copy(ev.code as string); }}>
-                    <Copy size={14} /> Código: {ev.code}
-                  </Button>
-                ) : null}
-              </div>
-            ))}
+          <div className="grid gap-3 md:grid-cols-2">
+            {events.map((ev, i) => {
+              const selected = eventId === ev.eventId;
+              return (
+                <article key={ev.id} className={cn("fade-up card-hover flex flex-col gap-3 rounded-card border bg-surface p-4 shadow-card transition-colors", selected ? "border-brand ring-2 ring-brand-ring" : "border-border")} style={{ ["--i" as string]: i } as never}>
+                  <button type="button" onClick={() => setEventId(selected ? undefined : ev.eventId)} className="flex items-start justify-between gap-2 text-left">
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold text-foreground">{ev.event.nome}</span>
+                      <span className="block text-caption text-muted-foreground">
+                        {formatEventDate(ev.event.data)} · {ev.discountEnabled ? "com desconto" : "sem desconto"} · {ev.commissionEnabled ? "gera comissão" : "sem comissão"}
+                      </span>
+                    </span>
+                    <Icon name={selected ? "check-circle" : "circle-outline"} size={14} className={cn("mt-0.5 shrink-0", selected ? "text-brand" : "text-subtle-foreground")} />
+                  </button>
+                  {ev.linkEnabled && ev.publicToken ? <CopyField value={publicEventUrl(ev.publicToken, ev.event.slug ?? ev.eventId)} size="sm" label="Copiar link" /> : null}
+                  {ev.codeEnabled && ev.code ? (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="rounded-pill bg-brand-soft px-2.5 py-1 font-mono text-caption font-semibold tracking-wide text-brand">{ev.code}</span>
+                      <Button variant="subtle" size="sm" leftIcon="copy" onClick={() => void copy(ev.code as string)}>
+                        Copiar código
+                      </Button>
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })}
           </div>
         )}
-      </div>
+      </section>
 
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-gray-900">
-          {eventId ? "Vendas atribuídas a você neste evento" : "Todas as vendas atribuídas a você"}
-        </h3>
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold text-foreground">{eventId ? "Vendas atribuídas a você neste evento" : "Todas as vendas atribuídas a você"}</h3>
         {loadingSales ? (
-          <TableSkeleton />
+          <Skeleton className="h-56 rounded-card" />
         ) : !sales || sales.length === 0 ? (
-          <EmptyState title="Nenhuma venda ainda" description="Vendas feitas pelo seu link ou código aparecem aqui — nunca com dados pessoais de quem comprou." />
+          <EmptyState icon="cart" title="Nenhuma venda ainda" description="Vendas feitas pelo seu link ou código aparecem aqui — nunca com dados pessoais de quem comprou." />
         ) : (
-          <div className="rounded-xl border border-black/10 bg-white">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Evento</TableHead>
-                  <TableHead>Canal</TableHead>
-                  <TableHead>Valor líquido</TableHead>
-                  <TableHead>Sua comissão</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sales.map((s) => (
-                  <TableRow key={s.attributionId}>
-                    <TableCell>{s.eventName}</TableCell>
-                    <TableCell>{s.source === "LINK" ? "Link" : "Código"}</TableCell>
-                    <TableCell>{formatCents(s.netNominalCentsAfterDiscount)}</TableCell>
-                    <TableCell>{formatCents(s.commissionCents)}</TableCell>
-                    <TableCell>{s.commissionStatus ? COMMISSION_STATUS_LABEL[s.commissionStatus] : "—"}</TableCell>
-                  </TableRow>
+          <DataTableShell
+            table={
+              <DataTable>
+                <DataTableHead>
+                  <tr>
+                    <DataTableHeadCell>Data</DataTableHeadCell>
+                    <DataTableHeadCell>Evento</DataTableHeadCell>
+                    <DataTableHeadCell>Canal</DataTableHeadCell>
+                    <DataTableHeadCell align="right">Valor líquido</DataTableHeadCell>
+                    <DataTableHeadCell align="right">Sua comissão</DataTableHeadCell>
+                    <DataTableHeadCell>Status</DataTableHeadCell>
+                  </tr>
+                </DataTableHead>
+                <DataTableBody>
+                  {sales.map((s, i) => (
+                    <DataTableRow key={s.attributionId} index={i}>
+                      <DataTableCell className="tnum">{fmtDate(s.attributedAt)}</DataTableCell>
+                      <DataTableCell className="font-medium">{s.eventName}</DataTableCell>
+                      <DataTableCell>{s.source === "LINK" ? "Link" : "Código"}</DataTableCell>
+                      <DataTableCell num>{formatCents(s.netNominalCentsAfterDiscount)}</DataTableCell>
+                      <DataTableCell num className="font-semibold text-money-in">
+                        {formatCents(s.commissionCents)}
+                      </DataTableCell>
+                      <DataTableCell>{s.commissionStatus ? <StatusBadge tone={COMMISSION_TONE[s.commissionStatus]}>{COMMISSION_STATUS_LABEL[s.commissionStatus]}</StatusBadge> : <span className="text-subtle-foreground">—</span>}</DataTableCell>
+                    </DataTableRow>
+                  ))}
+                </DataTableBody>
+              </DataTable>
+            }
+            mobile={
+              <MobileCardList>
+                {sales.map((s, i) => (
+                  <MobileCard key={s.attributionId} index={i} title={s.eventName} subtitle={`${s.source === "LINK" ? "Link" : "Código"} · ${fmtDate(s.attributedAt)}`} badge={s.commissionStatus ? <StatusBadge tone={COMMISSION_TONE[s.commissionStatus]}>{COMMISSION_STATUS_LABEL[s.commissionStatus]}</StatusBadge> : undefined} meta={[{ label: "Valor líquido", value: formatCents(s.netNominalCentsAfterDiscount), num: true }, { label: "Sua comissão", value: <span className="font-semibold text-money-in">{formatCents(s.commissionCents)}</span>, num: true }]} />
                 ))}
-              </TableBody>
-            </Table>
-          </div>
+              </MobileCardList>
+            }
+          />
         )}
-      </div>
+      </section>
     </div>
   );
 }

@@ -1,68 +1,50 @@
-"use client"
+"use client";
 
-import { useRouter, useSearchParams } from "next/navigation"
-import { EventoEditorSidebar } from "./EventoEditorSidebar"
-import { EventoEditorHeader } from "./EventoEditorHeader"
-import { EventoData, SectionProps } from "./types"
-import { DEFAULT_SECTION } from "./section-registry"
-import SectionVisaoGeral from "./sections/SectionVisaoGeral"
-import SectionInformacoes from "./sections/SectionInformacoes"
-import SectionDetalhes from "./sections/SectionDetalhes"
-import SectionIngressos from "./sections/SectionIngressos"
-import SectionImagens from "./sections/SectionImagens"
-import SectionPublicacao from "./sections/SectionPublicacao"
-import SectionConfiguracoes from "./sections/SectionConfiguracoes"
-import SectionCupons from "./sections/SectionCupons"
-import SectionVendas from "./sections/SectionVendas"
-import SectionEquipe from "./sections/SectionEquipe"
-import SectionAccess from "./sections/SectionAccess"
+import type { ComponentType } from "react";
+import { useUrlTab } from "../../../_hooks/use-url-tab";
+import { EventoEditorHeader } from "./EventoEditorHeader";
+import { EventoEditorTabs } from "./EventoEditorTabs";
+import { DEFAULT_SECTION, SECTION_KEYS, type SectionKey } from "./section-registry";
+import type { EventoData, SectionProps } from "./types";
+import SectionVisaoGeral from "./sections/SectionVisaoGeral";
+import SectionInformacoes from "./sections/SectionInformacoes";
+import SectionDetalhes from "./sections/SectionDetalhes";
+import SectionIngressos from "./sections/SectionIngressos";
+import SectionImagens from "./sections/SectionImagens";
+import SectionPublicacao from "./sections/SectionPublicacao";
+import SectionConfiguracoes from "./sections/SectionConfiguracoes";
+import SectionCupons from "./sections/SectionCupons";
+import SectionVendas from "./sections/SectionVendas";
+import SectionEquipe from "./sections/SectionEquipe";
+import SectionAccess from "./sections/SectionAccess";
 
-const SECTION_COMPONENTS: Record<string, React.ComponentType<SectionProps>> = {
-  "visao-geral":   SectionVisaoGeral,
-  "informacoes":   SectionInformacoes,
-  "detalhes":      SectionDetalhes,
-  "ingressos":     SectionIngressos,
-  "imagens":       SectionImagens,
-  "publicacao":    SectionPublicacao,
-  "configuracoes": SectionConfiguracoes,
-  "cupons":        SectionCupons,
-  "vendas":        SectionVendas,
-  "equipe":        SectionEquipe,
-  // "access" (Nokta Access) removido de SECTIONS (ver section-registry.ts)
-  // — mapeamento mantido de propósito, só sem link nenhum apontando pra cá
-  // (?tab=access ainda technically renderiza se alguém digitar a URL, mas
-  // é inacessível na prática sem nenhum botão/aba visível).
-  "access":        SectionAccess,
-}
+const SECTION_COMPONENTS: Record<SectionKey, ComponentType<SectionProps>> = {
+  "visao-geral": SectionVisaoGeral,
+  informacoes: SectionInformacoes,
+  detalhes: SectionDetalhes,
+  ingressos: SectionIngressos,
+  imagens: SectionImagens,
+  publicacao: SectionPublicacao,
+  configuracoes: SectionConfiguracoes,
+  cupons: SectionCupons,
+  vendas: SectionVendas,
+  equipe: SectionEquipe,
+  // "access" não tem aba (ver section-registry.ts) — só renderiza por URL.
+  access: SectionAccess,
+};
 
-interface Props {
-  event: EventoData
-  onRefresh: () => void
-}
-
-export function EventoEditorLayout({ event, onRefresh }: Props) {
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const activeKey = searchParams.get("tab") || DEFAULT_SECTION
-
-  const ActiveSection =
-    SECTION_COMPONENTS[activeKey] ?? SECTION_COMPONENTS[DEFAULT_SECTION]
-
-  const handleSelect = (key: string) => {
-    const params = new URLSearchParams(searchParams.toString())
-    params.set("tab", key)
-    router.push(`?${params.toString()}`, { scroll: false })
-  }
+/** Editor do evento: cabeçalho + abas sincronizadas com `?tab=` + seção ativa. Também usado pelo painel admin. */
+export function EventoEditorLayout({ event, onRefresh }: { event: EventoData; onRefresh: () => void }) {
+  const [activeKey, setTab] = useUrlTab<SectionKey>(SECTION_KEYS, DEFAULT_SECTION);
+  const ActiveSection = SECTION_COMPONENTS[activeKey] ?? SECTION_COMPONENTS[DEFAULT_SECTION];
 
   return (
-    <section className="w-full">
-      <EventoEditorHeader event={event} />
-      <div className="flex gap-5 items-start">
-        <EventoEditorSidebar activeKey={activeKey} onSelect={handleSelect} />
-        <main className="flex-1 min-w-0">
-          <ActiveSection event={event} onRefresh={onRefresh} />
-        </main>
+    <div className="space-y-5">
+      <EventoEditorHeader event={event} onRefresh={onRefresh} onGoTo={setTab} />
+      <EventoEditorTabs value={activeKey} onChange={setTab} />
+      <div key={activeKey} className="route-enter">
+        <ActiveSection event={event} onRefresh={onRefresh} onGoTo={setTab} />
       </div>
-    </section>
-  )
+    </div>
+  );
 }

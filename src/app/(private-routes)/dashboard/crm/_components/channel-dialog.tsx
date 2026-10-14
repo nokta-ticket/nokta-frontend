@@ -2,17 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Loader2, Minus, X } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/cn";
 import { crmKeys, type CrmChannel, type CrmContact } from "@/services/crm";
-import { crmMarketingApi, crmMarketingKeys, type CrmTemplatePreview } from "@/services/crm-marketing";
-import { BlockSkeleton } from "../../_components/states/loading-state";
-import { PRESSABLE } from "../../financeiro/_components/finance-ui";
-import { BTN_PRIMARY, BTN_SECONDARY, CHANNEL_LABEL, ChannelIcon, FIELD, LINK, channelStatus, formatPhone } from "./crm-ui";
-import { Blockers, EmailPreviewFrame, EstimateSummary, WhatsappBubble } from "./marketing-ui";
+import { crmMarketingApi, crmMarketingKeys } from "@/services/crm-marketing";
+import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Field } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { CHANNEL_LABEL, ChannelIcon, channelStatus, formatPhone, type CrmTabKey } from "./crm-ui";
+import { Blockers, EstimateSummary, PreviewBox } from "./marketing-ui";
 
 type Mark = "ok" | "no" | "na";
 
@@ -21,22 +24,7 @@ type Mark = "ok" | "no" | "na";
  * deixa escolher um modelo, revisar e só então enviar. Abrir esta janela
  * nunca dispara nada.
  */
-export function ChannelDialog({
-  orgId,
-  target,
-  onClose,
-  onOpenContact,
-  onGoTo,
-  canSend,
-}: {
-  orgId: number;
-  target: { contact: CrmContact; channel: CrmChannel } | null;
-  onClose: () => void;
-  onOpenContact: (contactId: number) => void;
-  onGoTo: (tab: "templates" | "channels") => void;
-  /** Sem permissão de campanhas a janela só informa: nunca oferece envio. */
-  canSend: boolean;
-}) {
+export function ChannelDialog({ orgId, target, onClose, onOpenContact, onGoTo, canSend }: { orgId: number; target: { contact: CrmContact; channel: CrmChannel } | null; onClose: () => void; onOpenContact: (contactId: number) => void; onGoTo: (tab: CrmTabKey) => void; /** Sem permissão de campanhas a janela só informa: nunca oferece envio. */ canSend: boolean }) {
   const queryClient = useQueryClient();
   const [templateId, setTemplateId] = useState<number | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -94,89 +82,105 @@ export function ChannelDialog({
   const marks: [string, Mark, string][] = state
     ? [
         [channel === "EMAIL" ? "E-mail cadastrado" : "Telefone cadastrado", address ? "ok" : "no", address ?? "Não há"],
-        [
-          "Sem restrição",
-          !address ? "na" : state.reason === "OPTED_OUT" || state.reason === "SUPPRESSED" ? "no" : "ok",
-          !address ? "—" : state.reason === "OPTED_OUT" || state.reason === "SUPPRESSED" ? (status?.short ?? "") : "Não saiu nem está bloqueado",
-        ],
-        [
-          "Pode receber divulgação",
-          eligible ? "ok" : !address || state.reason === "OPTED_OUT" || state.reason === "SUPPRESSED" ? "na" : "no",
-          eligible ? (state.legalBasis === "CONSENT" ? "Autorizou receber" : "Tem ingresso de evento seu") : state.reason === "NO_CONSENT" ? "Ainda não autorizou" : "—",
-        ],
+        ["Sem restrição", !address ? "na" : state.reason === "OPTED_OUT" || state.reason === "SUPPRESSED" ? "no" : "ok", !address ? "—" : state.reason === "OPTED_OUT" || state.reason === "SUPPRESSED" ? (status?.short ?? "") : "Não saiu nem está bloqueado"],
+        ["Pode receber divulgação", eligible ? "ok" : !address || state.reason === "OPTED_OUT" || state.reason === "SUPPRESSED" ? "na" : "no", eligible ? (state.legalBasis === "CONSENT" ? "Autorizou receber" : "Tem ingresso de evento seu") : state.reason === "NO_CONSENT" ? "Ainda não autorizou" : "—"],
       ]
     : [];
 
+  const showFooter = eligible && canSend && template && !channelBlocked;
+
   return (
     <Dialog open={target !== null} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[92dvh] gap-0 overflow-y-auto p-0 sm:max-w-[560px]">
+      <DialogContent size="lg">
         {contact && state && status ? (
           <>
-            <DialogHeader className="gap-1 border-b border-[#ebe8f2] px-6 pb-4 pt-6 pr-12 text-left">
-              <DialogTitle className="flex items-center gap-2.5 text-[18px] font-semibold text-[#1c1a24]">
-                <span className={eligible ? "text-emerald-700" : "text-[#8a8796]"}>
-                  <ChannelIcon channel={channel} size={19} />
-                </span>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2.5">
+                <ChannelIcon channel={channel} size={16} className={eligible ? "text-success" : "text-subtle-foreground"} />
                 {CHANNEL_LABEL[channel]} de {contact.name}
               </DialogTitle>
-              <DialogDescription className="text-[14px] text-[#5f5c6b]">{address ?? (channel === "EMAIL" ? "Sem e-mail cadastrado" : "Sem telefone cadastrado")}</DialogDescription>
+              <DialogDescription>{address ?? (channel === "EMAIL" ? "Sem e-mail cadastrado" : "Sem telefone cadastrado")}</DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-5 px-6 py-5 text-[14px] text-[#1c1a24]">
-              <ul className="divide-y divide-[#f2f0f7] rounded-[14px] border border-[#ebe8f2]">
+            <DialogBody className="gap-4 text-sm">
+              <ul className="divide-y divide-border rounded-xl border border-border">
                 {marks.map(([label, mark, detail]) => (
                   <li key={label} className="flex items-center justify-between gap-4 px-4 py-3">
-                    <span className="flex items-center gap-2.5">
-                      <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full", mark === "ok" ? "bg-emerald-50 text-emerald-700" : mark === "no" ? "bg-[#fcf2f4] text-[#9b1c35]" : "bg-[#f4f2f8] text-[#a19eae]")}>
-                        {mark === "ok" ? <Check size={13} strokeWidth={2.6} aria-hidden="true" /> : mark === "no" ? <X size={13} strokeWidth={2.6} aria-hidden="true" /> : <Minus size={13} strokeWidth={2.6} aria-hidden="true" />}
+                    <span className="flex items-center gap-2.5 text-foreground">
+                      <span className={cn("flex size-5 shrink-0 items-center justify-center rounded-full", mark === "ok" ? "bg-success-bg text-success" : mark === "no" ? "bg-danger-bg text-danger" : "bg-surface-2 text-subtle-foreground")}>
+                        <Icon name={mark === "ok" ? "check" : mark === "no" ? "close" : "minus"} size={9} />
                       </span>
                       {label}
                     </span>
-                    <span className="min-w-0 truncate text-right text-[13.5px] text-[#5f5c6b]">{detail}</span>
+                    <span className="min-w-0 truncate text-right text-caption text-muted-foreground">{detail}</span>
                   </li>
                 ))}
               </ul>
 
               {!eligible ? (
-                <div className="rounded-[14px] bg-[#faf8ff] px-4 py-3.5">
-                  <p className="font-semibold">Este contato não recebe {CHANNEL_LABEL[channel]} seu.</p>
-                  <p className="mt-1 text-[13.5px] leading-relaxed text-[#5f5c6b]">{status.detail}</p>
+                <Callout tone="neutral" title={`Este contato não recebe ${CHANNEL_LABEL[channel]} seu.`}>
+                  {status.detail}
                   {state.reason === "NO_CONSENT" ? (
-                    <button type="button" onClick={() => (onClose(), onOpenContact(contact.id))} className={cn(LINK, "mt-2.5", PRESSABLE)}>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="mt-1.5 block h-auto"
+                      onClick={() => {
+                        onClose();
+                        onOpenContact(contact.id);
+                      }}
+                    >
                       Registrar autorização no cadastro do contato
-                    </button>
+                    </Button>
                   ) : null}
-                </div>
+                </Callout>
               ) : !canSend ? (
-                <p className="rounded-[14px] bg-[#faf8ff] px-4 py-3.5 text-[13.5px] leading-relaxed text-[#3a3746]">Este contato pode receber. Enviar mensagens depende de permissão: peça ao proprietário do workspace.</p>
+                <Callout tone="neutral">Este contato pode receber. Enviar mensagens depende de permissão: peça ao proprietário do workspace.</Callout>
               ) : templates.isLoading || estimate.isLoading ? (
-                <BlockSkeleton className="h-32" />
+                <Skeleton className="h-32 rounded-xl" />
               ) : channelBlocked ? (
                 <>
                   <Blockers items={blockers} title={`Falta para enviar por ${CHANNEL_LABEL[channel]}`} />
-                  <button type="button" onClick={() => (onClose(), onGoTo("channels"))} className={cn(BTN_SECONDARY, PRESSABLE)}>
+                  <Button
+                    variant="outline"
+                    className="self-start"
+                    onClick={() => {
+                      onClose();
+                      onGoTo("channels");
+                    }}
+                  >
                     Abrir Canais
-                  </button>
+                  </Button>
                 </>
               ) : usable.length === 0 ? (
-                <div className="rounded-[14px] bg-[#faf8ff] px-4 py-3.5">
-                  <p className="font-semibold">{channel === "EMAIL" ? "Você ainda não tem um modelo de e-mail pronto." : "Você ainda não tem um modelo de WhatsApp aprovado pela Meta."}</p>
-                  <p className="mt-1 text-[13.5px] leading-relaxed text-[#5f5c6b]">A mensagem individual usa um modelo, como as campanhas.</p>
-                  <button type="button" onClick={() => (onClose(), onGoTo("templates"))} className={cn(LINK, "mt-2.5", PRESSABLE)}>
-                    Criar um modelo
-                  </button>
-                </div>
+                <Callout
+                  tone="neutral"
+                  title={channel === "EMAIL" ? "Você ainda não tem um modelo de e-mail pronto." : "Você ainda não tem um modelo de WhatsApp aprovado pela Meta."}
+                  action={
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        onClose();
+                        onGoTo("templates");
+                      }}
+                    >
+                      Criar modelo
+                    </Button>
+                  }
+                >
+                  A mensagem individual usa um modelo, como as campanhas.
+                </Callout>
               ) : (
                 <>
-                  <label className="block">
-                    <span className="mb-1.5 block text-[13.5px] font-semibold">Modelo</span>
-                    <select
+                  <Field label="Modelo" htmlFor="channel-template">
+                    <NativeSelect
+                      id="channel-template"
                       value={templateId ?? ""}
                       onChange={(e) => {
                         setTemplateId(e.target.value ? Number(e.target.value) : null);
                         setConfirming(false);
                       }}
-                      className={cn(FIELD, "w-full px-3")}
                     >
                       <option value="">Escolha o que enviar</option>
                       {usable.map((t) => (
@@ -184,20 +188,14 @@ export function ChannelDialog({
                           {t.name}
                         </option>
                       ))}
-                    </select>
-                  </label>
+                    </NativeSelect>
+                  </Field>
 
-                  {template ? (
-                    preview.data ? (
-                      <Preview preview={preview.data} />
-                    ) : (
-                      <BlockSkeleton className="h-48" />
-                    )
-                  ) : null}
+                  {template ? preview.data ? <PreviewBox preview={preview.data} height="h-[320px]" /> : <Skeleton className="h-48 rounded-xl" /> : null}
 
                   {template && estimate.data ? (
                     <>
-                      <div className="rounded-[14px] border border-[#ebe8f2] px-4">
+                      <div className="rounded-xl border border-border px-4">
                         <EstimateSummary estimate={estimate.data} channel={channel} individual />
                       </div>
                       <Blockers items={blockers} />
@@ -205,48 +203,35 @@ export function ChannelDialog({
                   ) : null}
                 </>
               )}
-            </div>
+            </DialogBody>
 
-            {eligible && canSend && template && !channelBlocked ? (
-              <div className="flex items-center justify-end gap-2 border-t border-[#ebe8f2] px-6 py-4">
+            {showFooter ? (
+              <DialogFooter>
                 {confirming ? (
                   <>
-                    <span className="mr-auto text-[13.5px] text-[#3a3746]">Enviar agora para {contact.name.split(" ")[0]}?</span>
-                    <button type="button" onClick={() => setConfirming(false)} className={cn(BTN_SECONDARY, PRESSABLE)}>
+                    <span className="mr-auto text-caption text-muted-foreground">Enviar agora para {contact.name.split(" ")[0]}?</span>
+                    <Button variant="ghost" onClick={() => setConfirming(false)}>
                       Voltar
-                    </button>
-                    <button type="button" disabled={send.isPending} onClick={() => send.mutate()} className={cn(BTN_PRIMARY, PRESSABLE)}>
-                      {send.isPending ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : null}
+                    </Button>
+                    <Button leftIcon="send" loading={send.isPending} onClick={() => send.mutate()}>
                       Enviar
-                    </button>
+                    </Button>
                   </>
                 ) : (
                   <>
-                    <button type="button" onClick={onClose} className={cn(BTN_SECONDARY, PRESSABLE)}>
+                    <Button variant="ghost" onClick={onClose}>
                       Fechar
-                    </button>
-                    <button type="button" disabled={blockers.length > 0 || !estimate.data} onClick={() => setConfirming(true)} className={cn(BTN_PRIMARY, PRESSABLE)}>
+                    </Button>
+                    <Button disabled={blockers.length > 0 || !estimate.data} onClick={() => setConfirming(true)}>
                       Revisei, quero enviar
-                    </button>
+                    </Button>
                   </>
                 )}
-              </div>
+              </DialogFooter>
             ) : null}
           </>
         ) : null}
       </DialogContent>
     </Dialog>
-  );
-}
-
-function Preview({ preview }: { preview: CrmTemplatePreview }) {
-  if (preview.channel === "WHATSAPP") return <WhatsappBubble preview={preview} />;
-  return (
-    <div>
-      <p className="mb-2 text-[13.5px]">
-        <span className="text-[#6b6878]">Assunto:</span> <span className="font-medium">{preview.subject}</span>
-      </p>
-      <EmailPreviewFrame html={preview.html} className="h-[320px]" />
-    </div>
   );
 }

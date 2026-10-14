@@ -1,86 +1,189 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, ExternalLink, Calendar, Ticket } from "lucide-react"
-import { EventoData } from "./types"
-import { formatarDataCurta } from "@/lib/formatarData"
-import { cn } from "@/lib/utils"
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import api, { getErrorMessage } from "@/lib/axios";
+import { toast } from "@/lib/toast";
+import { formatEventDateTime } from "@/lib/format";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Icon } from "@/components/ui/icon";
+import { PageHeader } from "@/components/ui/page-header";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { StatusBadge } from "@/components/ui/badge";
+import { EVENT_STATUS, eventStatusMeta } from "../../_lib/event-meta";
+import type { SectionKey } from "./section-registry";
+import type { EventoData } from "./types";
 
-const STATUS_BADGE: Record<number, { label: string; className: string }> = {
-  1: { label: "Rascunho",   className: "bg-gray-100 text-gray-600 border-gray-200" },
-  2: { label: "Ativo",      className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  3: { label: "Cancelado",  className: "bg-red-50 text-red-600 border-red-200" },
-  4: { label: "Finalizado", className: "bg-blue-50 text-blue-600 border-blue-200" },
-}
+/**
+ * Cabeçalho do editor: voltar, nome, status, data · local e as ações que
+ * mudam o estado do evento (ver página, publicar/despublicar, cancelar,
+ * excluir). Os endpoints são os mesmos das seções Publicação/Configurações.
+ */
+export function EventoEditorHeader({ event, onRefresh, onGoTo }: { event: EventoData; onRefresh: () => void; onGoTo?: (key: SectionKey) => void }) {
+  const router = useRouter();
+  const meta = eventStatusMeta(event.status);
+  const [busy, setBusy] = useState<"publish" | "unpublish" | null>(null);
+  const [confirm, setConfirm] = useState<"cancel" | "delete" | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-interface Props {
-  event: EventoData
-}
+  const isDraft = event.status === EVENT_STATUS.DRAFT;
+  const isPublished = event.status === EVENT_STATUS.PUBLISHED;
+  const isTerminal = event.status === EVENT_STATUS.CANCELLED || event.status === EVENT_STATUS.FINISHED;
+  const hasImages = (event.thumbnails?.length ?? 0) > 0;
+  const hasTickets = (event.ingressos?.length ?? 0) > 0;
+  const canPublish = hasImages && hasTickets;
+  const capacity = event.ingressos?.filter((t) => !t.vip).reduce((acc, t) => acc + t.quantidade, 0) ?? 0;
+  const place = event.local || event.endereco?.localidade || null;
 
-export function EventoEditorHeader({ event }: Props) {
-  const badge = STATUS_BADGE[event.status] ?? { label: "Desconhecido", className: "bg-gray-100 text-gray-500 border-gray-200" }
-  const totalCapacity = event.ingressos?.reduce((acc, t) => acc + t.quantidade, 0) ?? 0
+  const publish = async () => {
+    setBusy("publish");
+    try {
+      await api.patch(`/produtor/eventos/${event.id}/publicar`);
+      toast.success("Evento publicado! Já dá pra comprar ingresso.");
+      onRefresh();
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Não foi possível publicar o evento."));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const unpublish = async () => {
+    setBusy("unpublish");
+    try {
+      await api.patch(`/produtor/eventos/${event.id}/despublicar`);
+      toast.success("Evento despublicado. Voltou pra rascunho.");
+      onRefresh();
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Não foi possível despublicar o evento."));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const cancel = async () => {
+    try {
+      await api.patch(`/produtor/eventos/${event.id}/cancelar`);
+      toast.success("Evento cancelado.");
+      onRefresh();
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Não foi possível cancelar o evento."));
+      throw err;
+    }
+  };
+
+  const remove = async () => {
+    try {
+      await api.delete(`/produtor/eventos/${event.id}`);
+      toast.success("Evento excluído.");
+      router.push("/dashboard/eventos");
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Não foi possível excluir o evento."));
+      throw err;
+    }
+  };
+
+  const publishTitle = !canPublish ? (!hasTickets && !hasImages ? "Adicione ingressos e uma imagem antes de publicar" : !hasTickets ? "Adicione ao menos um lote de ingressos" : "Adicione ao menos uma imagem") : undefined;
 
   return (
-    <div className="mb-6">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 mb-4">
-        <Link
-          href="/dashboard/eventos"
-          className="flex items-center gap-1.5 text-[13px] text-gray-500 hover:text-gray-800 transition-colors"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Meus Eventos
-        </Link>
-        <span className="text-gray-300">/</span>
-        <span className="text-[13px] text-gray-700 font-medium truncate max-w-[300px]">
-          {event.nome || "Evento sem nome"}
-        </span>
-      </div>
-
-      {/* Header card */}
-      <div className="rounded-2xl border border-gray-200/80 bg-white overflow-hidden shadow-sm">
-        <div className="h-[3px] bg-gradient-to-r from-primary via-primary/80 to-primary/30" />
-        <div className="px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-[17px] font-semibold text-gray-900 leading-tight">
-                {event.nome || "Evento sem nome"}
-              </h1>
-              <Badge className={cn("text-[11px] font-semibold border px-2.5 py-0.5", badge.className)}>
-                {badge.label}
-              </Badge>
-            </div>
-            <div className="flex items-center gap-4 mt-1.5 flex-wrap">
-              <div className="flex items-center gap-1.5 text-[12px] text-gray-500">
-                <Calendar className="w-3.5 h-3.5" />
-                <span>{event.data ? formatarDataCurta(event.data) : "Data não definida"}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-[12px] text-gray-500">
-                <Ticket className="w-3.5 h-3.5" />
-                <span>
-                  {totalCapacity} {totalCapacity === 1 ? "ingresso disponível" : "ingressos disponíveis"}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="shrink-0">
-            <Link href={`/evento/${event.slug ?? event.id}`} target="_blank">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 gap-1.5 rounded-xl text-[13px] border-gray-200 hover:border-gray-300"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                Visualizar
+    <>
+      <PageHeader
+        back="/dashboard/eventos"
+        title={event.nome || "Evento sem nome"}
+        badge={<StatusBadge tone={meta.tone}>{meta.label}</StatusBadge>}
+        meta={
+          <>
+            <span className="inline-flex items-center gap-1.5">
+              <Icon name="calendar" size={11} />
+              {event.data ? formatEventDateTime(event.data, event.horario) : "Data não definida"}
+            </span>
+            {place ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="map-pin" size={11} />
+                {place}
+              </span>
+            ) : null}
+            <span className="inline-flex items-center gap-1.5 tnum">
+              <Icon name="ticket" size={11} />
+              {capacity.toLocaleString("pt-BR")} {capacity === 1 ? "ingresso" : "ingressos"}
+            </span>
+          </>
+        }
+        actions={
+          <>
+            <Button asChild variant="outline">
+              <Link href={`/evento/${event.slug ?? event.id}`} target="_blank" rel="noreferrer">
+                <Icon name="external" size={14} />
+                <span className="hidden sm:inline">Ver página pública</span>
+                <span className="sm:hidden">Ver página</span>
+              </Link>
+            </Button>
+            {isDraft ? (
+              <span title={publishTitle}>
+                <Button leftIcon="globe" onClick={publish} loading={busy === "publish"} disabled={!canPublish || busy !== null}>
+                  Publicar
+                </Button>
+              </span>
+            ) : null}
+            {isPublished ? (
+              <Button variant="secondary" leftIcon="eye-slash" onClick={unpublish} loading={busy === "unpublish"} disabled={busy !== null}>
+                Despublicar
               </Button>
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+            ) : null}
+            {!isTerminal ? (
+              <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" aria-label="Mais ações">
+                    <Icon name="ellipsis" size={14} />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" sideOffset={6} className="scale-in w-56 rounded-card border-border bg-surface p-1.5 shadow-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onGoTo?.("configuracoes");
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-surface-2"
+                  >
+                    <Icon name="settings" size={13} className="text-muted-foreground" />
+                    Configurações
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setConfirm("cancel");
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-danger-bg hover:text-danger"
+                  >
+                    <Icon name="ban" size={13} />
+                    Cancelar evento
+                  </button>
+                  {isDraft ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setConfirm("delete");
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-danger-bg hover:text-danger"
+                    >
+                      <Icon name="trash" size={13} />
+                      Excluir rascunho
+                    </button>
+                  ) : null}
+                </PopoverContent>
+              </Popover>
+            ) : null}
+          </>
+        }
+      />
+
+      <ConfirmDialog open={confirm === "cancel"} onOpenChange={(o) => (!o ? setConfirm(null) : null)} danger icon="ban" title={`Cancelar "${event.nome}"?`} description="O evento some da bilheteria e ninguém mais compra ingresso. Não dá pra reativar depois." confirmLabel="Cancelar evento" cancelLabel="Voltar" onConfirm={cancel} />
+      <ConfirmDialog open={confirm === "delete"} onOpenChange={(o) => (!o ? setConfirm(null) : null)} danger icon="trash" title={`Excluir "${event.nome}"?`} description="Evento, imagens e tudo que está ligado a ele são removidos de vez. Essa ação não pode ser desfeita." confirmLabel="Excluir de vez" onConfirm={remove} />
+    </>
+  );
 }

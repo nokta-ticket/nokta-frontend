@@ -1,20 +1,18 @@
 "use client";
 
-import { Mail } from "lucide-react";
-import { WhatsappIcon } from "@/components/icons/WhatsappIcon";
 import { useTicketsAccess } from "@/context/TicketsAccessContext";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/cn";
+import { Icon } from "@/components/ui/icon";
 import type { CrmChannel, CrmChannelState, CrmFilterOptions, CrmFilters, CrmSourceType } from "@/services/crm";
 
-export const FIELD =
-  "h-11 rounded-[12px] border border-[#e6e2ef] bg-white text-base outline-none transition-colors focus-visible:border-[#7c3aed] focus-visible:ring-2 focus-visible:ring-[#7c3aed]/20 sm:text-[14px]";
-export const BTN_SECONDARY =
-  "inline-flex h-10 items-center justify-center gap-2 rounded-[10px] border border-[#e6e2ef] bg-white px-3.5 text-[14px] font-semibold text-[#1c1a24] hover:bg-[#faf8ff] disabled:cursor-not-allowed disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-[#7c3aed]";
-export const BTN_PRIMARY =
-  "inline-flex h-10 items-center justify-center gap-2 rounded-[10px] bg-[#7c3aed] px-4 text-[14px] font-semibold text-white hover:bg-[#6d28d9] disabled:cursor-not-allowed disabled:opacity-50 outline-none focus-visible:ring-2 focus-visible:ring-[#7c3aed] focus-visible:ring-offset-2";
-export const LINK = "rounded-md text-[13.5px] font-semibold text-violet-700 hover:text-violet-800 outline-none focus-visible:ring-2 focus-visible:ring-[#7c3aed]";
-
 export const CHANNEL_LABEL: Record<CrmChannel, string> = { EMAIL: "E-mail", WHATSAPP: "WhatsApp" };
+
+/** Abas do CRM (a página sincroniza com `?tab=`). */
+export const CRM_TABS = ["contacts", "audiences", "campaigns", "templates", "channels"] as const;
+export type CrmTabKey = (typeof CRM_TABS)[number];
+
+/** Recorte "trazidos por você": contatos que vieram de planilha. */
+export const IMPORTED_FILTER: CrmFilters = { sources: ["IMPORT"] };
 
 /**
  * O que este usuário pode fazer no CRM. Só esconde o que ele não pode usar:
@@ -39,7 +37,7 @@ export const ELIGIBILITY_RULE =
   "Conta quem pode receber divulgação sua naquele canal: tem o endereço, não pediu para sair e não está bloqueado. Quem comprou, pegou VIP, foi convidado ou recebeu ingresso de um evento seu recebe até pedir para sair. Contato de planilha depende do que foi declarado na importação.";
 
 export function ReadOnlyNote({ children }: { children: string }) {
-  return <p className="rounded-[14px] bg-[#faf8ff] px-4 py-3 text-[13.5px] leading-relaxed text-[#3a3746]">{children}</p>;
+  return <p className="surface-inset rounded-xl px-4 py-3 text-body text-muted-foreground">{children}</p>;
 }
 
 export const SOURCE_LABEL: Record<CrmSourceType, string> = {
@@ -73,24 +71,18 @@ export function ago(iso: string | null): string {
   return months < 24 ? `há ${months} meses` : `há ${Math.floor(months / 12)} anos`;
 }
 
-type ChannelTone = "ok" | "off" | "out";
+export type ChannelTone = "ok" | "off" | "out";
 
 /** O que dizer sobre um canal de um contato: situação curta + explicação. */
 export function channelStatus(channel: CrmChannel, state: CrmChannelState): { tone: ChannelTone; short: string; detail: string } {
   if (state.eligible) {
-    return state.legalBasis === "CONSENT"
-      ? { tone: "ok", short: "Autorizou", detail: "Autorizou receber suas mensagens por este canal." }
-      : { tone: "ok", short: "Pode receber", detail: "Tem ingresso de evento seu: pode receber sua divulgação, sempre com a opção de sair." };
+    return state.legalBasis === "CONSENT" ? { tone: "ok", short: "Autorizou", detail: "Autorizou receber suas mensagens por este canal." } : { tone: "ok", short: "Pode receber", detail: "Tem ingresso de evento seu: pode receber sua divulgação, sempre com a opção de sair." };
   }
   if (state.reason === "NO_ADDRESS") {
     return { tone: "off", short: channel === "EMAIL" ? "Sem e-mail" : "Sem telefone", detail: channel === "EMAIL" ? "Não há e-mail cadastrado." : "Não há telefone cadastrado." };
   }
   if (state.reason === "NO_CONSENT") {
-    return {
-      tone: "off",
-      short: "Não autorizou",
-      detail: "Veio de planilha sem autorização declarada. Registre a autorização quando a pessoa pedir.",
-    };
+    return { tone: "off", short: "Não autorizou", detail: "Veio de planilha sem autorização declarada. Registre a autorização quando a pessoa pedir." };
   }
   if (state.suppressionReason === "MANUAL_BLOCK") return { tone: "out", short: "Bloqueado", detail: "Você bloqueou este contato. Dá para desbloquear quando quiser." };
   if (state.suppressionReason === "BOUNCE" || state.suppressionReason === "INVALID") return { tone: "out", short: "Endereço inválido", detail: "As mensagens para este endereço voltam." };
@@ -98,14 +90,15 @@ export function channelStatus(channel: CrmChannel, state: CrmChannelState): { to
   return { tone: "out", short: "Pediu para sair", detail: "A pessoa pediu para não receber mais. Só ela pode voltar a autorizar." };
 }
 
-const TONE_CLASS: Record<ChannelTone, string> = {
-  ok: "bg-emerald-50 text-emerald-700",
-  off: "bg-[#f4f2f8] text-[#a19eae]",
-  out: "bg-[#fcf2f4] text-[#9b1c35]",
+export const TONE_TEXT: Record<ChannelTone, string> = { ok: "text-success", off: "text-subtle-foreground", out: "text-danger" };
+const TONE_MARK: Record<ChannelTone, string> = {
+  ok: "bg-success-bg text-success ring-success-ring",
+  off: "bg-surface-2 text-subtle-foreground ring-border",
+  out: "bg-danger-bg text-danger ring-danger-ring",
 };
 
-export function ChannelIcon({ channel, size = 15 }: { channel: CrmChannel; size?: number }) {
-  return channel === "EMAIL" ? <Mail size={size} strokeWidth={1.8} aria-hidden="true" /> : <WhatsappIcon size={size - 1} />;
+export function ChannelIcon({ channel, size = 14, className }: { channel: CrmChannel; size?: number; className?: string }) {
+  return <Icon name={channel === "EMAIL" ? "mail" : "whatsapp"} size={size} className={className} />;
 }
 
 /**
@@ -125,10 +118,7 @@ export function ChannelMark({ channel, state, onOpen }: { channel: CrmChannel; s
         e.stopPropagation();
         onOpen();
       }}
-      className={cn(
-        "flex h-8 w-8 items-center justify-center rounded-full outline-none transition-[transform,box-shadow] duration-150 ease-out hover:shadow-[0_0_0_3px_rgba(124,58,237,0.16)] focus-visible:ring-2 focus-visible:ring-[#7c3aed] active:scale-[0.94]",
-        TONE_CLASS[status.tone],
-      )}
+      className={cn("press flex size-8 items-center justify-center rounded-full ring-1 ring-inset outline-none transition-[box-shadow] duration-150 hover:ring-2 hover:ring-brand-ring focus-visible:ring-2 focus-visible:ring-brand", TONE_MARK[status.tone])}
     >
       <ChannelIcon channel={channel} />
     </button>
@@ -169,4 +159,9 @@ export function sameFilters(a: CrmFilters, b: CrmFilters): boolean {
 
 export function hasFilters(filters: CrmFilters): boolean {
   return !sameFilters(filters, {});
+}
+
+/** Texto curto de apoio ("Só você vê", explicações). */
+export function Note({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <p className={cn("text-caption leading-relaxed text-muted-foreground", className)}>{children}</p>;
 }

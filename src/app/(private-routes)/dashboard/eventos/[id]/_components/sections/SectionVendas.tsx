@@ -1,289 +1,237 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import {
-  BarChart2, TrendingUp, Ticket, DollarSign,
-  ShoppingBag, CheckCircle2, Clock, XCircle,
-} from "lucide-react"
-import { toast } from "@/lib/toast"
-import { cn } from "@/lib/utils"
-import api from "@/lib/axios"
-import { SectionProps } from "../types"
+import { useEffect, useState } from "react";
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import api, { getErrorMessage } from "@/lib/axios";
+import { toast } from "@/lib/toast";
+import { cn } from "@/lib/cn";
+import { formatBRL } from "@/lib/format";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeadCell, DataTableRow, DataTableShell, MobileCard, MobileCardList } from "@/components/ui/data-table";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatCard } from "@/components/ui/stat-card";
+import { StatusBadge } from "@/components/ui/badge";
+import { ORDER_STATUS_META, ordinal } from "../../../_lib/event-meta";
+import type { SectionProps } from "../types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface VendasData {
-  faturamentoBruto:   number
-  totalDesconto:      number
-  ingressosVendidos:  number
-  taxasEstimadas:     number
-  valorLiquido:       number
-  feePercent:         number
-  vendasPorLote:      { lote: number; quantidade: number; valor: number }[]
-  vendasPorTipo:      { nome: string; quantidade: number; valor: number }[]
-  vendasPorDia:       { data: string; pedidos: number }[]
-  pedidosRecentes:    {
-    id: number; code: string; status: number; totalValue: number
-    desconto: number; codigoCupom: string | null; quantidade: number
-    comprador: string; email: string; criadoEm: string
-  }[]
+  faturamentoBruto: number;
+  totalDesconto: number;
+  ingressosVendidos: number;
+  taxasEstimadas: number;
+  valorLiquido: number;
+  feePercent: number;
+  vendasPorLote: { lote: number; quantidade: number; valor: number }[];
+  vendasPorTipo: { nome: string; quantidade: number; valor: number }[];
+  vendasPorDia: { data: string; pedidos: number }[];
+  pedidosRecentes: {
+    id: number;
+    code: string;
+    status: number;
+    totalValue: number;
+    desconto: number;
+    codigoCupom: string | null;
+    quantidade: number;
+    comprador: string;
+    email: string;
+    criadoEm: string;
+  }[];
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const ORDER_STATUS: Record<number, { label: string; icon: React.ElementType; cls: string }> = {
-  1: { label: "Pendente",  icon: Clock,         cls: "text-amber-600 bg-amber-50 border-amber-200"  },
-  2: { label: "Pago",      icon: CheckCircle2,  cls: "text-emerald-700 bg-emerald-50 border-emerald-200" },
-  3: { label: "Cancelado", icon: XCircle,       cls: "text-red-600 bg-red-50 border-red-200"        },
-  4: { label: "Falhou",    icon: XCircle,       cls: "text-gray-500 bg-gray-100 border-gray-200"    },
-}
-
-// ─── Shared UI ────────────────────────────────────────────────────────────────
-
-function CardShell({ children }: { children: React.ReactNode }) {
+function OrdersTooltip({ active, payload, label }: { active?: boolean; payload?: { value?: number }[]; label?: string }) {
+  if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-2xl border border-gray-200/80 bg-white overflow-hidden shadow-[0_4px_24px_-6px_rgb(0_0_0/0.10),_0_2px_8px_-3px_rgb(0_0_0/0.06)]">
-      <div className="h-[3px] bg-gradient-to-r from-primary via-primary/80 to-primary/30" />
-      {children}
+    <div className="scale-in rounded-xl border border-border bg-surface px-3 py-2 text-caption shadow-2">
+      <p className="text-muted-foreground">{label}</p>
+      <p className="mt-0.5 font-semibold text-foreground tnum">
+        {payload[0].value} {payload[0].value === 1 ? "pedido" : "pedidos"}
+      </p>
     </div>
-  )
-}
-
-function MetricCard({
-  icon: Icon, label, value, sub, accent = false,
-}: {
-  icon: React.ElementType; label: string; value: string; sub?: string; accent?: boolean
-}) {
-  return (
-    <div className={cn(
-      "rounded-xl border p-4 flex items-start gap-3",
-      accent
-        ? "border-primary/20 bg-primary/[0.04]"
-        : "border-gray-200/80 bg-white",
-    )}>
-      <div className={cn(
-        "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
-        accent ? "bg-primary/10" : "bg-gray-100",
-      )}>
-        <Icon className={cn("w-4 h-4", accent ? "text-primary" : "text-gray-500")} />
-      </div>
-      <div>
-        <p className="text-[11px] text-gray-500 font-medium uppercase tracking-wide">{label}</p>
-        <p className={cn("text-[18px] font-bold mt-0.5", accent ? "text-primary" : "text-gray-900")}>
-          {value}
-        </p>
-        {sub && <p className="text-[11px] text-gray-400 mt-0.5">{sub}</p>}
-      </div>
-    </div>
-  )
-}
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-[12px] font-bold text-gray-500 uppercase tracking-widest mb-3">{children}</p>
-  )
-}
-
-// ─── Mini bar chart ───────────────────────────────────────────────────────────
-
-function MiniBarChart({ data }: { data: { data: string; pedidos: number }[] }) {
-  const max = Math.max(...data.map((d) => d.pedidos), 1)
-  return (
-    <div className="flex items-end gap-1 h-20">
-      {data.map((d) => (
-        <div key={d.data} className="flex-1 flex flex-col items-center gap-1 group relative">
-          <div
-            className="w-full rounded-t-sm bg-primary/70 group-hover:bg-primary transition-colors"
-            style={{ height: `${Math.max(4, (d.pedidos / max) * 80)}px` }}
-          />
-          <div className="absolute -top-6 left-1/2 -translate-x-1/2 hidden group-hover:flex bg-gray-900 text-white text-[10px] px-2 py-0.5 rounded whitespace-nowrap z-10">
-            {d.data}: {d.pedidos}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
+  );
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function SectionVendas({ event }: SectionProps) {
-  const [data,    setData]    = useState<VendasData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState<VendasData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = () => {
+    setLoading(true);
+    setError(null);
+    api
+      .get<VendasData>(`/produtor/eventos/${event.id}/vendas`)
+      .then((res) => setData(res.data))
+      .catch((err) => {
+        const msg = getErrorMessage(err, "Não foi possível carregar as vendas.");
+        setError(msg);
+        toast.error(msg);
+      })
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
-    api.get<VendasData>(`/produtor/eventos/${event.id}/vendas`)
-      .then((res) => setData(res.data))
-      .catch(() => toast.error("Erro ao carregar dados de vendas"))
-      .finally(() => setLoading(false))
-  }, [event.id])
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event.id]);
 
-  const fmt = (v: number) =>
-    v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-28 rounded-card" />
+          ))}
+        </div>
+        <Skeleton className="h-72 rounded-card" />
+        <Skeleton className="h-64 rounded-card" />
+      </div>
+    );
+  }
+
+  if (error || !data) return <ErrorState title="Não deu pra carregar as vendas" description={error ?? undefined} onRetry={load} />;
+
+  const paidOrders = data.pedidosRecentes.filter((p) => p.status === 2).length;
+  const hasDaily = data.vendasPorDia.length > 0;
 
   return (
-    <CardShell>
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-primary/[0.04] to-transparent flex items-center gap-3">
-        <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shadow-sm">
-          <BarChart2 className="w-3.5 h-3.5 text-white" />
-        </div>
-        <div>
-          <h2 className="text-[14px] font-semibold text-gray-900">Vendas</h2>
-          <p className="text-[11px] text-gray-500 mt-0.5">Desempenho comercial deste evento</p>
-        </div>
+    <div className="space-y-4 lg:space-y-5">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        <StatCard label="Faturamento bruto" icon="chart-line" format="currency" value={data.faturamentoBruto} hint={data.totalDesconto > 0 ? `−${formatBRL(data.totalDesconto)} em cupons` : "Sem descontos aplicados"} />
+        <StatCard label="Você recebe" icon="sack-dollar" format="currency" value={data.valorLiquido} hint="Valor integral; as taxas são do comprador" />
+        <StatCard label="Ingressos vendidos" icon="ticket" value={data.ingressosVendidos} />
+        <StatCard label="Pedidos pagos" icon="receipt" value={paidOrders} hint="Entre os últimos pedidos" />
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : !data ? (
-        <div className="py-16 text-center text-[13px] text-gray-400">
-          Não foi possível carregar os dados.
-        </div>
-      ) : (
-        <div className="p-6 space-y-7">
-
-          {/* ── Métricas principais ── */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <MetricCard
-              accent
-              icon={TrendingUp}
-              label="Faturamento bruto"
-              value={fmt(data.faturamentoBruto)}
-              sub={data.totalDesconto > 0 ? `−${fmt(data.totalDesconto)} em cupons` : undefined}
-            />
-            <MetricCard
-              icon={DollarSign}
-              label="Você recebe"
-              value={fmt(data.valorLiquido)}
-              sub="Valor integral dos ingressos; as taxas são pagas pelo comprador"
-            />
-            <MetricCard
-              icon={Ticket}
-              label="Ingressos vendidos"
-              value={String(data.ingressosVendidos)}
-            />
-            <MetricCard
-              icon={ShoppingBag}
-              label="Pedidos pagos"
-              value={String(data.pedidosRecentes.filter((p) => p.status === 2).length)}
-            />
-          </div>
-
-          {/* ── Gráfico de vendas por dia ── */}
-          {data.vendasPorDia.length > 0 && (
-            <div>
-              <SectionTitle>Pedidos por dia (últimos 30 dias)</SectionTitle>
-              <div className="rounded-xl border border-gray-100 bg-gray-50/40 px-4 pt-8 pb-3">
-                <MiniBarChart data={data.vendasPorDia} />
-                <div className="flex items-center justify-between mt-2">
-                  <p className="text-[10px] text-gray-400">{data.vendasPorDia[0]?.data}</p>
-                  <p className="text-[10px] text-gray-400">{data.vendasPorDia[data.vendasPorDia.length - 1]?.data}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ── Vendas por lote ── */}
-          {data.vendasPorLote.length > 0 && (
-            <div>
-              <SectionTitle>Vendas por lote</SectionTitle>
-              <div className="rounded-xl border border-gray-200/80 overflow-hidden">
-                <div className="flex px-4 py-2 bg-gray-50/70 border-b border-gray-100">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest w-24">Lote</p>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest w-28">Ingressos</p>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex-1 text-right">Valor</p>
-                </div>
-                {data.vendasPorLote.map((row) => (
-                  <div key={row.lote} className="flex items-center px-4 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                    <p className="text-[13px] font-semibold text-gray-800 w-24">{row.lote}º Lote</p>
-                    <p className="text-[13px] text-gray-600 w-28">{row.quantidade}</p>
-                    <p className="text-[13px] font-semibold text-gray-800 flex-1 text-right">{fmt(row.valor)}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── Vendas por tipo ── */}
-          {data.vendasPorTipo.length > 0 && (
-            <div>
-              <SectionTitle>Vendas por tipo de ingresso</SectionTitle>
-              <div className="rounded-xl border border-gray-200/80 overflow-hidden">
-                <div className="flex px-4 py-2 bg-gray-50/70 border-b border-gray-100">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex-1">Tipo</p>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest w-28">Ingressos</p>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest w-28 text-right">Valor</p>
-                </div>
-                {data.vendasPorTipo.map((row) => (
-                  <div key={row.nome} className="flex items-center px-4 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50/50">
-                    <p className="text-[13px] font-semibold text-gray-800 flex-1 truncate">{row.nome}</p>
-                    <p className="text-[13px] text-gray-600 w-28">{row.quantidade}</p>
-                    <p className="text-[13px] font-semibold text-gray-800 w-28 text-right">{fmt(row.valor)}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── Pedidos recentes ── */}
+      <Card className="fade-up">
+        <CardHeader>
           <div>
-            <SectionTitle>Pedidos recentes</SectionTitle>
-            {data.pedidosRecentes.length === 0 ? (
-              <div className="rounded-xl border-2 border-dashed border-gray-200 py-10 text-center">
-                <p className="text-[13px] text-gray-400">Nenhum pedido ainda.</p>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-gray-200/80 overflow-hidden">
-                <div className="flex px-4 py-2 bg-gray-50/70 border-b border-gray-100">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest w-28">Código</p>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex-1">Comprador</p>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest w-24">Cupom</p>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest w-24 text-right">Total</p>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest w-24 text-right">Status</p>
-                </div>
-                {data.pedidosRecentes.map((pedido) => {
-                  const st = ORDER_STATUS[pedido.status] ?? { label: "?", icon: Clock, cls: "text-gray-400 bg-gray-50 border-gray-200" }
-                  const StatusIcon = st.icon
-                  return (
-                    <div key={pedido.id} className="flex items-center px-4 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 gap-0">
-                      <p className="text-[12px] font-mono text-gray-500 w-28 truncate">{pedido.code.slice(0, 8)}…</p>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-semibold text-gray-800 truncate">{pedido.comprador}</p>
-                        <p className="text-[11px] text-gray-400 truncate">{pedido.email}</p>
-                      </div>
-                      <div className="w-24">
-                        {pedido.codigoCupom ? (
-                          <span className="inline-flex items-center text-[10px] font-bold text-violet-700 bg-violet-50 border border-violet-200 px-2 py-0.5 rounded-lg">
-                            {pedido.codigoCupom}
-                          </span>
-                        ) : (
-                          <span className="text-[11px] text-gray-300">—</span>
-                        )}
-                      </div>
-                      <p className="text-[13px] font-semibold text-gray-800 w-24 text-right">
-                        {pedido.totalValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                      </p>
-                      <div className="w-24 flex justify-end">
-                        <span className={cn(
-                          "inline-flex items-center gap-1 text-[10px] font-semibold border px-2 py-0.5 rounded-lg",
-                          st.cls,
-                        )}>
-                          <StatusIcon className="w-3 h-3" />
-                          {st.label}
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+            <CardTitle>Pedidos por dia</CardTitle>
+            <CardDescription>Últimos 30 dias</CardDescription>
           </div>
+        </CardHeader>
+        <CardContent className="pt-2">
+          {hasDaily ? (
+            <div className="h-56 w-full sm:h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={data.vendasPorDia} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="vendas-dia-fill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" />
+                  <XAxis dataKey="data" tickLine={false} axisLine={false} tickMargin={8} interval="preserveStartEnd" minTickGap={28} tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
+                  <YAxis tickLine={false} axisLine={false} allowDecimals={false} width={30} tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
+                  <Tooltip cursor={{ stroke: "var(--border-strong)", strokeWidth: 1 }} content={<OrdersTooltip />} />
+                  <Area type="monotone" dataKey="pedidos" stroke="var(--chart-1)" strokeWidth={2} fill="url(#vendas-dia-fill)" activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--surface)", fill: "var(--chart-1)" }} dot={false} isAnimationActive />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <EmptyState compact icon="chart-line" title="Sem pedidos nos últimos 30 dias" />
+          )}
+        </CardContent>
+      </Card>
 
-        </div>
-      )}
-    </CardShell>
-  )
+      <div className="grid gap-4 lg:grid-cols-2">
+        <BreakdownCard title="Vendas por lote" rows={data.vendasPorLote.map((r) => ({ key: String(r.lote), label: `${ordinal(r.lote)} lote`, quantidade: r.quantidade, valor: r.valor }))} empty="Nenhuma venda por lote ainda." />
+        <BreakdownCard title="Vendas por tipo de ingresso" rows={data.vendasPorTipo.map((r) => ({ key: r.nome, label: r.nome, quantidade: r.quantidade, valor: r.valor }))} empty="Nenhuma venda por tipo ainda." />
+      </div>
+
+      <section className="space-y-3">
+        <h3 className="text-sm font-semibold text-foreground">Pedidos recentes</h3>
+        {data.pedidosRecentes.length === 0 ? (
+          <EmptyState compact icon="receipt" title="Nenhum pedido ainda" description="Os pedidos aparecem aqui assim que alguém comprar." />
+        ) : (
+          <DataTableShell
+            maxHeight="none"
+            table={
+              <DataTable>
+                <DataTableHead>
+                  <tr>
+                    <DataTableHeadCell>Pedido</DataTableHeadCell>
+                    <DataTableHeadCell>Comprador</DataTableHeadCell>
+                    <DataTableHeadCell>Cupom</DataTableHeadCell>
+                    <DataTableHeadCell align="right">Ingressos</DataTableHeadCell>
+                    <DataTableHeadCell align="right">Total</DataTableHeadCell>
+                    <DataTableHeadCell>Status</DataTableHeadCell>
+                  </tr>
+                </DataTableHead>
+                <DataTableBody>
+                  {data.pedidosRecentes.map((p, i) => {
+                    const st = ORDER_STATUS_META[p.status] ?? { label: "Desconhecido", tone: "neutral" as const };
+                    return (
+                      <DataTableRow key={p.id} index={i}>
+                        <DataTableCell>
+                          <span className="font-mono text-caption text-muted-foreground">{p.code}</span>
+                        </DataTableCell>
+                        <DataTableCell>
+                          <p className="font-semibold">{p.comprador}</p>
+                          <p className="text-caption text-muted-foreground">{p.email}</p>
+                        </DataTableCell>
+                        <DataTableCell className={cn(!p.codigoCupom && "text-subtle-foreground")}>{p.codigoCupom ? <span className="rounded-md bg-brand-soft px-1.5 py-0.5 font-mono text-caption font-semibold text-brand">{p.codigoCupom}</span> : "—"}</DataTableCell>
+                        <DataTableCell num>{p.quantidade}</DataTableCell>
+                        <DataTableCell num className="font-semibold">
+                          {formatBRL(p.totalValue)}
+                        </DataTableCell>
+                        <DataTableCell>
+                          <StatusBadge tone={st.tone}>{st.label}</StatusBadge>
+                        </DataTableCell>
+                      </DataTableRow>
+                    );
+                  })}
+                </DataTableBody>
+              </DataTable>
+            }
+            mobile={
+              <MobileCardList>
+                {data.pedidosRecentes.map((p, i) => {
+                  const st = ORDER_STATUS_META[p.status] ?? { label: "Desconhecido", tone: "neutral" as const };
+                  return <MobileCard key={p.id} index={i} title={p.comprador} subtitle={`${p.code} · ${p.email}`} badge={<StatusBadge tone={st.tone}>{st.label}</StatusBadge>} meta={[{ label: "Total", value: formatBRL(p.totalValue), num: true }, { label: "Ingressos", value: p.quantidade, num: true }, ...(p.codigoCupom ? [{ label: "Cupom", value: p.codigoCupom }] : [])]} />;
+                })}
+              </MobileCardList>
+            }
+          />
+        )}
+      </section>
+    </div>
+  );
+}
+
+function BreakdownCard({ title, rows, empty }: { title: string; rows: { key: string; label: string; quantidade: number; valor: number }[]; empty: string }) {
+  const max = Math.max(1, ...rows.map((r) => r.valor));
+  return (
+    <Card className="fade-up">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="pt-3">
+        {rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">{empty}</p>
+        ) : (
+          <ul className="space-y-3">
+            {rows.map((r) => (
+              <li key={r.key}>
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="min-w-0 truncate font-medium text-foreground">{r.label}</span>
+                  <span className="shrink-0 text-muted-foreground tnum">
+                    {r.quantidade.toLocaleString("pt-BR")} · <span className="font-semibold text-foreground">{formatBRL(r.valor)}</span>
+                  </span>
+                </div>
+                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-pill bg-surface-3">
+                  <div className="h-full rounded-pill bg-gradient-to-r from-brand-from to-brand-to transition-[width] duration-500 ease-out-soft" style={{ width: `${Math.round((r.valor / max) * 100)}%` }} />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
 }

@@ -1,16 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Download } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { MetricCard } from "../../_components/metric-card";
-import { EmptyState } from "../../_components/states/empty-state";
-import { MetricsSkeleton, TableSkeleton } from "../../_components/states/loading-state";
-import { ErrorState } from "../../_components/states/error-state";
 import { COMMISSION_STATUS_LABEL, formatCents, promotersApi } from "@/services/promoters";
+import { Button } from "@/components/ui/button";
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeadCell, DataTableRow, DataTableShell, MobileCard, MobileCardList } from "@/components/ui/data-table";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatCard } from "@/components/ui/stat-card";
+import { StatusBadge } from "@/components/ui/badge";
 import { usePromoterAnalytics, usePromoterOrganizationEvents, usePromoterSales } from "../_hooks/use-promoters";
+import { COMMISSION_TONE, fmtDate } from "./promoter-meta";
 
 export function SalesAnalyticsTab({ orgId, canExport }: { orgId: number; canExport: boolean }) {
   const { data: events } = usePromoterOrganizationEvents(orgId);
@@ -22,76 +22,88 @@ export function SalesAnalyticsTab({ orgId, canExport }: { orgId: number; canExpo
     window.open(promotersApi.csvUrl(orgId, kind), "_blank");
   };
 
+  const cents = (v?: number) => (v === undefined ? undefined : v / 100);
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="w-full max-w-xs">
-          <Select value={eventId ? String(eventId) : "all"} onValueChange={(v) => setEventId(v === "all" ? undefined : Number(v))}>
-            <SelectTrigger className="w-full"><SelectValue placeholder="Filtrar por evento" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os eventos</SelectItem>
-              {(events ?? []).map((e) => (
-                <SelectItem key={e.id} value={String(e.id)}>{e.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <NativeSelect aria-label="Filtrar por evento" value={eventId ?? "all"} onChange={(e) => setEventId(e.target.value === "all" ? undefined : Number(e.target.value))} className="sm:w-72">
+          <option value="all">Todos os eventos</option>
+          {(events ?? []).map((e) => (
+            <option key={e.id} value={e.id}>
+              {e.nome}
+            </option>
+          ))}
+        </NativeSelect>
         {canExport ? (
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => download("sales")}><Download size={14} /> Vendas (CSV)</Button>
-            <Button variant="outline" onClick={() => download("commissions")}><Download size={14} /> Comissões (CSV)</Button>
+            <Button variant="outline" size="sm" leftIcon="download" onClick={() => download("sales")}>
+              Vendas (CSV)
+            </Button>
+            <Button variant="outline" size="sm" leftIcon="download" onClick={() => download("commissions")}>
+              Comissões (CSV)
+            </Button>
           </div>
         ) : null}
       </div>
 
-      {loadingMetrics || !metrics ? (
-        <MetricsSkeleton count={8} />
-      ) : (
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-          <MetricCard label="Promoters ativos" value={String(metrics.promotersAtivos)} />
-          <MetricCard label="Cliques (estimativa única)" value={String(metrics.cliquesUnicosEstimados)} />
-          <MetricCard label="Pedidos pagos atribuídos" value={String(metrics.pedidosPagos)} />
-          <MetricCard label="Valor líquido vendido" value={formatCents(metrics.netNominalCentsAfterDiscount)} />
-          <MetricCard label="Comissão pendente" value={formatCents(metrics.commissionPendingCents)} />
-          <MetricCard label="Comissão disponível" value={formatCents(metrics.commissionAvailableCents)} />
-          <MetricCard label="Ajustes (estorno/chargeback pós-acerto)" value={formatCents(metrics.commissionAdjustmentCents)} />
-          <MetricCard label="Saldo líquido" value={formatCents(metrics.netBalanceCents)} />
-        </div>
-      )}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        <StatCard label="Cliques únicos" icon="link" value={metrics?.cliquesUnicosEstimados} loading={loadingMetrics} hint={metrics ? `${metrics.cliquesBrutos.toLocaleString("pt-BR")} cliques no total` : undefined} />
+        <StatCard label="Pedidos pagos" icon="receipt" value={metrics?.pedidosPagos} loading={loadingMetrics} hint={metrics ? `Conversão ${(metrics.taxaConversaoAtribuicaoParaPagamento * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%` : undefined} />
+        <StatCard label="Valor líquido vendido" icon="sack-dollar" format="currency" value={cents(metrics?.netNominalCentsAfterDiscount)} loading={loadingMetrics} hint={metrics ? `${formatCents(metrics.discountAppliedCents)} em descontos` : undefined} />
+        <StatCard label="Saldo líquido" icon="scale" format="currency" value={cents(metrics?.netBalanceCents)} loading={loadingMetrics} hint="Disponível + acertado + ajustes" />
+        <StatCard label="Comissão pendente" icon="clock" format="currency" value={cents(metrics?.commissionPendingCents)} loading={loadingMetrics} hint="Pode reverter se a venda cancelar" />
+        <StatCard label="Comissão disponível" icon="hand-dollar" format="currency" value={cents(metrics?.commissionAvailableCents)} loading={loadingMetrics} hint="Pronta pra entrar num acerto" />
+        <StatCard label="Comissão acertada" icon="check-circle" format="currency" value={cents(metrics?.commissionSettledCents)} loading={loadingMetrics} />
+        <StatCard label="Ajustes" icon="undo" format="currency" value={cents(metrics?.commissionAdjustmentCents)} loading={loadingMetrics} hint="Estornos e contestações pós-acerto" />
+      </div>
 
       {isError ? (
         <ErrorState description="Não foi possível carregar as vendas atribuídas." onRetry={() => refetch()} />
       ) : loadingSales ? (
-        <TableSkeleton />
+        <Skeleton className="h-64 rounded-card" />
       ) : !sales || sales.length === 0 ? (
-        <EmptyState title="Nenhuma venda atribuída ainda" description="Vendas feitas pelo link ou código de um promoter aparecem aqui." />
+        <EmptyState icon="cart" title="Nenhuma venda atribuída ainda" description="Vendas feitas pelo link ou código de um promoter aparecem aqui." />
       ) : (
-        <div className="rounded-xl border border-black/10 bg-white">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Evento</TableHead>
-                <TableHead>Promoter</TableHead>
-                <TableHead>Canal</TableHead>
-                <TableHead>Valor líquido</TableHead>
-                <TableHead>Comissão</TableHead>
-                <TableHead>Status da comissão</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sales.map((s) => (
-                <TableRow key={s.attributionId}>
-                  <TableCell>{s.eventName}</TableCell>
-                  <TableCell>{s.promoterDisplayName ?? "—"}</TableCell>
-                  <TableCell>{s.source === "LINK" ? "Link" : "Código"}</TableCell>
-                  <TableCell>{formatCents(s.netNominalCentsAfterDiscount)}</TableCell>
-                  <TableCell>{formatCents(s.commissionCents)}</TableCell>
-                  <TableCell>{s.commissionStatus ? COMMISSION_STATUS_LABEL[s.commissionStatus] : "—"}</TableCell>
-                </TableRow>
+        <DataTableShell
+          table={
+            <DataTable>
+              <DataTableHead>
+                <tr>
+                  <DataTableHeadCell>Data</DataTableHeadCell>
+                  <DataTableHeadCell>Evento</DataTableHeadCell>
+                  <DataTableHeadCell>Promoter</DataTableHeadCell>
+                  <DataTableHeadCell>Canal</DataTableHeadCell>
+                  <DataTableHeadCell align="right">Valor líquido</DataTableHeadCell>
+                  <DataTableHeadCell align="right">Comissão</DataTableHeadCell>
+                  <DataTableHeadCell>Status</DataTableHeadCell>
+                </tr>
+              </DataTableHead>
+              <DataTableBody>
+                {sales.map((s, i) => (
+                  <DataTableRow key={s.attributionId} index={i}>
+                    <DataTableCell className="tnum">{fmtDate(s.attributedAt)}</DataTableCell>
+                    <DataTableCell>{s.eventName}</DataTableCell>
+                    <DataTableCell className="font-medium">{s.promoterDisplayName ?? "—"}</DataTableCell>
+                    <DataTableCell>{s.source === "LINK" ? "Link" : "Código"}</DataTableCell>
+                    <DataTableCell num>{formatCents(s.netNominalCentsAfterDiscount)}</DataTableCell>
+                    <DataTableCell num className="font-semibold">
+                      {formatCents(s.commissionCents)}
+                    </DataTableCell>
+                    <DataTableCell>{s.commissionStatus ? <StatusBadge tone={COMMISSION_TONE[s.commissionStatus]}>{COMMISSION_STATUS_LABEL[s.commissionStatus]}</StatusBadge> : <span className="text-subtle-foreground">—</span>}</DataTableCell>
+                  </DataTableRow>
+                ))}
+              </DataTableBody>
+            </DataTable>
+          }
+          mobile={
+            <MobileCardList>
+              {sales.map((s, i) => (
+                <MobileCard key={s.attributionId} index={i} title={s.promoterDisplayName ?? s.eventName} subtitle={`${s.eventName} · ${s.source === "LINK" ? "Link" : "Código"} · ${fmtDate(s.attributedAt)}`} badge={s.commissionStatus ? <StatusBadge tone={COMMISSION_TONE[s.commissionStatus]}>{COMMISSION_STATUS_LABEL[s.commissionStatus]}</StatusBadge> : undefined} meta={[{ label: "Valor líquido", value: formatCents(s.netNominalCentsAfterDiscount), num: true }, { label: "Comissão", value: formatCents(s.commissionCents), num: true }]} />
               ))}
-            </TableBody>
-          </Table>
-        </div>
+            </MobileCardList>
+          }
+        />
       )}
     </div>
   );

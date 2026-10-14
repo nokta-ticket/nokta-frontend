@@ -2,18 +2,30 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowLeft, ArrowUp, Loader2, Monitor, Plus, RefreshCw, Smartphone, Trash2, Upload } from "lucide-react";
 import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/cn";
 import type { CrmChannel } from "@/services/crm";
 import { crmMarketingApi, crmMarketingKeys, type CrmTemplate, type CrmTemplatePreview, type EmailBlock, type EmailContent, type WhatsappButton, type WhatsappContent } from "@/services/crm-marketing";
-import { BlockSkeleton } from "../../_components/states/loading-state";
-import { Pill, PRESSABLE, SURFACE, fmtDate } from "../../financeiro/_components/finance-ui";
-import { BTN_PRIMARY, BTN_SECONDARY, CHANNEL_LABEL, ChannelIcon, FIELD, LINK } from "./crm-ui";
+import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { Card, CardContent } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeadCell, DataTableRow, DataTableShell, MobileCard, MobileCardList } from "@/components/ui/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Field, FieldGroup } from "@/components/ui/field";
+import { Icon, type IconName } from "@/components/ui/icon";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
+import { PageHeader } from "@/components/ui/page-header";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatusBadge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { fmtDate } from "../../financeiro/_components/finance-ui";
+import { CHANNEL_LABEL, ChannelIcon, Note } from "./crm-ui";
 import { Blockers, EmailPreviewFrame, WhatsappBubble, templateStatus } from "./marketing-ui";
 
-const TH = "px-5 py-3 font-semibold";
 type Editing = { template: CrmTemplate | null; channel: CrmChannel } | null;
 
 const NEW_EMAIL: EmailContent = {
@@ -29,9 +41,9 @@ const NEW_WHATSAPP: WhatsappContent = { category: "MARKETING", language: "pt_BR"
 /** Modelos de mensagem: e-mail (pronto ao salvar) e WhatsApp (depende da análise da Meta). */
 export function TemplatesTab({ orgId, whatsappConnected, canManage }: { orgId: number; whatsappConnected: boolean; canManage: boolean }) {
   const queryClient = useQueryClient();
-  const [filter, setFilter] = useState<CrmChannel | "">("");
+  const [filter, setFilter] = useState<CrmChannel | "ALL">("ALL");
   const [editing, setEditing] = useState<Editing>(null);
-  const [confirming, setConfirming] = useState<number | null>(null);
+  const [confirming, setConfirming] = useState<CrmTemplate | null>(null);
   const list = useQuery({ queryKey: crmMarketingKeys.templates(orgId), queryFn: () => crmMarketingApi.listTemplates(orgId) });
 
   const refresh = () => void queryClient.invalidateQueries({ queryKey: crmMarketingKeys.templates(orgId) });
@@ -39,8 +51,7 @@ export function TemplatesTab({ orgId, whatsappConnected, canManage }: { orgId: n
     mutationFn: (id: number) => crmMarketingApi.removeTemplate(orgId, id),
     onSuccess: () => {
       refresh();
-      setConfirming(null);
-      toast.success("Modelo apagado.");
+      toast.success("Modelo apagado");
     },
     onError: (error) => toast.error(getErrorMessage(error, "Não foi possível apagar o modelo.")),
   });
@@ -50,139 +61,111 @@ export function TemplatesTab({ orgId, whatsappConnected, canManage }: { orgId: n
       setEditing(null);
       refresh();
     };
-    return editing.channel === "EMAIL" ? (
-      <EmailEditor orgId={orgId} template={editing.template as CrmTemplate<EmailContent> | null} onClose={close} readOnly={!canManage} />
-    ) : (
-      <WhatsappEditor orgId={orgId} template={editing.template as CrmTemplate<WhatsappContent> | null} connected={whatsappConnected} onClose={close} readOnly={!canManage} />
-    );
+    return editing.channel === "EMAIL" ? <EmailEditor orgId={orgId} template={editing.template as CrmTemplate<EmailContent> | null} onClose={close} readOnly={!canManage} /> : <WhatsappEditor orgId={orgId} template={editing.template as CrmTemplate<WhatsappContent> | null} connected={whatsappConnected} onClose={close} readOnly={!canManage} />;
   }
 
-  const rows = (list.data ?? []).filter((t) => !filter || t.channel === filter);
+  const rows = (list.data ?? []).filter((t) => filter === "ALL" || t.channel === filter);
   const excerpt = (t: CrmTemplate) => (t.channel === "EMAIL" ? (t.content as EmailContent).subject || "Sem assunto" : (t.content as WhatsappContent).body || "Sem texto");
+  const openEditor = (t: CrmTemplate) => setEditing({ template: t, channel: t.channel });
+
+  const actions = (t: CrmTemplate) => (
+    <>
+      <Button variant="subtle" size="icon-sm" aria-label="Abrir modelo" title="Abrir" onClick={() => openEditor(t)}>
+        <Icon name="edit" size={13} />
+      </Button>
+      {canManage ? (
+        <Button variant="subtle" size="icon-sm" aria-label={`Apagar modelo ${t.name}`} title="Apagar" className="hover:bg-danger-bg hover:text-danger" onClick={() => setConfirming(t)}>
+          <Icon name="trash" size={13} />
+        </Button>
+      ) : null}
+    </>
+  );
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-2" aria-label="Filtrar por canal">
-          {(
-            [
-              ["", "Todos"],
-              ["EMAIL", "E-mail"],
-              ["WHATSAPP", "WhatsApp"],
-            ] as [CrmChannel | "", string][]
-          ).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              aria-pressed={filter === key}
-              onClick={() => setFilter(key)}
-              className={cn(
-                "h-9 rounded-full border px-3.5 text-[13.5px] font-semibold outline-none focus-visible:ring-2 focus-visible:ring-[#7c3aed]",
-                filter === key ? "border-[#1c1a24] bg-[#1c1a24] text-white" : "border-[#e6e2ef] bg-white text-[#3a3746] hover:bg-[#faf8ff]",
-                PRESSABLE,
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className={cn("flex gap-2", !canManage && "hidden")}>
-          <button type="button" onClick={() => setEditing({ template: null, channel: "WHATSAPP" })} className={cn(BTN_SECONDARY, PRESSABLE)}>
-            <Plus size={16} strokeWidth={2} aria-hidden="true" />
-            Modelo de WhatsApp
-          </button>
-          <button type="button" onClick={() => setEditing({ template: null, channel: "EMAIL" })} className={cn(BTN_PRIMARY, PRESSABLE)}>
-            <Plus size={16} strokeWidth={2} aria-hidden="true" />
-            Modelo de e-mail
-          </button>
-        </div>
-      </div>
-
-      <div className={cn(SURFACE, "overflow-hidden")}>
-        {list.isLoading ? (
-          <div className="space-y-3 p-5">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <BlockSkeleton key={i} className="h-14" />
-            ))}
+        <SegmentedControl
+          value={filter}
+          onChange={setFilter}
+          options={[
+            { value: "ALL", label: "Todos" },
+            { value: "EMAIL", label: "E-mail", icon: "mail" },
+            { value: "WHATSAPP", label: "WhatsApp", icon: "whatsapp" },
+          ]}
+        />
+        {canManage ? (
+          <div className="flex gap-2">
+            <Button variant="outline" leftIcon="whatsapp" onClick={() => setEditing({ template: null, channel: "WHATSAPP" })}>
+              Modelo de WhatsApp
+            </Button>
+            <Button leftIcon="mail" onClick={() => setEditing({ template: null, channel: "EMAIL" })}>
+              Modelo de e-mail
+            </Button>
           </div>
-        ) : rows.length === 0 ? (
-          <div className="px-6 py-14 text-center">
-            <p className="mx-auto max-w-[52ch] text-[15px] font-semibold text-[#1c1a24]">Um modelo é a mensagem pronta que você usa nas campanhas.</p>
-            <p className="mx-auto mt-2 max-w-[62ch] text-[14px] leading-relaxed text-[#5f5c6b]">
-              O de e-mail fica pronto assim que você salva. O de WhatsApp precisa ser aprovado pela Meta antes do primeiro envio, o que costuma levar de minutos a um dia.
-            </p>
-          </div>
-        ) : (
-          <ul className="divide-y divide-[#f2f0f7] lg:hidden">
-            {rows.map((t) => (
-              <li key={t.id}>
-                <button type="button" onClick={() => setEditing({ template: t, channel: t.channel })} className="flex w-full items-start justify-between gap-3 px-4 py-3.5 text-left hover:bg-[#faf8ff]">
-                  <span className="min-w-0">
-                    <span className="flex items-center gap-2 font-medium">
-                      <span className="text-[#6b6878]"><ChannelIcon channel={t.channel} /></span>
-                      <span className="truncate">{t.name}</span>
-                    </span>
-                    <span className="mt-0.5 block truncate text-[13px] text-[#5f5c6b]">{excerpt(t)}</span>
-                  </span>
-                  <Pill tone={templateStatus(t.channel, t.status).tone}>{templateStatus(t.channel, t.status).label}</Pill>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {rows.length > 0 ? (
-          <table className="hidden w-full text-left text-[14px] lg:table">
-            <thead className="bg-[#fbfaff] text-[13px] text-[#5f5c6b]">
-              <tr className="border-b border-[#ebe8f2]">
-                <th scope="col" className={cn(TH, "w-[26%]")}>Modelo</th>
-                <th scope="col" className={TH}>Mensagem</th>
-                <th scope="col" className={TH}>Canal</th>
-                <th scope="col" className={TH}>Situação</th>
-                <th scope="col" className={TH}>Alterado em</th>
-                <th scope="col" className={cn(TH, "w-[200px]")}><span className="sr-only">Ações</span></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#f2f0f7]">
-              {rows.map((t) => {
-                const status = templateStatus(t.channel, t.status);
-                return (
-                  <tr key={t.id} className="cursor-pointer hover:bg-[#faf8ff]" onClick={() => setEditing({ template: t, channel: t.channel })}>
-                    <td className="px-5 py-4 font-medium text-[#1c1a24]">{t.name}</td>
-                    <td className="max-w-0 px-5 py-4 text-[#3a3746]">
-                      <span className="block truncate">{excerpt(t)}</span>
-                      {t.rejectionReason ? <span className="block truncate text-[13px] text-[#9b1c35]">Motivo da Meta: {t.rejectionReason}</span> : null}
-                    </td>
-                    <td className="whitespace-nowrap px-5 py-4">
-                      <span className="flex items-center gap-2 text-[#3a3746]">
-                        <span className="text-[#6b6878]"><ChannelIcon channel={t.channel} /></span>
-                        {CHANNEL_LABEL[t.channel]}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4"><Pill tone={status.tone}>{status.label}</Pill></td>
-                    <td className="whitespace-nowrap px-5 py-4 font-poppins text-[13.5px] tabular-nums text-[#5f5c6b]">{fmtDate(t.updatedAt)}</td>
-                    <td className="px-5 py-4" onClick={(e) => e.stopPropagation()}>
-                      {confirming === t.id ? (
-                        <span className="flex items-center justify-end gap-3 text-[13px]">
-                          <span className="text-[#3a3746]">Apagar?</span>
-                          <button type="button" onClick={() => setConfirming(null)} className={cn(LINK, "text-[#5f5c6b]", PRESSABLE)}>Voltar</button>
-                          <button type="button" disabled={remove.isPending} onClick={() => remove.mutate(t.id)} className={cn(LINK, "text-[#9b1c35] hover:text-[#7f1529]", PRESSABLE)}>Apagar</button>
-                        </span>
-                      ) : (
-                        <span className="flex items-center justify-end gap-3">
-                          <button type="button" onClick={() => setEditing({ template: t, channel: t.channel })} className={cn(LINK, PRESSABLE)}>Abrir</button>
-                          <button type="button" aria-label={`Apagar modelo ${t.name}`} onClick={() => setConfirming(t.id)} className={cn(!canManage && "hidden", "flex h-9 w-9 items-center justify-center rounded-lg text-[#5b5868] outline-none hover:bg-[#f3f1f8] focus-visible:ring-2 focus-visible:ring-[#7c3aed]", PRESSABLE)}>
-                            <Trash2 size={17} strokeWidth={1.8} aria-hidden="true" />
-                          </button>
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
         ) : null}
       </div>
+
+      {list.isLoading ? (
+        <Skeleton className="h-64 rounded-card" />
+      ) : rows.length === 0 ? (
+        <EmptyState icon="file-lines" title="Um modelo é a mensagem pronta que você usa nas campanhas" description="O de e-mail fica pronto assim que você salva. O de WhatsApp precisa ser aprovado pela Meta antes do primeiro envio, o que costuma levar de minutos a um dia." action={canManage ? <Button leftIcon="plus" onClick={() => setEditing({ template: null, channel: "EMAIL" })}>Criar modelo de e-mail</Button> : undefined} />
+      ) : (
+        <DataTableShell
+          table={
+            <DataTable>
+              <DataTableHead>
+                <tr>
+                  <DataTableHeadCell>Modelo</DataTableHeadCell>
+                  <DataTableHeadCell>Mensagem</DataTableHeadCell>
+                  <DataTableHeadCell>Canal</DataTableHeadCell>
+                  <DataTableHeadCell>Situação</DataTableHeadCell>
+                  <DataTableHeadCell>Alterado em</DataTableHeadCell>
+                  <DataTableHeadCell align="right" width={96}>
+                    <span className="sr-only">Ações</span>
+                  </DataTableHeadCell>
+                </tr>
+              </DataTableHead>
+              <DataTableBody>
+                {rows.map((t, i) => {
+                  const status = templateStatus(t.channel, t.status);
+                  return (
+                    <DataTableRow key={t.id} index={i} onClick={() => openEditor(t)}>
+                      <DataTableCell className="font-semibold">{t.name}</DataTableCell>
+                      <DataTableCell className="max-w-[320px]">
+                        <span className="block truncate text-muted-foreground">{excerpt(t)}</span>
+                        {t.rejectionReason ? <span className="block truncate text-caption text-danger">Motivo da Meta: {t.rejectionReason}</span> : null}
+                      </DataTableCell>
+                      <DataTableCell className="whitespace-nowrap">
+                        <span className="flex items-center gap-2">
+                          <ChannelIcon channel={t.channel} size={12} className="text-muted-foreground" />
+                          {CHANNEL_LABEL[t.channel]}
+                        </span>
+                      </DataTableCell>
+                      <DataTableCell>
+                        <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
+                      </DataTableCell>
+                      <DataTableCell className="whitespace-nowrap text-muted-foreground tnum">{fmtDate(t.updatedAt)}</DataTableCell>
+                      <DataTableCell align="right" stopPropagation>
+                        <div className="flex justify-end gap-0.5">{actions(t)}</div>
+                      </DataTableCell>
+                    </DataTableRow>
+                  );
+                })}
+              </DataTableBody>
+            </DataTable>
+          }
+          mobile={
+            <MobileCardList>
+              {rows.map((t, i) => {
+                const status = templateStatus(t.channel, t.status);
+                return <MobileCard key={t.id} index={i} onClick={() => openEditor(t)} title={t.name} subtitle={`${CHANNEL_LABEL[t.channel]} · ${excerpt(t)}`} badge={<StatusBadge tone={status.tone}>{status.label}</StatusBadge>} meta={[{ label: "Alterado em", value: fmtDate(t.updatedAt), num: true }]} actions={actions(t)} />;
+              })}
+            </MobileCardList>
+          }
+        />
+      )}
+
+      <ConfirmDialog open={confirming !== null} onOpenChange={(o) => (!o ? setConfirming(null) : null)} danger icon="trash" title={`Apagar o modelo “${confirming?.name}”?`} description="Campanhas já enviadas com ele continuam no histórico." confirmLabel="Apagar" onConfirm={() => (confirming ? remove.mutateAsync(confirming.id) : undefined)} />
     </div>
   );
 }
@@ -191,36 +174,23 @@ export function TemplatesTab({ orgId, whatsappConnected, canManage }: { orgId: n
 
 function EditorShell({ title, onClose, actions, left, right }: { title: string; onClose: () => void; actions: ReactNode; left: ReactNode; right: ReactNode }) {
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <button type="button" onClick={onClose} className={cn("flex items-center gap-2 rounded-md text-[15px] font-semibold text-[#1c1a24] outline-none hover:text-[#7c3aed] focus-visible:ring-2 focus-visible:ring-[#7c3aed]", PRESSABLE)}>
-          <ArrowLeft size={17} strokeWidth={2} aria-hidden="true" />
-          {title}
-        </button>
-        <div className="flex flex-wrap gap-2">{actions}</div>
-      </div>
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <section className={cn(SURFACE, "space-y-5 p-5 sm:p-6")}>{left}</section>
-        <section className={cn(SURFACE, "p-5 sm:p-6 xl:sticky xl:top-4")}>{right}</section>
+    <div className="space-y-5">
+      <PageHeader back={onClose} title={title} actions={actions} />
+      <div className="grid items-start gap-4 xl:grid-cols-2">
+        <Card>
+          <CardContent className="space-y-5">{left}</CardContent>
+        </Card>
+        <Card className="xl:sticky xl:top-24">
+          <CardContent>{right}</CardContent>
+        </Card>
       </div>
     </div>
   );
 }
 
-function Field({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-[13.5px] font-semibold text-[#1c1a24]">{label}</span>
-      {children}
-      {hint ? <span className="mt-1.5 block text-[13px] leading-relaxed text-[#6b6878]">{hint}</span> : null}
-    </label>
-  );
-}
-
 const VARIABLES_HINT = (
   <>
-    Use <code className="font-mono text-[12.5px] text-[#1c1a24]">{"{{primeiro_nome}}"}</code>, <code className="font-mono text-[12.5px] text-[#1c1a24]">{"{{nome}}"}</code> e{" "}
-    <code className="font-mono text-[12.5px] text-[#1c1a24]">{"{{organizacao}}"}</code> para a mensagem sair com o nome de cada pessoa.
+    Use <code className="rounded bg-surface-2 px-1 font-mono text-caption text-foreground">{"{{primeiro_nome}}"}</code>, <code className="rounded bg-surface-2 px-1 font-mono text-caption text-foreground">{"{{nome}}"}</code> e <code className="rounded bg-surface-2 px-1 font-mono text-caption text-foreground">{"{{organizacao}}"}</code> pra mensagem sair com o nome de cada pessoa.
   </>
 );
 
@@ -245,7 +215,14 @@ function usePreview(orgId: number, channel: CrmChannel, content: EmailContent | 
 
 // ── editor de e-mail ──
 
-const BLOCK_LABEL: Record<EmailBlock["type"], string> = { heading: "Título", text: "Texto", image: "Imagem", button: "Botão", divider: "Linha", spacer: "Espaço" };
+const BLOCK_META: Record<EmailBlock["type"], { label: string; icon: IconName }> = {
+  heading: { label: "Título", icon: "hashtag" },
+  text: { label: "Texto", icon: "file-lines" },
+  image: { label: "Imagem", icon: "image" },
+  button: { label: "Botão", icon: "link" },
+  divider: { label: "Linha", icon: "minus" },
+  spacer: { label: "Espaço", icon: "expand" },
+};
 const NEW_BLOCK: Record<EmailBlock["type"], EmailBlock> = {
   heading: { type: "heading", text: "" },
   text: { type: "text", text: "" },
@@ -267,13 +244,13 @@ function EmailEditor({ orgId, template, onClose, readOnly }: { orgId: number; te
     mutationFn: () => (id ? crmMarketingApi.updateTemplate(orgId, id, { name: name.trim(), content }) : crmMarketingApi.createTemplate(orgId, { channel: "EMAIL", name: name.trim(), content })),
     onSuccess: (t) => {
       setId(t.id);
-      toast.success(t.status === "APPROVED" ? "Modelo salvo e pronto para usar." : "Modelo salvo. Ainda falta completar para poder usar.");
+      toast.success(t.status === "APPROVED" ? "Modelo salvo e pronto pra usar" : "Modelo salvo. Ainda falta completar pra poder usar.");
     },
     onError,
   });
   const test = useMutation({
     mutationFn: () => crmMarketingApi.testTemplate(orgId, id as number),
-    onSuccess: (r) => toast.success(`Teste enviado para ${r.sentTo}.`),
+    onSuccess: (r) => toast.success(`Teste enviado para ${r.sentTo}`),
     onError: (error) => toast.error(getErrorMessage(error, "Não foi possível enviar o teste.")),
   });
 
@@ -291,46 +268,55 @@ function EmailEditor({ orgId, template, onClose, readOnly }: { orgId: number; te
       title={template ? "Modelo de e-mail" : "Novo modelo de e-mail"}
       onClose={onClose}
       actions={
-        readOnly ? null : <>
-          <button type="button" disabled={!id || test.isPending} onClick={() => test.mutate()} title={id ? undefined : "Salve o modelo antes de testar"} className={cn(BTN_SECONDARY, PRESSABLE)}>
-            {test.isPending ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : null}
-            Enviar teste para mim
-          </button>
-          <button type="button" disabled={name.trim().length < 2 || save.isPending} onClick={() => save.mutate()} className={cn(BTN_PRIMARY, PRESSABLE)}>
-            {save.isPending ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : null}
-            Salvar modelo
-          </button>
-        </>
+        readOnly ? null : (
+          <>
+            <Button variant="outline" leftIcon="send" disabled={!id} loading={test.isPending} onClick={() => test.mutate()} title={id ? undefined : "Salve o modelo antes de testar"}>
+              Enviar teste pra mim
+            </Button>
+            <Button leftIcon="save" disabled={name.trim().length < 2} loading={save.isPending} onClick={() => save.mutate()}>
+              Salvar modelo
+            </Button>
+          </>
+        )
       }
       left={
         <>
-          <Field label="Nome do modelo" hint="Só você vê. Serve para achar o modelo depois.">
-            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} placeholder="Ex.: Abertura de vendas" className={cn(FIELD, "w-full px-3.5")} />
+          <Field label="Nome do modelo" htmlFor="tpl-nome" hint="Só você vê. Serve pra achar o modelo depois.">
+            <Input id="tpl-nome" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} placeholder="Ex.: Abertura de vendas" />
           </Field>
-          <Field label="Assunto">
-            <input value={content.subject} onChange={(e) => setContent({ ...content, subject: e.target.value })} maxLength={150} placeholder="Ex.: {{primeiro_nome}}, abrimos as vendas do Réveillon" className={cn(FIELD, "w-full px-3.5")} />
+          <Field label="Assunto" htmlFor="tpl-assunto">
+            <Input id="tpl-assunto" value={content.subject} onChange={(e) => setContent({ ...content, subject: e.target.value })} maxLength={150} placeholder="Ex.: {{primeiro_nome}}, abrimos as vendas do Réveillon" />
           </Field>
           <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
-            <Field label="Texto ao lado do assunto" hint="Aparece na caixa de entrada, depois do assunto. Opcional.">
-              <input value={content.preheader ?? ""} onChange={(e) => setContent({ ...content, preheader: e.target.value || undefined })} maxLength={150} className={cn(FIELD, "w-full px-3.5")} />
+            <Field label="Texto ao lado do assunto" htmlFor="tpl-preheader" optional hint="Aparece na caixa de entrada, depois do assunto.">
+              <Input id="tpl-preheader" value={content.preheader ?? ""} onChange={(e) => setContent({ ...content, preheader: e.target.value || undefined })} maxLength={150} />
             </Field>
-            <Field label="Cor dos botões">
-              <input type="color" value={content.accentColor ?? "#7c3aed"} onChange={(e) => setContent({ ...content, accentColor: e.target.value })} className="h-11 w-[72px] cursor-pointer rounded-[12px] border border-[#e6e2ef] bg-white p-1" />
+            <Field label="Cor dos botões" htmlFor="tpl-cor">
+              <input id="tpl-cor" type="color" value={content.accentColor ?? "#e5179c"} onChange={(e) => setContent({ ...content, accentColor: e.target.value })} className="h-11 w-[72px] cursor-pointer rounded-input border border-border bg-surface-2 p-1 md:h-10" />
             </Field>
           </div>
 
           <div>
-            <p className="text-[13.5px] font-semibold text-[#1c1a24]">Conteúdo</p>
-            <p className="mt-1 text-[13px] leading-relaxed text-[#6b6878]">{VARIABLES_HINT}</p>
-            <ol className="mt-3 space-y-3">
+            <p className="text-sm font-semibold text-foreground">Conteúdo</p>
+            <Note className="mt-1">{VARIABLES_HINT}</Note>
+            <ol className="mt-3 space-y-2.5">
               {content.blocks.map((block, index) => (
-                <li key={index} className="rounded-[14px] border border-[#ebe8f2] p-3.5">
+                <li key={index} className="surface-inset rounded-xl p-3.5">
                   <div className="mb-2.5 flex items-center justify-between gap-2">
-                    <span className="text-[13px] font-semibold text-[#5f5c6b]">{BLOCK_LABEL[block.type]}</span>
-                    <span className="flex gap-1">
-                      <IconButton label="Subir" disabled={index === 0} onClick={() => move(index, -1)}><ArrowUp size={15} aria-hidden="true" /></IconButton>
-                      <IconButton label="Descer" disabled={index === content.blocks.length - 1} onClick={() => move(index, 1)}><ArrowDown size={15} aria-hidden="true" /></IconButton>
-                      <IconButton label="Remover bloco" onClick={() => setContent({ ...content, blocks: content.blocks.filter((_, i) => i !== index) })}><Trash2 size={15} strokeWidth={1.8} aria-hidden="true" /></IconButton>
+                    <span className="flex items-center gap-2 text-caption font-semibold uppercase tracking-wider text-muted-foreground">
+                      <Icon name={BLOCK_META[block.type].icon} size={11} />
+                      {BLOCK_META[block.type].label}
+                    </span>
+                    <span className="flex gap-0.5">
+                      <Button variant="subtle" size="icon-sm" className="size-8" aria-label="Subir" title="Subir" disabled={index === 0} onClick={() => move(index, -1)}>
+                        <Icon name="arrow-up" size={12} />
+                      </Button>
+                      <Button variant="subtle" size="icon-sm" className="size-8" aria-label="Descer" title="Descer" disabled={index === content.blocks.length - 1} onClick={() => move(index, 1)}>
+                        <Icon name="arrow-down" size={12} />
+                      </Button>
+                      <Button variant="subtle" size="icon-sm" className="size-8 hover:bg-danger-bg hover:text-danger" aria-label="Remover bloco" title="Remover" onClick={() => setContent({ ...content, blocks: content.blocks.filter((_, i) => i !== index) })}>
+                        <Icon name="trash" size={12} />
+                      </Button>
                     </span>
                   </div>
                   <BlockFields block={block} onChange={(b) => setBlock(index, b)} />
@@ -338,14 +324,13 @@ function EmailEditor({ orgId, template, onClose, readOnly }: { orgId: number; te
               ))}
             </ol>
             <div className="mt-3 flex flex-wrap gap-2">
-              {(Object.keys(BLOCK_LABEL) as EmailBlock["type"][]).map((type) => (
-                <button key={type} type="button" onClick={() => setContent({ ...content, blocks: [...content.blocks, NEW_BLOCK[type]] })} className={cn(BTN_SECONDARY, "h-9 px-3 text-[13.5px]", PRESSABLE)}>
-                  <Plus size={14} strokeWidth={2} aria-hidden="true" />
-                  {BLOCK_LABEL[type]}
-                </button>
+              {(Object.keys(BLOCK_META) as EmailBlock["type"][]).map((type) => (
+                <Button key={type} variant="outline" size="sm" leftIcon="plus" onClick={() => setContent({ ...content, blocks: [...content.blocks, NEW_BLOCK[type]] })}>
+                  {BLOCK_META[type].label}
+                </Button>
               ))}
             </div>
-            <p className="mt-3 text-[13px] leading-relaxed text-[#6b6878]">O rodapé com o nome da sua empresa e o link para sair da lista entra sozinho em todo e-mail.</p>
+            <Note className="mt-3">O rodapé com o nome da sua empresa e o link pra sair da lista entra sozinho em todo e-mail.</Note>
           </div>
         </>
       }
@@ -353,56 +338,48 @@ function EmailEditor({ orgId, template, onClose, readOnly }: { orgId: number; te
         <>
           <div className="mb-3 flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[13px] text-[#6b6878]">Prévia para Maria Souza</p>
-              <p className="truncate text-[15px] font-semibold text-[#1c1a24]">{preview?.channel === "EMAIL" && preview.subject ? preview.subject : "Sem assunto"}</p>
+              <p className="text-caption text-muted-foreground">Prévia para Maria Souza</p>
+              <p className="truncate text-sm font-semibold text-foreground">{preview?.channel === "EMAIL" && preview.subject ? preview.subject : "Sem assunto"}</p>
             </div>
-            <div className="flex shrink-0 gap-1 rounded-[10px] bg-[#efecf6] p-1" role="group" aria-label="Tamanho da prévia">
-              {(
-                [
-                  ["desktop", "Computador", Monitor],
-                  ["mobile", "Celular", Smartphone],
-                ] as const
-              ).map(([key, label, Icon]) => (
-                <button key={key} type="button" aria-label={label} aria-pressed={device === key} onClick={() => setDevice(key)} className={cn("flex h-8 w-9 items-center justify-center rounded-[7px] outline-none focus-visible:ring-2 focus-visible:ring-[#7c3aed]", device === key ? "bg-white text-[#1c1a24] shadow-[0_1px_2px_rgba(28,24,48,0.1)]" : "text-[#6b6878]")}>
-                  <Icon size={16} strokeWidth={1.8} aria-hidden="true" />
-                </button>
-              ))}
-            </div>
+            <SegmentedControl
+              size="sm"
+              value={device}
+              onChange={setDevice}
+              options={[
+                { value: "desktop", label: "Computador", icon: "desktop" },
+                { value: "mobile", label: "Celular", icon: "mobile" },
+              ]}
+            />
           </div>
           {preview?.channel === "EMAIL" ? (
             <div className={cn("mx-auto transition-[max-width] duration-300 ease-out", device === "mobile" ? "max-w-[390px]" : "max-w-full")}>
               <EmailPreviewFrame html={preview.html} className="h-[640px]" />
             </div>
           ) : (
-            <BlockSkeleton className="h-[640px]" />
+            <Skeleton className="h-[640px] rounded-card" />
           )}
-          {problems.length ? <div className="mt-3"><Blockers items={problems} title="Falta para o modelo ficar pronto" /></div> : null}
+          {problems.length ? (
+            <div className="mt-3">
+              <Blockers items={problems} title="Falta pro modelo ficar pronto" />
+            </div>
+          ) : null}
         </>
       }
     />
   );
 }
 
-function IconButton({ label, onClick, disabled, children }: { label: string; onClick: () => void; disabled?: boolean; children: ReactNode }) {
-  return (
-    <button type="button" aria-label={label} disabled={disabled} onClick={onClick} className={cn("flex h-8 w-8 items-center justify-center rounded-lg text-[#5b5868] outline-none hover:bg-[#f3f1f8] focus-visible:ring-2 focus-visible:ring-[#7c3aed] disabled:opacity-30", PRESSABLE)}>
-      {children}
-    </button>
-  );
-}
-
 function BlockFields({ block, onChange }: { block: EmailBlock; onChange: (block: EmailBlock) => void }) {
   const [uploading, setUploading] = useState(false);
-  const INPUT = cn(FIELD, "w-full px-3.5");
-  if (block.type === "heading") return <input aria-label="Título" value={block.text} onChange={(e) => onChange({ ...block, text: e.target.value })} maxLength={200} placeholder="Título" className={INPUT} />;
+  if (block.type === "heading") return <Input aria-label="Título" value={block.text} onChange={(e) => onChange({ ...block, text: e.target.value })} maxLength={200} placeholder="Título" />;
   if (block.type === "text") {
-    return <textarea aria-label="Texto" value={block.text} onChange={(e) => onChange({ ...block, text: e.target.value })} maxLength={5000} rows={4} placeholder="Texto. Deixe uma linha em branco para separar parágrafos." className={cn(FIELD, "h-auto w-full resize-y px-3.5 py-2.5 leading-relaxed")} />;
+    return <Textarea aria-label="Texto" value={block.text} onChange={(e) => onChange({ ...block, text: e.target.value })} maxLength={5000} rows={4} placeholder="Texto. Deixe uma linha em branco pra separar parágrafos." className="min-h-0" />;
   }
   if (block.type === "button") {
     return (
       <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
-        <input aria-label="Texto do botão" value={block.label} onChange={(e) => onChange({ ...block, label: e.target.value })} maxLength={80} placeholder="Texto do botão" className={INPUT} />
-        <input aria-label="Link do botão" type="url" value={block.href} onChange={(e) => onChange({ ...block, href: e.target.value })} placeholder="https://" className={INPUT} />
+        <Input aria-label="Texto do botão" value={block.label} onChange={(e) => onChange({ ...block, label: e.target.value })} maxLength={80} placeholder="Texto do botão" />
+        <Input aria-label="Link do botão" type="url" leftIcon="link" value={block.href} onChange={(e) => onChange({ ...block, href: e.target.value })} placeholder="https://" />
       </div>
     );
   }
@@ -424,21 +401,21 @@ function BlockFields({ block, onChange }: { block: EmailBlock; onChange: (block:
     return (
       <div className="space-y-2">
         <div className="flex gap-2">
-          <input aria-label="Endereço da imagem" type="url" value={block.url} onChange={(e) => onChange({ ...block, url: e.target.value })} placeholder="https://… ou envie um arquivo" className={INPUT} />
-          <label className={cn(BTN_SECONDARY, "h-11 shrink-0 cursor-pointer rounded-[12px]", PRESSABLE)}>
-            {uploading ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <Upload size={15} strokeWidth={1.8} aria-hidden="true" />}
+          <Input aria-label="Endereço da imagem" type="url" leftIcon="image" value={block.url} onChange={(e) => onChange({ ...block, url: e.target.value })} placeholder="https://… ou envie um arquivo" />
+          <label className="inline-flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-input border border-border-strong px-3.5 text-sm font-semibold text-foreground transition-colors hover:bg-surface-2 md:h-10">
+            <Icon name={uploading ? "loader" : "upload"} size={13} className={cn(uploading && "animate-spin")} />
             Enviar
             <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="sr-only" onChange={(e) => void upload(e.target.files?.[0])} />
           </label>
         </div>
-        <div className="grid gap-2 sm:grid-cols-2">
-          <input aria-label="Descrição da imagem" value={block.alt ?? ""} onChange={(e) => onChange({ ...block, alt: e.target.value })} maxLength={200} placeholder="Descrição (para quem não vê a imagem)" className={INPUT} />
-          <input aria-label="Link ao clicar na imagem" type="url" value={block.href ?? ""} onChange={(e) => onChange({ ...block, href: e.target.value || undefined })} placeholder="Link ao clicar (opcional)" className={INPUT} />
-        </div>
+        <FieldGroup columns={2} className="gap-2">
+          <Input aria-label="Descrição da imagem" value={block.alt ?? ""} onChange={(e) => onChange({ ...block, alt: e.target.value })} maxLength={200} placeholder="Descrição (pra quem não vê a imagem)" />
+          <Input aria-label="Link ao clicar na imagem" type="url" value={block.href ?? ""} onChange={(e) => onChange({ ...block, href: e.target.value || undefined })} placeholder="Link ao clicar (opcional)" />
+        </FieldGroup>
       </div>
     );
   }
-  return <p className="text-[13px] text-[#6b6878]">{block.type === "divider" ? "Uma linha fina separando duas partes." : "Um respiro entre dois blocos."}</p>;
+  return <Note>{block.type === "divider" ? "Uma linha fina separando duas partes." : "Um respiro entre dois blocos."}</Note>;
 }
 
 // ── editor de WhatsApp ──
@@ -458,7 +435,7 @@ function WhatsappEditor({ orgId, template, connected, onClose, readOnly }: { org
     mutationFn: () => (current ? crmMarketingApi.updateTemplate(orgId, current.id, { name: name.trim(), content }) : crmMarketingApi.createTemplate(orgId, { channel: "WHATSAPP", name: name.trim(), content })),
     onSuccess: (t) => {
       setCurrent(t as CrmTemplate<WhatsappContent>);
-      toast.success("Rascunho salvo.");
+      toast.success("Rascunho salvo");
     },
     onError,
   });
@@ -466,7 +443,7 @@ function WhatsappEditor({ orgId, template, connected, onClose, readOnly }: { org
     mutationFn: () => crmMarketingApi.submitTemplate(orgId, current!.id),
     onSuccess: (t) => {
       setCurrent(t as CrmTemplate<WhatsappContent>);
-      toast.success("Modelo enviado para análise da Meta.");
+      toast.success("Modelo enviado pra análise da Meta");
     },
     onError,
   });
@@ -474,7 +451,7 @@ function WhatsappEditor({ orgId, template, connected, onClose, readOnly }: { org
     mutationFn: () => crmMarketingApi.syncTemplate(orgId, current!.id),
     onSuccess: (t) => {
       setCurrent(t as CrmTemplate<WhatsappContent>);
-      toast.success("Situação atualizada com a Meta.");
+      toast.success("Situação atualizada com a Meta");
     },
     onError,
   });
@@ -494,26 +471,17 @@ function WhatsappEditor({ orgId, template, connected, onClose, readOnly }: { org
       onClose={onClose}
       actions={
         readOnly ? null : locked ? (
-          <button type="button" disabled={sync.isPending} onClick={() => sync.mutate()} className={cn(BTN_SECONDARY, PRESSABLE)}>
-            {sync.isPending ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : <RefreshCw size={15} strokeWidth={1.8} aria-hidden="true" />}
+          <Button variant="outline" leftIcon="refresh" loading={sync.isPending} onClick={() => sync.mutate()}>
             Atualizar situação
-          </button>
+          </Button>
         ) : (
           <>
-            <button type="button" disabled={name.trim().length < 2 || save.isPending || !dirty} onClick={() => save.mutate()} className={cn(BTN_SECONDARY, PRESSABLE)}>
-              {save.isPending ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : null}
+            <Button variant="outline" leftIcon="save" disabled={name.trim().length < 2 || !dirty} loading={save.isPending} onClick={() => save.mutate()}>
               Salvar rascunho
-            </button>
-            <button
-              type="button"
-              disabled={!current || dirty || problems.length > 0 || !connected || submit.isPending}
-              title={!connected ? "Conecte o WhatsApp Business em Canais" : dirty ? "Salve o rascunho antes" : undefined}
-              onClick={() => submit.mutate()}
-              className={cn(BTN_PRIMARY, PRESSABLE)}
-            >
-              {submit.isPending ? <Loader2 size={15} className="animate-spin" aria-hidden="true" /> : null}
-              Enviar para análise da Meta
-            </button>
+            </Button>
+            <Button leftIcon="send" disabled={!current || dirty || problems.length > 0 || !connected} loading={submit.isPending} title={!connected ? "Conecte o WhatsApp Business em Canais" : dirty ? "Salve o rascunho antes" : undefined} onClick={() => submit.mutate()}>
+              Enviar pra análise da Meta
+            </Button>
           </>
         )
       }
@@ -521,63 +489,64 @@ function WhatsappEditor({ orgId, template, connected, onClose, readOnly }: { org
         <>
           {status ? (
             <div className="flex flex-wrap items-center gap-2.5">
-              <Pill tone={status.tone}>{status.label}</Pill>
-              {current?.statusSyncedAt ? <span className="text-[13px] text-[#6b6878]">Situação informada pela Meta em {fmtDate(current.statusSyncedAt)}</span> : null}
+              <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
+              {current?.statusSyncedAt ? <span className="text-caption text-muted-foreground">Situação informada pela Meta em {fmtDate(current.statusSyncedAt)}</span> : null}
             </div>
           ) : null}
           {current?.rejectionReason ? <Blockers items={[current.rejectionReason]} title="Motivo informado pela Meta" /> : null}
-          {locked ? <p className="rounded-[14px] bg-[#faf8ff] px-4 py-3 text-[13.5px] leading-relaxed text-[#3a3746]">Depois de enviado para análise, o texto não pode mais ser alterado. Para mudar a mensagem, crie um modelo novo.</p> : null}
-          {!connected && !locked ? <p className="rounded-[14px] bg-[#faf8ff] px-4 py-3 text-[13.5px] leading-relaxed text-[#3a3746]">Você pode escrever e salvar o rascunho agora. Para enviar à análise, conecte o WhatsApp Business em Canais.</p> : null}
+          {locked ? <Callout tone="neutral">Depois de enviado pra análise, o texto não pode mais ser alterado. Pra mudar a mensagem, crie um modelo novo.</Callout> : null}
+          {!connected && !locked ? <Callout tone="info">Você pode escrever e salvar o rascunho agora. Pra enviar à análise, conecte o WhatsApp Business em Canais.</Callout> : null}
 
           <fieldset disabled={locked} className="space-y-5 disabled:opacity-70">
-            <Field label="Nome do modelo" hint="Só você vê.">
-              <input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} placeholder="Ex.: Abertura de vendas" className={cn(FIELD, "w-full px-3.5")} />
+            <Field label="Nome do modelo" htmlFor="wa-nome" hint="Só você vê.">
+              <Input id="wa-nome" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} placeholder="Ex.: Abertura de vendas" />
             </Field>
-            <Field label="Tipo de mensagem" hint="A Meta cobra valores diferentes por tipo e pode reclassificar o modelo na análise.">
-              <select value={content.category} onChange={(e) => setContent({ ...content, category: e.target.value as WhatsappContent["category"] })} className={cn(FIELD, "w-full px-3")}>
+            <Field label="Tipo de mensagem" htmlFor="wa-tipo" hint="A Meta cobra valores diferentes por tipo e pode reclassificar o modelo na análise.">
+              <NativeSelect id="wa-tipo" value={content.category} onChange={(e) => setContent({ ...content, category: e.target.value as WhatsappContent["category"] })}>
                 <option value="MARKETING">Divulgação (novidades, eventos, promoções)</option>
                 <option value="UTILITY">Serviço (aviso sobre algo que a pessoa já contratou)</option>
-              </select>
+              </NativeSelect>
             </Field>
-            <Field label="Título" hint="Opcional. Uma linha em destaque no topo, sem variável.">
-              <input value={content.headerText ?? ""} onChange={(e) => setContent({ ...content, headerText: e.target.value || undefined })} maxLength={60} className={cn(FIELD, "w-full px-3.5")} />
+            <Field label="Título" htmlFor="wa-titulo" optional hint="Uma linha em destaque no topo, sem variável.">
+              <Input id="wa-titulo" value={content.headerText ?? ""} onChange={(e) => setContent({ ...content, headerText: e.target.value || undefined })} maxLength={60} />
             </Field>
             <div>
-              <Field label="Mensagem" hint="A mensagem não pode começar nem terminar com uma variável (regra da Meta).">
-                <textarea ref={bodyRef} value={content.body} onChange={(e) => setContent({ ...content, body: e.target.value })} maxLength={1024} rows={6} placeholder="Oi {{primeiro_nome}}, abrimos as vendas do nosso próximo evento." className={cn(FIELD, "h-auto w-full resize-y px-3.5 py-2.5 leading-relaxed")} />
+              <Field label="Mensagem" htmlFor="wa-body" hint="A mensagem não pode começar nem terminar com uma variável (regra da Meta).">
+                <Textarea id="wa-body" ref={bodyRef} value={content.body} onChange={(e) => setContent({ ...content, body: e.target.value })} maxLength={1024} rows={6} placeholder="Oi {{primeiro_nome}}, abrimos as vendas do nosso próximo evento." />
               </Field>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px] text-[#6b6878]">
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-caption text-muted-foreground">
                 Inserir:
                 {["primeiro_nome", "nome", "organizacao"].map((v) => (
-                  <button key={v} type="button" onClick={() => insert(v)} className={cn("rounded-md bg-[#f3f1f8] px-2 py-1 font-mono text-[12.5px] text-[#1c1a24] outline-none hover:bg-[#ebe8f2] focus-visible:ring-2 focus-visible:ring-[#7c3aed]", PRESSABLE)}>
+                  <button key={v} type="button" onClick={() => insert(v)} className="press rounded-md bg-surface-2 px-2 py-1 font-mono text-caption text-foreground outline-none hover:bg-surface-3 focus-visible:ring-2 focus-visible:ring-brand">
                     {`{{${v}}}`}
                   </button>
                 ))}
               </div>
             </div>
-            <Field label="Rodapé" hint='Opcional. Ex.: "Responda SAIR para não receber mais".'>
-              <input value={content.footer ?? ""} onChange={(e) => setContent({ ...content, footer: e.target.value || undefined })} maxLength={60} className={cn(FIELD, "w-full px-3.5")} />
+            <Field label="Rodapé" htmlFor="wa-rodape" optional hint='Ex.: "Responda SAIR para não receber mais".'>
+              <Input id="wa-rodape" value={content.footer ?? ""} onChange={(e) => setContent({ ...content, footer: e.target.value || undefined })} maxLength={60} />
             </Field>
             <div>
-              <p className="text-[13.5px] font-semibold text-[#1c1a24]">Botões</p>
+              <p className="text-sm font-semibold text-foreground">Botões</p>
               <ul className="mt-2 space-y-2">
                 {content.buttons.map((button, index) => (
                   <li key={index} className="flex flex-wrap gap-2 sm:flex-nowrap">
-                    <select aria-label="Tipo do botão" value={button.type} onChange={(e) => setButton(index, e.target.value === "URL" ? { type: "URL", text: button.text, url: "https://" } : { type: "QUICK_REPLY", text: button.text })} className={cn(FIELD, "w-full px-3 sm:w-[170px]")}>
+                    <NativeSelect aria-label="Tipo do botão" value={button.type} onChange={(e) => setButton(index, e.target.value === "URL" ? { type: "URL", text: button.text, url: "https://" } : { type: "QUICK_REPLY", text: button.text })} className="sm:w-[180px]">
                       <option value="URL">Abre um link</option>
                       <option value="QUICK_REPLY">Resposta rápida</option>
-                    </select>
-                    <input aria-label="Texto do botão" value={button.text} onChange={(e) => setButton(index, { ...button, text: e.target.value })} maxLength={25} placeholder="Texto" className={cn(FIELD, "w-full min-w-0 flex-1 px-3.5")} />
-                    {button.type === "URL" ? <input aria-label="Link" type="url" value={button.url} onChange={(e) => setButton(index, { ...button, url: e.target.value })} placeholder="https://" className={cn(FIELD, "w-full min-w-0 flex-[1.4] px-3.5")} /> : null}
-                    <IconButton label="Remover botão" onClick={() => setContent({ ...content, buttons: content.buttons.filter((_, i) => i !== index) })}><Trash2 size={15} strokeWidth={1.8} aria-hidden="true" /></IconButton>
+                    </NativeSelect>
+                    <Input aria-label="Texto do botão" value={button.text} onChange={(e) => setButton(index, { ...button, text: e.target.value })} maxLength={25} placeholder="Texto" className="min-w-0 flex-1" />
+                    {button.type === "URL" ? <Input aria-label="Link" type="url" value={button.url} onChange={(e) => setButton(index, { ...button, url: e.target.value })} placeholder="https://" className="min-w-0 flex-[1.4]" /> : null}
+                    <Button variant="subtle" size="icon" aria-label="Remover botão" title="Remover" className="shrink-0 hover:bg-danger-bg hover:text-danger" onClick={() => setContent({ ...content, buttons: content.buttons.filter((_, i) => i !== index) })}>
+                      <Icon name="trash" size={13} />
+                    </Button>
                   </li>
                 ))}
               </ul>
               {content.buttons.length < 3 ? (
-                <button type="button" onClick={() => setContent({ ...content, buttons: [...content.buttons, { type: "URL", text: "", url: "https://" }] })} className={cn(BTN_SECONDARY, "mt-2 h-9 px-3 text-[13.5px]", PRESSABLE)}>
-                  <Plus size={14} strokeWidth={2} aria-hidden="true" />
+                <Button variant="outline" size="sm" leftIcon="plus" className="mt-2" onClick={() => setContent({ ...content, buttons: [...content.buttons, { type: "URL", text: "", url: "https://" }] })}>
                   Botão
-                </button>
+                </Button>
               ) : null}
             </div>
           </fieldset>
@@ -585,12 +554,14 @@ function WhatsappEditor({ orgId, template, connected, onClose, readOnly }: { org
       }
       right={
         <>
-          <p className="mb-3 text-[13px] text-[#6b6878]">Prévia para Maria Souza</p>
-          {preview?.channel === "WHATSAPP" ? <WhatsappBubble preview={preview} /> : <BlockSkeleton className="h-48" />}
-          {problems.length && !locked ? <div className="mt-3"><Blockers items={problems} title="Falta para enviar à análise" /></div> : null}
-          <p className="mt-4 text-[13px] leading-relaxed text-[#6b6878]">
-            No WhatsApp, mensagem de empresa só sai com um modelo aprovado pela Meta. A situação mostrada aqui é sempre a que a Meta informou.
-          </p>
+          <p className="mb-3 text-caption text-muted-foreground">Prévia para Maria Souza</p>
+          {preview?.channel === "WHATSAPP" ? <WhatsappBubble preview={preview} /> : <Skeleton className="h-48 rounded-card" />}
+          {problems.length && !locked ? (
+            <div className="mt-3">
+              <Blockers items={problems} title="Falta pra enviar à análise" />
+            </div>
+          ) : null}
+          <Note className="mt-4">No WhatsApp, mensagem de empresa só sai com um modelo aprovado pela Meta. A situação mostrada aqui é sempre a que a Meta informou.</Note>
         </>
       }
     />

@@ -1,340 +1,253 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Image from "next/image";
+import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Calendar, PlusCircleIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useOrganizations } from "@/context/OrganizationContext";
-import { useRequireWorkspace } from "../_components/require-workspace-provider";
-import api from "@/lib/axios";
+import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
-import { formatarDataCurta } from "@/lib/formatarData";
-import { resolveMediaUrl } from "@/lib/media";
-import { Paginate } from "@/interfaces/paginate";
-import { PageContainer } from "../_components/page/page-container";
-import { EmptyState } from "../_components/states/empty-state";
-import { BlockSkeleton } from "../_components/states/loading-state";
-import { DeleteEventoDialog } from "./_components/dialogs/delete-evento-dialog";
-import { CancelEventoDialog } from "./_components/dialogs/cancel-evento-dialog";
+import { cn } from "@/lib/cn";
+import type { Paginate } from "@/interfaces/paginate";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataTablePagination } from "@/components/ui/data-table";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
+import { PageHeader } from "@/components/ui/page-header";
+import { SearchInput } from "@/components/ui/search-input";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatCard } from "@/components/ui/stat-card";
+import { useRequireWorkspace } from "../_components/require-workspace-provider";
 import { LegalFinancialPendingBanner } from "../_components/legal-financial-pending-banner";
+import { EventCard, EventCardSkeleton, type EventListItem } from "./_components/EventCard";
+import { EVENT_STATUS } from "./_lib/event-meta";
 
-// EventStatus: 1=DRAFT 2=PUBLISHED 3=CANCELLED 4=FINISHED
-const STATUS_BADGE: Record<number, { label: string; className: string }> = {
-  1: { label: "Rascunho",   className: "bg-gray-100 text-gray-600" },
-  2: { label: "Ativo",      className: "bg-emerald-100 text-emerald-700" },
-  3: { label: "Cancelado",  className: "bg-red-100 text-red-600" },
-  4: { label: "Finalizado", className: "bg-blue-100 text-blue-600" },
-};
-
-type Thumbnail = { id?: string; url: string };
-
-type Address = {
-  cep: string;
-  logradouro: string;
-  bairro: string;
-  localidade: string;
-  numero: string;
-  uf: string;
-};
-
-type EventoAPI = {
-  id: number;
-  slug?: string | null;
-  nome: string;
-  data: string;
-  horario: string;
-  status: number;
-  thumbnails: Thumbnail[];
-  endereco: Address;
-};
-
+type Filtro = "ativos" | "inativos" | "todos";
 interface GetEvents {
-  data: EventoAPI[];
+  data: EventListItem[];
   paginate: Paginate;
 }
+interface Metrics {
+  ingressosVendidos: number;
+  arrecadacaoTotal: number;
+  eventosCriados: number;
+}
+
+const FILTER_STATUS: Record<Filtro, number | null> = { ativos: EVENT_STATUS.PUBLISHED, inativos: EVENT_STATUS.DRAFT, todos: null };
+const FILTER_OPTIONS: { value: Filtro; label: string }[] = [
+  { value: "ativos", label: "Ativos" },
+  { value: "inativos", label: "Rascunhos" },
+  { value: "todos", label: "Todos" },
+];
+
+const keys = {
+  list: (orgId: number, filtro: Filtro, page: number) => ["produtor-eventos", orgId, filtro, page] as const,
+  stats: (orgId: number) => ["produtor-eventos", orgId, "stats"] as const,
+};
 
 /**
- * Rota canônica de Eventos (Fase 5 — substitui o hub que só linkava para
- * `/produtor/*`). A listagem é escopada pela organização ativa
- * (`organizationId`, ver docs/platform/unified-navigation.md "Fase 5") —
- * trocar de organização troca os eventos exibidos.
+ * Rota canônica de Eventos: lista escopada pela organização ativa
+ * (`organizationId`) — trocar de organização troca os eventos exibidos.
  */
 export default function EventosPage() {
-  const router = useRouter();
   const { currentOrg, loadingOrgs } = useOrganizations();
   const { guard } = useRequireWorkspace();
-  const [filtro, setFiltro] = useState<"todos" | "ativos" | "inativos">("todos");
-  const [eventos, setEventos] = useState<EventoAPI[]>([]);
-  const [paginate, setPaginate] = useState<Paginate>({ currentPage: 1, totalPages: 1 });
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const orgId = currentOrg?.id ?? null;
 
-  function parseFilterValue(str: string) {
-    switch (str) {
-      case "ativos":   return 2; // EventStatus.PUBLISHED
-      case "inativos": return 1; // EventStatus.DRAFT
-      default:         return null;
-    }
-  }
+  const [filtro, setFiltro] = useState<Filtro>("ativos");
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [pending, setPending] = useState<{ kind: "cancel" | "delete"; ev: EventListItem } | null>(null);
 
-  async function getEvents(page = 1) {
-    if (!currentOrg) return;
-    setLoading(true);
-    try {
-      const res = await api.get<GetEvents>("/produtor/eventos", {
-        params: { organizationId: currentOrg.id, page, status: parseFilterValue(filtro) },
-      });
-      setPaginate(res.data.paginate);
-      setEventos(res.data.data);
-    } catch (err: any) {
-      toast.error(err.message ?? "Falha ao carregar eventos.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const list = useQuery({
+    queryKey: keys.list(orgId ?? -1, filtro, page),
+    queryFn: () => api.get<GetEvents>("/produtor/eventos", { params: { organizationId: orgId, page, status: FILTER_STATUS[filtro] } }).then((r) => r.data),
+    enabled: orgId !== null,
+    placeholderData: (prev) => prev,
+  });
 
-  function goToEditor(eventId: number) {
-    router.push(`/dashboard/eventos/${eventId}`);
-  }
+  const stats = useQuery({
+    queryKey: keys.stats(orgId ?? -1),
+    queryFn: async () => {
+      const [metrics, active] = await Promise.all([
+        api.get<Metrics>("/produtor/metrics", { params: { organizationId: orgId } }).then((r) => r.data),
+        api.get<GetEvents>("/produtor/eventos", { params: { organizationId: orgId, page: 1, status: EVENT_STATUS.PUBLISHED, limit: 1 } }).then((r) => r.data.paginate),
+      ]);
+      return { ...metrics, ativos: active.total ?? active.totalPages ?? 0 };
+    },
+    enabled: orgId !== null,
+    staleTime: 60_000,
+  });
 
-  useEffect(() => {
-    getEvents();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtro, currentOrg?.id]);
+  const eventos = useMemo(() => {
+    const items = list.data?.data ?? [];
+    const q = search.trim().toLowerCase();
+    return q ? items.filter((e) => e.nome.toLowerCase().includes(q)) : items;
+  }, [list.data, search]);
+
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ["produtor-eventos", orgId] });
+  };
 
   const handleDelete = async (id: number) => {
     try {
       await api.delete(`/produtor/eventos/${id}`);
-      await getEvents();
-      toast.success("Evento excluído com sucesso");
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message ?? "Erro ao excluir evento");
+      toast.success("Evento excluído");
+      refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Não foi possível excluir o evento."));
+      throw error;
     }
   };
 
   const handleCancel = async (id: number) => {
     try {
       await api.patch(`/produtor/eventos/${id}/cancelar`);
-      await getEvents();
-      toast.success("Evento cancelado com sucesso");
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message ?? "Erro ao cancelar evento");
+      toast.success("Evento cancelado");
+      refresh();
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Não foi possível cancelar o evento."));
+      throw error;
     }
   };
 
+  const createAction = currentOrg ? (
+    <Button asChild>
+      <Link href="/dashboard/eventos/criar">
+        <Icon name="plus" size={14} />
+        Criar evento
+      </Link>
+    </Button>
+  ) : (
+    <Button leftIcon="plus" onClick={() => guard(() => undefined)}>
+      Criar evento
+    </Button>
+  );
+
   if (loadingOrgs) {
     return (
-      <PageContainer>
-        <BlockSkeleton className="h-96" />
-      </PageContainer>
+      <div className="space-y-6">
+        <PageHeader title="Eventos" />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-28 rounded-card" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <EventCardSkeleton key={i} />
+          ))}
+        </div>
+      </div>
     );
   }
 
   if (!currentOrg) {
     return (
-      <PageContainer>
-        <section className="w-full mt-4">
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <h1 className="text-2xl font-semibold">Eventos</h1>
-            <Button onClick={() => guard(() => {})}>
-              <PlusCircleIcon className="w-4 h-4 mr-2" />
-              Novo Evento
-            </Button>
-          </div>
-          <EmptyState
-            title="Nenhum evento ainda"
-            description="Crie seu workspace para começar a cadastrar eventos."
-            actionLabel="Novo Evento"
-            onAction={() => guard(() => {})}
-          />
-        </section>
-      </PageContainer>
+      <div className="space-y-6">
+        <PageHeader title="Eventos" actions={createAction} />
+        <EmptyState icon="calendar-plus" title="Nenhum evento ainda" description="Crie seu workspace para começar a cadastrar eventos." action={<Button leftIcon="plus" onClick={() => guard(() => undefined)}>Criar evento</Button>} />
+      </div>
     );
   }
 
+  const paginate = list.data?.paginate;
+  const lastPage = paginate?.lastPage ?? paginate?.totalPages ?? 1;
+  const loading = list.isLoading;
+
   return (
-    <PageContainer>
-      {/* A verificação que libera ingresso pago é a do workspace (dados jurídicos e financeiros), não a antiga por usuário. */}
+    <div className="space-y-6">
+      <PageHeader title="Eventos" actions={createAction} />
       <LegalFinancialPendingBanner orgId={currentOrg.id} />
 
-      <section className="w-full mt-4">
-        {/* Celular: título e "Novo Evento" na mesma linha, filtro logo abaixo em
-            largura total. O `contents` desfaz o agrupamento só abaixo de md. */}
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
-          <h1 className="order-1 text-2xl font-semibold">Eventos</h1>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+        <StatCard label="Eventos ativos" icon="calendar-check" value={stats.data?.ativos} loading={stats.isLoading} hint="Publicados e vendendo agora" />
+        <StatCard label="Ingressos vendidos" icon="ticket" value={stats.data?.ingressosVendidos} loading={stats.isLoading} hint="Em todos os eventos" />
+        <StatCard label="Receita" icon="sack-dollar" format="currency" value={stats.data?.arrecadacaoTotal} loading={stats.isLoading} hint="Valor dos ingressos vendidos" />
+      </div>
 
-          <div className="contents md:order-2 md:flex md:items-center md:gap-4">
-            <div className="order-3 flex w-full md:order-none md:w-auto [&>button]:flex-1 md:[&>button]:flex-none">
-              <Button
-                onClick={() => setFiltro("todos")}
-                variant={filtro === "todos" ? "default" : "outline"}
-                className={`rounded-none rounded-l-lg ${filtro === "todos" ? "bg-violet-600 text-white hover:bg-violet-700" : "text-sm"}`}
-              >
-                Todos
-              </Button>
-              <Button
-                onClick={() => setFiltro("ativos")}
-                variant={filtro === "ativos" ? "default" : "outline"}
-                className={`rounded-none ${filtro === "ativos" ? "bg-violet-600 text-white hover:bg-violet-700" : "text-sm"}`}
-              >
-                Ativos
-              </Button>
-              <Button
-                onClick={() => setFiltro("inativos")}
-                variant={filtro === "inativos" ? "default" : "outline"}
-                className={`rounded-none rounded-r-lg ${filtro === "inativos" ? "bg-violet-600 text-white hover:bg-violet-700" : "text-sm"}`}
-              >
-                Rascunhos
-              </Button>
-            </div>
-
-            <Link href="/dashboard/eventos/criar" className="order-2 md:order-none">
-              <Button>
-                <PlusCircleIcon className="w-4 h-4 mr-2" />
-                Novo Evento
-              </Button>
-            </Link>
-          </div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <SearchInput value={search} onChange={setSearch} placeholder="Buscar evento pelo nome" className="w-full sm:max-w-xl sm:flex-1" />
+        <div className="flex items-center gap-2">
+          <SegmentedControl
+            className="flex-1 sm:flex-none"
+            value={filtro}
+            options={FILTER_OPTIONS}
+            onChange={(v) => {
+              setFiltro(v);
+              setPage(1);
+            }}
+          />
+          <Button variant="subtle" size="icon" aria-label="Atualizar lista" title="Atualizar" onClick={refresh}>
+            <Icon name="refresh" size={14} className={cn(list.isFetching && "animate-spin")} />
+          </Button>
         </div>
+      </div>
 
-        {loading ? (
-          <p className="text-center py-20">Carregando...</p>
-        ) : eventos.length === 0 ? (
-          <p className="text-center py-20 text-muted-foreground">
-            Nenhum evento encontrado.
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {eventos.map((ev) => {
-              const badge = STATUS_BADGE[ev.status] ?? { label: "Desconhecido", className: "bg-gray-100 text-gray-500" };
-              const isPublished  = ev.status === 2;
-              const isDraft      = ev.status === 1;
+      {list.isError ? (
+        <ErrorState title="Não deu pra carregar os eventos" description={getErrorMessage(list.error, "Tenta de novo em alguns segundos.")} onRetry={() => void list.refetch()} />
+      ) : loading ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <EventCardSkeleton key={i} />
+          ))}
+        </div>
+      ) : eventos.length === 0 ? (
+        <EmptyState
+          icon="calendar-plus"
+          title={search ? "Nenhum evento com esse nome" : filtro === "ativos" ? "Nenhum evento publicado" : filtro === "inativos" ? "Nenhum rascunho" : "Nenhum evento ainda"}
+          description={search ? "Tente outro termo ou limpe a busca." : "Crie um evento e publique quando estiver pronto."}
+          action={
+            search ? (
+              <Button variant="outline" onClick={() => setSearch("")}>
+                Limpar busca
+              </Button>
+            ) : (
+              createAction
+            )
+          }
+        />
+      ) : (
+        <div className={cn("grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3", list.isFetching && "opacity-80 transition-opacity")}>
+          {eventos.map((ev, i) => (
+            <EventCard key={ev.id} event={ev} index={i} onCancel={(e) => setPending({ kind: "cancel", ev: e })} onDelete={(e) => setPending({ kind: "delete", ev: e })} />
+          ))}
+        </div>
+      )}
 
-              return (
-                <div
-                  key={ev.id}
-                  className="border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition hover:-translate-y-[2px] bg-white"
-                >
-                  <div className="w-full aspect-[16/9] relative bg-gray-100">
-                    {ev.thumbnails[0]?.url ? (
-                      <Image
-                        src={resolveMediaUrl(ev.thumbnails[0].url) ?? ev.thumbnails[0].url}
-                        alt={ev.nome}
-                        fill
-                        sizes="100%"
-                        className="object-cover rounded-t-xl"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center rounded-t-xl bg-gray-100">
-                        <span className="text-xs text-gray-400">Sem imagem</span>
-                      </div>
-                    )}
-                  </div>
+      {paginate && lastPage > 1 ? <DataTablePagination page={page} lastPage={lastPage} total={paginate.total} perPage={paginate.perPage ?? paginate.limit} noun="eventos" onPageChange={setPage} /> : null}
 
-                  <div className="flex flex-col p-4">
-                    <p className="text-sm text-violet-500 font-medium flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      {formatarDataCurta(ev.data)}
-                    </p>
-
-                    <h2 className="text-base font-semibold mt-1">{ev.nome}</h2>
-
-                    <p className="text-sm text-muted-foreground">
-                      {ev.endereco?.logradouro}, {ev.endereco?.numero} – {ev.endereco?.localidade}
-                    </p>
-
-                    <div className="mt-2 mb-4">
-                      <Badge className={`${badge.className} px-3 py-1`}>
-                        {badge.label}
-                      </Badge>
-                    </div>
-
-                    {/* Visualizar — sempre disponível */}
-                    <Link href={`/evento/${ev.slug ?? ev.id}`} target="_blank">
-                      <Button variant="outline" className="mb-2 w-full border-violet-500 text-violet-600 hover:text-white hover:bg-violet-600">
-                        Visualizar
-                      </Button>
-                    </Link>
-
-                    {/* Publicado: editar + cancelar */}
-                    {isPublished && (
-                      <>
-                        <Button
-                          variant="outline"
-                          onClick={() => goToEditor(ev.id)}
-                          className="mb-2 w-full border-violet-500 text-violet-600 hover:text-white hover:bg-violet-600"
-                        >
-                          Editar
-                        </Button>
-                        <CancelEventoDialog
-                          eventId={ev.id}
-                          eventName={ev.nome}
-                          onConfirm={handleCancel}
-                        />
-                      </>
-                    )}
-
-                    {/* Rascunho: editar + excluir */}
-                    {isDraft && (
-                      <>
-                        <Button
-                          variant="outline"
-                          onClick={() => goToEditor(ev.id)}
-                          className="mb-2 w-full border-violet-500 text-violet-600 hover:text-white hover:bg-violet-600"
-                        >
-                          Editar
-                        </Button>
-                        <DeleteEventoDialog
-                          eventId={ev.id}
-                          eventName={ev.nome}
-                          onConfirm={handleDelete}
-                        />
-                      </>
-                    )}
-
-                    {/* Cancelado / Finalizado: sem ações adicionais */}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {paginate.totalPages > 1 && (
-          <div className="mt-10 flex justify-center">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    className={paginate.currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                    onClick={() => getEvents(paginate.currentPage - 1)}
-                  />
-                </PaginationItem>
-                <PaginationItem>
-                  <span className="text-sm px-2">
-                    Página {paginate.currentPage} de {paginate.totalPages}
-                  </span>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationNext
-                    className={paginate.currentPage === paginate.totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                    onClick={() => getEvents(paginate.currentPage + 1)}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
-        )}
-      </section>
-    </PageContainer>
+      <ConfirmDialog
+        open={pending?.kind === "cancel"}
+        onOpenChange={(o) => (!o ? setPending(null) : null)}
+        danger
+        icon="ban"
+        title="Cancelar este evento?"
+        description={
+          <>
+            <span className="font-medium text-foreground">{pending?.ev.nome}</span> some da bilheteria e ninguém mais compra ingresso. Não dá pra reativar depois.
+          </>
+        }
+        confirmLabel="Cancelar evento"
+        cancelLabel="Voltar"
+        onConfirm={() => (pending ? handleCancel(pending.ev.id) : undefined)}
+      />
+      <ConfirmDialog
+        open={pending?.kind === "delete"}
+        onOpenChange={(o) => (!o ? setPending(null) : null)}
+        danger
+        icon="trash"
+        title="Excluir este rascunho?"
+        description={
+          <>
+            <span className="font-medium text-foreground">{pending?.ev.nome}</span> e as imagens dele são removidos de vez. Essa ação não pode ser desfeita.
+          </>
+        }
+        confirmLabel="Excluir"
+        onConfirm={() => (pending ? handleDelete(pending.ev.id) : undefined)}
+      />
+    </div>
   );
 }

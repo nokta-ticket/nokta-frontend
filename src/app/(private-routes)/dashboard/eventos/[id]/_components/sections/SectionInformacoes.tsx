@@ -1,291 +1,83 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Button } from "@/components/ui/button"
-import { Loader2, Search, MapPin, Calendar, FileText, Save } from "lucide-react"
-import { toast } from "@/lib/toast"
-import { cn } from "@/lib/utils"
-import api from "@/lib/axios"
-import { SectionProps, Endereco } from "../types"
-
-function CardShell({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-gray-200/80 bg-white overflow-hidden shadow-[0_4px_24px_-6px_rgb(0_0_0/0.10),_0_2px_8px_-3px_rgb(0_0_0/0.06)]">
-      <div className="h-[3px] bg-gradient-to-r from-primary via-primary/80 to-primary/30" />
-      {children}
-    </div>
-  )
-}
-
-function Section({ icon: Icon, title, description, children }: {
-  icon: any; title: string; description?: string; children: React.ReactNode
-}) {
-  return (
-    <div className="space-y-4">
-      <div className="flex items-start gap-3">
-        <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-          <Icon className="w-3.5 h-3.5 text-primary" />
-        </div>
-        <div>
-          <h3 className="text-[13px] font-semibold text-gray-800 leading-tight">{title}</h3>
-          {description && <p className="text-[11px] text-gray-500 mt-0.5">{description}</p>}
-        </div>
-      </div>
-      <div className="space-y-4 pl-[2.5rem]">{children}</div>
-    </div>
-  )
-}
-
-function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
-  return (
-    <label className="block text-[12px] font-semibold text-gray-700 mb-1.5 tracking-wide uppercase">
-      {children}
-      {required && <span className="text-destructive ml-0.5">*</span>}
-    </label>
-  )
-}
-
-const inputCls = cn(
-  "h-12 px-4 text-[14px] rounded-xl border-gray-200 bg-white",
-  "hover:border-gray-300 transition-all duration-150",
-  "focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary",
-  "placeholder:text-gray-400"
-)
-
-const readonlyCls = cn(
-  "h-12 px-4 text-[14px] rounded-xl border-gray-100 bg-gray-50 text-gray-500 cursor-not-allowed",
-  "placeholder:text-gray-400"
-)
-
-const textareaCls = cn(
-  "px-4 text-[14px] rounded-xl border-gray-200 bg-white resize-none",
-  "hover:border-gray-300 transition-all duration-150",
-  "focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary",
-  "placeholder:text-gray-400"
-)
+import { useState } from "react";
+import api, { getErrorMessage } from "@/lib/axios";
+import { toast } from "@/lib/toast";
+import { Field, FieldGroup } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { AddressFields, type EnderecoForm } from "../../../_components/form/address-fields";
+import { FormDivider, FormSection, SaveBar, SectionCard } from "../section-ui";
+import type { SectionProps } from "../types";
 
 export default function SectionInformacoes({ event, onRefresh }: SectionProps) {
   const [form, setForm] = useState({
-    nome:     event.nome     ?? "",
+    nome: event.nome ?? "",
     descricao: event.descricao ?? "",
-    data:     event.data     ?? "",
-    horario:  event.horario  ?? "",
+    data: event.data ?? "",
+    horario: event.horario ?? "",
     endereco: {
-      cep:        event.endereco?.cep        ?? "",
+      cep: event.endereco?.cep ?? "",
       logradouro: event.endereco?.logradouro ?? "",
-      bairro:     event.endereco?.bairro     ?? "",
+      bairro: event.endereco?.bairro ?? "",
       localidade: event.endereco?.localidade ?? "",
-      numero:     event.endereco?.numero     ?? "",
-      uf:         event.endereco?.uf         ?? "",
-    } as Endereco,
-  })
-  const [loadingCep, setLoadingCep] = useState(false)
-  const [saving, setSaving] = useState(false)
+      numero: event.endereco?.numero ?? "",
+      uf: event.endereco?.uf ?? "",
+    } as EnderecoForm,
+  });
+  const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState<{ nome?: string; data?: string }>({});
 
-  const updateEndereco = (patch: Partial<Endereco>) =>
-    setForm((prev) => ({ ...prev, endereco: { ...prev.endereco, ...patch } }))
-
-  const buscarCep = async () => {
-    const cep = form.endereco.cep.replace(/\D/g, "")
-    if (cep.length < 8) return toast.error("CEP inválido")
-    setLoadingCep(true)
-    try {
-      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`)
-      const data = await res.json()
-      if (data.erro) return toast.error("CEP não encontrado")
-      updateEndereco({
-        logradouro: data.logradouro || "",
-        bairro:     data.bairro     || "",
-        localidade: data.localidade || "",
-        uf:         data.uf         || "",
-      })
-    } catch {
-      toast.error("Erro ao buscar endereço")
-    } finally {
-      setLoadingCep(false)
-    }
-  }
+  const updateEndereco = (patch: Partial<EnderecoForm>) => setForm((prev) => ({ ...prev, endereco: { ...prev.endereco, ...patch } }));
 
   const handleSave = async () => {
-    if (!form.nome.trim()) return toast.error("Nome do evento é obrigatório")
-    if (!form.data)        return toast.error("Data do evento é obrigatória")
-    setSaving(true)
-    try {
-      await api.put(`/produtor/eventos/${event.id}`, {
-        nome:     form.nome,
-        descricao: form.descricao,
-        data:     form.data,
-        horario:  form.horario,
-        endereco: form.endereco,
-      })
-      toast.success("Informações salvas com sucesso!")
-      onRefresh()
-    } catch (err: any) {
-      const msg = err?.response?.data?.message
-      toast.error(Array.isArray(msg) ? msg[0] : (msg || "Erro ao salvar informações"))
-    } finally {
-      setSaving(false)
-    }
-  }
+    const next: typeof errors = {};
+    if (!form.nome.trim()) next.nome = "Dê um nome pro evento.";
+    if (!form.data) next.data = "Escolha a data do evento.";
+    setErrors(next);
+    if (Object.keys(next).length > 0) return;
 
-  const hasAddress = !!form.endereco.logradouro
+    setSaving(true);
+    try {
+      await api.put(`/produtor/eventos/${event.id}`, { nome: form.nome, descricao: form.descricao, data: form.data, horario: form.horario, endereco: form.endereco });
+      toast.success("Informações salvas");
+      onRefresh();
+    } catch (err) {
+      toast.error(getErrorMessage(err, "Não foi possível salvar as informações."));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <CardShell>
-      <div className="px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-primary/[0.04] to-transparent flex items-center gap-3">
-        <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shadow-sm">
-          <FileText className="w-3.5 h-3.5 text-white" />
-        </div>
-        <div>
-          <h2 className="text-[14px] font-semibold text-gray-900">Informações Básicas</h2>
-          <p className="text-[11px] text-gray-500 mt-0.5">Identidade e localização do evento</p>
-        </div>
-      </div>
+    <SectionCard title="Informações básicas" description="Nome, descrição, data e endereço — o que aparece primeiro na página pública." footer={<SaveBar onSave={handleSave} saving={saving} />}>
+      <FormSection title="Identidade">
+        <Field label="Nome do evento" htmlFor="ev-nome" required error={errors.nome}>
+          <Input id="ev-nome" value={form.nome} onChange={(e) => setForm((p) => ({ ...p, nome: e.target.value }))} placeholder="Ex.: Baile Neon — All Night Long" aria-invalid={Boolean(errors.nome)} />
+        </Field>
+        <Field label="Descrição" htmlFor="ev-descricao" hint="Uma boa descrição vende mais ingresso: conte o clima, o line-up e o que a pessoa vai viver.">
+          <Textarea id="ev-descricao" rows={5} value={form.descricao} onChange={(e) => setForm((p) => ({ ...p, descricao: e.target.value }))} placeholder="Fale do evento, das atrações e do que o público pode esperar…" />
+        </Field>
+      </FormSection>
 
-      <div className="p-6 space-y-8">
-        {/* Identidade */}
-        <Section icon={FileText} title="Identidade do Evento" description="Como seu evento será apresentado na plataforma">
-          <div>
-            <FieldLabel required>Nome do Evento</FieldLabel>
-            <Input
-              value={form.nome}
-              onChange={(e) => setForm((p) => ({ ...p, nome: e.target.value }))}
-              placeholder="Ex: Festa Universitária 2025"
-              className={inputCls}
-            />
-          </div>
-          <div>
-            <FieldLabel>Descrição</FieldLabel>
-            <Textarea
-              value={form.descricao}
-              onChange={(e) => setForm((p) => ({ ...p, descricao: e.target.value }))}
-              placeholder="Fale mais sobre o seu evento, o que os participantes podem esperar..."
-              rows={4}
-              className={textareaCls}
-            />
-          </div>
-        </Section>
+      <FormDivider />
 
-        <div className="border-t border-gray-100" />
+      <FormSection title="Data e horário">
+        <FieldGroup columns={2}>
+          <Field label="Data" htmlFor="ev-data" required error={errors.data}>
+            <Input id="ev-data" type="date" value={form.data} onChange={(e) => setForm((p) => ({ ...p, data: e.target.value }))} aria-invalid={Boolean(errors.data)} />
+          </Field>
+          <Field label="Horário de início" htmlFor="ev-horario">
+            <Input id="ev-horario" type="time" value={form.horario} onChange={(e) => setForm((p) => ({ ...p, horario: e.target.value }))} />
+          </Field>
+        </FieldGroup>
+      </FormSection>
 
-        {/* Data e Horário */}
-        <Section icon={Calendar} title="Data e Horário" description="Quando o evento acontecerá">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <FieldLabel required>Data</FieldLabel>
-              <Input
-                type="date"
-                value={form.data}
-                onChange={(e) => setForm((p) => ({ ...p, data: e.target.value }))}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <FieldLabel>Horário de início</FieldLabel>
-              <Input
-                type="time"
-                value={form.horario}
-                onChange={(e) => setForm((p) => ({ ...p, horario: e.target.value }))}
-                className={inputCls}
-              />
-            </div>
-          </div>
-        </Section>
+      <FormDivider />
 
-        <div className="border-t border-gray-100" />
-
-        {/* Localização */}
-        <Section icon={MapPin} title="Localização" description="Onde o evento acontecerá">
-          <div>
-            <FieldLabel required>CEP</FieldLabel>
-            <div className="flex gap-2.5">
-              <Input
-                placeholder="00000-000"
-                value={form.endereco.cep}
-                onChange={(e) => updateEndereco({ cep: e.target.value })}
-                maxLength={9}
-                className={cn(inputCls, "max-w-[160px]")}
-              />
-              <Button
-                type="button"
-                onClick={buscarCep}
-                disabled={loadingCep}
-                variant="outline"
-                className={cn(
-                  "h-12 px-4 gap-2 rounded-xl text-[13px] font-medium",
-                  "border-primary/40 text-primary",
-                  "hover:bg-primary/5 hover:border-primary hover:shadow-sm",
-                  "active:scale-[0.97] transition-all duration-150"
-                )}
-              >
-                {loadingCep ? (
-                  <><Loader2 className="animate-spin w-4 h-4" />Buscando...</>
-                ) : (
-                  <><Search className="w-4 h-4" />Buscar CEP</>
-                )}
-              </Button>
-            </div>
-          </div>
-
-          <div className={cn(
-            "grid grid-cols-1 sm:grid-cols-2 gap-4 transition-all duration-300",
-            hasAddress ? "opacity-100" : "opacity-40"
-          )}>
-            <div className="sm:col-span-2">
-              <FieldLabel>Rua / Logradouro</FieldLabel>
-              <Input
-                value={form.endereco.logradouro}
-                readOnly
-                placeholder="Preenchido via CEP"
-                className={readonlyCls}
-              />
-            </div>
-            <div>
-              <FieldLabel required>Número</FieldLabel>
-              <Input
-                placeholder="Ex: 123"
-                value={form.endereco.numero}
-                onChange={(e) => updateEndereco({ numero: e.target.value })}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <FieldLabel>Bairro</FieldLabel>
-              <Input value={form.endereco.bairro} readOnly placeholder="Preenchido via CEP" className={readonlyCls} />
-            </div>
-            <div>
-              <FieldLabel>Cidade</FieldLabel>
-              <Input value={form.endereco.localidade} readOnly placeholder="Preenchido via CEP" className={readonlyCls} />
-            </div>
-            <div>
-              <FieldLabel>Estado</FieldLabel>
-              <Input value={form.endereco.uf} readOnly placeholder="UF" className={readonlyCls} />
-            </div>
-          </div>
-        </Section>
-      </div>
-
-      <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/40 flex justify-end">
-        <Button
-          onClick={handleSave}
-          disabled={saving}
-          className={cn(
-            "h-11 px-7 gap-2 rounded-xl text-[13px] font-semibold",
-            "bg-primary text-white shadow-sm",
-            "hover:bg-primary/90 hover:shadow-[0_6px_20px_-4px_oklch(0.606_0.25_292.717/0.5)]",
-            "active:scale-[0.97] transition-all duration-200",
-            "disabled:opacity-50 disabled:cursor-not-allowed"
-          )}
-        >
-          {saving ? (
-            <><div className="w-4 h-4 border-2 border-white/60 border-t-white rounded-full animate-spin" />Salvando...</>
-          ) : (
-            <><Save className="w-4 h-4" />Salvar alterações</>
-          )}
-        </Button>
-      </div>
-    </CardShell>
-  )
+      <FormSection title="Localização" description="Onde a festa acontece.">
+        <AddressFields value={form.endereco} onChange={updateEndereco} idPrefix="ev-end" />
+      </FormSection>
+    </SectionCard>
+  );
 }

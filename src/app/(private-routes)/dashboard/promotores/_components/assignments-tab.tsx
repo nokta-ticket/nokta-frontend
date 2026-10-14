@@ -1,29 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { MoreVertical, Plus, Copy } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { GenericStatusBadge } from "../../estoque/_components/stock-status-badge";
-import { EmptyState } from "../../_components/states/empty-state";
-import { TableSkeleton } from "../../_components/states/loading-state";
-import { ErrorState } from "../../_components/states/error-state";
-import { ASSIGNMENT_STATUS_LABEL, type AssignmentStatus, type EventPromoterAssignment } from "@/services/promoters";
-import { usePromoterAssignments, usePromoterOrganizationEvents, usePromoters, usePromoterMutations } from "../_hooks/use-promoters";
-import { AssignmentDialog } from "./assignment-dialog";
-import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
-
-function statusTone(status: AssignmentStatus) {
-  if (status === "ACTIVE") return "success" as const;
-  if (status === "PAUSED") return "warning" as const;
-  return "neutral" as const;
-}
-
-function publicEventUrl(publicToken: string, slugOrId: string | number) {
-  return `https://www.noktatickets.com.br/evento/${slugOrId}?ref=${publicToken}`;
-}
+import { toast } from "@/lib/toast";
+import { ASSIGNMENT_STATUS_LABEL, type EventPromoterAssignment } from "@/services/promoters";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeadCell, DataTableRow, DataTableShell, MobileCard, MobileCardList } from "@/components/ui/data-table";
+import { EmptyState, ErrorState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { StatusBadge } from "@/components/ui/badge";
+import { usePromoterAssignments, usePromoterMutations, usePromoterOrganizationEvents, usePromoters } from "../_hooks/use-promoters";
+import { AssignmentDialog } from "./assignment-dialog";
+import { ASSIGNMENT_TONE, publicEventUrl } from "./promoter-meta";
 
 export function AssignmentsTab({ orgId, canManage }: { orgId: number; canManage: boolean }) {
   const { data: events } = usePromoterOrganizationEvents(orgId);
@@ -33,6 +24,7 @@ export function AssignmentsTab({ orgId, canManage }: { orgId: number; canManage:
   const { pauseAssignment, reactivateAssignment, regenerateToken } = usePromoterMutations(orgId);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<EventPromoterAssignment | null>(null);
+  const [regenTarget, setRegenTarget] = useState<EventPromoterAssignment | null>(null);
 
   const runAction = async (fn: () => Promise<unknown>, successMessage: string, errorMessage: string) => {
     try {
@@ -40,32 +32,78 @@ export function AssignmentsTab({ orgId, canManage }: { orgId: number; canManage:
       toast.success(successMessage);
     } catch (err) {
       toast.error(getErrorMessage(err, errorMessage));
+      throw err;
     }
   };
 
-  const copyLink = (publicToken: string, evId: number) => {
+  const eventName = (id: number) => events?.find((e) => e.id === id)?.nome ?? `Evento #${id}`;
+  const promoterName = (a: EventPromoterAssignment) => a.organizationPromoter.promoterProfile?.displayName ?? a.organizationPromoter.inviteEmail;
+
+  const copyLink = async (publicToken: string, evId: number) => {
     const slugOrId = events?.find((e) => e.id === evId)?.slug ?? evId;
-    navigator.clipboard.writeText(publicEventUrl(publicToken, slugOrId));
-    toast.success("Link copiado.");
+    try {
+      await navigator.clipboard.writeText(publicEventUrl(publicToken, slugOrId));
+      toast.success("Link copiado");
+    } catch {
+      toast.error("Não foi possível copiar o link.");
+    }
   };
+
+  const channels = (a: EventPromoterAssignment) => (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {a.linkEnabled ? (
+        <span className="inline-flex items-center gap-1 rounded-pill bg-surface-2 px-2 py-0.5 text-micro font-semibold text-foreground">
+          <Icon name="link" size={9} /> Link
+        </span>
+      ) : null}
+      {a.codeEnabled && a.code ? <span className="rounded-pill bg-brand-soft px-2 py-0.5 font-mono text-micro font-semibold text-brand">{a.code}</span> : null}
+      {!a.linkEnabled && !a.codeEnabled ? <span className="text-caption text-subtle-foreground">Nenhum canal</span> : null}
+    </div>
+  );
+
+  const perks = (a: EventPromoterAssignment) => [a.discountEnabled ? "com desconto" : null, a.commissionEnabled ? "com comissão" : null].filter(Boolean).join(" · ") || "sem desconto nem comissão";
+
+  const actions = (a: EventPromoterAssignment) =>
+    canManage ? (
+      <>
+        <Button variant="subtle" size="icon-sm" aria-label="Editar vínculo" title="Editar" onClick={() => { setEditing(a); setDialogOpen(true); }}>
+          <Icon name="edit" size={13} />
+        </Button>
+        {a.publicToken ? (
+          <Button variant="subtle" size="icon-sm" aria-label="Copiar link" title="Copiar link" onClick={() => void copyLink(a.publicToken as string, a.eventId)}>
+            <Icon name="copy" size={13} />
+          </Button>
+        ) : null}
+        {a.status === "ACTIVE" ? (
+          <Button variant="subtle" size="icon-sm" aria-label="Pausar" title="Pausar" onClick={() => runAction(() => pauseAssignment.mutateAsync(a.id), "Vínculo pausado", "Não foi possível pausar o vínculo.").catch(() => undefined)}>
+            <Icon name="ban" size={13} />
+          </Button>
+        ) : null}
+        {a.status === "PAUSED" ? (
+          <Button variant="subtle" size="icon-sm" aria-label="Reativar" title="Reativar" onClick={() => runAction(() => reactivateAssignment.mutateAsync(a.id), "Vínculo reativado", "Não foi possível reativar o vínculo.").catch(() => undefined)}>
+            <Icon name="rotate" size={13} />
+          </Button>
+        ) : null}
+        <Button variant="subtle" size="icon-sm" aria-label="Regenerar link" title="Regenerar link (o antigo para de funcionar)" onClick={() => setRegenTarget(a)}>
+          <Icon name="refresh" size={13} />
+        </Button>
+      </>
+    ) : null;
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="w-full max-w-xs">
-          <Select value={eventId ? String(eventId) : "all"} onValueChange={(v) => setEventId(v === "all" ? undefined : Number(v))}>
-            <SelectTrigger className="w-full"><SelectValue placeholder="Filtrar por evento" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os eventos</SelectItem>
-              {(events ?? []).map((e) => (
-                <SelectItem key={e.id} value={String(e.id)}>{e.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <NativeSelect aria-label="Filtrar por evento" value={eventId ?? "all"} onChange={(e) => setEventId(e.target.value === "all" ? undefined : Number(e.target.value))} className="sm:w-72">
+          <option value="all">Todos os eventos</option>
+          {(events ?? []).map((e) => (
+            <option key={e.id} value={e.id}>
+              {e.nome}
+            </option>
+          ))}
+        </NativeSelect>
         {canManage ? (
-          <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
-            <Plus size={16} /> Novo vínculo
+          <Button leftIcon="plus" onClick={() => { setEditing(null); setDialogOpen(true); }}>
+            Novo vínculo
           </Button>
         ) : null}
       </div>
@@ -73,76 +111,67 @@ export function AssignmentsTab({ orgId, canManage }: { orgId: number; canManage:
       {isError ? (
         <ErrorState description="Não foi possível carregar os vínculos." onRetry={() => refetch()} />
       ) : isLoading ? (
-        <TableSkeleton />
+        <Skeleton className="h-64 rounded-card" />
       ) : !assignments || assignments.length === 0 ? (
-        <EmptyState title="Nenhum vínculo ainda" description="Crie um vínculo entre um promoter e um evento para liberar link/código de atribuição." />
+        <EmptyState icon="link" title="Nenhum vínculo ainda" description="Vincule um promoter a um evento pra liberar link e código de atribuição." action={canManage ? <Button leftIcon="plus" onClick={() => { setEditing(null); setDialogOpen(true); }}>Novo vínculo</Button> : undefined} />
       ) : (
-        <div className="space-y-2">
-          {assignments.map((a) => {
-            const publicToken = a.publicToken;
-            return (
-              <div key={a.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-black/10 bg-white p-3">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-gray-900">
-                    {a.organizationPromoter.promoterProfile?.displayName ?? a.organizationPromoter.inviteEmail}
-                  </p>
-                  <p className="truncate text-xs text-black/50">
-                    {a.codeEnabled && a.code ? `Código: ${a.code}` : null}
-                    {a.linkEnabled && a.codeEnabled && a.code ? " · " : null}
-                    {a.linkEnabled ? "Link exclusivo ativo" : null}
-                    {a.discountEnabled ? " · com desconto" : ""}
-                    {a.commissionEnabled ? " · com comissão" : ""}
-                  </p>
-                </div>
-                <GenericStatusBadge label={ASSIGNMENT_STATUS_LABEL[a.status]} tone={statusTone(a.status)} />
-                {canManage ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" aria-label="Ações">
-                        <MoreVertical size={16} />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => { setEditing(a); setDialogOpen(true); }}>Editar</DropdownMenuItem>
-                      {publicToken ? (
-                        <DropdownMenuItem onClick={() => copyLink(publicToken, a.eventId)}>
-                          <Copy size={14} className="mr-2" /> Copiar link
-                        </DropdownMenuItem>
-                      ) : null}
-                      {a.status === "ACTIVE" ? (
-                        <DropdownMenuItem onClick={() => runAction(() => pauseAssignment.mutateAsync(a.id), "Vínculo pausado.", "Não foi possível pausar o vínculo.")}>
-                          Pausar
-                        </DropdownMenuItem>
-                      ) : null}
-                      {a.status === "PAUSED" ? (
-                        <DropdownMenuItem onClick={() => runAction(() => reactivateAssignment.mutateAsync(a.id), "Vínculo reativado.", "Não foi possível reativar o vínculo.")}>
-                          Reativar
-                        </DropdownMenuItem>
-                      ) : null}
-                      <DropdownMenuItem
-                        onClick={() =>
-                          runAction(() => regenerateToken.mutateAsync(a.id), "Link regenerado — o link antigo deixa de funcionar.", "Não foi possível regenerar o link.")
-                        }
-                      >
-                        Regenerar link
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : null}
-              </div>
-            );
-          })}
-        </div>
+        <DataTableShell
+          table={
+            <DataTable>
+              <DataTableHead>
+                <tr>
+                  <DataTableHeadCell>Promoter</DataTableHeadCell>
+                  <DataTableHeadCell>Evento</DataTableHeadCell>
+                  <DataTableHeadCell>Canais</DataTableHeadCell>
+                  <DataTableHeadCell>Regras</DataTableHeadCell>
+                  <DataTableHeadCell>Status</DataTableHeadCell>
+                  {canManage ? (
+                    <DataTableHeadCell align="right" width={180}>
+                      <span className="sr-only">Ações</span>
+                    </DataTableHeadCell>
+                  ) : null}
+                </tr>
+              </DataTableHead>
+              <DataTableBody>
+                {assignments.map((a, i) => (
+                  <DataTableRow key={a.id} index={i}>
+                    <DataTableCell className="font-semibold">{promoterName(a)}</DataTableCell>
+                    <DataTableCell>{eventName(a.eventId)}</DataTableCell>
+                    <DataTableCell>{channels(a)}</DataTableCell>
+                    <DataTableCell className="text-muted-foreground">{perks(a)}</DataTableCell>
+                    <DataTableCell>
+                      <StatusBadge tone={ASSIGNMENT_TONE[a.status]}>{ASSIGNMENT_STATUS_LABEL[a.status]}</StatusBadge>
+                    </DataTableCell>
+                    {canManage ? (
+                      <DataTableCell align="right">
+                        <div className="flex justify-end gap-0.5">{actions(a)}</div>
+                      </DataTableCell>
+                    ) : null}
+                  </DataTableRow>
+                ))}
+              </DataTableBody>
+            </DataTable>
+          }
+          mobile={
+            <MobileCardList>
+              {assignments.map((a, i) => (
+                <MobileCard key={a.id} index={i} title={promoterName(a)} subtitle={eventName(a.eventId)} badge={<StatusBadge tone={ASSIGNMENT_TONE[a.status]}>{ASSIGNMENT_STATUS_LABEL[a.status]}</StatusBadge>} meta={[{ label: "Canais", value: channels(a) }, { label: "Regras", value: perks(a) }]} actions={canManage ? actions(a) : undefined} />
+              ))}
+            </MobileCardList>
+          }
+        />
       )}
 
-      <AssignmentDialog
-        orgId={orgId}
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        promoters={promoters ?? []}
-        events={events ?? []}
-        editingAssignment={editing}
-        fixedEventId={eventId}
+      <AssignmentDialog orgId={orgId} open={dialogOpen} onOpenChange={setDialogOpen} promoters={promoters ?? []} events={events ?? []} editingAssignment={editing} fixedEventId={eventId} />
+
+      <ConfirmDialog
+        open={regenTarget !== null}
+        onOpenChange={(o) => (!o ? setRegenTarget(null) : null)}
+        icon="refresh"
+        title="Regenerar o link deste vínculo?"
+        description="Um link novo é gerado e o antigo para de funcionar na hora. Quem já divulgou o link anterior precisa trocar."
+        confirmLabel="Regenerar link"
+        onConfirm={() => (regenTarget ? runAction(() => regenerateToken.mutateAsync(regenTarget.id), "Link regenerado — o antigo deixou de funcionar.", "Não foi possível regenerar o link.") : undefined)}
       />
     </div>
   );

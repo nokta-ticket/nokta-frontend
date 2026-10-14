@@ -1,20 +1,19 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { UserPlus, Check, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Icon } from "@/components/ui/icon";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
+import { RowsSkeleton, Skeleton } from "@/components/ui/skeleton";
+import { StatusBadge } from "@/components/ui/badge";
 import { useVenueLocations } from "../../operacao/_hooks/use-venue-locations";
-import { useVenueReservations } from "../../reservas/_hooks/use-venue-reservations";
-import { useVenueReservationGuests, useVenueReservationGuestMutations } from "../../reservas/_hooks/use-venue-reservations";
+import { useVenueReservationGuestMutations, useVenueReservationGuests, useVenueReservations } from "../../reservas/_hooks/use-venue-reservations";
 import { todayInTimeZone } from "../../reservas/_lib/timezone";
-import { EmptyState } from "../../_components/states/empty-state";
-import { BlockSkeleton } from "../../_components/states/loading-state";
 
 /**
  * Convidado de reserva/mesa (Venue) — nome na lista de quem vai comparecer,
@@ -34,11 +33,7 @@ export function ReservationGuestsSection({ orgId }: { orgId: number }) {
   const selectedLocation = locations?.find((l) => l.id === selectedLocationId) ?? null;
   const today = selectedLocation ? todayInTimeZone(selectedLocation.timezone) : null;
 
-  const { data: reservationsPage, isLoading: loadingReservations } = useVenueReservations(
-    orgId,
-    selectedLocationId,
-    today ? { date: today, limit: 100 } : {},
-  );
+  const { data: reservationsPage, isLoading: loadingReservations } = useVenueReservations(orgId, selectedLocationId, today ? { date: today, limit: 100 } : {});
   const reservations = reservationsPage?.data ?? [];
   const [selectedReservationId, setSelectedReservationId] = useState<number | null>(null);
 
@@ -82,121 +77,90 @@ export function ReservationGuestsSection({ orgId }: { orgId: number }) {
     }
   }
 
-  if (loadingLocations) return <BlockSkeleton className="h-64" />;
+  if (loadingLocations) return <Skeleton className="h-64 rounded-card" />;
 
   if (!locations || locations.length === 0) {
-    return (
-      <EmptyState
-        title="Nenhuma unidade cadastrada"
-        description="Cadastre uma unidade do seu espaço para poder montar listas de convidados de reserva."
-      />
-    );
+    return <EmptyState icon="store" title="Nenhuma unidade cadastrada" description="Cadastre uma unidade do seu espaço para poder montar listas de convidados de reserva." />;
   }
+
+  const arrived = (guests ?? []).filter((g) => g.checkedInAt).length;
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         {locations.length > 1 ? (
-          <Select
-            value={selectedLocationId ? String(selectedLocationId) : undefined}
-            onValueChange={(v) => {
-              setSelectedLocationId(Number(v));
+          <NativeSelect
+            aria-label="Unidade"
+            value={selectedLocationId ?? ""}
+            onChange={(e) => {
+              setSelectedLocationId(Number(e.target.value));
               setSelectedReservationId(null);
             }}
+            className="sm:w-56"
           >
-            <SelectTrigger className="w-56">
-              <SelectValue placeholder="Unidade" />
-            </SelectTrigger>
-            <SelectContent>
-              {locations.map((loc) => (
-                <SelectItem key={loc.id} value={String(loc.id)}>
-                  {loc.nome} {loc.isMain ? "· Principal" : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            {locations.map((loc) => (
+              <option key={loc.id} value={loc.id}>
+                {loc.nome} {loc.isMain ? "· Principal" : ""}
+              </option>
+            ))}
+          </NativeSelect>
         ) : null}
 
         {loadingReservations ? null : reservations.length > 0 ? (
-          <Select
-            value={selectedReservationId ? String(selectedReservationId) : undefined}
-            onValueChange={(v) => setSelectedReservationId(Number(v))}
-          >
-            <SelectTrigger className="w-64">
-              <SelectValue placeholder="Reserva de hoje" />
-            </SelectTrigger>
-            <SelectContent>
-              {reservations.map((r) => (
-                <SelectItem key={r.id} value={String(r.id)}>
-                  {r.customerName} · {r.partySize} pessoa{r.partySize > 1 ? "s" : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <NativeSelect aria-label="Reserva de hoje" value={selectedReservationId ?? ""} onChange={(e) => setSelectedReservationId(Number(e.target.value))} className="sm:w-72">
+            {reservations.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.customerName} · {r.partySize} pessoa{r.partySize > 1 ? "s" : ""}
+              </option>
+            ))}
+          </NativeSelect>
         ) : null}
       </div>
 
       {loadingReservations ? (
-        <BlockSkeleton className="h-64" />
+        <Skeleton className="h-64 rounded-card" />
       ) : reservations.length === 0 ? (
-        <EmptyState
-          title="Nenhuma reserva hoje"
-          description="Assim que houver uma reserva para hoje nesta unidade, você poderá montar a lista de convidados dela aqui."
-        />
+        <EmptyState icon="chair" title="Nenhuma reserva hoje" description="Assim que houver uma reserva para hoje nesta unidade, você poderá montar a lista de convidados dela aqui." />
       ) : (
-        <div className="space-y-4 rounded-xl border p-4">
-          <form onSubmit={handleAdd} className="flex flex-wrap items-center gap-2">
-            <Input
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-              placeholder="Nome do convidado"
-              className="w-64"
-            />
-            <Button type="submit" disabled={!nameInput.trim() || mutations.add.isPending}>
-              <UserPlus size={16} /> Adicionar
-            </Button>
-          </form>
+        <Card className="fade-up">
+          <CardHeader>
+            <div>
+              <CardTitle>Lista da reserva</CardTitle>
+              <p className="mt-1 text-body text-muted-foreground">{guests && guests.length > 0 ? `${arrived} de ${guests.length} chegaram` : "Adicione quem vai comparecer."}</p>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <form onSubmit={handleAdd} className="flex flex-col gap-2 sm:flex-row">
+              <Input aria-label="Nome do convidado" value={nameInput} onChange={(e) => setNameInput(e.target.value)} placeholder="Nome do convidado" className="sm:max-w-sm" />
+              <Button type="submit" leftIcon="user-plus" loading={mutations.add.isPending} disabled={!nameInput.trim()} className="h-11 md:h-10">
+                Adicionar
+              </Button>
+            </form>
 
-          {loadingGuests ? (
-            <BlockSkeleton className="h-32" />
-          ) : !guests || guests.length === 0 ? (
-            <p className="text-sm text-gray-500">Nenhum convidado adicionado a esta reserva ainda.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            {loadingGuests ? (
+              <RowsSkeleton rows={3} />
+            ) : !guests || guests.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum convidado adicionado a esta reserva ainda.</p>
+            ) : (
+              <ul className="divide-y divide-border">
                 {guests.map((g) => (
-                  <TableRow key={g.id}>
-                    <TableCell>{g.name}</TableCell>
-                    <TableCell>
-                      {g.checkedInAt ? (
-                        <Badge className="bg-emerald-100 text-emerald-700">Chegou</Badge>
-                      ) : (
-                        <Badge className="bg-amber-100 text-amber-700">Aguardando</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="flex justify-end gap-2 text-right">
-                      {!g.checkedInAt ? (
-                        <Button variant="outline" size="sm" onClick={() => handleCheckIn(g.id)}>
-                          <Check size={14} /> Chegou
-                        </Button>
-                      ) : null}
-                      <Button variant="ghost" size="sm" onClick={() => handleRemove(g.id)}>
-                        <X size={14} />
+                  <li key={g.id} className="flex items-center gap-3 py-3">
+                    <StatusBadge tone={g.checkedInAt ? "success" : "warning"}>{g.checkedInAt ? "Chegou" : "Aguardando"}</StatusBadge>
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{g.name}</span>
+                    {!g.checkedInAt ? (
+                      <Button variant="outline" size="sm" leftIcon="check" onClick={() => handleCheckIn(g.id)} loading={mutations.checkIn.isPending}>
+                        Chegou
                       </Button>
-                    </TableCell>
-                  </TableRow>
+                    ) : null}
+                    <Button variant="subtle" size="icon-sm" aria-label={`Remover ${g.name}`} title="Remover" className="hover:bg-danger-bg hover:text-danger" onClick={() => handleRemove(g.id)}>
+                      <Icon name="close" size={13} />
+                    </Button>
+                  </li>
                 ))}
-              </TableBody>
-            </Table>
-          )}
-        </div>
+              </ul>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   );

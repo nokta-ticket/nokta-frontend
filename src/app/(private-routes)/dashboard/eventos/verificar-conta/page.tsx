@@ -2,45 +2,29 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import api, { getErrorMessage } from "@/lib/axios";
-import {
-  formatCnpj,
-  formatCpf,
-  formatPhone,
-  maskPhone,
-  normalizeDigits,
-  validateCnpj,
-  validateCpf,
-  validatePixKey,
-} from "@/lib/br-data";
+import { formatCnpj, formatCpf, formatPhone, maskPhone, normalizeDigits, validateCnpj, validateCpf, validatePixKey } from "@/lib/br-data";
 import { toast } from "@/lib/toast";
-import {
-  AlertCircle,
-  Check,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
-  RefreshCw,
-  Shield,
-} from "lucide-react";
+import { cn } from "@/lib/cn";
+import { Button } from "@/components/ui/button";
+import { Callout } from "@/components/ui/callout";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ChoiceCard } from "@/components/ui/choice-card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Field } from "@/components/ui/field";
+import { Icon } from "@/components/ui/icon";
+import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Stepper, type StepperStep } from "@/components/ui/stepper";
 
 type TipoPessoa = "PF" | "PJ" | "";
 type SolicitationStatus = 1 | 2 | 3;
 
 type VerificationState = {
-  solicitacao: {
-    id: number;
-    status: SolicitationStatus;
-    tipo: string;
-    createdAt: string;
-    dataResposta: string | null;
-  } | null;
+  solicitacao: { id: number; status: SolicitationStatus; tipo: string; createdAt: string; dataResposta: string | null } | null;
   dadosAtuais: {
     tipoPessoa: "PF" | "PJ" | null;
     cpf: string | null;
@@ -54,26 +38,17 @@ type VerificationState = {
 
 const STEPS = ["Tipo", "Documento", "PIX", "Celular", "Termos"];
 const OBRIGACOES = [
-  "Sou responsavel pelos pagamentos recebidos e por reembolsos de eventos cancelados.",
-  "Entendo que fraude, uso ilicito ou tentativa de ocultar titularidade geram bloqueio permanente.",
-  "Confirmo que documento e chave PIX pertencem a mim ou a minha empresa.",
+  "Sou responsável pelos pagamentos recebidos e por reembolsos de eventos cancelados.",
+  "Entendo que fraude, uso ilícito ou tentativa de ocultar titularidade geram bloqueio permanente.",
+  "Confirmo que documento e chave PIX pertencem a mim ou à minha empresa.",
 ];
 
 function formatDate(value?: string | null) {
   if (!value) return null;
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }
 
-function getInitialStep(params: {
-  tipoPessoa: TipoPessoa;
-  cpf: string;
-  cnpj: string;
-  chavePix: string;
-  telefoneVerificado: boolean;
-}) {
+function getInitialStep(params: { tipoPessoa: TipoPessoa; cpf: string; cnpj: string; chavePix: string; telefoneVerificado: boolean }) {
   if (!params.tipoPessoa) return 0;
   if (params.tipoPessoa === "PF" && !validateCpf(params.cpf)) return 1;
   if (params.tipoPessoa === "PJ" && !validateCnpj(params.cnpj)) return 1;
@@ -147,23 +122,14 @@ export default function VerificarContaPage() {
         setSmsError("");
 
         if (!response.data.solicitacao || response.data.solicitacao.status === 3) {
-          setStep(
-            getInitialStep({
-              tipoPessoa: nextTipoPessoa,
-              cpf: nextCpf,
-              cnpj: nextCnpj,
-              chavePix: nextPix,
-              telefoneVerificado: nextVerified,
-            }),
-          );
+          setStep(getInitialStep({ tipoPessoa: nextTipoPessoa, cpf: nextCpf, cnpj: nextCnpj, chavePix: nextPix, telefoneVerificado: nextVerified }));
         }
       } catch (error) {
-        toast.error(getErrorMessage(error, "Nao foi possivel carregar a verificacao."));
+        toast.error(getErrorMessage(error, "Não foi possível carregar a verificação."));
       } finally {
         setLoading(false);
       }
     }
-
     void load();
   }, [user]);
 
@@ -196,10 +162,9 @@ export default function VerificarContaPage() {
 
   const savePhone = async () => {
     if (phoneDigits.length < 10) {
-      setSmsError("Digite um telefone valido com DDD.");
+      setSmsError("Digite um telefone válido com DDD.");
       return;
     }
-
     try {
       await api.put("/produtor/atualizar-telefone-sms", { telefone: phoneDigits });
       setPhoneInput(formatPhone(phoneDigits));
@@ -208,18 +173,17 @@ export default function VerificarContaPage() {
       setSmsSent(false);
       setSmsCode("");
       setSmsError("");
-      toast.success("Telefone atualizado.");
+      toast.success("Telefone atualizado");
     } catch (error) {
-      setSmsError(getErrorMessage(error, "Nao foi possivel atualizar o telefone."));
+      setSmsError(getErrorMessage(error, "Não foi possível atualizar o telefone."));
     }
   };
 
   const sendSms = async () => {
     if (phoneDigits.length < 10) {
-      setSmsError("Digite um telefone valido com DDD.");
+      setSmsError("Digite um telefone válido com DDD.");
       return;
     }
-
     setSmsSending(true);
     setSmsError("");
     try {
@@ -228,9 +192,9 @@ export default function VerificarContaPage() {
       setSmsVerified(false);
       setSmsCode("");
       startCooldown(60);
-      toast.success("Codigo enviado por SMS.");
+      toast.success("Código enviado por SMS");
     } catch (error) {
-      setSmsError(getErrorMessage(error, "Nao foi possivel enviar o SMS."));
+      setSmsError(getErrorMessage(error, "Não foi possível enviar o SMS."));
     } finally {
       setSmsSending(false);
     }
@@ -241,20 +205,18 @@ export default function VerificarContaPage() {
     setSmsCode(code);
     setSmsVerified(false);
     setSmsError("");
-
     if (code.length < 6) return;
-
     setSmsVerifying(true);
     try {
       const response = await api.post("/produtor/verificar-sms-n2", { code });
       if (!response.data?.valid) {
-        setSmsError("Codigo incorreto ou expirado.");
+        setSmsError("Código incorreto ou expirado.");
         return;
       }
       setSmsVerified(true);
-      toast.success("Telefone verificado com sucesso.");
+      toast.success("Telefone verificado");
     } catch (error) {
-      setSmsError(getErrorMessage(error, "Nao foi possivel validar o codigo."));
+      setSmsError(getErrorMessage(error, "Não foi possível validar o código."));
     } finally {
       setSmsVerifying(false);
     }
@@ -272,7 +234,7 @@ export default function VerificarContaPage() {
       });
       setSubmitted(true);
     } catch (error) {
-      toast.error(getErrorMessage(error, "Nao foi possivel enviar a solicitacao."));
+      toast.error(getErrorMessage(error, "Não foi possível enviar a solicitação."));
     } finally {
       setSubmitting(false);
     }
@@ -280,379 +242,213 @@ export default function VerificarContaPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="flex items-center gap-3 text-sm text-gray-500">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          Carregando verificacao...
-        </div>
+      <div className="mx-auto max-w-3xl space-y-6">
+        <PageHeader back="/dashboard/eventos/dados-financeiros" title="Verificar conta" />
+        <Skeleton className="h-20 rounded-card" />
+        <Skeleton className="h-80 rounded-card" />
       </div>
     );
   }
 
   if (approved) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-10">
-        <div className="rounded-3xl border border-green-200 bg-white p-8 shadow-sm">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
-            <CheckCircle2 className="text-green-600" size={28} />
-          </div>
-          <h1 className="mt-5 text-2xl font-bold text-gray-900">Conta verificada</h1>
-          <p className="mt-2 text-sm text-gray-500">
-            Sua conta ja pode publicar eventos pagos e receber repasses.
-          </p>
-          {solicitacao?.dataResposta && (
-            <p className="mt-4 text-xs text-gray-500">
-              Aprovacao registrada em {formatDate(solicitacao.dataResposta)}.
-            </p>
-          )}
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <Link href="/dashboard/eventos/dados-financeiros">
-              <Button variant="outline" className="h-11 w-full">
-                Revisar dados
+      <div className="mx-auto max-w-3xl space-y-6">
+        <PageHeader back="/dashboard/eventos/dados-financeiros" title="Verificar conta" />
+        <EmptyState
+          icon="check-circle"
+          title="Conta verificada"
+          description={`Sua conta já pode publicar eventos pagos e receber repasses.${solicitacao?.dataResposta ? ` Aprovação registrada em ${formatDate(solicitacao.dataResposta)}.` : ""}`}
+          className="border-solid border-success-ring bg-callout-success"
+          action={
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button asChild variant="outline">
+                <Link href="/dashboard/eventos/dados-financeiros">Revisar dados</Link>
               </Button>
-            </Link>
-            <Link href="/dashboard/financeiro">
-              <Button className="h-11 w-full bg-violet-600 text-white hover:bg-violet-700">
-                Ir para financeiro
+              <Button asChild>
+                <Link href="/dashboard/financeiro">Ir para o financeiro</Link>
               </Button>
-            </Link>
-          </div>
-        </div>
+            </div>
+          }
+        />
       </div>
     );
   }
 
   if (pending) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-10">
-        <div className="rounded-3xl border border-amber-200 bg-white p-8 shadow-sm">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-100">
-            <Shield className="text-amber-700" size={28} />
-          </div>
-          <h1 className="mt-5 text-2xl font-bold text-gray-900">Solicitacao em analise</h1>
-          <p className="mt-2 text-sm text-gray-500">
-            Seus dados foram enviados e estao aguardando revisao manual.
-          </p>
-          {solicitacao?.createdAt && (
-            <p className="mt-4 text-xs text-gray-500">
-              Enviado em {formatDate(solicitacao.createdAt)}.
-            </p>
-          )}
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <Link href="/dashboard/eventos/dados-financeiros">
-              <Button variant="outline" className="h-11 w-full">
-                Ver dados financeiros
+      <div className="mx-auto max-w-3xl space-y-6">
+        <PageHeader back="/dashboard/eventos/dados-financeiros" title="Verificar conta" />
+        <EmptyState
+          icon="shield"
+          title="Solicitação em análise"
+          description={`Seus dados foram enviados e estão aguardando revisão manual.${solicitacao?.createdAt ? ` Enviado em ${formatDate(solicitacao.createdAt)}.` : ""}`}
+          className="border-solid border-warning-ring bg-callout-warning"
+          action={
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button asChild variant="outline">
+                <Link href="/dashboard/eventos/dados-financeiros">Ver dados financeiros</Link>
               </Button>
-            </Link>
-            <Link href="/dashboard/eventos">
-              <Button className="h-11 w-full bg-violet-600 text-white hover:bg-violet-700">
-                Voltar ao painel
+              <Button asChild>
+                <Link href="/dashboard/eventos">Voltar ao painel</Link>
               </Button>
-            </Link>
-          </div>
-        </div>
+            </div>
+          }
+        />
       </div>
     );
   }
 
+  const steps: StepperStep[] = STEPS.map((label, index) => ({ label, status: index < step ? "done" : index === step ? "current" : "upcoming" }));
+
   return (
-    <div className="mx-auto max-w-xl px-4 py-10">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Verificar conta</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Conclua o cadastro financeiro para liberar eventos pagos.
-        </p>
-      </div>
+    <div className="mx-auto max-w-3xl space-y-6 pb-24 lg:pb-0">
+      <PageHeader back="/dashboard/eventos/dados-financeiros" title="Verificar conta" description={`Etapa ${step + 1} de ${STEPS.length} · ${STEPS[step]}`} />
 
-      {rejected && (
-        <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-          Revise seus dados e envie uma nova solicitacao.
-          {solicitacao?.dataResposta && (
-            <span className="block pt-1 text-xs text-red-700">
-              Ultima resposta em {formatDate(solicitacao.dataResposta)}.
-            </span>
+      {rejected ? (
+        <Callout tone="danger" title="Solicitação rejeitada">
+          Revise seus dados e envie uma nova solicitação.
+          {solicitacao?.dataResposta ? <span className="block text-caption">Última resposta em {formatDate(solicitacao.dataResposta)}.</span> : null}
+        </Callout>
+      ) : null}
+
+      <Stepper steps={steps} orientation="horizontal" className="rounded-card border border-border bg-surface px-5 pt-5 shadow-card md:py-5" />
+
+      <Card key={step} className="route-enter">
+        <CardHeader>
+          <CardTitle>{step === 0 ? "Tipo de pessoa" : step === 1 ? (tipoPessoa === "PF" ? "Informe seu CPF" : "Informe o CNPJ da empresa") : step === 2 ? "Chave PIX" : step === 3 ? "Verifique seu celular" : "Confirme os termos"}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {step === 0 && (
+            <div role="radiogroup" className="grid grid-cols-2 gap-3">
+              <ChoiceCard selected={tipoPessoa === "PF"} onSelect={() => setTipoPessoa("PF")} icon="user" title="Pessoa física" description="CPF" />
+              <ChoiceCard selected={tipoPessoa === "PJ"} onSelect={() => setTipoPessoa("PJ")} icon="building" title="Pessoa jurídica" description="CNPJ" />
+            </div>
           )}
-        </div>
-      )}
 
-      <div className="mb-8 flex items-center gap-2">
-        {STEPS.map((label, index) => (
-          <div key={label} className="flex flex-1 items-center gap-2">
-            <div
-              className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${
-                index < step
-                  ? "bg-violet-600 text-white"
-                  : index === step
-                    ? "border-2 border-violet-600 bg-white text-violet-600"
-                    : "border-2 border-gray-200 bg-white text-gray-400"
-              }`}
-            >
-              {index < step ? <Check size={14} /> : index + 1}
-            </div>
-            <span className={`text-xs ${index === step ? "text-gray-900" : "text-gray-400"}`}>
-              {label}
-            </span>
-            {index < STEPS.length - 1 && <div className="h-px flex-1 bg-gray-200" />}
-          </div>
-        ))}
-      </div>
-
-      <div className="rounded-3xl border border-gray-100 bg-white p-8 shadow-sm">
-        {step === 0 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900">Tipo de pessoa</h2>
-            <div className="grid grid-cols-2 gap-4">
-              {(["PF", "PJ"] as const).map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setTipoPessoa(value)}
-                  className={`rounded-2xl border-2 p-5 text-left transition-all ${
-                    tipoPessoa === value
-                      ? "border-violet-600 bg-violet-50"
-                      : "border-gray-200 hover:border-violet-200"
-                  }`}
-                >
-                  <p className="text-sm font-semibold text-gray-900">
-                    {value === "PF" ? "Pessoa fisica" : "Pessoa juridica"}
-                  </p>
-                  <p className="mt-1 text-xs text-gray-500">{value === "PF" ? "CPF" : "CNPJ"}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {step === 1 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900">
-              {tipoPessoa === "PF" ? "Informe seu CPF" : "Informe o CNPJ da empresa"}
-            </h2>
-            {tipoPessoa === "PF" ? (
-              <div className="space-y-1.5">
-                <Label htmlFor="cpf">CPF</Label>
-                <Input
-                  id="cpf"
-                  value={cpf}
-                  onChange={(event) => setCpf(formatCpf(event.target.value))}
-                  placeholder="000.000.000-00"
-                  inputMode="numeric"
-                  maxLength={14}
-                />
-                {cpf && (
-                  <p className={`text-xs ${cpfValid ? "text-green-600" : "text-red-500"}`}>
-                    {cpfValid ? "CPF valido." : "CPF invalido."}
-                  </p>
-                )}
-              </div>
+          {step === 1 &&
+            (tipoPessoa === "PF" ? (
+              <Field label="CPF" htmlFor="cpf" error={cpf && !cpfValid ? "CPF inválido." : undefined} hint={cpf && cpfValid ? "CPF válido." : undefined} className="sm:max-w-sm">
+                <Input id="cpf" value={cpf} onChange={(event) => setCpf(formatCpf(event.target.value))} placeholder="000.000.000-00" inputMode="numeric" maxLength={14} autoFocus aria-invalid={Boolean(cpf && !cpfValid)} />
+              </Field>
             ) : (
-              <div className="space-y-1.5">
-                <Label htmlFor="cnpj">CNPJ</Label>
-                <Input
-                  id="cnpj"
-                  value={cnpj}
-                  onChange={(event) => setCnpj(formatCnpj(event.target.value))}
-                  placeholder="00.000.000/0000-00"
-                  inputMode="numeric"
-                  maxLength={18}
-                />
-                {cnpj && (
-                  <p className={`text-xs ${cnpjValid ? "text-green-600" : "text-red-500"}`}>
-                    {cnpjValid ? "CNPJ valido." : "CNPJ invalido."}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+              <Field label="CNPJ" htmlFor="cnpj" error={cnpj && !cnpjValid ? "CNPJ inválido." : undefined} hint={cnpj && cnpjValid ? "CNPJ válido." : undefined} className="sm:max-w-sm">
+                <Input id="cnpj" value={cnpj} onChange={(event) => setCnpj(formatCnpj(event.target.value))} placeholder="00.000.000/0000-00" inputMode="numeric" maxLength={18} autoFocus aria-invalid={Boolean(cnpj && !cnpjValid)} />
+              </Field>
+            ))}
 
-        {step === 2 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900">Chave PIX</h2>
-            <p className="text-sm text-gray-500">
-              Use uma chave coerente com o documento informado acima.
-            </p>
-            <div className="space-y-1.5">
-              <Label htmlFor="chavePix">Chave PIX</Label>
-              <Input
-                id="chavePix"
-                value={chavePix}
-                onChange={(event) => setChavePix(event.target.value)}
-                placeholder="CPF, CNPJ, email, telefone ou chave aleatoria"
-              />
-              {chavePix && (
-                <p className={`text-xs ${pixValid ? "text-green-600" : "text-red-500"}`}>
-                  {pixValid ? "Chave PIX valida." : "Chave PIX invalida."}
-                </p>
-              )}
-            </div>
-          </div>
-        )}
+          {step === 2 && (
+            <Field label="Chave PIX" htmlFor="chavePix" error={chavePix && !pixValid ? "Chave PIX inválida." : undefined} hint={chavePix && pixValid ? "Chave PIX válida." : "Use uma chave coerente com o documento informado: CPF, CNPJ, e-mail, telefone ou aleatória."} className="sm:max-w-md">
+              <Input id="chavePix" leftIcon="pix" value={chavePix} onChange={(event) => setChavePix(event.target.value)} placeholder="Sua chave PIX" autoFocus aria-invalid={Boolean(chavePix && !pixValid)} />
+            </Field>
+          )}
 
-        {step === 3 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900">Verifique seu celular</h2>
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
-              <p className="text-xs text-gray-500">Numero atual</p>
-              {editingPhone ? (
-                <div className="mt-3 flex gap-2">
-                  <Input
-                    value={phoneInput}
-                    onChange={(event) => setPhoneInput(formatPhone(event.target.value))}
-                    placeholder="(11) 99999-9999"
-                  />
-                  <Button type="button" variant="outline" onClick={() => setEditingPhone(false)}>
-                    Cancelar
-                  </Button>
-                  <Button type="button" onClick={savePhone}>
-                    Salvar
-                  </Button>
-                </div>
-              ) : (
-                <div className="mt-2 flex items-center justify-between gap-3">
-                  <p className="text-sm font-semibold text-gray-900">
-                    {phoneDigits ? maskPhone(phoneDigits) : "Nenhum telefone cadastrado"}
-                  </p>
-                  <Button type="button" variant="outline" onClick={() => setEditingPhone(true)}>
-                    Alterar
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {smsVerified ? (
-              <div className="flex items-center gap-3 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-                <CheckCircle2 size={18} className="shrink-0" />
-                Telefone verificado e pronto para analise.
-              </div>
-            ) : (
-              <div className="space-y-4 rounded-2xl border border-gray-200 p-4">
-                {!smsSent ? (
-                  <Button
-                    type="button"
-                    onClick={sendSms}
-                    disabled={smsSending || editingPhone || phoneDigits.length < 10}
-                    className="h-11 w-full bg-violet-600 text-white hover:bg-violet-700"
-                  >
-                    {smsSending ? "Enviando..." : "Enviar codigo por SMS"}
-                  </Button>
+          {step === 3 && (
+            <>
+              <div className="surface-inset rounded-xl p-4">
+                <p className="text-micro font-semibold uppercase tracking-[0.08em] text-subtle-foreground">Número atual</p>
+                {editingPhone ? (
+                  <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                    <Input aria-label="Telefone" value={phoneInput} onChange={(event) => setPhoneInput(formatPhone(event.target.value))} placeholder="(11) 99999-9999" inputMode="numeric" autoFocus />
+                    <div className="flex gap-2">
+                      <Button type="button" variant="ghost" onClick={() => setEditingPhone(false)} className="h-11 md:h-10">
+                        Cancelar
+                      </Button>
+                      <Button type="button" onClick={savePhone} className="h-11 md:h-10">
+                        Salvar
+                      </Button>
+                    </div>
+                  </div>
                 ) : (
-                  <>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="smsCode">Codigo de verificacao</Label>
-                      <Input
-                        id="smsCode"
-                        value={smsCode}
-                        onChange={(event) => void verifySms(event.target.value)}
-                        placeholder="000000"
-                        inputMode="numeric"
-                        maxLength={6}
-                      />
-                    </div>
-                    {smsVerifying && <p className="text-xs text-gray-500">Verificando codigo...</p>}
-                    <div className="flex items-center justify-between gap-3 text-xs">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (cooldown === 0) void sendSms();
-                        }}
-                        disabled={cooldown > 0 || smsSending}
-                        className="flex items-center gap-1 text-violet-600 disabled:opacity-50"
-                      >
-                        <RefreshCw size={12} />
-                        {cooldown > 0 ? `Reenviar em ${cooldown}s` : "Reenviar codigo"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSmsSent(false);
-                          setSmsCode("");
-                          setSmsError("");
-                        }}
-                        className="text-gray-500 underline"
-                      >
-                        Alterar fluxo
-                      </button>
-                    </div>
-                  </>
+                  <div className="mt-1.5 flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-foreground tnum">{phoneDigits ? maskPhone(phoneDigits) : "Nenhum telefone cadastrado"}</p>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setEditingPhone(true)}>
+                      Alterar
+                    </Button>
+                  </div>
                 )}
               </div>
-            )}
 
-            {smsError && (
-              <p className="flex items-center gap-1.5 text-xs text-red-500">
-                <AlertCircle size={13} />
-                {smsError}
-              </p>
-            )}
-          </div>
-        )}
+              {smsVerified ? (
+                <Callout tone="success" title="Telefone verificado">
+                  Pronto pra análise.
+                </Callout>
+              ) : !smsSent ? (
+                <Button type="button" leftIcon="send" onClick={sendSms} loading={smsSending} disabled={editingPhone || phoneDigits.length < 10} className="h-11 w-full sm:w-auto md:h-10">
+                  Enviar código por SMS
+                </Button>
+              ) : (
+                <div className="space-y-3">
+                  <Field label="Código de verificação" htmlFor="smsCode" hint={smsVerifying ? "Verificando código…" : "6 dígitos, enviados por SMS."} className="sm:max-w-xs">
+                    <Input id="smsCode" value={smsCode} onChange={(event) => void verifySms(event.target.value)} placeholder="000000" inputMode="numeric" maxLength={6} autoFocus className="text-center font-mono text-lg tracking-[0.4em]" />
+                  </Field>
+                  <div className="flex items-center justify-between gap-3">
+                    <Button type="button" variant="link" size="sm" leftIcon="refresh" disabled={cooldown > 0 || smsSending} onClick={() => cooldown === 0 && void sendSms()}>
+                      {cooldown > 0 ? `Reenviar em ${cooldown}s` : "Reenviar código"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="subtle"
+                      size="sm"
+                      onClick={() => {
+                        setSmsSent(false);
+                        setSmsCode("");
+                        setSmsError("");
+                      }}
+                    >
+                      Trocar número
+                    </Button>
+                  </div>
+                </div>
+              )}
 
-        {step === 4 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900">Confirme os termos</h2>
-            <div className="space-y-3">
-              {OBRIGACOES.map((text, index) => (
-                <label
-                  key={text}
-                  className={`flex cursor-pointer items-start gap-3 rounded-2xl border-2 p-4 ${
-                    checks[index] ? "border-violet-200 bg-violet-50" : "border-gray-200"
-                  }`}
-                >
-                  <Checkbox
-                    checked={checks[index]}
-                    onCheckedChange={(value) =>
-                      setChecks((current) => current.map((item, itemIndex) => (
-                        itemIndex === index ? Boolean(value) : item
-                      )))
-                    }
-                    className="mt-0.5 shrink-0"
-                  />
-                  <span className="text-sm text-gray-700">{text}</span>
-                </label>
-              ))}
-            </div>
-            <p className="text-xs text-gray-500">
-              Ao enviar, voce tambem concorda com os{" "}
-              <Link href="/termos" target="_blank" className="text-violet-600 underline">
-                Termos de Servico
-              </Link>{" "}
-              e a{" "}
-              <Link href="/privacidade" target="_blank" className="text-violet-600 underline">
-                Politica de Privacidade
-              </Link>
-              .
-            </p>
-          </div>
-        )}
-
-        <div className="mt-8 flex gap-3">
-          {step > 0 && (
-            <Button variant="outline" className="h-11 flex-1" onClick={() => setStep(step - 1)}>
-              <ChevronLeft size={16} className="mr-1" />
-              Voltar
-            </Button>
+              {smsError ? (
+                <p role="alert" className="flex items-center gap-1.5 text-caption text-danger">
+                  <Icon name="exclamation-circle" size={12} />
+                  {smsError}
+                </p>
+              ) : null}
+            </>
           )}
+
+          {step === 4 && (
+            <>
+              <div className="space-y-2">
+                {OBRIGACOES.map((text, index) => (
+                  <label key={text} className={cn("flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition-colors", checks[index] ? "border-brand-ring bg-brand-soft/60" : "surface-inset hover:border-border-strong")}>
+                    <Checkbox checked={checks[index]} onCheckedChange={(value) => setChecks((current) => current.map((item, itemIndex) => (itemIndex === index ? Boolean(value) : item)))} className="mt-0.5 shrink-0" />
+                    <span className="text-sm text-foreground">{text}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-caption text-muted-foreground">
+                Ao enviar, você também concorda com os{" "}
+                <Link href="/termos" target="_blank" className="text-brand underline-offset-4 hover:underline">
+                  Termos de Serviço
+                </Link>{" "}
+                e a{" "}
+                <Link href="/privacidade" target="_blank" className="text-brand underline-offset-4 hover:underline">
+                  Política de Privacidade
+                </Link>
+                .
+              </p>
+            </>
+          )}
+        </CardContent>
+        <CardFooter className="fixed inset-x-0 bottom-0 z-30 justify-between border-t border-border bg-surface p-4 pb-safe shadow-2 lg:static lg:border-t lg:p-5 lg:shadow-none">
+          <Button variant="ghost" leftIcon="arrow-left" disabled={step === 0} onClick={() => setStep(step - 1)} className="h-11 lg:h-10">
+            Voltar
+          </Button>
           {step < STEPS.length - 1 ? (
-            <Button
-              className="h-11 flex-1 bg-violet-600 text-white hover:bg-violet-700"
-              onClick={() => setStep(step + 1)}
-              disabled={!canAdvance()}
-            >
+            <Button rightIcon="arrow-right" onClick={() => setStep(step + 1)} disabled={!canAdvance()} className="h-11 flex-1 sm:flex-none lg:h-10">
               Continuar
-              <ChevronRight size={16} className="ml-1" />
             </Button>
           ) : (
-            <Button
-              className="h-11 flex-1 bg-violet-600 text-white hover:bg-violet-700"
-              onClick={submit}
-              disabled={!canAdvance() || submitting}
-            >
-              {submitting ? "Enviando..." : "Enviar para analise"}
+            <Button leftIcon="shield" onClick={submit} loading={submitting} disabled={!canAdvance()} className="h-11 flex-1 sm:flex-none lg:h-10">
+              Enviar para análise
             </Button>
           )}
-        </div>
-      </div>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

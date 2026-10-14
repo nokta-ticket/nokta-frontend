@@ -1,24 +1,13 @@
-import {
-  LayoutDashboard,
-  Info,
-  FileText,
-  Ticket,
-  ImageIcon,
-  Globe,
-  Settings,
-  Tag,
-  BarChart2,
-  Users,
-} from "lucide-react"
-import type { LucideIcon } from "lucide-react"
+import type { IconName } from "@/components/ui/icon";
 
 export interface SectionMeta {
-  key: string
-  label: string
-  icon: LucideIcon
-  disabled?: boolean
-  comingSoon?: boolean
+  key: SectionKey;
+  label: string;
+  icon: IconName;
 }
+
+export const SECTION_KEYS = ["visao-geral", "informacoes", "detalhes", "ingressos", "imagens", "publicacao", "configuracoes", "cupons", "vendas", "equipe", "access"] as const;
+export type SectionKey = (typeof SECTION_KEYS)[number];
 
 // "access" (Nokta Access, check-in offline) desativado a pedido do usuário
 // em 2026-08-21: o modelo exige um roteador Wi-Fi físico dedicado no local
@@ -27,18 +16,19 @@ export interface SectionMeta {
 // Starlink garantindo internet ao cliente). Módulo mantido no código
 // (nunca apagado, ver EventFreezeModule que ainda depende de
 // AccessSnapshotService/AccessOperationalLogService), só a aba sumiu da
-// UI. Ver comentário equivalente em nokta-api/.../access.module.ts.
+// UI: `?tab=access` ainda renderiza se alguém digitar a URL, mas nenhum
+// link aponta pra cá. Ver comentário equivalente em nokta-api/.../access.module.ts.
 export const SECTIONS: SectionMeta[] = [
-  { key: "visao-geral",   label: "Visão Geral",   icon: LayoutDashboard },
-  { key: "informacoes",   label: "Informações",   icon: Info },
-  { key: "detalhes",      label: "Detalhes",      icon: FileText },
-  { key: "ingressos",     label: "Ingressos",     icon: Ticket },
-  { key: "imagens",       label: "Imagens",       icon: ImageIcon },
-  { key: "publicacao",    label: "Publicação",    icon: Globe },
-  { key: "configuracoes", label: "Configurações", icon: Settings },
-  { key: "cupons",        label: "Cupons",        icon: Tag },
-  { key: "vendas",        label: "Vendas",        icon: BarChart2 },
-  { key: "equipe",        label: "Equipe",         icon: Users },
-]
+  { key: "visao-geral", label: "Visão geral", icon: "columns" },
+  { key: "informacoes", label: "Informações", icon: "info" },
+  { key: "detalhes", label: "Detalhes", icon: "file-lines" },
+  { key: "ingressos", label: "Ingressos", icon: "ticket" },
+  { key: "imagens", label: "Imagens", icon: "image" },
+  { key: "publicacao", label: "Publicação", icon: "globe" },
+  { key: "cupons", label: "Cupons", icon: "tag" },
+  { key: "vendas", label: "Vendas", icon: "chart-line" },
+  { key: "equipe", label: "Equipe", icon: "users" },
+  { key: "configuracoes", label: "Configurações", icon: "settings" },
+];
 
-export const DEFAULT_SECTION = "visao-geral"
+export const DEFAULT_SECTION: SectionKey = "visao-geral";
