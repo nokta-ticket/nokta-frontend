@@ -29,6 +29,7 @@ import { EventHeaderCard } from "./event-header-card";
 import { OrderSummary, type OrderLine } from "./order-summary";
 import { PromoFields, type CupomStatus } from "./promo-fields";
 import { ProtectionOption } from "./protection-option";
+import { CheckoutPromoConsent } from "./promo-consent";
 import { ReservationTimer } from "./reservation-timer";
 import { SuccessScreen } from "./success-screen";
 import { TermsField } from "./terms-field";
@@ -643,6 +644,8 @@ export function CheckoutClient() {
                 {payError}
               </Callout>
             ) : null}
+
+            {selectedItems.length > 0 && isAuthenticated ? <CheckoutPromoConsent /> : null}
 
             {selectedItems.length > 0 ? <TermsField checked={termsAccepted} onChange={setTermsAccepted} /> : null}
           </div>

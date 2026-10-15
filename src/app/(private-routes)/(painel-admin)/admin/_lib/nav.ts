@@ -28,6 +28,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       { label: "Workspaces", href: "/admin/workspaces", icon: "building" },
       { label: "Eventos", href: "/admin/eventos", icon: "calendar" },
       { label: "Eventos em destaque", href: "/admin/eventos/destaques", icon: "star" },
+      { label: "Divulgação", href: "/admin/divulgacao", icon: "megaphone" },
       { label: "Ingressos", href: "/admin/ingressos", icon: "ticket" },
       { label: "Pedidos de produtor", href: "/admin/pedidos-produtor", icon: "clipboard-check" },
     ],

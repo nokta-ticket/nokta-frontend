@@ -23,6 +23,7 @@ import { PhoneField } from "@/components/ui/phone-field";
 import { validatePhone } from "@/components/ui/phone-input";
 import { AuthDivider } from "@/components/auth/auth-screen";
 import { SocialAuthButtons } from "@/components/auth/social-auth-buttons";
+import { PromoWhatsappConsent } from "@/components/marketing/promo-whatsapp-consent";
 import { useResendCooldown } from "@/components/auth/use-resend-cooldown";
 import { DEVICE_FINGERPRINT_HEADER, getDeviceFingerprint } from "@/components/auth/device-fingerprint";
 
@@ -183,6 +184,9 @@ export function RegisterForm() {
   const [telefone, setTelefone] = useState("");
   const [telefoneCountry, setTelefoneCountry] = useState<Country>("BR");
   const [senha, setSenha] = useState("");
+  // Divulgação da Nokta Tickets: só na bilheteria (no painel o cadastro é de produtor).
+  const showPromoConsent = surface !== "PLATFORM";
+  const [promoOptIn, setPromoOptIn] = useState(false);
 
   const [emailSuggestion, setEmailSuggestion] = useState<string | null>(null);
   const [emailTaken, setEmailTaken] = useState(false);
@@ -227,7 +231,11 @@ export function RegisterForm() {
     setPhoneE164(e164);
 
     try {
-      await api.post("/auth/register", { nome: firstName, sobrenome, email, senha, telefone: e164 }, { headers: fingerprintHeaders() });
+      await api.post(
+        "/auth/register",
+        { nome: firstName, sobrenome, email, senha, telefone: e164, ...(showPromoConsent ? { promoWhatsappOptIn: promoOptIn } : {}) },
+        { headers: fingerprintHeaders() },
+      );
       setStep("otp");
       phoneResend.reset();
     } catch (err) {
@@ -456,6 +464,8 @@ export function RegisterForm() {
             </ul>
           ) : null}
         </Field>
+
+        {showPromoConsent ? <PromoWhatsappConsent id="reg-promo-whatsapp" checked={promoOptIn} onCheckedChange={setPromoOptIn} /> : null}
 
         <Button type="submit" size="full" loading={loading} className="mt-1">
           {loading ? "Criando conta…" : "Criar conta"}

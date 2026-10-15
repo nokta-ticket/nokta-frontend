@@ -113,6 +113,7 @@ const protectedAdminRoutes = [
   "/admin/usuarios",
   "/admin/equipe",
   "/admin/workspaces",
+  "/admin/divulgacao",
   "/admin/ingressos",
   "/admin/eventos",
   "/admin/pedidos-produtor",
