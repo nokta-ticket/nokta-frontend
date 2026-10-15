@@ -1,5 +1,5 @@
 {
- "fetchedAt": "2026-10-15T17:42:32.640Z",
+ "fetchedAt": "2026-10-15T22:00:03.106Z",
  "events": [
   {
    "id": "ZFIMVHtnMZ17FUF_",
@@ -9264,21 +9264,6 @@
      "width": 2048
     },
     {
-     "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_TABLET_LANDSCAPE_16_9.jpg",
-     "ratio": "16_9",
-     "width": 1024
-    },
-    {
-     "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_RETINA_LANDSCAPE_16_9.jpg",
-     "ratio": "16_9",
-     "width": 1136
-    },
-    {
-     "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_EVENT_DETAIL_PAGE_16_9.jpg",
-     "ratio": "16_9",
-     "width": 205
-    },
-    {
      "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_SOURCE",
      "ratio": "16_9",
      "width": 2426
@@ -9292,6 +9277,21 @@
      "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_RETINA_PORTRAIT_16_9.jpg",
      "ratio": "16_9",
      "width": 640
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_EVENT_DETAIL_PAGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 205
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_RETINA_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1136
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_TABLET_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1024
     }
    ],
    "dates": {
@@ -9341,21 +9341,6 @@
      "width": 2048
     },
     {
-     "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_TABLET_LANDSCAPE_16_9.jpg",
-     "ratio": "16_9",
-     "width": 1024
-    },
-    {
-     "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_RETINA_LANDSCAPE_16_9.jpg",
-     "ratio": "16_9",
-     "width": 1136
-    },
-    {
-     "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_EVENT_DETAIL_PAGE_16_9.jpg",
-     "ratio": "16_9",
-     "width": 205
-    },
-    {
      "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_SOURCE",
      "ratio": "16_9",
      "width": 2426
@@ -9369,6 +9354,21 @@
      "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_RETINA_PORTRAIT_16_9.jpg",
      "ratio": "16_9",
      "width": 640
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_EVENT_DETAIL_PAGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 205
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_RETINA_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1136
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_TABLET_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1024
     }
    ],
    "dates": {
