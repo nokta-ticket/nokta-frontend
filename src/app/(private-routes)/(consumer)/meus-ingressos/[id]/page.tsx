@@ -22,7 +22,7 @@ import { TicketPass, type SiblingTicket } from "./_components/ticket-pass";
 import { TransferDialog } from "./_components/transfer-dialog";
 import { useTicketExport } from "./_components/use-ticket-export";
 
-const RULES = ["Apresente o QR Code na entrada, mesmo sem internet.", "Chegue com antecedência pra evitar fila.", "Documento com foto pode ser solicitado.", "Ingresso válido pra 1 pessoa."];
+const RULES = ["Apresente o QR Code na entrada.", "Chegue com antecedência pra evitar fila.", "Documento com foto pode ser solicitado.", "Ingresso válido pra 1 pessoa."];
 
 export default function DetalheIngressoPage() {
   const { id } = useParams<{ id: string }>();

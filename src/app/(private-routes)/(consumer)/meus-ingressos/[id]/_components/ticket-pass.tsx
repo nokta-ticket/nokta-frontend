@@ -170,7 +170,7 @@ export function TicketPass({
             <Icon name="check-circle" size={12} /> Este ingresso já foi validado na entrada.
           </p>
         ) : (
-          <p className="mt-4 text-center text-caption text-muted-foreground">Apresente este QR na entrada — funciona sem internet.</p>
+          <p className="mt-4 text-center text-caption text-muted-foreground">Apresente este QR na entrada.</p>
         )}
 
         <button type="button" onClick={() => onCopyCode(current?.code ?? "")} className="mx-auto mt-3 flex items-center gap-2 rounded-pill bg-surface-2 px-3.5 py-2 font-mono text-caption tracking-wider text-muted-foreground transition-colors hover:bg-surface-3 hover:text-foreground">
