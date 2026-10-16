@@ -8,7 +8,7 @@ import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeadCe
 import { EmptyState, ErrorState } from "@/components/ui/empty-state";
 import { Icon } from "@/components/ui/icon";
 import { RowsSkeleton } from "@/components/ui/skeleton";
-import { formatDateBR } from "@/lib/format";
+import { formatInstantDateBR } from "@/lib/format";
 import { INVITATION_STATUS_LABEL, VENUE_ROLE_LABEL, type InvitationStatus, type VenueRoleKey, type VenueTeamInvitation } from "@/services/venue-team";
 import { useVenueTeamInvitations, useVenueTeamMutations } from "../_hooks/use-venue-team";
 import { toast } from "@/lib/toast";
@@ -87,7 +87,7 @@ export function InvitationsTab({ orgId, canManage }: { orgId: number; canManage:
                   <DataTableCell className="font-medium">{inv.email}</DataTableCell>
                   <DataTableCell className="text-muted-foreground">{roleLabel(inv)}</DataTableCell>
                   <DataTableCell className="text-muted-foreground">{inv.invitedBy.nome}</DataTableCell>
-                  <DataTableCell className="text-muted-foreground tnum">{formatDateBR(inv.expiresAt)}</DataTableCell>
+                  <DataTableCell className="text-muted-foreground tnum">{formatInstantDateBR(inv.expiresAt)}</DataTableCell>
                   <DataTableCell>
                     <StatusBadge tone={STATUS_TONE[inv.status]}>{INVITATION_STATUS_LABEL[inv.status]}</StatusBadge>
                   </DataTableCell>
@@ -110,7 +110,7 @@ export function InvitationsTab({ orgId, canManage }: { orgId: number; canManage:
                 badge={<StatusBadge tone={STATUS_TONE[inv.status]}>{INVITATION_STATUS_LABEL[inv.status]}</StatusBadge>}
                 meta={[
                   { label: "Papel", value: roleLabel(inv) },
-                  { label: "Expira em", value: formatDateBR(inv.expiresAt), num: true },
+                  { label: "Expira em", value: formatInstantDateBR(inv.expiresAt), num: true },
                 ]}
                 actions={rowActions(inv)}
               />

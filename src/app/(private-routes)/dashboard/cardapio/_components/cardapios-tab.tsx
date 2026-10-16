@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/cn";
-import { formatDateBR } from "@/lib/format";
+import { formatInstantDateBR } from "@/lib/format";
 import { venueMenuApi, type VenueMenu } from "@/services/venue-menu";
 import { useVenueMenuMutations, useVenueMenus } from "../_hooks/use-venue-menus";
 import { venueKeys } from "../_hooks/query-keys";
@@ -128,7 +128,7 @@ export function CardapiosTab({ orgId, selectedMenuId, onSelectMenu }: { orgId: n
                     </div>
                     <p className="mt-1 text-caption text-muted-foreground tnum">
                       {categoriesCount ?? "–"} categorias · {productsCount ?? "–"} produtos
-                      {menu.publishedAt ? ` · publicado em ${formatDateBR(menu.publishedAt)}` : ""}
+                      {menu.publishedAt ? ` · publicado em ${formatInstantDateBR(menu.publishedAt)}` : ""}
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">

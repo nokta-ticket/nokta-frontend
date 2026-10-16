@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import { useAuth } from "@/context/AuthContext";
-import { formatDateBR, initials } from "@/lib/format";
+import { formatInstantDateBR, initials } from "@/lib/format";
 import { resolveMediaUrl } from "@/lib/media";
 import { StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -202,7 +202,7 @@ export default function PerfilPage() {
           <CardContent className="divide-y divide-border pt-1">
             <InfoRow label="E-mail" value={user.email} />
             <InfoRow label="Telefone" value={user.telefone ? formatPhone(user.telefone) : null} extra={user.telefone ? <StatusBadge tone={user.telefoneVerificado ? "success" : "warning"}>{user.telefoneVerificado ? "Verificado" : "Não verificado"}</StatusBadge> : undefined} />
-            <InfoRow label="Membro desde" value={user.createdAt ? formatDateBR(user.createdAt) : null} />
+            <InfoRow label="Membro desde" value={user.createdAt ? formatInstantDateBR(user.createdAt) : null} />
           </CardContent>
         </Card>
 

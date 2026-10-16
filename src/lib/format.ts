@@ -43,6 +43,26 @@ export function formatDateBR(value?: string | null): string {
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 }
 
+/**
+ * "15/10/2026" de um instante real (createdAt, expiresAt...), no horário de
+ * Brasília. `formatDateBR` lê a data como está no texto, certo para a data do
+ * evento mas não para um instante: compra às 22h de Brasília é dia seguinte em UTC.
+ */
+export function formatInstantDateBR(value?: string | null): string {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" }).format(d);
+}
+
+/** "22:00" de um instante real, no horário de Brasília. */
+export function formatInstantTimeBR(value?: string | null): string | null {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(d);
+}
+
 /** "22:00" a partir de "22:00", "22:00:00" ou "1970-01-01T22:00:00.000Z". */
 export function formatTime(value?: string | null): string | null {
   if (!value) return null;

@@ -310,6 +310,8 @@ body {
   font-family: var(--font-sans);
   min-height: 100dvh;
   text-rendering: optimizeLegibility;
+  /* A ligadura "fi" da Plus Jakarta Sans junta as letras e "fila" saía quebrado. */
+  font-variant-ligatures: no-common-ligatures;
 }
 
 @layer base {

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import api from "@/lib/axios";
 import { toast } from "@/lib/toast";
-import { formatDateBR } from "@/lib/format";
+import { formatInstantDateBR } from "@/lib/format";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -240,7 +240,7 @@ export default function DetalheIngressoPage() {
 
           <p className="tnum flex items-center justify-between px-1 text-micro font-semibold uppercase tracking-wider text-subtle-foreground">
             <span>Ingresso #{item.id}</span>
-            <span>Comprado em {formatDateBR(item.createdAt)}</span>
+            <span>Comprado em {formatInstantDateBR(item.createdAt)}</span>
           </p>
         </aside>
       </div>

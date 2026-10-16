@@ -7,7 +7,7 @@ import { useParams } from "next/navigation";
 import api, { getErrorMessage } from "@/lib/axios";
 import { useAuth } from "@/context/AuthContext";
 import { fireBrandConfetti } from "@/lib/confetti";
-import { cityLabel, formatBRL, formatDateBR, formatEventDateTime, formatTime } from "@/lib/format";
+import { cityLabel, formatBRL, formatEventDateTime, formatInstantDateBR, formatInstantTimeBR } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { StatusBadge } from "@/components/ui/badge";
 import { Callout } from "@/components/ui/callout";
@@ -162,7 +162,7 @@ export default function ComprarRevendaPage() {
   const price = resalePrice(resale);
   const discount = resaleDiscountPercent(resale);
   const place = [ev?.local, cityLabel(ev?.endereco)].filter(Boolean).join(" — ");
-  const expiresTime = formatTime(resale.expiresAt?.includes("T") ? resale.expiresAt : null);
+  const expiresTime = formatInstantTimeBR(resale.expiresAt);
 
   return (
     <>
@@ -190,7 +190,7 @@ export default function ComprarRevendaPage() {
                     { label: "Setor", value: resale.ingresso?.nome ?? "Não informado" },
                     { label: "Lote", value: resale.ingresso ? `${resale.ingresso.lote}º lote` : "Não informado" },
                     { label: "Preço original", value: formatBRL(Number(resale.originalPrice)) },
-                    { label: "Anúncio válido até", value: resale.expiresAt ? `${formatDateBR(resale.expiresAt)}${expiresTime ? ` · ${expiresTime}` : ""}` : "Até 2h antes do evento" },
+                    { label: "Anúncio válido até", value: resale.expiresAt ? `${formatInstantDateBR(resale.expiresAt)}${expiresTime ? ` · ${expiresTime}` : ""}` : "Até 2h antes do evento" },
                   ].map((row) => (
                     <div key={row.label} className="flex items-baseline justify-between gap-4 py-2.5 text-sm">
                       <dt className="text-muted-foreground">{row.label}</dt>

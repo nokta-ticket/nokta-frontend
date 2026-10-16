@@ -11,7 +11,7 @@ import { Sheet, SheetBody, SheetContent, SheetDescription, SheetHeader, SheetSec
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
-import { formatDateBR } from "@/lib/format";
+import { formatInstantDateBR } from "@/lib/format";
 import { MEMBER_STATUS_LABEL, VENUE_ROLE_LABEL, type PermissionEffect, type VenueRoleKey } from "@/services/venue-team";
 import { venueMenuApi, type VenuePreparationStation } from "@/services/venue-menu";
 import { useVenuePermissionsCatalog, useVenueRolesCatalog, useVenueTeamMember, useVenueTeamMutations } from "../_hooks/use-venue-team";
@@ -137,7 +137,7 @@ export function MemberDetailSheet({ orgId, memberId, onOpenChange }: { orgId: nu
                     Proprietário
                   </StatusBadge>
                 ) : null}
-                <span className="text-caption text-muted-foreground">Entrou em {formatDateBR(member.createdAt)}</span>
+                <span className="text-caption text-muted-foreground">Entrou em {formatInstantDateBR(member.createdAt)}</span>
               </div>
 
               <SheetSection title="Papel na operação">

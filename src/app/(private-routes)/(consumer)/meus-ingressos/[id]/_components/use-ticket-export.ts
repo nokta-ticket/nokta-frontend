@@ -1,12 +1,18 @@
 "use client";
 
-import { useCallback, useState, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { toast } from "@/lib/toast";
 
 /**
  * Exportar o ingresso (nó escondido `TicketExportCard`) como PNG, PDF ou
  * compartilhar a imagem (Web Share API, com fallback pra download). O nó
- * fica com opacidade 0 fora da tela; a captura revela e esconde de novo.
+ * fica com opacidade 0 fora da tela; a captura aplica opacidade 1 só na cópia
+ * que o html-to-image desenha, sem mostrar nada na tela.
+ *
+ * Compartilhar: o navegador só aceita `navigator.share` logo depois do toque.
+ * Gerar a imagem na hora (import + desenho) passava desse limite e o share era
+ * recusado (NotAllowedError). Por isso a imagem é gerada antes, em segundo plano,
+ * e o toque só chama o share.
  */
 export function useTicketExport(ref: RefObject<HTMLDivElement | null>, baseName: string, shareTitle: string) {
   const [exporting, setExporting] = useState(false);
@@ -14,19 +20,29 @@ export function useTicketExport(ref: RefObject<HTMLDivElement | null>, baseName:
   const capture = useCallback(async () => {
     const el = ref.current;
     if (!el) throw new Error("export node missing");
-    const prev = { opacity: el.style.opacity, pointerEvents: el.style.pointerEvents, zIndex: el.style.zIndex };
-    el.style.opacity = "1";
-    el.style.pointerEvents = "none";
-    el.style.zIndex = "9999";
-    try {
-      const { toPng } = await import("html-to-image");
-      return await toPng(el, { pixelRatio: 2, cacheBust: true, skipFonts: true });
-    } finally {
-      el.style.opacity = prev.opacity;
-      el.style.pointerEvents = prev.pointerEvents;
-      el.style.zIndex = prev.zIndex;
-    }
+    const { toPng } = await import("html-to-image");
+    return await toPng(el, { pixelRatio: 2, cacheBust: true, skipFonts: true, style: { opacity: "1", zIndex: "auto" } });
   }, [ref]);
+
+  // Arquivo pronto para o share, refeito quando o ingresso (nome do arquivo) muda.
+  const sharedFile = useRef<{ name: string; file: File } | null>(null);
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.canShare) return;
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        const dataUrl = await capture();
+        const blob = await (await fetch(dataUrl)).blob();
+        if (!cancelled) sharedFile.current = { name: baseName, file: new File([blob], `${baseName}.png`, { type: "image/png" }) };
+      } catch {
+        // Sem arquivo pronto, o toque gera na hora.
+      }
+    }, 600);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [capture, baseName]);
 
   const run = useCallback(
     async (fn: (dataUrl: string) => Promise<void>, failMessage: string) => {
@@ -87,19 +103,21 @@ export function useTicketExport(ref: RefObject<HTMLDivElement | null>, baseName:
     [run, baseName],
   );
 
-  const share = useCallback(
-    () =>
-      run(async (dataUrl) => {
-        const blob = await (await fetch(dataUrl)).blob();
-        const file = new File([blob], `${baseName}.png`, { type: "image/png" });
-        if (navigator.canShare?.({ files: [file] })) {
-          await navigator.share({ files: [file], title: shareTitle });
-        } else {
-          download(dataUrl, file.name);
-        }
-      }, "Erro ao salvar. Tente novamente."),
-    [run, baseName, shareTitle],
-  );
+  const share = useCallback(async () => {
+    const ready = sharedFile.current?.name === baseName ? sharedFile.current.file : null;
+    if (ready && navigator.canShare?.({ files: [ready] })) {
+      try {
+        await navigator.share({ files: [ready], title: shareTitle });
+        return;
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+        // Recusado mesmo assim: cai para baixar a imagem.
+      }
+    }
+    await run(async (dataUrl) => {
+      download(dataUrl, `${baseName}.png`);
+    }, "Erro ao compartilhar. Tente novamente.");
+  }, [run, baseName, shareTitle]);
 
   return { exporting, exportPng, exportPdf, share };
 }
