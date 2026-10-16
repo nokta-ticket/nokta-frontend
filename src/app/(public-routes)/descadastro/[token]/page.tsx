@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { Icon } from "@/components/ui/icon";
 
-type State = { phase: "loading" } | { phase: "invalid" } | { phase: "ready" | "done"; organizationName: string; channel: "EMAIL" | "WHATSAPP" };
+type State = { phase: "loading" } | { phase: "invalid" } | { phase: "ready" | "done"; organizationName: string; channel: "EMAIL" | "WHATSAPP" | "PUSH" };
 
 /**
  * Página que o cliente de um produtor abre ao clicar em "não quero mais
@@ -43,7 +43,7 @@ export default function DescadastroPage({ params }: { params: Promise<{ token: s
     }
   }
 
-  const channel = state.phase === "ready" || state.phase === "done" ? (state.channel === "EMAIL" ? "e-mails" : "mensagens de WhatsApp") : "";
+  const channel = state.phase === "ready" || state.phase === "done" ? (state.channel === "EMAIL" ? "e-mails" : state.channel === "PUSH" ? "notificações" : "mensagens de WhatsApp") : "";
 
   return (
     <AuthShell size="sm">

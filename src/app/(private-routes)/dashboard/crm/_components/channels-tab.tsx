@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/cn";
-import { crmKeys, type CrmChannel } from "@/services/crm";
+import { crmApi, crmKeys, type CrmChannel } from "@/services/crm";
 import { crmMarketingApi, crmMarketingKeys, formatMicros, type CrmChannelsOverview, type CrmDnsRecord } from "@/services/crm-marketing";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
@@ -33,6 +33,7 @@ export function ChannelsTab({ orgId, canManage }: { orgId: number; canManage: bo
   const queryClient = useQueryClient();
   const overview = useQuery({ queryKey: crmMarketingKeys.channels(orgId), queryFn: () => crmMarketingApi.channels(orgId) });
   const credits = useQuery({ queryKey: crmMarketingKeys.credits(orgId), queryFn: () => crmMarketingApi.credits(orgId) });
+  const lists = useQuery({ queryKey: crmKeys.overview(orgId), queryFn: () => crmApi.overview(orgId) });
 
   const apply = (data: CrmChannelsOverview) => {
     queryClient.setQueryData(crmMarketingKeys.channels(orgId), data);
@@ -56,6 +57,7 @@ export function ChannelsTab({ orgId, canManage }: { orgId: number; canManage: bo
       <div className={cn("grid items-start gap-4 xl:grid-cols-2", !canManage && "[&_[data-manage]]:hidden")}>
         <EmailChannel orgId={orgId} data={overview.data.email} credits={credits.data?.email} onChange={apply} />
         <WhatsappChannel orgId={orgId} data={overview.data.whatsapp} rates={credits.data?.whatsapp} onChange={apply} />
+        <PushChannel data={overview.data.push} reachable={lists.data?.pushEligible} total={lists.data?.total} />
       </div>
     </div>
   );
@@ -87,6 +89,31 @@ function Detail({ label, value }: { label: string; value: ReactNode }) {
 
 function checkedAt(iso: string | null) {
   return iso ? `Conferido em ${fmtDate(iso)} às ${fmtTime(iso)}` : "Ainda não conferido";
+}
+
+// ── Notificações no app ──
+
+/** Push não tem conta para conectar: sai pelo app da Nokta Tickets, com o nome do produtor no título. */
+function PushChannel({ data, reachable, total }: { data?: CrmChannelsOverview["push"]; reachable?: number; total?: number }) {
+  if (!data) return null;
+  const status = !data.available ? <StatusBadge tone="neutral">Em breve</StatusBadge> : <StatusBadge tone="success">Pronto para usar</StatusBadge>;
+  return (
+    <ChannelCard channel="PUSH" title="Notificações no app" status={status}>
+      <Note>
+        Chega no celular de quem tem o app da Nokta Tickets (ou o site) com as notificações ativas. A notificação aparece com o nome da sua organização no título e abre a página do evento ao tocar.
+      </Note>
+      {data.available ? (
+        <dl className="divide-y divide-border">
+          <Detail label="Podem receber agora" value={reachable === undefined ? "…" : `${num(reachable)}${total !== undefined ? ` de ${num(total)}` : ""}`} />
+          <Detail label="Custo" value="Incluído no plano" />
+          <Detail label="Limite por pessoa" value="1 por dia · 3 por semana" />
+        </dl>
+      ) : (
+        <Blockers title="Ainda não disponível" items={data.pending} />
+      )}
+      <Note>O limite soma as notificações de todos os produtores: quem recebe demais desliga o app inteiro, e aí perde também os avisos do ingresso. Cada notificação tem o botão &quot;Parar de receber&quot;, que vale só para a sua organização.</Note>
+    </ChannelCard>
+  );
 }
 
 // ── E-mail ──

@@ -153,7 +153,7 @@ export default function CrmPage() {
           <ErrorState title="Não foi possível carregar seus clientes agora" onRetry={() => void overview.refetch()} />
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-            <StatCard label="Sua lista" icon="users" value={ov?.total} loading={!ov} hint={ov ? `${ov.emailEligible.toLocaleString("pt-BR")} podem receber e-mail · ${ov.whatsappEligible.toLocaleString("pt-BR")} WhatsApp` : undefined} />
+            <StatCard label="Sua lista" icon="users" value={ov?.total} loading={!ov} hint={ov ? `${ov.emailEligible.toLocaleString("pt-BR")} podem receber e-mail · ${ov.whatsappEligible.toLocaleString("pt-BR")} WhatsApp · ${ov.pushEligible.toLocaleString("pt-BR")} notificação` : undefined} />
             <StatCard label="Recorrentes" icon="repeat" value={ov?.recurring} loading={!ov} hint="Compraram duas vezes ou mais" />
             <StatCard label="Sumidos" icon="history" value={ov?.inactive90Days} loading={!ov} hint="Sem comprar há 90 dias ou mais" />
           </div>

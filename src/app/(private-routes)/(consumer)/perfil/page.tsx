@@ -16,6 +16,7 @@ import { Field, FieldGroup } from "@/components/ui/field";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PushSettingsCard } from "@/components/push/push-settings-card";
 
 interface EnderecoData {
   cep?: string | null;
@@ -275,6 +276,8 @@ export default function PerfilPage() {
         <Button size="full" leftIcon={saving ? undefined : "check"} loading={saving} onClick={handleSave}>
           {saving ? "Salvando…" : "Salvar alterações"}
         </Button>
+
+        <PushSettingsCard />
 
         {/* segurança */}
         <Card>

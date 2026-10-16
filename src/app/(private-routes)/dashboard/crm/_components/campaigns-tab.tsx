@@ -23,7 +23,7 @@ import { Sheet, SheetBody, SheetContent, SheetDescription, SheetHeader, SheetTit
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/badge";
 import { fmtDate, fmtTime } from "../../financeiro/_components/finance-ui";
-import { CHANNEL_LABEL, ChannelIcon, Note, describeFilters, num, type CrmTabKey } from "./crm-ui";
+import { CHANNEL_BY, CHANNEL_LABEL, ChannelIcon, Note, describeFilters, num, type CrmTabKey } from "./crm-ui";
 import { Blockers, CAMPAIGN_STATUS, EstimateSummary, PreviewBox, RECIPIENT_STATUS, SKIP_REASON } from "./marketing-ui";
 
 const when = (iso: string | null) => (iso ? `${fmtDate(iso)} às ${fmtTime(iso)}` : "");
@@ -44,7 +44,7 @@ export function CampaignsTab({ orgId, segments, options, onGoTo, canManage }: { 
   const refresh = () => void queryClient.invalidateQueries({ queryKey: crmMarketingKeys.campaigns(orgId) });
 
   /** Custo zero num e-mail não é "de graça": saiu da franquia que o plano inclui. */
-  const costLabel = (c: CrmCampaign) => (c.estimatedCostMicros === null ? null : c.estimatedCostMicros === 0 && c.channel === "EMAIL" ? "Incluído no plano" : formatMicros(c.estimatedCostMicros));
+  const costLabel = (c: CrmCampaign) => (c.estimatedCostMicros === null ? null : c.estimatedCostMicros === 0 && c.channel !== "WHATSAPP" ? "Incluído no plano" : formatMicros(c.estimatedCostMicros));
   const open = (c: CrmCampaign) => (c.status === "DRAFT" && canManage ? setComposing(c) : setOpenId(c.id));
 
   if (composing) {
@@ -256,12 +256,12 @@ function Composer({ orgId, draft, segments, options, onGoTo, onClose }: { orgId:
                 <Field label="Nome da campanha" htmlFor="camp-nome" hint="Só você vê.">
                   <Input id="camp-nome" value={name} onChange={(e) => setName(e.target.value)} maxLength={160} placeholder="Ex.: Último lote — Baile Neon" />
                 </Field>
-                <div role="radiogroup" aria-label="Canal" className="grid grid-cols-2 gap-2">
-                  {(["EMAIL", "WHATSAPP"] as CrmChannel[]).map((c) => (
+                <div role="radiogroup" aria-label="Canal" className="grid grid-cols-3 gap-2">
+                  {(["EMAIL", "WHATSAPP", "PUSH"] as CrmChannel[]).map((c) => (
                     <ChoiceCard
                       key={c}
                       selected={channel === c}
-                      icon={c === "EMAIL" ? "mail" : "whatsapp"}
+                      icon={c === "EMAIL" ? "mail" : c === "PUSH" ? "bell" : "whatsapp"}
                       title={CHANNEL_LABEL[c]}
                       onSelect={() => {
                         setChannel(c);
@@ -279,7 +279,7 @@ function Composer({ orgId, draft, segments, options, onGoTo, onClose }: { orgId:
                 <Skeleton className="h-11 rounded-input" />
               ) : usable.length === 0 ? (
                 <Callout tone="neutral" action={<Button variant="outline" size="sm" onClick={() => onGoTo("templates")}>Criar modelo</Button>}>
-                  {channel === "EMAIL" ? "Você ainda não tem um modelo de e-mail pronto." : "Você ainda não tem um modelo de WhatsApp aprovado pela Meta."}
+                  {channel === "EMAIL" ? "Você ainda não tem um modelo de e-mail pronto." : channel === "PUSH" ? "Você ainda não tem um modelo de notificação pronto." : "Você ainda não tem um modelo de WhatsApp aprovado pela Meta."}
                 </Callout>
               ) : (
                 <NativeSelect
@@ -317,7 +317,7 @@ function Composer({ orgId, draft, segments, options, onGoTo, onClose }: { orgId:
                 ))}
               </NativeSelect>
               <Note className="mt-2">
-                {segment ? describeFilters(segment.filters, options).join(" · ") : "Todos os seus contatos."} Só recebe quem pode receber por {channel === "EMAIL" ? "e-mail" : "WhatsApp"}.{" "}
+                {segment ? describeFilters(segment.filters, options).join(" · ") : "Todos os seus contatos."} Só recebe quem pode receber por {CHANNEL_BY[channel]}.{" "}
                 <Button variant="link" size="sm" className="h-auto text-caption" onClick={() => onGoTo("audiences")}>
                   Ver públicos
                 </Button>

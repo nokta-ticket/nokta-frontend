@@ -48,7 +48,7 @@ export function ContactSheet({ orgId, contactId, onClose, canManage }: { orgId: 
     onError,
   });
 
-  const blocked = contact ? [contact.channels.EMAIL, contact.channels.WHATSAPP].some((c) => c.suppressionReason === "MANUAL_BLOCK") : false;
+  const blocked = contact ? [contact.channels.EMAIL, contact.channels.WHATSAPP, contact.channels.PUSH].some((c) => c.suppressionReason === "MANUAL_BLOCK") : false;
 
   return (
     <Sheet open={contactId !== null} onOpenChange={(o) => !o && onClose()}>
@@ -95,7 +95,7 @@ export function ContactSheet({ orgId, contactId, onClose, canManage }: { orgId: 
               <section>
                 <h3 className="text-sm font-semibold text-foreground">Pode receber</h3>
                 <div className="mt-2 divide-y divide-border rounded-xl border border-border">
-                  {(["EMAIL", "WHATSAPP"] as CrmChannel[]).map((channel) => (
+                  {(["EMAIL", "WHATSAPP", "PUSH"] as CrmChannel[]).map((channel) => (
                     <ChannelRow key={channel} orgId={orgId} contact={contact} channel={channel} onChanged={refresh} canManage={canManage} />
                   ))}
                 </div>

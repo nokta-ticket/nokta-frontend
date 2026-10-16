@@ -50,6 +50,12 @@ export interface CrmChannelsOverview {
       lastError: string | null;
     } | null;
   };
+  /** Push sai pelo app da Nokta Tickets: não tem conta do produtor para conectar. */
+  push: {
+    available: boolean;
+    ready: boolean;
+    pending: string[];
+  };
 }
 
 export interface CrmCredits {
@@ -87,7 +93,15 @@ export interface WhatsappContent {
   buttons: WhatsappButton[];
 }
 
-export interface CrmTemplate<C = EmailContent | WhatsappContent> {
+/** Título da notificação é sempre o nome da organização; o produtor escreve só o texto. */
+export interface PushContent {
+  body: string;
+  /** Página da Nokta Tickets aberta ao tocar ("/evento/minha-festa"). */
+  url: string;
+  imageUrl: string | null;
+}
+
+export interface CrmTemplate<C = EmailContent | WhatsappContent | PushContent> {
   id: number;
   channel: CrmChannel;
   name: string;
@@ -103,7 +117,8 @@ export interface CrmTemplate<C = EmailContent | WhatsappContent> {
 
 export type CrmTemplatePreview =
   | { channel: "EMAIL"; subject: string; html: string; text: string; problems: string[] }
-  | { channel: "WHATSAPP"; headerText: string | null; body: string; footer: string | null; buttons: WhatsappButton[]; problems: string[] };
+  | { channel: "WHATSAPP"; headerText: string | null; body: string; footer: string | null; buttons: WhatsappButton[]; problems: string[] }
+  | { channel: "PUSH"; title: string; body: string; url: string | null; imageUrl: string | null; problems: string[] };
 
 // ── Campanhas ──
 
@@ -138,7 +153,8 @@ export interface CrmCostEstimate {
   /** Micro-reais (1 real = 1.000.000). Nulo = preço ainda não definido. */
   unitCostMicros: number | null;
   totalCostMicros: number | null;
-  chargedBy: "NOKTA" | "META";
+  /** NONE = push: sem custo por mensagem para o produtor (incluído no plano). */
+  chargedBy: "NOKTA" | "META" | "NONE";
   credits: { needed: number; fromFree: number; fromPaid: number; missing: number; balance: CrmCredits["email"] } | null;
   ratesCheckedAt: string | null;
 }
@@ -187,10 +203,10 @@ export const crmMarketingApi = {
   disconnectWhatsapp: (orgId: number) => data(api.delete<CrmChannelsOverview>(`${base(orgId)}/channels/whatsapp`)),
 
   listTemplates: (orgId: number, channel?: CrmChannel) => data(api.get<CrmTemplate[]>(`${base(orgId)}/templates`, { params: channel ? { channel } : undefined })),
-  createTemplate: (orgId: number, input: { channel: CrmChannel; name: string; content: EmailContent | WhatsappContent }) => data(api.post<CrmTemplate>(`${base(orgId)}/templates`, input)),
-  updateTemplate: (orgId: number, id: number, input: { name?: string; content?: EmailContent | WhatsappContent }) => data(api.patch<CrmTemplate>(`${base(orgId)}/templates/${id}`, input)),
+  createTemplate: (orgId: number, input: { channel: CrmChannel; name: string; content: EmailContent | WhatsappContent | PushContent }) => data(api.post<CrmTemplate>(`${base(orgId)}/templates`, input)),
+  updateTemplate: (orgId: number, id: number, input: { name?: string; content?: EmailContent | WhatsappContent | PushContent }) => data(api.patch<CrmTemplate>(`${base(orgId)}/templates/${id}`, input)),
   removeTemplate: (orgId: number, id: number) => api.delete(`${base(orgId)}/templates/${id}`),
-  previewTemplate: (orgId: number, channel: CrmChannel, content: EmailContent | WhatsappContent, recipientName?: string) =>
+  previewTemplate: (orgId: number, channel: CrmChannel, content: EmailContent | WhatsappContent | PushContent, recipientName?: string) =>
     data(api.post<CrmTemplatePreview>(`${base(orgId)}/templates/preview`, { channel, content, recipientName })),
   testTemplate: (orgId: number, id: number) => data(api.post<{ sentTo: string }>(`${base(orgId)}/templates/${id}/test`)),
   submitTemplate: (orgId: number, id: number) => data(api.post<CrmTemplate>(`${base(orgId)}/templates/${id}/submit`)),

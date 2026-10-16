@@ -309,10 +309,10 @@ const CONTACTS = CONTACT_NAMES.map((name, i) => {
     spentCents: orders * 9800,
     firstPurchaseAt: orders ? isoDaysAgo(100 - i) : null,
     lastPurchaseAt: orders ? isoDaysAgo(i % 6 === 0 ? 95 : i * 2) : null,
-    channels: { EMAIL: channelState(i % 9 !== 8 && i % 11 !== 5, i % 9 === 8 ? "NO_ADDRESS" : "OPTED_OUT"), WHATSAPP: channelState(hasPhone && i % 13 !== 4, !hasPhone ? "NO_ADDRESS" : "SUPPRESSED") },
+    channels: { EMAIL: channelState(i % 9 !== 8 && i % 11 !== 5, i % 9 === 8 ? "NO_ADDRESS" : "OPTED_OUT"), WHATSAPP: channelState(hasPhone && i % 13 !== 4, !hasPhone ? "NO_ADDRESS" : "SUPPRESSED"), PUSH: channelState(i % 3 === 0, "NO_ADDRESS") },
   };
 });
-const crmCounts = (list: typeof CONTACTS) => ({ total: list.length, emailEligible: list.filter((c) => c.channels.EMAIL.eligible).length, whatsappEligible: list.filter((c) => c.channels.WHATSAPP.eligible).length });
+const crmCounts = (list: typeof CONTACTS) => ({ total: list.length, emailEligible: list.filter((c) => c.channels.EMAIL.eligible).length, whatsappEligible: list.filter((c) => c.channels.WHATSAPP.eligible).length, pushEligible: list.filter((c) => c.channels.PUSH.eligible).length });
 function filterContacts(params: Record<string, string>) {
   let list = [...CONTACTS];
   if (params.search) list = list.filter((c) => `${c.name} ${c.email ?? ""} ${c.phone ?? ""}`.toLowerCase().includes(params.search.toLowerCase()));
@@ -356,6 +356,7 @@ const CAMPAIGNS: CrmCampaign[] = [
 ];
 const CHANNELS = {
   email: { available: true, ready: true, pending: [], sender: { status: "CONNECTED" as const, address: "festa@nokta.live", fromName: "Nokta Eventos", domain: "nokta.live", localPart: "festa", replyTo: "contato@nokta.live", records: [{ purpose: "DKIM" as const, type: "CNAME" as const, name: "nk1._domainkey.nokta.live", value: "nk1.dkim.amazonses.com", required: true }, { purpose: "SPF" as const, type: "TXT" as const, name: "nokta.live", value: "v=spf1 include:amazonses.com ~all", required: true }, { purpose: "DMARC" as const, type: "TXT" as const, name: "_dmarc.nokta.live", value: "v=DMARC1; p=none;", required: false }], dkimStatus: "SUCCESS", lastCheckedAt: isoDaysAgo(0.1), lastError: null } },
+  push: { available: true, ready: true, pending: [] },
   whatsapp: { available: true, sendingEnabled: true, signup: { appId: "123", configId: "456", graphVersion: "v20.0" }, ready: false, pending: ["Adicionar método de pagamento na Meta"], account: { status: "CONNECTED" as const, phoneNumber: "+55 11 99999-0000", verifiedName: "Nokta Eventos", businessName: "Nokta Eventos LTDA", hasFunding: false, qualityRating: "GREEN", messagingLimitTier: "TIER_1K", lastCheckedAt: isoDaysAgo(0.3), lastError: null } },
 };
 const CREDITS = { email: { freeMonthly: 2000, freeUsed: 342, freeRemaining: 1658, paidBalance: 5000, available: 6658, creditPriceMicros: 4000 }, whatsapp: { marketingRateMicros: 380000, utilityRateMicros: 40000, ratesCheckedAt: isoDaysAgo(0.5) } };

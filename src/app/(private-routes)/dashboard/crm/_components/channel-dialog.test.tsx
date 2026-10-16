@@ -29,7 +29,7 @@ const eligible: CrmChannelState = { eligible: true, reason: null, legalBasis: "L
 const noConsent: CrmChannelState = { eligible: false, reason: "NO_CONSENT", legalBasis: null, preference: "NOT_ASKED", suppressionReason: null };
 const contact: CrmContact = {
   id: 42, hasAccount: true, name: "Ana Lima", email: "ana@exemplo.com", phone: "+5511999998888", createdAt: "2026-01-01T00:00:00Z", sources: ["PURCHASE"],
-  ordersCount: 1, eventsCount: 1, spentCents: 5000, firstPurchaseAt: null, lastPurchaseAt: null, channels: { EMAIL: eligible, WHATSAPP: noConsent },
+  ordersCount: 1, eventsCount: 1, spentCents: 5000, firstPurchaseAt: null, lastPurchaseAt: null, channels: { EMAIL: eligible, WHATSAPP: noConsent, PUSH: noConsent },
 };
 
 function open(channel: "EMAIL" | "WHATSAPP", canSend = true) {

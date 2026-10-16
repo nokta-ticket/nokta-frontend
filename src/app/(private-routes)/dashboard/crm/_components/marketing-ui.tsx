@@ -7,7 +7,7 @@ import type { Tone } from "@/components/ui/badge";
 import type { CrmChannel } from "@/services/crm";
 import { formatMicros, type CrmAccountStatus, type CrmCampaignEstimate, type CrmCampaignStatus, type CrmRecipientStatus, type CrmTemplatePreview, type CrmTemplateStatus } from "@/services/crm-marketing";
 import { fmtDate } from "../../financeiro/_components/finance-ui";
-import { ChannelIcon, num, people } from "./crm-ui";
+import { CHANNEL_BY, ChannelIcon, num, people } from "./crm-ui";
 
 export const CAMPAIGN_STATUS: Record<CrmCampaignStatus, { label: string; tone: Tone }> = {
   DRAFT: { label: "Rascunho", tone: "neutral" },
@@ -39,7 +39,7 @@ export const SKIP_REASON: Record<string, string> = {
 
 /** O estado de um modelo depende do canal: e-mail não passa por análise. */
 export function templateStatus(channel: CrmChannel, status: CrmTemplateStatus): { label: string; tone: Tone } {
-  if (channel === "EMAIL") return status === "APPROVED" ? { label: "Pronto", tone: "success" } : { label: "Incompleto", tone: "neutral" };
+  if (channel === "EMAIL" || channel === "PUSH") return status === "APPROVED" ? { label: "Pronto", tone: "success" } : { label: "Incompleto", tone: "neutral" };
   const map: Record<CrmTemplateStatus, { label: string; tone: Tone }> = {
     DRAFT: { label: "Rascunho", tone: "neutral" },
     IN_REVIEW: { label: "Em análise na Meta", tone: "info" },
@@ -91,7 +91,12 @@ function Row({ label, value, hint, strong = false }: { label: ReactNode; value: 
 export function EstimateSummary({ estimate, channel, individual = false }: { estimate: CrmCampaignEstimate; channel: CrmChannel; individual?: boolean }) {
   const { audience, cost } = estimate;
   const out = audience.total - audience.eligible;
-  const audienceHint = [`${people(audience.total)} no público`, out > 0 ? `${num(out)} não ${out === 1 ? "pode" : "podem"} receber por ${channel === "EMAIL" ? "e-mail" : "WhatsApp"}` : null, audience.recentlyContacted > 0 ? `${num(audience.recentlyContacted)} já ${audience.recentlyContacted === 1 ? "recebeu" : "receberam"} uma mensagem sua nas últimas 24 horas` : null]
+  const recentText = channel === "PUSH" ? "já atingiu o limite de notificações (1 por dia e 3 por semana, somando todos os produtores)" : "uma mensagem sua nas últimas 24 horas";
+  const audienceHint = [
+    `${people(audience.total)} no público`,
+    out > 0 ? `${num(out)} não ${out === 1 ? "pode" : "podem"} receber por ${CHANNEL_BY[channel]}` : null,
+    audience.recentlyContacted > 0 ? (channel === "PUSH" ? `${num(audience.recentlyContacted)} ${recentText}` : `${num(audience.recentlyContacted)} já ${audience.recentlyContacted === 1 ? "recebeu" : "receberam"} ${recentText}`) : null,
+  ]
     .filter(Boolean)
     .join(" · ");
 
@@ -111,7 +116,9 @@ export function EstimateSummary({ estimate, channel, individual = false }: { est
         />
       ) : null}
 
-      {cost.chargedBy === "NOKTA" && cost.credits ? (
+      {cost.chargedBy === "NONE" ? (
+        <Row strong label="Custo estimado" value="Incluído no plano" hint="Notificação no app não é cobrada por mensagem." />
+      ) : cost.chargedBy === "NOKTA" && cost.credits ? (
         <>
           <Row label={individual ? "Crédito de e-mail" : "Créditos de e-mail"} value={num(cost.credits.needed)} hint={cost.credits.needed === 0 ? undefined : [cost.credits.fromFree ? `${num(cost.credits.fromFree)} da franquia do mês` : null, cost.credits.fromPaid ? `${num(cost.credits.fromPaid)} dos seus créditos` : null, cost.credits.missing ? `faltam ${num(cost.credits.missing)}` : null].filter(Boolean).join(" · ")} />
           <Row
@@ -165,9 +172,35 @@ export function WhatsappBubble({ preview }: { preview: Extract<CrmTemplatePrevie
   );
 }
 
-/** Prévia de e-mail ou WhatsApp, conforme o canal. */
+/** Prévia de uma notificação como aparece na tela do celular. */
+export function PushNotificationPreview({ preview }: { preview: Extract<CrmTemplatePreview, { channel: "PUSH" }> }) {
+  return (
+    <div className="surface-inset rounded-card p-4">
+      <div className="max-w-[360px] rounded-2xl bg-surface p-3.5 shadow-card">
+        <div className="flex items-center gap-2 text-caption text-muted-foreground">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/app-icon-192.png" alt="" className="size-4 rounded" />
+          <span>Nokta Tickets</span>
+          <span aria-hidden>·</span>
+          <span>agora</span>
+        </div>
+        <p className="mt-1.5 text-sm font-semibold text-foreground">{preview.title}</p>
+        <p className="mt-0.5 whitespace-pre-wrap break-words text-sm leading-snug text-foreground">{preview.body || <span className="text-subtle-foreground">O texto da notificação aparece aqui.</span>}</p>
+        {preview.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={preview.imageUrl} alt="" className="mt-2.5 aspect-[2/1] w-full rounded-lg object-cover" />
+        ) : null}
+        <p className="mt-2.5 text-caption font-medium text-info">Parar de receber</p>
+      </div>
+      {preview.url ? <p className="mt-2 max-w-[360px] truncate text-caption text-muted-foreground">Ao tocar abre: {preview.url}</p> : null}
+    </div>
+  );
+}
+
+/** Prévia de e-mail, WhatsApp ou notificação, conforme o canal. */
 export function PreviewBox({ preview, height = "h-[420px]" }: { preview: CrmTemplatePreview; height?: string }) {
   if (preview.channel === "WHATSAPP") return <WhatsappBubble preview={preview} />;
+  if (preview.channel === "PUSH") return <PushNotificationPreview preview={preview} />;
   return (
     <div>
       <p className="mb-2 text-caption">

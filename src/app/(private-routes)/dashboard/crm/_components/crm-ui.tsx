@@ -5,7 +5,10 @@ import { cn } from "@/lib/cn";
 import { Icon } from "@/components/ui/icon";
 import type { CrmChannel, CrmChannelState, CrmFilterOptions, CrmFilters, CrmSourceType } from "@/services/crm";
 
-export const CHANNEL_LABEL: Record<CrmChannel, string> = { EMAIL: "E-mail", WHATSAPP: "WhatsApp" };
+export const CHANNEL_LABEL: Record<CrmChannel, string> = { EMAIL: "E-mail", WHATSAPP: "WhatsApp", PUSH: "Notificação" };
+
+/** "por e-mail", "por WhatsApp", "por notificação". */
+export const CHANNEL_BY: Record<CrmChannel, string> = { EMAIL: "e-mail", WHATSAPP: "WhatsApp", PUSH: "notificação" };
 
 /** Abas do CRM (a página sincroniza com `?tab=`). */
 export const CRM_TABS = ["contacts", "audiences", "campaigns", "templates", "channels"] as const;
@@ -34,7 +37,7 @@ export type CrmPermissions = ReturnType<typeof useCrmPermissions>;
 
 /** Critério único de "pode receber", dito do mesmo jeito em toda a tela. */
 export const ELIGIBILITY_RULE =
-  "Conta quem pode receber divulgação sua naquele canal: tem o endereço, não pediu para sair e não está bloqueado. Quem comprou, pegou VIP, foi convidado ou recebeu ingresso de um evento seu recebe até pedir para sair. Contato de planilha depende do que foi declarado na importação.";
+  "Conta quem pode receber divulgação sua naquele canal: tem o endereço, não pediu para sair e não está bloqueado. Quem comprou, pegou VIP, foi convidado ou recebeu ingresso de um evento seu recebe até pedir para sair. Contato de planilha depende do que foi declarado na importação. Notificação só chega a quem tem o app da Nokta Tickets (ou o site) com notificações ativas.";
 
 export function ReadOnlyNote({ children }: { children: string }) {
   return <p className="surface-inset rounded-xl px-4 py-3 text-body text-muted-foreground">{children}</p>;
@@ -78,6 +81,9 @@ export function channelStatus(channel: CrmChannel, state: CrmChannelState): { to
   if (state.eligible) {
     return state.legalBasis === "CONSENT" ? { tone: "ok", short: "Autorizou", detail: "Autorizou receber suas mensagens por este canal." } : { tone: "ok", short: "Pode receber", detail: "Tem ingresso de evento seu: pode receber sua divulgação, sempre com a opção de sair." };
   }
+  if (state.reason === "NO_ADDRESS" && channel === "PUSH") {
+    return { tone: "off", short: "Sem notificações", detail: "Não tem o app da Nokta Tickets (ou o site) com notificações ativas, ou desligou as novidades dos produtores." };
+  }
   if (state.reason === "NO_ADDRESS") {
     return { tone: "off", short: channel === "EMAIL" ? "Sem e-mail" : "Sem telefone", detail: channel === "EMAIL" ? "Não há e-mail cadastrado." : "Não há telefone cadastrado." };
   }
@@ -98,7 +104,7 @@ const TONE_MARK: Record<ChannelTone, string> = {
 };
 
 export function ChannelIcon({ channel, size = 14, className }: { channel: CrmChannel; size?: number; className?: string }) {
-  return <Icon name={channel === "EMAIL" ? "mail" : "whatsapp"} size={size} className={className} />;
+  return <Icon name={channel === "EMAIL" ? "mail" : channel === "PUSH" ? "bell" : "whatsapp"} size={size} className={className} />;
 }
 
 /**
@@ -142,7 +148,7 @@ export function describeFilters(filters: CrmFilters, options?: CrmFilterOptions)
   if (filters.minOrders) out.push(filters.minOrders === 2 ? "2 compras ou mais" : `${filters.minOrders} compras ou mais`);
   if (filters.inactiveDays) out.push(`Sem comprar há ${filters.inactiveDays} dias`);
   if (filters.sources?.length) out.push(filters.sources.map((s) => SOURCE_LABEL[s]).join(" ou "));
-  if (filters.eligibleChannel) out.push(filters.eligibleChannel === "EMAIL" ? "Pode receber e-mail" : "Pode receber WhatsApp");
+  if (filters.eligibleChannel) out.push(`Pode receber ${CHANNEL_BY[filters.eligibleChannel]}`);
   return out;
 }
 
