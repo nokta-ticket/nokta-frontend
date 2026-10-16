@@ -1,4 +1,5 @@
 import { COMPANY } from "@/lib/company";
+import { todayInBrasilia } from "@/lib/format";
 import { SITES, canonicalFor, type SiteKey } from "@/lib/seo/site";
 
 type Json = Record<string, unknown>;
@@ -131,7 +132,7 @@ export function eventLd(e: EventLdInput): Json {
         highPrice: Math.max(...prices).toFixed(2),
         offerCount: prices.length,
         availability: e.soldOut ? "https://schema.org/SoldOut" : "https://schema.org/InStock",
-        validFrom: new Date().toISOString().slice(0, 10),
+        validFrom: todayInBrasilia(),
       }
     : undefined;
   return {

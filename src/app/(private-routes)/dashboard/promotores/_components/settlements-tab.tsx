@@ -21,7 +21,7 @@ import { Stepper, type StepperStep } from "@/components/ui/stepper";
 import { useAvailableCommissionEntries, usePromoterMutations, usePromoters, useSettlements } from "../_hooks/use-promoters";
 import { SETTLEMENT_TONE, fmtDay } from "./promoter-meta";
 
-const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : undefined);
+const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : undefined);
 
 export function settlementSteps(status: SettlementStatus, s: PromoterSettlement): StepperStep[] {
   if (status === "CANCELLED") {

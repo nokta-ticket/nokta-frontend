@@ -48,7 +48,7 @@ const SOLICITATION_INFO: Record<SolicitationStatus, { label: string; tone: Tone;
 
 function formatDate(value?: string | null) {
   if (!value) return null;
-  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }
 
 export default function DadosFinanceirosPage() {

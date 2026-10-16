@@ -175,7 +175,7 @@ export default function SectionAccess({ event }: SectionProps) {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-foreground">{d.label}</p>
                   <p className="truncate text-caption text-muted-foreground">
-                    {d.kind === "HUB" ? "Access Hub" : "Scanner"} · {d.pending ? "aguardando pareamento (código ainda não usado)" : d.lastSyncAt ? `sincronizado ${new Date(d.lastSyncAt).toLocaleTimeString("pt-BR")}` : "nunca sincronizou"}
+                    {d.kind === "HUB" ? "Access Hub" : "Scanner"} · {d.pending ? "aguardando pareamento (código ainda não usado)" : d.lastSyncAt ? `sincronizado ${new Date(d.lastSyncAt).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" })}` : "nunca sincronizou"}
                   </p>
                 </div>
                 <Button variant="subtle" size="icon-sm" aria-label={`Remover ${d.label}`} title="Remover" className="hover:bg-danger-bg hover:text-danger" onClick={() => setRemoveTarget(d)}>
@@ -220,7 +220,7 @@ export default function SectionAccess({ event }: SectionProps) {
                   <QRCode value={pairResult.pairingCode} size={160} />
                 </div>
                 <p className="font-mono text-stat font-medium tracking-[0.3em] text-foreground">{pairResult.pairingCode}</p>
-                <p className="text-caption text-muted-foreground">Válido até {new Date(pairResult.expiresAt).toLocaleTimeString("pt-BR")}. No dispositivo, digite este código ou escaneie o QR na tela de pareamento.</p>
+                <p className="text-caption text-muted-foreground">Válido até {new Date(pairResult.expiresAt).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo" })}. No dispositivo, digite este código ou escaneie o QR na tela de pareamento.</p>
               </DialogBody>
               <DialogFooter>
                 <Button

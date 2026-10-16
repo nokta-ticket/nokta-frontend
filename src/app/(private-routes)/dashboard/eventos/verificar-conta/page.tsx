@@ -45,7 +45,7 @@ const OBRIGACOES = [
 
 function formatDate(value?: string | null) {
   if (!value) return null;
-  return new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
+  return new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }
 
 function getInitialStep(params: { tipoPessoa: TipoPessoa; cpf: string; cnpj: string; chavePix: string; telefoneVerificado: boolean }) {

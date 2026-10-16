@@ -354,7 +354,7 @@ export function VenueInicioPageContent() {
                           return (
                             <li key={r.id}>
                               <Link href="/dashboard/reservas" className="press flex items-center gap-3 rounded-xl px-2 py-2 transition-colors hover:bg-surface-2">
-                                <span className={cn("w-12 text-sm font-semibold tnum", noShow ? "text-subtle-foreground line-through" : "text-foreground")}>{new Date(r.startAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+                                <span className={cn("w-12 text-sm font-semibold tnum", noShow ? "text-subtle-foreground line-through" : "text-foreground")}>{new Date(r.startAt).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" })}</span>
                                 <span className="min-w-0 flex-1">
                                   <span className="block truncate text-sm font-medium text-foreground">{r.customerName}</span>
                                   <span className="text-caption text-muted-foreground tnum">

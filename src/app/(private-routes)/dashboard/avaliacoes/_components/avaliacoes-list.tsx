@@ -45,7 +45,7 @@ function Stars({ value }: { value: number | null }) {
 }
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+  return new Date(iso).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "short" });
 }
 
 function initials(name: string) {

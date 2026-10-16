@@ -9,6 +9,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { todayInBrasilia } from "@/lib/format";
 
 // ─── Validação ───────────────────────────────────────────────────────────────
 
@@ -94,7 +95,7 @@ export function CpfGate({ onComplete }: { onComplete: (cpf: string, dataNascimen
             <Input id="cpf-gate-cpf" inputMode="numeric" autoComplete="off" placeholder="000.000.000-00" maxLength={14} value={cpf} onChange={(e) => setCpf(maskCPF(e.target.value))} onBlur={() => setCpfTouched(true)} aria-invalid={Boolean(cpfErrMsg) || undefined} />
           </Field>
           <Field label="Data de nascimento" htmlFor="cpf-gate-birth" error={dataTouched && dateErr ? dateErr : undefined}>
-            <Input id="cpf-gate-birth" type="date" autoComplete="bday" value={dataNascimento} onChange={(e) => setDataNascimento(e.target.value)} onBlur={() => setDataTouched(true)} max={new Date().toISOString().split("T")[0]} aria-invalid={(dataTouched && Boolean(dateErr)) || undefined} />
+            <Input id="cpf-gate-birth" type="date" autoComplete="bday" value={dataNascimento} onChange={(e) => setDataNascimento(e.target.value)} onBlur={() => setDataTouched(true)} max={todayInBrasilia()} aria-invalid={(dataTouched && Boolean(dateErr)) || undefined} />
           </Field>
           <Button type="submit" size="full" loading={loading} className="mt-2">
             Continuar pra compra

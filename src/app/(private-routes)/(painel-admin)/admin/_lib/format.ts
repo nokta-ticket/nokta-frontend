@@ -4,14 +4,14 @@ export function formatDateTime(value?: string | null): string {
   if (!value) return "";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 export function formatDate(value?: string | null): string {
   if (!value) return "";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString("pt-BR");
+  return d.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
 }
 
 /** Data de nascimento e afins: só a data, sem deslocar pelo fuso. */

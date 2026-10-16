@@ -6,12 +6,12 @@ export function minutesSince(iso: string, nowMs = Date.now()): number {
 
 /** "21:33" no fuso do navegador (operação é sempre "agora", no próprio salão). */
 export function formatClock(iso: string): string {
-  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return new Date(iso).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
 }
 
 /** "17/10/2026" */
 export function formatDay(iso: string): string {
-  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  return new Date(iso).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 /** "há 12 min", "há 1 h 20", "agora". */

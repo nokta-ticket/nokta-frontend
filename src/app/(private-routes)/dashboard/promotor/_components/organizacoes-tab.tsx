@@ -25,7 +25,7 @@ export function OrganizacoesTab() {
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold text-foreground">{org.organization.nome}</p>
-            <p className="text-caption text-muted-foreground">Convidado em {new Date(org.invitedAt).toLocaleDateString("pt-BR")}</p>
+            <p className="text-caption text-muted-foreground">Convidado em {new Date(org.invitedAt).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p>
           </div>
           <StatusBadge tone={ORG_PROMOTER_TONE[org.status]}>{ORG_PROMOTER_STATUS_LABEL[org.status]}</StatusBadge>
         </article>

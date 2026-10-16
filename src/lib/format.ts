@@ -44,6 +44,27 @@ export function formatDateBR(value?: string | null): string {
 }
 
 /**
+ * Datas na Nokta, duas regras (o teste `dates-timezone.test.ts` cobra):
+ * - data/hora do EVENTO (`evento.data`, `evento.horario`) é horário de parede
+ *   gravado como UTC: use `formatDateBR`, `formatEventDate`, `formatTime`;
+ * - INSTANTE real (createdAt, expiresAt, startAt...): mostre sempre em
+ *   Brasília, com `formatInstantDateBR`/`formatInstantTimeBR` ou passando
+ *   `timeZone: "America/Sao_Paulo"`. Nunca `toISOString().slice(0, 10)` para "hoje".
+ */
+export const BRASILIA_TIME_ZONE = "America/Sao_Paulo";
+
+/** "AAAA-MM-DD" de hoje em Brasília. */
+export function todayInBrasilia(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: BRASILIA_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
+
+/** Dia da semana (0 = domingo) de hoje em Brasília. */
+export function weekdayInBrasilia(now: Date = new Date()): number {
+  const [y, m, d] = todayInBrasilia(now).split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+/**
  * "15/10/2026" de um instante real (createdAt, expiresAt...), no horário de
  * Brasília. `formatDateBR` lê a data como está no texto, certo para a data do
  * evento mas não para um instante: compra às 22h de Brasília é dia seguinte em UTC.

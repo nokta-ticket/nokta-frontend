@@ -68,7 +68,7 @@ export function formatShortDateTime(iso: string | null | undefined): string {
   const date = formatShortDate(iso);
   if (!date) return "";
   const d = new Date(iso as string);
-  return `${date} · ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+  return `${date} · ${d.toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" })}`;
 }
 
 /** "14 out" ou "14 out 2025". */
@@ -78,7 +78,7 @@ export function formatShortDate(iso: string | null | undefined): string {
   if (Number.isNaN(d.getTime())) return "";
   const sameYear = d.getFullYear() === new Date().getFullYear();
   return d
-    .toLocaleDateString("pt-BR", { day: "2-digit", month: "short", ...(sameYear ? {} : { year: "numeric" }) })
+    .toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "short", ...(sameYear ? {} : { year: "numeric" }) })
     .replace(/\./g, "")
     .replace(/ de /g, " ");
 }

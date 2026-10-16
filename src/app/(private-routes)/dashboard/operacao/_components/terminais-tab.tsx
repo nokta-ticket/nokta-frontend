@@ -139,9 +139,9 @@ function DeviceCard({ device, serverNowMs, index, onRevoke, onShowCode, onRegene
             </StatusBadge>
           </div>
           <p className="mt-1 text-caption text-muted-foreground">
-            {paired && device.lastSeenAt ? `Visto por último em ${new Date(device.lastSeenAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}` : paired ? "Nunca usado desde o pareamento" : status === "pending" ? "Código gerado, aguardando o app" : "Vínculo encerrado"}
+            {paired && device.lastSeenAt ? `Visto por último em ${new Date(device.lastSeenAt).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}` : paired ? "Nunca usado desde o pareamento" : status === "pending" ? "Código gerado, aguardando o app" : "Vínculo encerrado"}
             {" · "}
-            <span className="tnum">Cadastrado em {new Date(device.createdAt).toLocaleDateString("pt-BR")}</span>
+            <span className="tnum">Cadastrado em {new Date(device.createdAt).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}</span>
           </p>
         </div>
       </div>

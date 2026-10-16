@@ -42,7 +42,7 @@ export function OrganizacaoTab({ orgId }: { orgId: number }) {
             <DefinitionItem label="Documento" value={data.documento} mono />
             <DefinitionItem label="Proprietário" value={`${data.owner.nome} ${data.owner.sobrenome ?? ""}`.trim()} />
             <DefinitionItem label="E-mail do proprietário" value={data.owner.email} />
-            <DefinitionItem label="Criada em" value={new Date(data.createdAt).toLocaleDateString("pt-BR")} />
+            <DefinitionItem label="Criada em" value={new Date(data.createdAt).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })} />
           </DefinitionList>
 
           <div>

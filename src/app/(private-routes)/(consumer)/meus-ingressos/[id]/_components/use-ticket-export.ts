@@ -12,8 +12,12 @@ import { toast } from "@/lib/toast";
  * Compartilhar: o navegador só aceita `navigator.share` logo depois do toque.
  * Gerar a imagem na hora (import + desenho) passava desse limite e o share era
  * recusado (NotAllowedError). Por isso a imagem é gerada antes, em segundo plano,
- * e o toque só chama o share.
+ * e o toque só chama o share. O arquivo sai direto como Blob (`toBlob`): converter
+ * o data URL com `fetch` é barrado pela CSP (`connect-src` não libera `data:`).
  */
+// A cópia desenhada fica visível; o nó real continua escondido na tela.
+const CAPTURE_OPTIONS = { pixelRatio: 2, cacheBust: true, skipFonts: true, style: { opacity: "1", zIndex: "auto" } };
+
 export function useTicketExport(ref: RefObject<HTMLDivElement | null>, baseName: string, shareTitle: string) {
   const [exporting, setExporting] = useState(false);
 
@@ -21,7 +25,16 @@ export function useTicketExport(ref: RefObject<HTMLDivElement | null>, baseName:
     const el = ref.current;
     if (!el) throw new Error("export node missing");
     const { toPng } = await import("html-to-image");
-    return await toPng(el, { pixelRatio: 2, cacheBust: true, skipFonts: true, style: { opacity: "1", zIndex: "auto" } });
+    return await toPng(el, CAPTURE_OPTIONS);
+  }, [ref]);
+
+  const captureBlob = useCallback(async () => {
+    const el = ref.current;
+    if (!el) throw new Error("export node missing");
+    const { toBlob } = await import("html-to-image");
+    const blob = await toBlob(el, CAPTURE_OPTIONS);
+    if (!blob) throw new Error("export blob empty");
+    return blob;
   }, [ref]);
 
   // Arquivo pronto para o share, refeito quando o ingresso (nome do arquivo) muda.
@@ -31,8 +44,7 @@ export function useTicketExport(ref: RefObject<HTMLDivElement | null>, baseName:
     let cancelled = false;
     const timer = window.setTimeout(async () => {
       try {
-        const dataUrl = await capture();
-        const blob = await (await fetch(dataUrl)).blob();
+        const blob = await captureBlob();
         if (!cancelled) sharedFile.current = { name: baseName, file: new File([blob], `${baseName}.png`, { type: "image/png" }) };
       } catch {
         // Sem arquivo pronto, o toque gera na hora.
@@ -42,7 +54,7 @@ export function useTicketExport(ref: RefObject<HTMLDivElement | null>, baseName:
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [capture, baseName]);
+  }, [captureBlob, baseName]);
 
   const run = useCallback(
     async (fn: (dataUrl: string) => Promise<void>, failMessage: string) => {
@@ -114,10 +126,22 @@ export function useTicketExport(ref: RefObject<HTMLDivElement | null>, baseName:
         // Recusado mesmo assim: cai para baixar a imagem.
       }
     }
-    await run(async (dataUrl) => {
-      download(dataUrl, `${baseName}.png`);
-    }, "Erro ao compartilhar. Tente novamente.");
-  }, [run, baseName, shareTitle]);
+    setExporting(true);
+    try {
+      const blob = await captureBlob();
+      // URL de Blob (não data:): o "Ver" do Safari não abre data URL.
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.download = `${baseName}.png`;
+      link.href = url;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+      toast.error("Erro ao compartilhar. Tente novamente.");
+    } finally {
+      setExporting(false);
+    }
+  }, [captureBlob, baseName, shareTitle]);
 
   return { exporting, exportPng, exportPdf, share };
 }

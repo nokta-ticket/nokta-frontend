@@ -64,7 +64,7 @@ function GuestList({ orgId, reservationId, partySize }: { orgId: number; reserva
                   <Icon name={inHouse ? "check-circle" : "circle-outline"} size={15} className={cn("shrink-0", inHouse ? "text-success" : "text-subtle-foreground")} />
                   <span className={cn("min-w-0 flex-1 truncate text-sm", inHouse ? "text-muted-foreground" : "text-foreground")}>{g.name}</span>
                   {inHouse ? (
-                    <span className="text-caption text-subtle-foreground tnum">{new Date(g.checkedInAt!).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+                    <span className="text-caption text-subtle-foreground tnum">{new Date(g.checkedInAt!).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" })}</span>
                   ) : (
                     <Button size="sm" variant="outline" leftIcon="check" loading={checkIn.isPending && checkIn.variables === g.id} onClick={() => checkIn.mutate(g.id, { onError: (err) => toast.error(getErrorMessage(err, "Não foi possível fazer o check-in.")) })}>
                       Check-in

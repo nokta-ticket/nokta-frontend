@@ -11,4 +11,4 @@ export function publicEventUrl(publicToken: string, slugOrId: string | number) {
 }
 
 export const fmtDay = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { timeZone: "UTC" });
-export const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("pt-BR");
+export const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });

@@ -7,6 +7,7 @@ import { Icon, type IconName } from "@/components/ui/icon";
 import { StatusBadge } from "@/components/ui/badge";
 import { HeaderAction, VenuePublicFooter, VenuePublicHeader } from "@/components/venue-menu/venue-public-header";
 import { cn } from "@/lib/cn";
+import { weekdayInBrasilia } from "@/lib/format";
 import type { VenueHomePageData } from "@/services/venue-home-public";
 
 /** Ícone por comodidade (catálogo fixo do backend); chave desconhecida cai em "check-circle". */
@@ -31,7 +32,7 @@ export function VenueHomeView({ data, orgSlug }: { data: VenueHomePageData; orgS
   const [schedOpen, setSchedOpen] = useState(false);
   const { profile } = data;
   const addressQuery = profile.address ? encodeURIComponent(profile.address) : null;
-  const todayDow = new Date().getDay();
+  const todayDow = weekdayInBrasilia();
 
   return (
     <div className="min-h-dvh bg-background text-foreground">

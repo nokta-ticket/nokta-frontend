@@ -18,7 +18,7 @@ type ScanEntry = {
 };
 
 function formatTime(ts: number): string {
-  return new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  return new Date(ts).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
 }
 
 /**

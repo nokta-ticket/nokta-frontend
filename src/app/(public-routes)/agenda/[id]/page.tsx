@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { JsonLd, brtDateTime, breadcrumbLd } from "@/components/seo/json-ld";
-import { formatBRL, formatEventDate } from "@/lib/format";
+import { formatBRL, formatEventDate, todayInBrasilia } from "@/lib/format";
 import { buildMetadata } from "@/lib/seo/metadata";
 import { canonicalFor } from "@/lib/seo/site";
 import { SOURCE_LABEL, citySlug, getAgenda, getAgendaEvent, type AgendaEvent } from "@/lib/agenda";
@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: `${e.name}${place(e) ? ` em ${place(e)}` : ""}, ${when}${e.time ? ` às ${e.time}` : ""}. Veja local e preço e compre o ingresso no site oficial (${SOURCE_LABEL[e.source]}).`.slice(0, 160),
     image: e.image,
     // Evento que já passou sai do índice.
-    noindex: e.date < new Date().toISOString().slice(0, 10),
+    noindex: e.date < todayInBrasilia(),
   });
 }
 

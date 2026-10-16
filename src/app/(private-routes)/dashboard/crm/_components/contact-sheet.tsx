@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/ui/badge";
+import { todayInBrasilia } from "@/lib/format";
 import { brl, fmtDate, fmtDay } from "../../financeiro/_components/finance-ui";
 import { CHANNEL_LABEL, ChannelIcon, SOURCE_LABEL, TONE_TEXT, ago, channelStatus, formatPhone } from "./crm-ui";
 
@@ -197,7 +198,7 @@ function originLines(contact: CrmContactDetail) {
 }
 
 function presenceByEvent(contact: CrmContactDetail) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInBrasilia();
   const map = new Map<number, { eventId: number; eventName: string; date: string | null; total: number; attended: number; upcoming: boolean }>();
   for (const t of contact.tickets) {
     if (t.eventId === null) continue;

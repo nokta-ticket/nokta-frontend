@@ -7,7 +7,7 @@ import { Callout } from "@/components/ui/callout";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/axios";
-import { formatBRL, formatDateBR } from "@/lib/format";
+import { formatBRL, formatInstantDateBR } from "@/lib/format";
 import { refundsApi } from "@/services/refunds";
 
 const REGRET_WINDOW_DAYS = 7;
@@ -27,7 +27,7 @@ export function RefundRequestCard({ orderId, userTicketId, ticketValue, ticketSt
   deadline.setDate(deadline.getDate() + REGRET_WINDOW_DAYS);
   const withinWindow = new Date() <= deadline;
   const isUsed = ticketStatus === 2;
-  const deadlineLabel = formatDateBR(deadline.toISOString());
+  const deadlineLabel = formatInstantDateBR(deadline.toISOString());
 
   if (done) {
     return (
