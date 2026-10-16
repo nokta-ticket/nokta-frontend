@@ -6,6 +6,7 @@ import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Field, FieldGroup } from "@/components/ui/field";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { SelectInput } from "@/components/ui/select-input";
 import { SwitchRow } from "@/components/ui/switch-row";
@@ -70,12 +71,12 @@ export function AddLoteDialog({ onAdd, onEdit, setOpen, open, editingIndex }: Ad
           </Field>
           {!isGratuito ? (
             <Field label="Preço unitário" htmlFor="lote-valor" required>
-              <Input id="lote-valor" type="number" min={0} step={0.01} inputMode="decimal" prefix="R$" value={lote.valor} onChange={(e) => setLote((prev) => ({ ...prev, valor: Number(e.target.value) }))} />
+              <CurrencyInput id="lote-valor" value={Number(lote.valor) || 0} onValueChange={(valor) => setLote((prev) => ({ ...prev, valor }))} />
             </Field>
           ) : null}
           <FieldGroup columns={2}>
             <Field label="Quantidade" htmlFor="lote-qtd" required>
-              <Input id="lote-qtd" type="number" min={1} inputMode="numeric" value={lote.quantidade} onChange={(e) => setLote((prev) => ({ ...prev, quantidade: Number(e.target.value) }))} />
+              <Input id="lote-qtd" type="number" min={1} inputMode="numeric" placeholder="0" value={lote.quantidade || ""} onChange={(e) => setLote((prev) => ({ ...prev, quantidade: Number(e.target.value) }))} />
             </Field>
             <Field label="Data limite" htmlFor="lote-limite" optional>
               <Input id="lote-limite" type="date" value={lote.dataLimite} onChange={(e) => setLote((prev) => ({ ...prev, dataLimite: e.target.value }))} />

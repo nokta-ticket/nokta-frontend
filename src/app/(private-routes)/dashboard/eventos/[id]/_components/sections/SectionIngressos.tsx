@@ -10,6 +10,7 @@ import { DataTable, DataTableBody, DataTableCell, DataTableHead, DataTableHeadCe
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, FieldGroup } from "@/components/ui/field";
 import { Icon } from "@/components/ui/icon";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Input } from "@/components/ui/input";
 import { SelectInput } from "@/components/ui/select-input";
 import { Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -102,12 +103,12 @@ function TicketSheet({ open, onOpenChange, initial, lotNum, lotDeadline, onConfi
           </Field>
           {!isGratuito ? (
             <Field label="Preço unitário" htmlFor="tk-valor" required>
-              <Input id="tk-valor" type="number" min={0} step={0.01} inputMode="decimal" prefix="R$" value={form.valor} onChange={(e) => setForm((p) => ({ ...p, valor: Number(e.target.value) }))} />
+              <CurrencyInput id="tk-valor" value={Number(form.valor) || 0} onValueChange={(valor) => setForm((p) => ({ ...p, valor }))} />
             </Field>
           ) : null}
           <FieldGroup columns={2}>
             <Field label="Quantidade" htmlFor="tk-qtd" required>
-              <Input id="tk-qtd" type="number" min={1} inputMode="numeric" value={form.quantidade} onChange={(e) => setForm((p) => ({ ...p, quantidade: Number(e.target.value) }))} />
+              <Input id="tk-qtd" type="number" min={1} inputMode="numeric" placeholder="0" value={form.quantidade || ""} onChange={(e) => setForm((p) => ({ ...p, quantidade: Number(e.target.value) }))} />
             </Field>
             <Field label="Data limite do lote" htmlFor="tk-limite" optional>
               <Input id="tk-limite" type="date" value={form.dataLimite ?? ""} onChange={(e) => setForm((p) => ({ ...p, dataLimite: e.target.value || null }))} />
