@@ -39,7 +39,14 @@ export function PhoneRequiredGate() {
     !SKIP_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
   if (!needsPhone) return null;
-  return <PhoneRequiredDialog onDone={updateTelefone} onSignOut={signOut} />;
+  // Navegação forçada para o login, como no menu do usuário: só limpar o
+  // estado deixava a pessoa na mesma tela.
+  const handleSignOut = () => {
+    signOut();
+    window.location.href = "/login";
+  };
+
+  return <PhoneRequiredDialog onDone={updateTelefone} onSignOut={handleSignOut} />;
 }
 
 function PhoneRequiredDialog({ onDone, onSignOut }: { onDone: (telefone: string) => void; onSignOut: () => void }) {
