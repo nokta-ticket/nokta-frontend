@@ -44,7 +44,8 @@ export const metadata: Metadata = {
   applicationName: "Nokta",
   // Site na tela de início (iPhone: único jeito de receber push no iOS; Android: o app é o TWA).
   manifest: "/manifest.webmanifest",
-  icons: { apple: "/brand/app-icon-192.png" },
+  // Declarar `icons` aqui substitui o src/app/icon.svg automático: o favicon precisa estar na lista.
+  icons: { icon: [{ url: "/icon.svg", type: "image/svg+xml" }], apple: "/brand/apple-touch-icon.png" },
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Nokta" },
 };
 
