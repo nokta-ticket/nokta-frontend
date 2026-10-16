@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "br.com.noktatickets.app",
+      "sha256_cert_fingerprints": [
+        "07:96:DB:B1:3F:A9:72:56:22:6F:F9:A2:55:DC:7F:4F:87:ED:33:99:6B:D2:69:6C:9F:59:8F:93:DD:2D:91:0B"
+      ]
+    }
+  }
+]

@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import Cookies from "js-cookie";
 import api from "@/lib/axios";
+import { detachPushFromAccount } from "@/lib/push";
 import { toast } from "@/lib/toast";
 import { ReauthModal } from "@/components/session/reauth-modal";
 
@@ -213,6 +214,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Fire-and-forget: mesmo se a chamada falhar, o estado local (e o
     // cookie "user") já são limpos abaixo, então a UI sempre reflete
     // "deslogado" imediatamente.
+    // Tira este aparelho das notificações da conta antes de deslogar.
+    void detachPushFromAccount();
     api.post("/auth/logout").catch(() => {});
     Cookies.remove("user");
     setIsAuthenticated(false);
