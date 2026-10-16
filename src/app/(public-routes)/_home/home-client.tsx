@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "@/lib/axios";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "@/lib/toast";
@@ -13,12 +13,10 @@ import { EventCardLux, EventCardLuxSkeleton, FeaturedCarousel, FeaturedCarouselS
 import { SectionHeader } from "@/components/ui/section-header";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { AgendaEvent } from "@/lib/agenda/types";
-import { citySlug } from "@/lib/agenda/city";
-import { CityPicker, type CityOption } from "@/components/home/city-picker";
-import { readSavedCity, saveCity } from "@/lib/city-preference";
+import { CityPicker } from "@/components/home/city-picker";
+import { placeWhere } from "@/lib/place";
+import { useEventPlace } from "@/lib/use-event-place";
 import { AgendaCard } from "../agenda/_components/agenda-card";
-
-type Geo = { city: CityOption | null; ipCity: CityOption | null; cities: CityOption[]; events: AgendaEvent[] };
 
 type State = {
   featured: EventoAPI[] | null;
@@ -32,32 +30,9 @@ type State = {
 export function HomeClient({ agenda = [] }: { agenda?: AgendaEvent[] }) {
   const { isAuthenticated } = useAuth();
   const [state, setState] = useState<State>({ featured: null, events: null, page: 1, lastPage: 1, loadingMore: false, error: false });
-  // Cidade: "auto" (pelo IP), "brasil" ou o slug que a pessoa escolheu.
-  const [citySel, setCitySel] = useState<string | null>(null);
-  const [geo, setGeo] = useState<Geo>({ city: null, ipCity: null, cities: [], events: agenda });
-
-  useEffect(() => {
-    setCitySel(readSavedCity() ?? "auto");
-  }, []);
-
-  useEffect(() => {
-    if (!citySel) return;
-    let active = true;
-    fetch(`/api/agenda?cidade=${encodeURIComponent(citySel)}`)
-      .then((r) => (r.ok ? (r.json() as Promise<Geo>) : null))
-      .then((data) => {
-        if (active && data) setGeo(data);
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [citySel]);
-
-  const chooseCity = (slug: string) => {
-    saveCity(slug);
-    setCitySel(slug);
-  };
+  // Lugar: estado do IP por padrão; a pessoa pode trocar por outro estado ou uma cidade.
+  const where = useEventPlace({ nokta: state.events, initialAgenda: agenda });
+  const place = where.place;
 
   const load = useCallback(async () => {
     try {
@@ -104,32 +79,16 @@ export function HomeClient({ agenda = [] }: { agenda?: AgendaEvent[] }) {
   const featuredRest = state.featured;
   const loading = state.featured === null;
 
-  const noktaIn = useCallback((slug: string) => (state.events ?? []).filter((e) => e.endereco?.localidade && citySlug(e.endereco.localidade) === slug), [state.events]);
-  // Cidade que filtra a home. No automático, a do IP vale se tiver evento na
-  // agenda (a API já confere) ou evento da própria Nokta.
-  const city: CityOption | null = citySel === "brasil" ? null : (geo.city ?? (citySel === "auto" && geo.ipCity && noktaIn(geo.ipCity.slug).length > 0 ? geo.ipCity : null));
-  const upcoming = state.events && city ? noktaIn(city.slug) : state.events;
-  const cityOptions = useMemo(() => {
-    const map = new Map<string, CityOption>();
-    for (const c of geo.cities) map.set(c.slug, { ...c });
-    for (const e of state.events ?? []) {
-      const name = e.endereco?.localidade;
-      if (!name) continue;
-      const slug = citySlug(name);
-      const cur = map.get(slug) ?? { slug, name, count: 0 };
-      map.set(slug, { ...cur, count: (cur.count ?? 0) + 1 });
-    }
-    return [...map.values()].sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
-  }, [geo.cities, state.events]);
+  const upcoming = where.noktaEvents;
 
   return (
     <div className="pb-8">
       <HeroBanner />
 
-      {/* Cidade: filtra os próximos eventos e a agenda (padrão pelo IP) */}
+      {/* Lugar: filtra os próximos eventos e a agenda (padrão: estado do IP) */}
       <div className="mx-auto mt-4 flex max-w-7xl items-center gap-2.5 px-4 lg:mt-8 lg:px-6">
         <span className="shrink-0 text-sm text-muted-foreground">Eventos em</span>
-        <CityPicker value={city} cities={cityOptions} detected={citySel === "auto"} onChange={chooseCity} />
+        <CityPicker value={place} states={where.states} cities={where.cities} detected={where.detected} onChange={where.choose} />
       </div>
 
       {/* Destaques */}
@@ -150,7 +109,7 @@ export function HomeClient({ agenda = [] }: { agenda?: AgendaEvent[] }) {
       {/* Próximos eventos */}
       <section className="reveal mt-10 lg:mt-14">
         <div className="mx-auto max-w-7xl px-4 lg:px-6">
-          <SectionHeader title={city ? `Próximos eventos em ${city.name}` : "Próximos eventos"} action={<Link href="/eventos" className="text-sm font-semibold text-brand hover:underline">Buscar</Link>} />
+          <SectionHeader title={place ? `Próximos eventos ${placeWhere(place)}` : "Próximos eventos"} action={<Link href="/eventos" className="text-sm font-semibold text-brand hover:underline">Buscar</Link>} />
 
           {state.error ? (
             <EmptyState icon="warning" title="Não deu pra carregar os eventos" description="Tenta de novo em alguns segundos." action={<button type="button" onClick={load} className="btn-lift inline-flex h-10 items-center gap-2 rounded-pill bg-brand px-5 text-sm font-semibold text-brand-foreground"><Icon name="refresh" size={14} />Tentar de novo</button>} className="mt-6" />
@@ -183,8 +142,8 @@ export function HomeClient({ agenda = [] }: { agenda?: AgendaEvent[] }) {
               ) : null}
             </>
           ) : (
-            city && (state.events?.length ?? 0) > 0 ? (
-              <EmptyState compact icon="map-pin" title={`Nenhum evento da Nokta em ${city.name} ainda`} description="Veja o que está rolando nas outras cidades." action={<button type="button" onClick={() => chooseCity("brasil")} className="btn-lift inline-flex h-10 items-center gap-2 rounded-pill border border-border-strong bg-surface px-5 text-sm font-semibold text-foreground">Ver todas as cidades</button>} className="mt-6" />
+            place && (state.events?.length ?? 0) > 0 ? (
+              <EmptyState compact icon="map-pin" title={`Nenhum evento da Nokta ${placeWhere(place)} ainda`} description="Veja o que está rolando no resto do Brasil." action={<button type="button" onClick={() => where.choose("brasil")} className="btn-lift inline-flex h-10 items-center gap-2 rounded-pill border border-border-strong bg-surface px-5 text-sm font-semibold text-foreground">Ver todo o Brasil</button>} className="mt-6" />
             ) : (
               <EmptyState icon="party" title="Nenhum evento por aqui ainda" description="Volta logo — novos rolês aparecem toda semana." className="mt-6" />
             )
@@ -193,14 +152,14 @@ export function HomeClient({ agenda = [] }: { agenda?: AgendaEvent[] }) {
       </section>
 
       {/* Agenda: eventos de outras plataformas, com link pra venda oficial */}
-      {geo.events.length > 0 ? (
+      {where.agenda.length > 0 ? (
         <section className="reveal mt-12 lg:mt-16">
           <div className="mx-auto max-w-7xl px-4 lg:px-6">
             <SectionHeader
-              title={geo.city ? `Mais shows em ${geo.city.name}` : "Mais shows pelo Brasil"}
+              title={where.agendaPlace ? `Mais shows ${placeWhere(where.agendaPlace)}` : "Mais shows pelo Brasil"}
               description="Vendidos em outras plataformas. Você compra direto no site oficial."
               action={
-                <Link href={geo.city ? `/eventos/em/${geo.city.slug}` : "/agenda"} className="text-sm font-semibold text-brand hover:underline">
+                <Link href={where.agendaPlace?.kind === "city" ? `/eventos/em/${where.agendaPlace.slug}` : "/agenda"} className="text-sm font-semibold text-brand hover:underline">
                   Ver agenda
                 </Link>
               }
@@ -208,7 +167,7 @@ export function HomeClient({ agenda = [] }: { agenda?: AgendaEvent[] }) {
           </div>
           {/* celular: trilho com snap; desktop: grade */}
           <div className="mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 pb-2 [scrollbar-width:none] lg:hidden">
-            {geo.events.slice(0, 10).map((e, i) => (
+            {where.agenda.slice(0, 10).map((e, i) => (
               <div key={e.id} className="w-[78%] max-w-[320px] shrink-0 snap-start">
                 <AgendaCard event={e} index={i} />
               </div>
@@ -219,7 +178,7 @@ export function HomeClient({ agenda = [] }: { agenda?: AgendaEvent[] }) {
             </Link>
           </div>
           <div className="mx-auto mt-6 hidden max-w-7xl grid-cols-4 gap-6 px-6 lg:grid">
-            {geo.events.slice(0, 8).map((e, i) => (
+            {where.agenda.slice(0, 8).map((e, i) => (
               <AgendaCard key={e.id} event={e} index={i} />
             ))}
           </div>
