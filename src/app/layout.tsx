@@ -5,6 +5,7 @@ import "@fortawesome/fontawesome-svg-core/styles.css";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { StepUpProvider } from "@/components/session/step-up-modal";
+import { PhoneRequiredGate } from "@/components/session/phone-required-gate";
 import { AppThemeProvider } from "@/components/theme/theme-provider";
 import { AppToaster } from "@/components/ui/toaster";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -68,6 +69,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <AuthProvider>
             <StepUpProvider>
               {children}
+              <PhoneRequiredGate />
               <AppToaster />
               <SpeedInsights />
               <Analytics />

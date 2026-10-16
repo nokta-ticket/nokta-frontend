@@ -70,6 +70,7 @@ interface AuthContextType {
   updateNivelProdutor: (nivel: number) => void;
   /** Troca a foto de perfil em memória logo após o envio — o cabeçalho usa `user.fotoPerfil`, carregado só no início da sessão. */
   updateFotoPerfil: (fotoPerfil: string | null) => void;
+  updateTelefone: (telefone: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -295,6 +296,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         initiateRolePolling,
         updateNivelProdutor,
         updateFotoPerfil: (fotoPerfil) => setUser((current) => (current ? { ...current, fotoPerfil } : current)),
+        updateTelefone: (telefone) => setUser((current) => (current ? { ...current, telefone, telefoneVerificado: true } : current)),
       }}
     >
       {children}
