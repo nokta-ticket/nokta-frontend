@@ -42,6 +42,9 @@ export const metadata: Metadata = {
   },
   description: "Os melhores eventos e festas em um só lugar. Compre seus ingressos e viva a experiência Nokta.",
   applicationName: "Nokta",
+  // Site na tela de início (iPhone: único jeito de receber push no iOS; Android: o app é o TWA).
+  manifest: "/manifest.webmanifest",
+  icons: { apple: "/brand/app-icon-192.png" },
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Nokta" },
 };
 
