@@ -68,7 +68,7 @@ export function PushOptIn({ className }: { className?: string }) {
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-foreground">Saiba na hora quando seu ingresso for liberado</p>
-        <p className="mt-0.5 text-caption text-muted-foreground">Ative as notificações para receber o aviso do QR, o lembrete no dia do evento e novidades de quem você segue.</p>
+        <p className="mt-0.5 text-caption text-muted-foreground">Ative as notificações para receber o aviso do QR, o lembrete no dia do evento e novidades dos produtores dos seus eventos.</p>
         <div className="mt-3 flex gap-2">
           <Button size="sm" shape="pill" loading={busy} onClick={activate}>
             Ativar notificações
