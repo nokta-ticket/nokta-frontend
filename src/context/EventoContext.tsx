@@ -139,7 +139,7 @@ export function EventoProvider({ children }: { children: React.ReactNode }) {
           quantidade: Number(element.quantidade),
           valor: Number(element.valor),
           tipo: Number(element.tipo),
-          dataLimite: element.dataLimite,
+          dataLimite: element.dataLimite || undefined,
           disponivelParaVenda: element.disponivelParaVenda,
         })),
       };
