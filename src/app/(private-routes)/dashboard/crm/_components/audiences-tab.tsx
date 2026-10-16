@@ -88,6 +88,11 @@ export function AudiencesTab({ orgId, segments, loading, options, onOpen, onNew,
                     <ChannelIcon channel="WHATSAPP" size={11} /> WhatsApp
                   </span>
                 </DataTableHeadCell>
+                <DataTableHeadCell align="right">
+                  <span className="inline-flex items-center gap-1.5">
+                    <ChannelIcon channel="PUSH" size={11} /> Notificação
+                  </span>
+                </DataTableHeadCell>
                 <DataTableHeadCell align="right" width={200}>
                   <span className="sr-only">Ações</span>
                 </DataTableHeadCell>
@@ -106,6 +111,7 @@ export function AudiencesTab({ orgId, segments, loading, options, onOpen, onNew,
                   </DataTableCell>
                   <DataTableCell num>{num(s.counts.emailEligible)}</DataTableCell>
                   <DataTableCell num>{num(s.counts.whatsappEligible)}</DataTableCell>
+                  <DataTableCell num>{num(s.counts.pushEligible)}</DataTableCell>
                   <DataTableCell align="right" stopPropagation>
                     <div className="flex items-center justify-end gap-1">{actions(s)}</div>
                   </DataTableCell>
@@ -117,7 +123,7 @@ export function AudiencesTab({ orgId, segments, loading, options, onOpen, onNew,
         mobile={
           <MobileCardList>
             {segments.map((s, i) => (
-              <MobileCard key={s.id} index={i} onClick={() => onOpen(s.filters)} title={s.name} subtitle={rules(s)} meta={[{ label: "Pessoas", value: num(s.counts.total), num: true }, { label: "E-mail · WhatsApp", value: `${num(s.counts.emailEligible)} · ${num(s.counts.whatsappEligible)}`, num: true }]} actions={actions(s)} />
+              <MobileCard key={s.id} index={i} onClick={() => onOpen(s.filters)} title={s.name} subtitle={rules(s)} meta={[{ label: "Pessoas", value: num(s.counts.total), num: true }, { label: "E-mail · WhatsApp · Notificação", value: `${num(s.counts.emailEligible)} · ${num(s.counts.whatsappEligible)} · ${num(s.counts.pushEligible)}`, num: true }]} actions={actions(s)} />
             ))}
           </MobileCardList>
         }

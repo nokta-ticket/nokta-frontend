@@ -13,6 +13,7 @@ import { SearchInput } from "@/components/ui/search-input";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { StatusBadge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PushOptIn } from "@/components/push/push-opt-in";
 import { groupByEvent, isUpcoming, ticketDateLabel, ticketStatusMeta, type PaginateInfo, type UserTicket } from "./_lib/tickets";
 
 type Wallet = "ingressos" | "produtos";
@@ -154,6 +155,7 @@ export default function MeusIngressosPage() {
         <EmptyState icon="box" title="Nenhum produto ainda" description="Produtos vinculados aos seus eventos vão aparecer aqui." className="mt-8" />
       ) : (
         <>
+          <PushOptIn className="mt-6" />
           <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             {periodTabs}
             <SearchInput value={search} onChange={setSearch} placeholder="Buscar por evento, lote ou código" className="sm:w-80" />

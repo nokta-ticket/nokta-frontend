@@ -22,7 +22,7 @@ import { brl, fmtDate } from "../../financeiro/_components/finance-ui";
 import { ChannelDialog } from "./channel-dialog";
 import { ContactSheet } from "./contact-sheet";
 import type { CrmPermissions, CrmTabKey } from "./crm-ui";
-import { ChannelIcon, ChannelMark, IMPORTED_FILTER as IMPORTED, SOURCE_LABEL, ago, describeFilters, formatPhone, hasFilters, num, people, sameFilters } from "./crm-ui";
+import { CHANNEL_LABEL, ChannelIcon, ChannelMark, IMPORTED_FILTER as IMPORTED, SOURCE_LABEL, ago, describeFilters, formatPhone, hasFilters, num, people, sameFilters } from "./crm-ui";
 
 const RECURRING: CrmFilters = { minOrders: 2 };
 const INACTIVE: CrmFilters = { inactiveDays: 90 };
@@ -123,10 +123,10 @@ export function ContactsTab({ orgId, filters, onFilters, options, segments, impo
 
       <FilterGroup title="Pode receber">
         <div className="flex flex-wrap gap-1.5">
-          {(["EMAIL", "WHATSAPP"] as CrmChannel[]).map((c) => (
+          {(["EMAIL", "WHATSAPP", "PUSH"] as CrmChannel[]).map((c) => (
             <FilterChip key={c} active={filters.eligibleChannel === c} onClick={() => set({ eligibleChannel: filters.eligibleChannel === c ? undefined : c })}>
               <ChannelIcon channel={c} size={11} />
-              {c === "EMAIL" ? "E-mail" : "WhatsApp"}
+              {CHANNEL_LABEL[c]}
             </FilterChip>
           ))}
         </div>
@@ -218,6 +218,10 @@ export function ContactsTab({ orgId, filters, onFilters, options, segments, impo
                     <ChannelIcon channel="WHATSAPP" size={11} className="text-success" />
                     <span className="tnum">{num(counts.whatsappEligible)}</span> WhatsApp
                   </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <ChannelIcon channel="PUSH" size={11} className="text-success" />
+                    <span className="tnum">{num(counts.pushEligible)}</span> notificação
+                  </span>
                 </>
               ) : null}
               {list.isFetching && rows ? <Icon name="loader" size={12} className="animate-spin text-subtle-foreground" /> : null}
@@ -294,6 +298,8 @@ export function ContactsTab({ orgId, filters, onFilters, options, segments, impo
                         <span className="flex justify-end gap-1.5">
                           <ChannelMark channel="EMAIL" state={c.channels.EMAIL} onOpen={() => setChannelTarget({ contact: c, channel: "EMAIL" })} />
                           <ChannelMark channel="WHATSAPP" state={c.channels.WHATSAPP} onOpen={() => setChannelTarget({ contact: c, channel: "WHATSAPP" })} />
+                        <ChannelMark channel="PUSH" state={c.channels.PUSH} onOpen={() => setChannelTarget({ contact: c, channel: "PUSH" })} />
+                          <ChannelMark channel="PUSH" state={c.channels.PUSH} onOpen={() => setChannelTarget({ contact: c, channel: "PUSH" })} />
                         </span>
                       </DataTableCell>
                     </DataTableRow>
@@ -381,7 +387,7 @@ function NumberInput({ id, value, onChange, placeholder }: { id?: string; value?
   );
 }
 
-function SaveAudienceDialog({ orgId, open, onClose, filters, options, counts }: { orgId: number; open: boolean; onClose: () => void; filters: CrmFilters; options?: CrmFilterOptions; counts?: { total: number; emailEligible: number; whatsappEligible: number } }) {
+function SaveAudienceDialog({ orgId, open, onClose, filters, options, counts }: { orgId: number; open: boolean; onClose: () => void; filters: CrmFilters; options?: CrmFilterOptions; counts?: { total: number; emailEligible: number; whatsappEligible: number; pushEligible: number } }) {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -423,7 +429,7 @@ function SaveAudienceDialog({ orgId, open, onClose, filters, options, counts }: 
               ))}
               {counts ? (
                 <li className="pt-1 text-caption text-muted-foreground tnum">
-                  {people(counts.total)} hoje · {num(counts.emailEligible)} e-mail · {num(counts.whatsappEligible)} WhatsApp
+                  {people(counts.total)} hoje · {num(counts.emailEligible)} e-mail · {num(counts.whatsappEligible)} WhatsApp · {num(counts.pushEligible)} notificação
                 </li>
               ) : null}
             </ul>

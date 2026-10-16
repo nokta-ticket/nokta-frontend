@@ -77,11 +77,11 @@ export function ChannelDialog({ orgId, target, onClose, onOpenContact, onGoTo, c
   // "Escolha um modelo" não é bloqueio enquanto a pessoa ainda está escolhendo.
   const blockers = (estimate.data?.blockers ?? []).filter((b) => template !== null || b !== "Escolha um modelo.");
   const channelBlocked = (estimate.data?.blockers ?? []).some((b) => /Canais|habilitad|validando|pendentes na Meta|forma de pagamento/.test(b));
-  const address = contact ? (channel === "EMAIL" ? contact.email : formatPhone(contact.phone)) : null;
+  const address = contact ? (channel === "EMAIL" ? contact.email : channel === "PUSH" ? (contact.channels.PUSH.reason === "NO_ADDRESS" ? null : "App da Nokta Tickets") : formatPhone(contact.phone)) : null;
 
   const marks: [string, Mark, string][] = state
     ? [
-        [channel === "EMAIL" ? "E-mail cadastrado" : "Telefone cadastrado", address ? "ok" : "no", address ?? "Não há"],
+        [channel === "EMAIL" ? "E-mail cadastrado" : channel === "PUSH" ? "Notificações ativas no celular" : "Telefone cadastrado", address ? "ok" : "no", address ?? "Não há"],
         ["Sem restrição", !address ? "na" : state.reason === "OPTED_OUT" || state.reason === "SUPPRESSED" ? "no" : "ok", !address ? "—" : state.reason === "OPTED_OUT" || state.reason === "SUPPRESSED" ? (status?.short ?? "") : "Não saiu nem está bloqueado"],
         ["Pode receber divulgação", eligible ? "ok" : !address || state.reason === "OPTED_OUT" || state.reason === "SUPPRESSED" ? "na" : "no", eligible ? (state.legalBasis === "CONSENT" ? "Autorizou receber" : "Tem ingresso de evento seu") : state.reason === "NO_CONSENT" ? "Ainda não autorizou" : "—"],
       ]
@@ -99,7 +99,7 @@ export function ChannelDialog({ orgId, target, onClose, onOpenContact, onGoTo, c
                 <ChannelIcon channel={channel} size={16} className={eligible ? "text-success" : "text-subtle-foreground"} />
                 {CHANNEL_LABEL[channel]} de {contact.name}
               </DialogTitle>
-              <DialogDescription>{address ?? (channel === "EMAIL" ? "Sem e-mail cadastrado" : "Sem telefone cadastrado")}</DialogDescription>
+              <DialogDescription>{address ?? (channel === "EMAIL" ? "Sem e-mail cadastrado" : channel === "PUSH" ? "Sem o app com notificações ativas" : "Sem telefone cadastrado")}</DialogDescription>
             </DialogHeader>
 
             <DialogBody className="gap-4 text-sm">
@@ -155,7 +155,7 @@ export function ChannelDialog({ orgId, target, onClose, onOpenContact, onGoTo, c
               ) : usable.length === 0 ? (
                 <Callout
                   tone="neutral"
-                  title={channel === "EMAIL" ? "Você ainda não tem um modelo de e-mail pronto." : "Você ainda não tem um modelo de WhatsApp aprovado pela Meta."}
+                  title={channel === "EMAIL" ? "Você ainda não tem um modelo de e-mail pronto." : channel === "PUSH" ? "Você ainda não tem um modelo de notificação pronto." : "Você ainda não tem um modelo de WhatsApp aprovado pela Meta."}
                   action={
                     <Button
                       variant="outline"

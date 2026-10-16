@@ -1,6 +1,7 @@
 import api from "@/lib/axios";
 
-export type CrmChannel = "EMAIL" | "WHATSAPP";
+/** PUSH = notificação no app da Nokta Tickets (ou no navegador). Sai em nome do produtor. */
+export type CrmChannel = "EMAIL" | "WHATSAPP" | "PUSH";
 export type CrmSourceType = "PURCHASE" | "TICKET_RECEIVED" | "IMPORT" | "SIGNUP";
 export type CrmIneligibleReason = "NO_ADDRESS" | "SUPPRESSED" | "OPTED_OUT" | "NO_CONSENT";
 export type CrmSuppressionReason = "UNSUBSCRIBED" | "MANUAL_BLOCK" | "BOUNCE" | "COMPLAINT" | "INVALID";
@@ -33,6 +34,7 @@ export interface CrmCounts {
   total: number;
   emailEligible: number;
   whatsappEligible: number;
+  pushEligible: number;
 }
 
 export interface CrmOverview extends CrmCounts {

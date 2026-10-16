@@ -6,7 +6,7 @@ import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/cn";
 import type { CrmChannel } from "@/services/crm";
-import { crmMarketingApi, crmMarketingKeys, type CrmTemplate, type CrmTemplatePreview, type EmailBlock, type EmailContent, type WhatsappButton, type WhatsappContent } from "@/services/crm-marketing";
+import { crmMarketingApi, crmMarketingKeys, type CrmTemplate, type CrmTemplatePreview, type EmailBlock, type EmailContent, type PushContent, type WhatsappButton, type WhatsappContent } from "@/services/crm-marketing";
 import { Button } from "@/components/ui/button";
 import { Callout } from "@/components/ui/callout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,7 +24,7 @@ import { StatusBadge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { fmtDate } from "../../financeiro/_components/finance-ui";
 import { CHANNEL_LABEL, ChannelIcon, Note } from "./crm-ui";
-import { Blockers, EmailPreviewFrame, WhatsappBubble, templateStatus } from "./marketing-ui";
+import { Blockers, EmailPreviewFrame, PushNotificationPreview, WhatsappBubble, templateStatus } from "./marketing-ui";
 
 type Editing = { template: CrmTemplate | null; channel: CrmChannel } | null;
 
@@ -37,6 +37,7 @@ const NEW_EMAIL: EmailContent = {
   ],
 };
 const NEW_WHATSAPP: WhatsappContent = { category: "MARKETING", language: "pt_BR", body: "", buttons: [] };
+const NEW_PUSH: PushContent = { body: "", url: "", imageUrl: null };
 
 /** Modelos de mensagem: e-mail (pronto ao salvar) e WhatsApp (depende da análise da Meta). */
 export function TemplatesTab({ orgId, whatsappConnected, canManage }: { orgId: number; whatsappConnected: boolean; canManage: boolean }) {
@@ -61,11 +62,12 @@ export function TemplatesTab({ orgId, whatsappConnected, canManage }: { orgId: n
       setEditing(null);
       refresh();
     };
+    if (editing.channel === "PUSH") return <PushEditor orgId={orgId} template={editing.template as CrmTemplate<PushContent> | null} onClose={close} readOnly={!canManage} />;
     return editing.channel === "EMAIL" ? <EmailEditor orgId={orgId} template={editing.template as CrmTemplate<EmailContent> | null} onClose={close} readOnly={!canManage} /> : <WhatsappEditor orgId={orgId} template={editing.template as CrmTemplate<WhatsappContent> | null} connected={whatsappConnected} onClose={close} readOnly={!canManage} />;
   }
 
   const rows = (list.data ?? []).filter((t) => filter === "ALL" || t.channel === filter);
-  const excerpt = (t: CrmTemplate) => (t.channel === "EMAIL" ? (t.content as EmailContent).subject || "Sem assunto" : (t.content as WhatsappContent).body || "Sem texto");
+  const excerpt = (t: CrmTemplate) => (t.channel === "EMAIL" ? (t.content as EmailContent).subject || "Sem assunto" : (t.content as WhatsappContent | PushContent).body || "Sem texto");
   const openEditor = (t: CrmTemplate) => setEditing({ template: t, channel: t.channel });
 
   const actions = (t: CrmTemplate) => (
@@ -91,10 +93,14 @@ export function TemplatesTab({ orgId, whatsappConnected, canManage }: { orgId: n
             { value: "ALL", label: "Todos" },
             { value: "EMAIL", label: "E-mail", icon: "mail" },
             { value: "WHATSAPP", label: "WhatsApp", icon: "whatsapp" },
+            { value: "PUSH", label: "Notificação", icon: "bell" },
           ]}
         />
         {canManage ? (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" leftIcon="bell" onClick={() => setEditing({ template: null, channel: "PUSH" })}>
+              Modelo de notificação
+            </Button>
             <Button variant="outline" leftIcon="whatsapp" onClick={() => setEditing({ template: null, channel: "WHATSAPP" })}>
               Modelo de WhatsApp
             </Button>
@@ -108,7 +114,7 @@ export function TemplatesTab({ orgId, whatsappConnected, canManage }: { orgId: n
       {list.isLoading ? (
         <Skeleton className="h-64 rounded-card" />
       ) : rows.length === 0 ? (
-        <EmptyState icon="file-lines" title="Um modelo é a mensagem pronta que você usa nas campanhas" description="O de e-mail fica pronto assim que você salva. O de WhatsApp precisa ser aprovado pela Meta antes do primeiro envio, o que costuma levar de minutos a um dia." action={canManage ? <Button leftIcon="plus" onClick={() => setEditing({ template: null, channel: "EMAIL" })}>Criar modelo de e-mail</Button> : undefined} />
+        <EmptyState icon="file-lines" title="Um modelo é a mensagem pronta que você usa nas campanhas" description="O de e-mail e o de notificação ficam prontos assim que você salva. O de WhatsApp precisa ser aprovado pela Meta antes do primeiro envio, o que costuma levar de minutos a um dia." action={canManage ? <Button leftIcon="plus" onClick={() => setEditing({ template: null, channel: "EMAIL" })}>Criar modelo de e-mail</Button> : undefined} />
       ) : (
         <DataTableShell
           table={
@@ -195,7 +201,7 @@ const VARIABLES_HINT = (
 );
 
 /** Prévia vinda do backend (o mesmo código que monta a mensagem de verdade), com espera de digitação. */
-function usePreview(orgId: number, channel: CrmChannel, content: EmailContent | WhatsappContent) {
+function usePreview(orgId: number, channel: CrmChannel, content: EmailContent | WhatsappContent | PushContent) {
   const [preview, setPreview] = useState<CrmTemplatePreview | null>(null);
   const serial = useRef(0);
   const key = JSON.stringify(content);
@@ -416,6 +422,90 @@ function BlockFields({ block, onChange }: { block: EmailBlock; onChange: (block:
     );
   }
   return <Note>{block.type === "divider" ? "Uma linha fina separando duas partes." : "Um respiro entre dois blocos."}</Note>;
+}
+
+// ── editor de notificação (push) ──
+
+function PushEditor({ orgId, template, onClose, readOnly }: { orgId: number; template: CrmTemplate<PushContent> | null; onClose: () => void; readOnly: boolean }) {
+  const [current, setCurrent] = useState(template);
+  const [name, setName] = useState(template?.name ?? "");
+  const [content, setContent] = useState<PushContent>(template?.content ?? NEW_PUSH);
+  const preview = usePreview(orgId, "PUSH", content);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const status = current ? templateStatus("PUSH", current.status) : null;
+
+  const save = useMutation({
+    mutationFn: () => (current ? crmMarketingApi.updateTemplate(orgId, current.id, { name: name.trim(), content }) : crmMarketingApi.createTemplate(orgId, { channel: "PUSH", name: name.trim(), content })),
+    onSuccess: (t) => {
+      setCurrent(t as CrmTemplate<PushContent>);
+      toast.success(t.status === "APPROVED" ? "Modelo salvo e pronto para usar" : "Rascunho salvo");
+    },
+    onError: (error) => toast.error(getErrorMessage(error, "Não foi possível salvar.")),
+  });
+
+  const insert = (variable: string) => {
+    const el = bodyRef.current;
+    const at = el?.selectionStart ?? content.body.length;
+    setContent({ ...content, body: `${content.body.slice(0, at)}{{${variable}}}${content.body.slice(el?.selectionEnd ?? at)}` });
+  };
+  const problems = preview?.problems ?? [];
+  const dirty = current === null || name.trim() !== current.name || JSON.stringify(content) !== JSON.stringify(current.content);
+
+  return (
+    <EditorShell
+      title={template ? "Modelo de notificação" : "Novo modelo de notificação"}
+      onClose={onClose}
+      actions={
+        readOnly ? null : (
+          <Button leftIcon="save" disabled={name.trim().length < 2 || !dirty} loading={save.isPending} onClick={() => save.mutate()}>
+            Salvar modelo
+          </Button>
+        )
+      }
+      left={
+        <>
+          {status ? <StatusBadge tone={status.tone}>{status.label}</StatusBadge> : null}
+          <fieldset disabled={readOnly} className="space-y-5">
+            <Field label="Nome do modelo" htmlFor="push-nome" hint="Só você vê.">
+              <Input id="push-nome" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} placeholder="Ex.: Lista VIP aberta" />
+            </Field>
+            <div>
+              <Field label="Mensagem" htmlFor="push-body" hint="O título da notificação é sempre o nome da sua organização. Até 180 caracteres.">
+                <Textarea id="push-body" ref={bodyRef} value={content.body} onChange={(e) => setContent({ ...content, body: e.target.value })} maxLength={180} rows={4} placeholder="Oi {{primeiro_nome}}, a lista VIP de sábado abriu. Corre que é por ordem de chegada!" />
+              </Field>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-caption text-muted-foreground">
+                Inserir:
+                {["primeiro_nome", "nome", "organizacao"].map((v) => (
+                  <button key={v} type="button" onClick={() => insert(v)} className="press rounded-md bg-surface-2 px-2 py-1 font-mono text-caption text-foreground outline-none hover:bg-surface-3 focus-visible:ring-2 focus-visible:ring-brand">
+                    {`{{${v}}}`}
+                  </button>
+                ))}
+                <span className="ml-auto tnum">{content.body.length}/180</span>
+              </div>
+            </div>
+            <Field label="Abre ao tocar" htmlFor="push-url" hint="Uma página da Nokta Tickets: a do evento ou a da lista VIP. Copie o endereço da página e cole aqui.">
+              <Input id="push-url" type="url" inputMode="url" value={content.url} onChange={(e) => setContent({ ...content, url: e.target.value.trim() })} placeholder="https://www.noktatickets.com.br/evento/sua-festa" />
+            </Field>
+            <Field label="Imagem" htmlFor="push-img" optional hint="Aparece grande na notificação do Android. Use o endereço (https) do banner do evento.">
+              <Input id="push-img" type="url" inputMode="url" value={content.imageUrl ?? ""} onChange={(e) => setContent({ ...content, imageUrl: e.target.value.trim() || null })} placeholder="https://" />
+            </Field>
+          </fieldset>
+        </>
+      }
+      right={
+        <>
+          <p className="mb-3 text-caption text-muted-foreground">Prévia para Maria Souza</p>
+          {preview?.channel === "PUSH" ? <PushNotificationPreview preview={preview} /> : <Skeleton className="h-40 rounded-card" />}
+          {problems.length ? (
+            <div className="mt-3">
+              <Blockers items={problems} title="Falta para ficar pronto" />
+            </div>
+          ) : null}
+          <Note className="mt-4">Cada pessoa recebe no máximo 1 notificação de divulgação por dia e 3 por semana, somando todos os produtores da Nokta. Quem já atingiu o limite fica fora do envio.</Note>
+        </>
+      }
+    />
+  );
 }
 
 // ── editor de WhatsApp ──
