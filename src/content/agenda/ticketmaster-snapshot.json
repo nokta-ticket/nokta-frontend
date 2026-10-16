@@ -1,78 +1,6 @@
 {
- "fetchedAt": "2026-10-15T22:00:03.106Z",
+ "fetchedAt": "2026-10-16T10:00:03.148Z",
  "events": [
-  {
-   "id": "ZFIMVHtnMZ17FUF_",
-   "name": "Uma Saudação às Divas - Celebrando 10 Anos | Teatro da Ilha",
-   "url": "https://www.ticketmaster.com.br/event/uma-saudacao-as-divas-celebrando-10-anos-teatro-da-ilha",
-   "images": [
-    {
-     "url": "https://s1.ticketm.net/dam/c/07d/fda8c807-42eb-4b81-9f16-f3a8367e107d_106371_TABLET_LANDSCAPE_LARGE_16_9.jpg",
-     "ratio": "16_9",
-     "width": 2048
-    },
-    {
-     "url": "https://s1.ticketm.net/dam/c/07d/fda8c807-42eb-4b81-9f16-f3a8367e107d_106371_RECOMENDATION_16_9.jpg",
-     "ratio": "16_9",
-     "width": 100
-    },
-    {
-     "url": "https://s1.ticketm.net/dam/c/07d/fda8c807-42eb-4b81-9f16-f3a8367e107d_106371_EVENT_DETAIL_PAGE_16_9.jpg",
-     "ratio": "16_9",
-     "width": 205
-    },
-    {
-     "url": "https://s1.ticketm.net/dam/c/07d/fda8c807-42eb-4b81-9f16-f3a8367e107d_106371_RETINA_PORTRAIT_16_9.jpg",
-     "ratio": "16_9",
-     "width": 640
-    },
-    {
-     "url": "https://s1.ticketm.net/dam/c/07d/fda8c807-42eb-4b81-9f16-f3a8367e107d_106371_RETINA_LANDSCAPE_16_9.jpg",
-     "ratio": "16_9",
-     "width": 1136
-    },
-    {
-     "url": "https://s1.ticketm.net/dam/c/07d/fda8c807-42eb-4b81-9f16-f3a8367e107d_106371_TABLET_LANDSCAPE_16_9.jpg",
-     "ratio": "16_9",
-     "width": 1024
-    }
-   ],
-   "dates": {
-    "start": {
-     "localDate": "2026-10-15",
-     "localTime": "20:00:00"
-    },
-    "status": {
-     "code": "onsale"
-    }
-   },
-   "classifications": [
-    {
-     "genre": {
-      "name": "Theatre"
-     },
-     "segment": {
-      "name": "Arts & Theatre"
-     }
-    }
-   ],
-   "_embedded": {
-    "venues": [
-     {
-      "name": "Teatro da Ilha",
-      "city": {
-       "name": "Rio de Janeiro"
-      },
-      "state": {
-       "stateCode": "RJ"
-      },
-      "address": {
-       "line1": "Estrada do Galeão"
-      }
-     }
-    ]
-   }
-  },
   {
    "id": "ZFIMVHtnMZ17kv0K",
    "name": "After Forever - Tokio Marine Hall",
@@ -9264,11 +9192,6 @@
      "width": 2048
     },
     {
-     "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_SOURCE",
-     "ratio": "16_9",
-     "width": 2426
-    },
-    {
      "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_RECOMENDATION_16_9.jpg",
      "ratio": "16_9",
      "width": 100
@@ -9277,6 +9200,11 @@
      "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_RETINA_PORTRAIT_16_9.jpg",
      "ratio": "16_9",
      "width": 640
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_SOURCE",
+     "ratio": "16_9",
+     "width": 2426
     },
     {
      "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_EVENT_DETAIL_PAGE_16_9.jpg",
@@ -9341,11 +9269,6 @@
      "width": 2048
     },
     {
-     "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_SOURCE",
-     "ratio": "16_9",
-     "width": 2426
-    },
-    {
      "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_RECOMENDATION_16_9.jpg",
      "ratio": "16_9",
      "width": 100
@@ -9354,6 +9277,11 @@
      "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_RETINA_PORTRAIT_16_9.jpg",
      "ratio": "16_9",
      "width": 640
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_SOURCE",
+     "ratio": "16_9",
+     "width": 2426
     },
     {
      "url": "https://s1.ticketm.net/dam/a/e91/b548f1f2-bcac-4f28-b165-1d06fdc8be91_EVENT_DETAIL_PAGE_16_9.jpg",
