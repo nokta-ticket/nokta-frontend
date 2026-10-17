@@ -114,10 +114,10 @@ export type MockVipStatus = "ABERTA" | "ENCERRADA" | "ESGOTADA" | "INDISPONIVEL"
 export function mockVipLists(key: string) {
   const s = SEEDS.find((x) => x.slug === key || String(x.id) === key || `vip-${x.slug}` === key);
   if (!s) return null;
-  const listas: { token: string; nome: string | null; ate: string | null; status: MockVipStatus; naLista: number; total: number }[] = [
-    { token: `vip-${s.id}-aberta`, nome: "Lista do produtor", ate: new Date(Date.now() + 2 * DAY).toISOString(), status: "ABERTA", naLista: 63, total: 100 },
-    { token: `vip-${s.id}-encerrada`, nome: "Lista imprensa", ate: new Date(Date.now() - DAY).toISOString(), status: "ENCERRADA", naLista: 18, total: 30 },
-    { token: `vip-${s.id}-esgotada`, nome: "Aniversariantes do mês", ate: null, status: "ESGOTADA", naLista: 50, total: 50 },
+  const listas: { token: string; nome: string | null; ate: string | null; status: MockVipStatus }[] = [
+    { token: `vip-${s.id}-aberta`, nome: "Lista do produtor", ate: new Date(Date.now() + 2 * DAY).toISOString(), status: "ABERTA" },
+    { token: `vip-${s.id}-encerrada`, nome: "Lista imprensa", ate: new Date(Date.now() - DAY).toISOString(), status: "ENCERRADA" },
+    { token: `vip-${s.id}-esgotada`, nome: "Aniversariantes do mês", ate: null, status: "ESGOTADA" },
   ];
   return { evento: { id: s.id, nome: s.nome, slug: s.slug, thumbnail: posterUrl(s.poster) }, listas };
 }

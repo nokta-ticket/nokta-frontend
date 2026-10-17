@@ -15,6 +15,9 @@ import { CpfGate } from "../checkout/_components/cpf-gate";
 // Lista VIP dentro da página do evento. Só aparece para quem chegou pelo
 // link do produtor (`/vip/nome-do-evento`): a lista não existe entre os
 // ingressos à venda. Quem coloca o nome recebe o ingresso com QR na conta.
+// Sem contador de nomes ("33/500") a pedido dos produtores: número baixo
+// desanima quem chega. A API pública também não manda mais esses números;
+// o produtor continua vendo tudo no painel.
 
 type VipStatus = "ABERTA" | "ENCERRADA" | "ESGOTADA" | "INDISPONIVEL";
 
@@ -23,8 +26,6 @@ interface VipList {
   nome: string | null;
   ate: string | null;
   status: VipStatus;
-  naLista: number;
-  total: number;
 }
 
 interface VipListResponse {
@@ -116,9 +117,6 @@ export function VipClaimCard({
     try {
       const res = await api.post<{ claimed: boolean; alreadyClaimed: boolean }>(`/lista-vip/${token}/retirar`);
       setResults((prev) => ({ ...prev, [token]: res.data.alreadyClaimed ? "already" : "claimed" }));
-      if (res.data.claimed) {
-        setLists((prev) => prev.map((l) => (l.token === token ? { ...l, naLista: l.naLista + 1 } : l)));
-      }
     } catch (err: unknown) {
       const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
       if (code === "CPF_REQUIRED") setPending({ token, step: "cpf" });
@@ -172,11 +170,8 @@ export function VipClaimCard({
                           {meta.label}
                         </StatusBadge>
                       </div>
-                      <p className="mt-1.5 flex items-center gap-2 text-caption text-muted-foreground">
-                        <span className="rounded-full bg-foreground px-2.5 py-1 text-[13px] font-bold tabular-nums text-background">
-                          {lista.naLista}/{lista.total}
-                        </span>
-                        nomes na lista · <span className="font-semibold text-brand">Gratuito</span>
+                      <p className="mt-1.5 text-caption text-muted-foreground">
+                        <span className="font-semibold text-brand">Entrada gratuita</span> · vagas limitadas
                       </p>
                       <p className="mt-0.5 text-caption text-muted-foreground">{open ? `Um nome por pessoa${lista.ate ? ` · até ${formatDeadline(lista.ate)}` : ""}` : CLOSED_MESSAGE[lista.status as Exclude<VipStatus, "ABERTA">]}</p>
                     </div>
