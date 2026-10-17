@@ -49,26 +49,35 @@ export function FervoVipSpotlight() {
 
   return (
     <section aria-label="Lista VIP aberta agora" className="mx-auto mt-4 max-w-7xl px-4 lg:mt-8 lg:px-6">
+      {/* Celular: banner inteiro em cima, texto e botão embaixo. A partir de
+          sm: uma linha só (banner, texto, botão). */}
       <Link
         href={`/vip/${SLUG}`}
-        className="press group flex items-center gap-3.5 rounded-card bg-surface p-2.5 shadow-card ring-1 ring-brand/40 transition-colors hover:bg-surface-2 sm:gap-5 sm:p-3.5"
+        className="press group flex flex-col overflow-hidden rounded-card bg-surface shadow-card ring-1 ring-brand/40 transition-colors hover:bg-surface-2 sm:flex-row sm:items-center sm:gap-5 sm:p-3.5"
       >
-        <div className="relative aspect-video w-[120px] shrink-0 overflow-hidden rounded-xl sm:w-[220px]">
-          <Image src={cover} alt="" fill sizes="(max-width: 640px) 120px, 220px" className="object-cover" priority unoptimized />
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="inline-flex items-center gap-1.5 text-caption font-bold uppercase tracking-wider text-brand">
+        <div className="relative aspect-video w-full shrink-0 overflow-hidden sm:w-[220px] sm:rounded-xl">
+          <Image src={cover} alt="" fill sizes="(max-width: 640px) 100vw, 220px" className="object-cover" priority unoptimized />
+          <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-pill bg-black/65 px-2.5 py-1 text-caption font-bold uppercase tracking-wider text-brand backdrop-blur-md sm:hidden">
             <span className="size-1.5 animate-pulse rounded-full bg-brand" />
-            Acontecendo agora · Lista VIP aberta
+            Acontecendo agora
+          </span>
+        </div>
+        <div className="min-w-0 flex-1 p-4 sm:p-0">
+          <p className="hidden items-center gap-1.5 text-caption font-bold uppercase tracking-wider text-brand sm:inline-flex">
+            <span className="size-1.5 animate-pulse rounded-full bg-brand" />
+            Acontecendo agora
           </p>
-          <h2 className="mt-1 truncate text-base font-bold text-foreground sm:text-xl">{data.evento.nome}</h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">{ate ? `Retire seu VIP até ${ate}` : "Retire seu VIP"}</p>
+          <h2 className="line-clamp-2 text-lg font-bold leading-snug text-foreground sm:mt-1 sm:text-xl">{data.evento.nome}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{ate ? `Retire seu VIP até ${ate}` : "Retire seu VIP"}</p>
+          <span className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-pill bg-white text-[15px] font-bold text-[#16060f] sm:hidden">
+            Retirar VIP
+            <Icon name="arrow-right" size={14} />
+          </span>
         </div>
         <span className="btn-lift hidden h-11 shrink-0 items-center gap-2 rounded-pill bg-white px-5 text-sm font-bold text-[#16060f] sm:inline-flex">
           Retirar VIP
           <Icon name="arrow-right" size={14} />
         </span>
-        <Icon name="arrow-right" size={16} className="mr-1 shrink-0 text-muted-foreground sm:hidden" />
       </Link>
     </section>
   );
