@@ -1,7 +1,9 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { LoginModal } from "@/components/auth/login-modal";
 import { useAuth } from "@/context/AuthContext";
 import { venueTeamApi, VENUE_ROLE_LABEL, type VenueInvitationPreview, type VenueRoleKey } from "@/services/venue-team";
 import { getErrorMessage } from "@/lib/axios";
@@ -21,6 +23,7 @@ export default function ConviteAcceptPage({ params }: { params: Promise<{ token:
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [accepting, setAccepting] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -93,14 +96,38 @@ export default function ConviteAcceptPage({ params }: { params: Promise<{ token:
               <Callout tone="info" icon="user-circle">
                 Entre ou crie uma conta com o e-mail <strong className="text-foreground">{preview.email}</strong> para aceitar.
               </Callout>
-              <Button size="full" onClick={() => router.push(`/login?redirect=${encodeURIComponent(here)}`)}>
-                Entrar
+              {/* Login aqui mesmo, sem sair da página: indo pra /login, o
+                  caminho de volta se perdia (no iPhone, a pessoa terminava no
+                  "criar workspace") e o convite ficava sem aceitar. */}
+              <Button size="full" onClick={() => setShowLogin(true)}>
+                Entrar e aceitar
               </Button>
               <Button size="full" variant="outline" onClick={() => router.push(`/register?redirect=${encodeURIComponent(here)}&email=${encodeURIComponent(preview.email)}`)}>
                 Criar conta
               </Button>
+              <p className="text-center text-caption text-muted-foreground">
+                Entra com Google ou Apple?{" "}
+                <Link href={`/login?redirect=${encodeURIComponent(here)}`} className="font-semibold text-brand underline-offset-4 hover:underline">
+                  Outras formas de entrar
+                </Link>
+              </p>
             </div>
           )}
+
+          {showLogin ? (
+            <LoginModal
+              title="Entre pra aceitar o convite"
+              description={`Use a conta do e-mail ${preview.email}.`}
+              defaultEmail={preview.email}
+              registerHref={`/register?redirect=${encodeURIComponent(here)}&email=${encodeURIComponent(preview.email)}`}
+              onClose={() => setShowLogin(false)}
+              onSuccess={() => {
+                setShowLogin(false);
+                // Quem entrou por aqui veio aceitar: aceita direto.
+                void handleAccept();
+              }}
+            />
+          ) : null}
 
           <p className="flex items-center justify-center gap-1.5 text-caption text-subtle-foreground">
             <Icon name="shield" size={11} /> Convite pessoal e de uso único.

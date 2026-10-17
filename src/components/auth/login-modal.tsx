@@ -17,9 +17,23 @@ import api, { getErrorMessage } from "@/lib/axios";
  * e link pro cadastro. Folha inferior no celular, centralizado no desktop
  * (herdado do `Dialog`). Quem monta decide quando fecha (`onClose`).
  */
-export function LoginModal({ onClose, onSuccess, registerHref = "/register" }: { onClose: () => void; onSuccess: () => void; registerHref?: string }) {
+export function LoginModal({
+  onClose,
+  onSuccess,
+  registerHref = "/register",
+  title = "Entre pra continuar",
+  description = "Seus ingressos ficam guardados na sua conta.",
+  defaultEmail = "",
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+  registerHref?: string;
+  title?: string;
+  description?: string;
+  defaultEmail?: string;
+}) {
   const { signIn } = useAuth();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(defaultEmail);
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -43,8 +57,8 @@ export function LoginModal({ onClose, onSuccess, registerHref = "/register" }: {
     <Dialog open onOpenChange={(open) => (!open && !loading ? onClose() : null)}>
       <DialogContent size="sm">
         <DialogHeader>
-          <DialogTitle>Entre pra continuar</DialogTitle>
-          <DialogDescription>Seus ingressos ficam guardados na sua conta.</DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleLogin} className="flex min-h-0 flex-1 flex-col">
           <DialogBody className="gap-4">
