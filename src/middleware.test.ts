@@ -146,7 +146,7 @@ describe("middleware — Cache-Control por superfície (Fase 5.2/5.3, Etapa 5/18
   });
 });
 
-describe("middleware — redirect provisório do FERVO para a lista VIP (até 00:00 de 18/10)", () => {
+describe("middleware — redirect provisório do FERVO para a lista VIP (até 01:00 de 18/10)", () => {
   afterEach(() => {
     vi.useRealTimers();
   });
@@ -176,9 +176,9 @@ describe("middleware — redirect provisório do FERVO para a lista VIP (até 00
     vi.unstubAllGlobals();
   });
 
-  it("depois da meia-noite de 18/10 o redirect some sozinho", async () => {
+  it("à 01:00 de 18/10 o redirect some sozinho", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
-    vi.setSystemTime(new Date("2026-10-18T03:00:00Z"));
+    vi.setSystemTime(new Date("2026-10-18T04:00:00Z"));
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ slug: "fervo-house-fervo-music-bar" }), { status: 200 })));
     const res = await middleware(buildRequest("https://www.noktatickets.com.br/evento/fervo-house-fervo-music-bar"));
     expect(res.headers.get("location")).toBeNull();

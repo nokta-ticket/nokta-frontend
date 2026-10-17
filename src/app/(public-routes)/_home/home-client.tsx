@@ -9,6 +9,7 @@ import type { EventoAPI, GetEvents } from "@/interfaces/events";
 import { Icon } from "@/components/ui/icon";
 import { EventRow, EventRowSkeleton } from "@/components/events/event-card";
 import { HeroBanner } from "@/components/home/hero-banner";
+import { FervoVipSpotlight } from "@/components/home/fervo-vip-spotlight";
 import { EventCardLux, EventCardLuxSkeleton, FeaturedCarousel, FeaturedCarouselSkeleton } from "@/components/home/event-showcase";
 import { SectionHeader } from "@/components/ui/section-header";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -84,6 +85,7 @@ export function HomeClient({ agenda = [] }: { agenda?: AgendaEvent[] }) {
   return (
     <div className="pb-8">
       <HeroBanner />
+      <FervoVipSpotlight />
 
       {/* Lugar: filtra os próximos eventos e a agenda (padrão: estado do IP) */}
       <div className="mx-auto mt-4 flex max-w-7xl items-center gap-2.5 px-4 lg:mt-8 lg:px-6">

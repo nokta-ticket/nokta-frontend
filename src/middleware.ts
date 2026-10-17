@@ -330,14 +330,14 @@ async function resolveEventoIdRedirect(
 }
 
 // PROVISÓRIO (noite do FERVO, 17/10/2026): os leads abriam a página do
-// evento e se perdiam — o FERVO só tem a lista VIP. Até a lista fechar
-// (00:00 de 18/10 em Brasília = 03:00 UTC), /evento/22 e /evento/<slug> vão
-// direto pra /vip/<slug>, com a query preservada. 307: temporário, o
-// navegador não memoriza. Expira sozinho; apagar este bloco depois.
+// evento e se perdiam — o FERVO só tem a lista VIP. Até a 01:00 de 18/10
+// (Brasília = 04:00 UTC), /evento/22 e /evento/<slug> vão direto pra
+// /vip/<slug>, com a query preservada. 307: temporário, o navegador não
+// memoriza. Expira sozinho; apagar este bloco depois.
 const FERVO_VIP_REDIRECT = {
   from: new Set(["22", "fervo-house-fervo-music-bar"]),
   to: "/vip/fervo-house-fervo-music-bar",
-  until: Date.parse("2026-10-18T03:00:00Z"),
+  until: Date.parse("2026-10-18T04:00:00Z"),
 };
 
 function fervoVipRedirect(request: NextRequest, path: string): NextResponse | null {
