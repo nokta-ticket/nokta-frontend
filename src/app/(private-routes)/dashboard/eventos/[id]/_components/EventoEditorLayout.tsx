@@ -14,6 +14,7 @@ import SectionImagens from "./sections/SectionImagens";
 import SectionPublicacao from "./sections/SectionPublicacao";
 import SectionConfiguracoes from "./sections/SectionConfiguracoes";
 import SectionCupons from "./sections/SectionCupons";
+import SectionListaVip from "./sections/SectionListaVip";
 import SectionVendas from "./sections/SectionVendas";
 import SectionEquipe from "./sections/SectionEquipe";
 import SectionAccess from "./sections/SectionAccess";
@@ -27,6 +28,7 @@ const SECTION_COMPONENTS: Record<SectionKey, ComponentType<SectionProps>> = {
   publicacao: SectionPublicacao,
   configuracoes: SectionConfiguracoes,
   cupons: SectionCupons,
+  "lista-vip": SectionListaVip,
   vendas: SectionVendas,
   equipe: SectionEquipe,
   // "access" não tem aba (ver section-registry.ts) — só renderiza por URL.

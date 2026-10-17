@@ -6,7 +6,7 @@ export interface SectionMeta {
   icon: IconName;
 }
 
-export const SECTION_KEYS = ["visao-geral", "informacoes", "detalhes", "ingressos", "imagens", "publicacao", "configuracoes", "cupons", "vendas", "equipe", "access"] as const;
+export const SECTION_KEYS = ["visao-geral", "informacoes", "detalhes", "ingressos", "imagens", "publicacao", "configuracoes", "cupons", "lista-vip", "vendas", "equipe", "access"] as const;
 export type SectionKey = (typeof SECTION_KEYS)[number];
 
 // "access" (Nokta Access, check-in offline) desativado a pedido do usuário
@@ -26,6 +26,7 @@ export const SECTIONS: SectionMeta[] = [
   { key: "imagens", label: "Imagens", icon: "image" },
   { key: "publicacao", label: "Publicação", icon: "globe" },
   { key: "cupons", label: "Cupons", icon: "tag" },
+  { key: "lista-vip", label: "Lista VIP", icon: "crown" },
   { key: "vendas", label: "Vendas", icon: "chart-line" },
   { key: "equipe", label: "Equipe", icon: "users" },
   { key: "configuracoes", label: "Configurações", icon: "settings" },
