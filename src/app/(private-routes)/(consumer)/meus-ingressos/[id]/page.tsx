@@ -14,8 +14,8 @@ import { Icon } from "@/components/ui/icon";
 import { StatusBadge } from "@/components/ui/badge";
 import { TicketDetailSkeleton } from "@/components/ui/skeleton";
 import { ticketStatusMeta, type TicketDetail, type UserTicket } from "../_lib/tickets";
+import { COMPANY } from "@/lib/company";
 import { ActionSheet, type ActionSheetItem } from "./_components/action-sheet";
-import { RefundRequestCard } from "./_components/refund-request-card";
 import { ResaleDialog } from "./_components/resale-dialog";
 import { TicketExportCard } from "./_components/ticket-export-card";
 import { TicketPass, type SiblingTicket } from "./_components/ticket-pass";
@@ -227,15 +227,20 @@ export default function DetalheIngressoPage() {
             </CardContent>
           </Card>
 
+          {/* Cancelamento só pelo suporte (não há mais botão de autoatendimento):
+              a mensagem já sai com o número do ingresso. */}
           {tk.valor > 0 ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Cancelamento</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-3">
-                <RefundRequestCard orderId={item.orderId} userTicketId={item.id} ticketValue={tk.valor} ticketStatus={item.status} purchasedAt={item.createdAt} />
-              </CardContent>
-            </Card>
+            <p className="px-1 text-caption text-muted-foreground">
+              Precisa cancelar? Fale com o suporte pelo{" "}
+              <a href={`${COMPANY.social.whatsapp}?text=${encodeURIComponent(`Olá! Quero cancelar o ingresso #${item.id}.`)}`} target="_blank" rel="noopener noreferrer" className="font-medium text-brand underline-offset-4 hover:underline">
+                WhatsApp
+              </a>{" "}
+              ou pelo e-mail{" "}
+              <a href={`mailto:${COMPANY.emails.support}?subject=${encodeURIComponent(`Cancelamento do ingresso #${item.id}`)}`} className="font-medium text-brand underline-offset-4 hover:underline">
+                {COMPANY.emails.support}
+              </a>
+              .
+            </p>
           ) : null}
 
           <p className="tnum flex items-center justify-between px-1 text-micro font-semibold uppercase tracking-wider text-subtle-foreground">
