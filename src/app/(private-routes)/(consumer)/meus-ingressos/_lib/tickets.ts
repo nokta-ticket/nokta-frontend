@@ -1,4 +1,5 @@
 import type { Tone } from "@/components/ui/badge";
+import { isEventOver } from "@/lib/event-sales";
 import { formatEventDate, formatTime } from "@/lib/format";
 
 /** Item de `GET /tickets` (carteira do comprador). */
@@ -87,28 +88,16 @@ export function ticketStatusMeta(status: number) {
   return TICKET_STATUS_META[status] ?? { label: "Ingresso", tone: "neutral" as Tone };
 }
 
-/** Ingresso ainda vale pra entrar: não foi validado E o evento ainda não começou. */
-export function isUpcoming(t: Pick<UserTicket, "status" | "event">): boolean {
+/**
+ * Ingresso ainda vale pra entrar: não foi validado E o evento não terminou.
+ * O evento só termina 12h depois do início (mesma regra da portaria): antes,
+ * a comparação lia o horário como UTC (3h adiantado) e mandava o ingresso
+ * para "Passados" já no início do evento, na hora de entrar.
+ */
+export function isUpcoming(t: Pick<UserTicket, "status" | "event">, now: Date = new Date()): boolean {
   if (t.status === 2) return false;
   if (!t.event?.data) return true;
-
-  const dateOnly = t.event.data.slice(0, 10); // YYYY-MM-DD
-
-  // HH:mm do horário — Prisma pode devolver ISO completo ou "HH:mm:ss".
-  let hhmm = "23:59";
-  if (t.event.horario) {
-    const h = t.event.horario;
-    if (h.includes("T")) {
-      const d = new Date(h);
-      hhmm = `${String(d.getUTCHours()).padStart(2, "0")}:${String(d.getUTCMinutes()).padStart(2, "0")}`;
-    } else {
-      hhmm = h.slice(0, 5);
-    }
-  }
-
-  // Compara como UTC (mesmo critério da exibição do horário).
-  const eventStart = new Date(`${dateOnly}T${hhmm}:00Z`);
-  return eventStart > new Date();
+  return !isEventOver({ data: t.event.data, horario: t.event.horario || "23:59" }, now);
 }
 
 /** "Sáb, 17 de outubro · 22h" a partir dos campos crus do evento. */

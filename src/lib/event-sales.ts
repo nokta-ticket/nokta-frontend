@@ -30,3 +30,18 @@ export function isSalesClosed(evento: EventTime, now: Date = new Date()): boolea
   if (!start) return false;
   return now.getTime() >= start.getTime() - SALES_CUTOFF_MINUTES * 60 * 1000;
 }
+
+/**
+ * Quanto tempo depois do INÍCIO o evento conta como encerrado. Espelha
+ * `EVENT_FINISH_AFTER_START_HOURS` do backend: o evento não tem horário de
+ * término, e 12h cobre festa que vira a madrugada (é também até quando a
+ * portaria aceita o ingresso).
+ */
+export const EVENT_FINISH_AFTER_START_HOURS = 12;
+
+/** true quando o evento já terminou (12h depois do início). Sem data/horário legível, nunca. */
+export function isEventOver(evento: EventTime, now: Date = new Date()): boolean {
+  const start = getEventStartAt(evento);
+  if (!start) return false;
+  return now.getTime() >= start.getTime() + EVENT_FINISH_AFTER_START_HOURS * 60 * 60 * 1000;
+}

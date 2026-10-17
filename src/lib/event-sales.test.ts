@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getEventStartAt, isSalesClosed } from "./event-sales";
+import { getEventStartAt, isEventOver, isSalesClosed } from "./event-sales";
 
 // Evento às 22:00 de Brasília em 2026-10-24 → 01:00 UTC do dia 25.
 const evento = { data: "2026-10-24T00:00:00.000Z", horario: "1970-01-01T22:00:00.000Z" };
@@ -22,5 +22,13 @@ describe("event-sales", () => {
   it("sem data ou horário legível, nunca bloqueia", () => {
     expect(isSalesClosed({ data: null, horario: "22:00" })).toBe(false);
     expect(isSalesClosed({ data: "2026-10-24", horario: "" })).toBe(false);
+  });
+
+  it("evento só termina 12 horas depois do início (Brasília)", () => {
+    // Início 01:00 UTC do dia 25 → termina 13:00 UTC do dia 25.
+    expect(isEventOver(evento, new Date("2026-10-25T02:00:00.000Z"))).toBe(false);
+    expect(isEventOver(evento, new Date("2026-10-25T12:59:59.000Z"))).toBe(false);
+    expect(isEventOver(evento, new Date("2026-10-25T13:00:00.000Z"))).toBe(true);
+    expect(isEventOver({ data: null, horario: "22:00" })).toBe(false);
   });
 });

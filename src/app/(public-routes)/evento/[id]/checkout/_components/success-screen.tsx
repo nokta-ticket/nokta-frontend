@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
 import { fireBrandConfetti } from "@/lib/confetti";
+import { getEventStartAt } from "@/lib/event-sales";
 import { cityLabel, formatBRL, formatDateBR, formatEventDateTime } from "@/lib/format";
 import { MEDIA_FALLBACK, resolveThumbnailUrl } from "@/lib/media";
 import { isGratis, type Ticket } from "./checkout-types";
@@ -42,9 +43,9 @@ export function SuccessScreen({ evento, items, total, isFree }: { evento: EventD
   };
 
   const downloadCalendar = () => {
-    const rawDate = evento.data ?? "";
-    const rawTime = evento.horario ?? "00:00";
-    const start = new Date(`${rawDate.slice(0, 10)}T${rawTime.slice(0, 5)}:00`);
+    // Horário de Brasília, aceitando "HH:mm" ou ISO (antes, ISO virava data inválida).
+    const start = getEventStartAt(evento);
+    if (!start) return;
     const end = new Date(start.getTime() + 3 * 60 * 60 * 1000);
     const pad = (n: number) => String(n).padStart(2, "0");
     const fmt = (d: Date) => `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}00Z`;

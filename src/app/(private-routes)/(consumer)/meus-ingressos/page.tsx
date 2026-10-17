@@ -120,7 +120,7 @@ export default function MeusIngressosPage() {
     return sorted.filter((t) => t.event?.nome?.toLowerCase().includes(q) || t.ticket.nome.toLowerCase().includes(q) || t.code.toLowerCase().includes(q));
   }, [sorted, search]);
 
-  const upcoming = useMemo(() => searched.filter(isUpcoming), [searched]);
+  const upcoming = useMemo(() => searched.filter((t) => isUpcoming(t)), [searched]);
   const past = useMemo(() => searched.filter((t) => !isUpcoming(t)), [searched]);
   const groups = useMemo(() => groupByEvent(period === "proximos" ? upcoming : past), [period, upcoming, past]);
 
