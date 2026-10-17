@@ -23,7 +23,7 @@ interface EventMapProps {
 }
 
 /**
- * Mapa estático (Leaflet + tiles escuros da Carto) com um marcador no
+ * Mapa estático (Leaflet + tiles escuros da Esri) com um marcador no
  * endereço. Não arrasta nem dá zoom com a roda — é ilustrativo; os botões
  * de zoom são os únicos controles.
  */
@@ -60,10 +60,22 @@ export function EventMap({ address, lat, lng, height = 180, showZoomControls = t
           scrollWheelZoom: false,
           dragging: false,
           doubleClickZoom: false,
-          attributionControl: false,
+          attributionControl: true,
         });
 
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", { maxZoom: 20 }).addTo(map);
+        // Esri Dark Gray Canvas: não exige chave de API. A Carto
+        // (basemaps.cartocdn.com) passou a exigir chave em 2026-10 e
+        // devolvia cada bloco com a marca "API KEY REQUIRED".
+        // A base só tem blocos até o zoom 16; acima disso o Leaflet amplia.
+        L.tileLayer(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
+          { maxZoom: 20, maxNativeZoom: 16, attribution: "Esri" },
+        ).addTo(map);
+        L.tileLayer(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+          { maxZoom: 20, maxNativeZoom: 16 },
+        ).addTo(map);
+        map.attributionControl.setPrefix(false);
         L.marker(coords).addTo(map);
         mapRef.current = map;
 

@@ -1349,3 +1349,12 @@ input::-webkit-search-decoration {
     animation: none;
   }
 }
+
+/* Crédito do mapa (Esri, exigido pelos termos de uso): discreto sobre o fundo escuro. */
+.leaflet-container .leaflet-control-attribution {
+  background: rgba(0, 0, 0, 0.45);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 9px;
+  line-height: 1.4;
+  padding: 0 4px;
+}
