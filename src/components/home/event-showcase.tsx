@@ -16,9 +16,11 @@ function prefersReducedMotion() {
 
 /**
  * Card de evento premium (desktop): inclina em 3D seguindo o mouse, brilho
- * rosa que acompanha o cursor, banner com zoom lento e a linha "Ver
- * ingressos" que se revela no hover. Banner na proporção 16:9 (nunca
- * quadrado — a arte do produtor é 818×355).
+ * rosa que acompanha o cursor, banner com zoom lento e o botão "Ver
+ * ingressos" que aparece sobre o banner no hover. Banner na proporção 16:9
+ * (nunca quadrado — a arte do produtor é 818×355). Todos os cards de uma
+ * linha têm a mesma altura: o título reserva sempre 2 linhas e o hover não
+ * muda o tamanho do card.
  */
 export function EventCardLux({ event, onToggleFavorite, index = 0, priority, className }: { event: EventoAPI; onToggleFavorite?: ToggleFavorite; index?: number; priority?: boolean; className?: string }) {
   const ref = useRef<HTMLAnchorElement>(null);
@@ -44,8 +46,8 @@ export function EventCardLux({ event, onToggleFavorite, index = 0, priority, cla
   const onLeave = () => setVars({ "--rx": "0deg", "--ry": "0deg", "--ty": "0px" });
 
   return (
-    <Link ref={ref} href={eventHref(event)} onMouseMove={onMove} onMouseLeave={onLeave} className={cn("group fade-up block [perspective:1100px]", className)} style={{ ["--i" as string]: index } as never}>
-      <div className="relative overflow-hidden rounded-[20px] bg-surface shadow-card ring-1 ring-white/[0.06] transition-[transform,box-shadow] duration-300 ease-out-soft will-change-transform group-hover:shadow-card-hover" style={{ transform: "rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateY(var(--ty,0px))" }}>
+    <Link ref={ref} href={eventHref(event)} onMouseMove={onMove} onMouseLeave={onLeave} className={cn("group fade-up block h-full [perspective:1100px]", className)} style={{ ["--i" as string]: index } as never}>
+      <div className="relative flex h-full flex-col overflow-hidden rounded-[20px] bg-surface shadow-card ring-1 ring-white/[0.06] transition-[transform,box-shadow] duration-300 ease-out-soft will-change-transform group-hover:shadow-card-hover" style={{ transform: "rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateY(var(--ty,0px))" }}>
         <div aria-hidden className="pointer-events-none absolute inset-0 z-10 opacity-0 transition-opacity duration-300 group-hover:opacity-100" style={{ background: "radial-gradient(380px circle at var(--mx,50%) var(--my,50%), color-mix(in oklab, var(--brand) 22%, transparent), transparent 60%)" }} />
         <div className="relative aspect-video overflow-hidden">
           <EventPoster event={event} priority={priority} sizes="(max-width:1280px) 33vw, 320px" className="transition-transform duration-700 ease-out-soft group-hover:scale-[1.06]" />
@@ -57,10 +59,15 @@ export function EventCardLux({ event, onToggleFavorite, index = 0, priority, cla
             </div>
           ) : null}
           {lastCall ? <span className="absolute right-3 top-3 rounded-pill bg-brand px-2.5 py-1 text-micro font-bold uppercase tracking-wider text-brand-foreground">Tá acabando</span> : null}
+          <span className="absolute bottom-3 left-3 inline-flex h-8 translate-y-1 items-center gap-1.5 rounded-pill bg-brand px-3.5 text-caption font-bold text-brand-foreground opacity-0 shadow-2 transition-[opacity,transform] duration-300 ease-out-soft group-hover:translate-y-0 group-hover:opacity-100">
+            Ver ingressos
+            <Icon name="arrow-right" size={10} />
+          </span>
           <FavoriteButton active={favorite} onToggle={onToggleFavorite ? () => onToggleFavorite(event.id, !favorite) : undefined} className={cn("absolute bottom-3 right-3 opacity-0 transition-opacity group-hover:opacity-100", favorite && "opacity-100")} />
         </div>
-        <div className="relative px-4 pb-4 pt-3">
-          <h3 className="line-clamp-2 text-[15px] font-semibold leading-snug text-foreground">{event.nome}</h3>
+        <div className="relative flex-1 px-4 pb-4 pt-3">
+          {/* 2 linhas sempre (2 × leading-snug): título curto não deixa o card mais baixo. */}
+          <h3 className="line-clamp-2 min-h-[2.75em] text-[15px] font-semibold leading-snug text-foreground">{event.nome}</h3>
           <p className="mt-1 truncate text-caption text-muted-foreground">
             <span className="font-semibold text-brand">
               {badge?.weekday}
@@ -69,17 +76,6 @@ export function EventCardLux({ event, onToggleFavorite, index = 0, priority, cla
             {" · "}
             {event.local || cityLabel(event.endereco)}
           </p>
-          <div className="grid grid-rows-[0fr] transition-[grid-template-rows] duration-300 ease-out-soft group-hover:grid-rows-[1fr]">
-            <div className="overflow-hidden">
-              <div className="flex items-center justify-between pt-3">
-                <span className="text-caption text-subtle-foreground">{cityLabel(event.endereco)}</span>
-                <span className="inline-flex h-8 items-center gap-1.5 rounded-pill bg-brand px-3.5 text-caption font-bold text-brand-foreground">
-                  Ver ingressos
-                  <Icon name="arrow-right" size={10} />
-                </span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </Link>
@@ -177,6 +173,7 @@ export function EventCardLuxSkeleton() {
       <div className="skeleton-shimmer aspect-video" />
       <div className="space-y-2 px-4 pb-4 pt-3">
         <div className="skeleton-shimmer h-4 w-4/5 rounded-md" />
+        <div className="skeleton-shimmer h-4 w-3/5 rounded-md" />
         <div className="skeleton-shimmer h-3 w-2/3 rounded-md" />
       </div>
     </div>
