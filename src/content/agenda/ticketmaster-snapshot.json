@@ -1,5 +1,5 @@
 {
- "fetchedAt": "2026-10-16T10:00:03.148Z",
+ "fetchedAt": "2026-10-17T00:44:17.264Z",
  "events": [
   {
    "id": "ZFIMVHtnMZ17kv0K",
@@ -428,78 +428,6 @@
       },
       "address": {
        "line1": "Av. Cel. Fernando Ferreira Leite 1540"
-      }
-     }
-    ]
-   }
-  },
-  {
-   "id": "ZFIMVHtnMZ17k4Oa",
-   "name": "Kid Abelha - Florianópolis",
-   "url": "https://www.ticketmaster.com.br/event/venda-geral-kid-abelha-florianopolis",
-   "images": [
-    {
-     "url": "https://s1.ticketm.net/dam/c/548/5fefbd1c-973b-4b0e-9b2e-d78e4ce37548_106111_RETINA_LANDSCAPE_16_9.jpg",
-     "ratio": "16_9",
-     "width": 1136
-    },
-    {
-     "url": "https://s1.ticketm.net/dam/c/548/5fefbd1c-973b-4b0e-9b2e-d78e4ce37548_106111_RECOMENDATION_16_9.jpg",
-     "ratio": "16_9",
-     "width": 100
-    },
-    {
-     "url": "https://s1.ticketm.net/dam/c/548/5fefbd1c-973b-4b0e-9b2e-d78e4ce37548_106111_EVENT_DETAIL_PAGE_16_9.jpg",
-     "ratio": "16_9",
-     "width": 205
-    },
-    {
-     "url": "https://s1.ticketm.net/dam/c/548/5fefbd1c-973b-4b0e-9b2e-d78e4ce37548_106111_TABLET_LANDSCAPE_LARGE_16_9.jpg",
-     "ratio": "16_9",
-     "width": 2048
-    },
-    {
-     "url": "https://s1.ticketm.net/dam/c/548/5fefbd1c-973b-4b0e-9b2e-d78e4ce37548_106111_RETINA_PORTRAIT_16_9.jpg",
-     "ratio": "16_9",
-     "width": 640
-    },
-    {
-     "url": "https://s1.ticketm.net/dam/c/548/5fefbd1c-973b-4b0e-9b2e-d78e4ce37548_106111_TABLET_LANDSCAPE_16_9.jpg",
-     "ratio": "16_9",
-     "width": 1024
-    }
-   ],
-   "dates": {
-    "start": {
-     "localDate": "2026-10-17",
-     "localTime": "21:00:00"
-    },
-    "status": {
-     "code": "onsale"
-    }
-   },
-   "classifications": [
-    {
-     "genre": {
-      "name": "World"
-     },
-     "segment": {
-      "name": "Music"
-     }
-    }
-   ],
-   "_embedded": {
-    "venues": [
-     {
-      "name": "Arena Opus",
-      "city": {
-       "name": "Grande Florianópolis São José"
-      },
-      "state": {
-       "stateCode": "SC"
-      },
-      "address": {
-       "line1": "SC-281 4000"
       }
      }
     ]
@@ -9176,6 +9104,78 @@
       },
       "address": {
        "line1": "R. Bragança Paulista 1281"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "id": "ZFIMVHtnMZ17k4Oa",
+   "name": "Kid Abelha - Florianópolis",
+   "url": "https://www.ticketmaster.com.br/event/kid-abelha-florianopolis",
+   "images": [
+    {
+     "url": "https://s1.ticketm.net/dam/c/548/5fefbd1c-973b-4b0e-9b2e-d78e4ce37548_106111_RETINA_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1136
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/548/5fefbd1c-973b-4b0e-9b2e-d78e4ce37548_106111_RECOMENDATION_16_9.jpg",
+     "ratio": "16_9",
+     "width": 100
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/548/5fefbd1c-973b-4b0e-9b2e-d78e4ce37548_106111_TABLET_LANDSCAPE_LARGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 2048
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/548/5fefbd1c-973b-4b0e-9b2e-d78e4ce37548_106111_EVENT_DETAIL_PAGE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 205
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/548/5fefbd1c-973b-4b0e-9b2e-d78e4ce37548_106111_RETINA_PORTRAIT_16_9.jpg",
+     "ratio": "16_9",
+     "width": 640
+    },
+    {
+     "url": "https://s1.ticketm.net/dam/c/548/5fefbd1c-973b-4b0e-9b2e-d78e4ce37548_106111_TABLET_LANDSCAPE_16_9.jpg",
+     "ratio": "16_9",
+     "width": 1024
+    }
+   ],
+   "dates": {
+    "start": {
+     "localDate": "2027-03-06",
+     "localTime": "21:00:00"
+    },
+    "status": {
+     "code": "onsale"
+    }
+   },
+   "classifications": [
+    {
+     "genre": {
+      "name": "World"
+     },
+     "segment": {
+      "name": "Music"
+     }
+    }
+   ],
+   "_embedded": {
+    "venues": [
+     {
+      "name": "Arena Opus",
+      "city": {
+       "name": "Grande Florianópolis São José"
+      },
+      "state": {
+       "stateCode": "SC"
+      },
+      "address": {
+       "line1": "SC-281 4000"
       }
      }
     ]
