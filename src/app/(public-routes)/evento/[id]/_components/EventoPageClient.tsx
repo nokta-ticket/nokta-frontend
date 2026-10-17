@@ -8,7 +8,7 @@ import type { EventDetails } from "@/interfaces/events";
 import api from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import { useAuth } from "@/context/AuthContext";
-import { isSalesClosed } from "@/lib/event-sales";
+import { getEventStartAt, isSalesClosed } from "@/lib/event-sales";
 import { cityLabel, formatEventDate, formatTime } from "@/lib/format";
 import { MEDIA_FALLBACK, resolveThumbnailUrl } from "@/lib/media";
 import { getPublicTicketsUrl } from "@/lib/surfaces";
@@ -284,10 +284,18 @@ export default function EventoPageClient() {
     onContinue: continueToCheckout,
   };
 
+  // Com a lista VIP ativa, "Vendas encerradas" só confunde quem veio retirar o
+  // VIP (as vendas pagas fecham 2h antes, a lista não).
+  const startAt = getEventStartAt(evento);
+  const jaComecou = startAt ? now >= startAt : false;
   const statusBadge = isCancelled ? (
     <StatusBadge tone="danger">Cancelado</StatusBadge>
   ) : isEventPast ? (
     <StatusBadge tone="neutral">Encerrado</StatusBadge>
+  ) : vendasEncerradas && vipActive ? (
+    <StatusBadge tone="brand" pulse>
+      {jaComecou ? "Acontecendo agora" : "Lista VIP aberta"}
+    </StatusBadge>
   ) : vendasEncerradas ? (
     <StatusBadge tone="warning">Vendas encerradas</StatusBadge>
   ) : null;
