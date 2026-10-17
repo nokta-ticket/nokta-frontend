@@ -146,6 +146,46 @@ describe("middleware — Cache-Control por superfície (Fase 5.2/5.3, Etapa 5/18
   });
 });
 
+describe("middleware — redirect provisório do FERVO para a lista VIP (até 00:00 de 18/10)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("antes do prazo, /evento/<slug> e /evento/22 vão pra /vip/<slug> com 307, preservando a query", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-17T23:00:00Z"));
+    for (const url of [
+      "https://www.noktatickets.com.br/evento/fervo-house-fervo-music-bar?utm_source=ig",
+      "https://www.noktatickets.com.br/evento/22?utm_source=ig",
+    ]) {
+      const res = await middleware(buildRequest(url));
+      expect(res.status).toBe(307);
+      expect(res.headers.get("location")).toBe("https://www.noktatickets.com.br/vip/fervo-house-fervo-music-bar?utm_source=ig");
+    }
+  });
+
+  it("checkout do FERVO e outros eventos não são afetados", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-17T23:00:00Z"));
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ slug: "fervo-house-fervo-music-bar" }), { status: 200 })));
+    const checkout = await middleware(buildRequest("https://www.noktatickets.com.br/evento/fervo-house-fervo-music-bar/checkout"));
+    expect(checkout.headers.get("location")).toBeNull();
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ slug: "baile-neon" }), { status: 200 })));
+    const outro = await middleware(buildRequest("https://www.noktatickets.com.br/evento/baile-neon"));
+    expect(outro.headers.get("location")).toBeNull();
+    vi.unstubAllGlobals();
+  });
+
+  it("depois da meia-noite de 18/10 o redirect some sozinho", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-18T03:00:00Z"));
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ slug: "fervo-house-fervo-music-bar" }), { status: 200 })));
+    const res = await middleware(buildRequest("https://www.noktatickets.com.br/evento/fervo-house-fervo-music-bar"));
+    expect(res.headers.get("location")).toBeNull();
+    vi.unstubAllGlobals();
+  });
+});
+
 describe("middleware — compatibilidade de /evento/{id-ou-slug-antigo} com link antigo (id numérico ou slug pré-renomeação)", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
