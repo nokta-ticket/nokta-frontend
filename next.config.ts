@@ -24,7 +24,11 @@ const CSP_DIRECTIVES = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https:",
   "font-src 'self' data:",
-  "connect-src 'self' https://api.nokta.live https://api.noktatickets.com.br https://*.supabase.co https://api.pagar.me https://3ds-nx-js.stone.com.br https://cloudflareinsights.com https://viacep.com.br https://www.facebook.com https://web.facebook.com https://graph.facebook.com http://localhost:3333",
+  // fastly.jsdelivr.net: o leitor de QR do check-in (@yudiel/react-qr-scanner →
+  // barcode-detector → zxing-wasm) baixa o decodificador .wasm de lá na hora
+  // de ler. Sem isso a câmera abria mas nenhum QR era lido (o fetch do .wasm
+  // era bloqueado em silêncio e nenhuma validação chegava na API).
+  "connect-src 'self' https://api.nokta.live https://api.noktatickets.com.br https://*.supabase.co https://api.pagar.me https://3ds-nx-js.stone.com.br https://cloudflareinsights.com https://viacep.com.br https://www.facebook.com https://web.facebook.com https://graph.facebook.com https://fastly.jsdelivr.net http://localhost:3333",
   // 'self' além de https: — a prévia do cardápio (/cardapio-preview) é um
   // iframe da própria origem, e em dev a origem é http://localhost.
   "frame-src 'self' https:",
