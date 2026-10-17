@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { IDetectedBarcode, Scanner } from "@yudiel/react-qr-scanner";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,14 @@ export default function ValidarIngressoPage() {
   const [scans, setScans] = useState<ScanEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const resultRef = useRef<HTMLElement>(null);
+
+  // No celular o resultado fica abaixo da área da câmera: rola até ele a cada
+  // leitura, pra o porteiro ver na hora se entra ou não.
+  const lastAt = scans[0]?.at;
+  useEffect(() => {
+    if (lastAt) resultRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [lastAt]);
 
   const validarIngresso = async (code: string) => {
     if (!code.trim()) {
@@ -54,7 +62,7 @@ export default function ValidarIngressoPage() {
       if (res.ok) {
         const data = await res.json().catch(() => ({}));
         const mensagem = data.eventName ?? "Validado";
-        toast.success(`Ingresso válido — ${mensagem}`);
+        toast.success("Ingresso válido", { description: mensagem });
         setScans((prev) => [{ codigo: code, outcome: "válido", mensagem, at: Date.now() }, ...prev]);
         setCodigo("");
         return;
@@ -62,7 +70,7 @@ export default function ValidarIngressoPage() {
 
       const body = await res.json().catch(() => ({}));
       const mensagem = body?.message ?? "Ingresso inválido.";
-      toast.error(mensagem);
+      toast.error("Ingresso inválido", { description: mensagem });
       setScans((prev) => [{ codigo: code, outcome: "inválido", mensagem, at: Date.now() }, ...prev]);
       setCodigo("");
     } catch {
@@ -139,13 +147,14 @@ export default function ValidarIngressoPage() {
 
         {/* Último resultado — grande, pra ler de longe */}
         {last ? (
-          <section role="status" aria-live="polite" className={cn("hairline-top relative flex items-center gap-4 rounded-card border p-5 slide-up", last.outcome === "válido" ? "bg-callout-success border-success-ring [--hairline-color:var(--success)]" : "bg-callout-danger border-danger-ring [--hairline-color:var(--danger)]")}>
+          <section ref={resultRef} role="status" aria-live="polite" className={cn("hairline-top relative flex scroll-mt-4 items-start gap-4 rounded-card border p-5 slide-up", last.outcome === "válido" ? "bg-callout-success border-success-ring [--hairline-color:var(--success)]" : "bg-callout-danger border-danger-ring [--hairline-color:var(--danger)]")}>
             <span className={cn("pulse-ring flex size-14 shrink-0 items-center justify-center rounded-full", last.outcome === "válido" ? "bg-success text-white [--pulse-color:var(--success)]" : "bg-danger text-white [--pulse-color:var(--danger)]")}>
               <Icon name={last.outcome === "válido" ? "check" : "close"} size={26} />
             </span>
             <div className="min-w-0 flex-1">
               <p className={cn("text-title font-semibold tracking-tight", last.outcome === "válido" ? "text-success" : "text-danger")}>{last.outcome === "válido" ? "Ingresso válido" : "Ingresso inválido"}</p>
-              <p className="mt-0.5 truncate text-body text-foreground">{last.mensagem}</p>
+              {/* Mensagem inteira, quebrando linha: no celular o truncate cortava o motivo. */}
+              <p className="mt-1 break-words text-base font-medium leading-snug text-foreground">{last.mensagem}</p>
               <p className="truncate font-mono text-caption text-muted-foreground">{last.codigo}</p>
             </div>
           </section>
@@ -176,12 +185,12 @@ export default function ValidarIngressoPage() {
               {scans.map((scan, idx) => {
                 const ok = scan.outcome === "válido";
                 return (
-                  <li key={`${scan.codigo}-${scan.at}-${idx}`} className="row-in flex items-center gap-3 px-4 py-3" style={{ ["--i" as string]: idx } as never}>
+                  <li key={`${scan.codigo}-${scan.at}-${idx}`} className="row-in flex items-start gap-3 px-4 py-3" style={{ ["--i" as string]: idx } as never}>
                     <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-full", ok ? "bg-success-bg text-success" : "bg-danger-bg text-danger")}>
                       <Icon name={ok ? "check" : "close"} size={13} />
                     </span>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground">{scan.mensagem}</p>
+                      <p className="break-words text-sm font-medium text-foreground">{scan.mensagem}</p>
                       <p className="truncate font-mono text-caption text-muted-foreground">{scan.codigo}</p>
                     </div>
                     <span className="shrink-0 text-caption text-subtle-foreground tnum">{formatTime(scan.at)}</span>
