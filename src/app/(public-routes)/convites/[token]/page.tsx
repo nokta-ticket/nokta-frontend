@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { venueTeamApi, VENUE_ROLE_LABEL, type VenueInvitationPreview, type VenueRoleKey } from "@/services/venue-team";
 import { getErrorMessage } from "@/lib/axios";
+import { clearPendingInvite, savePendingInvite } from "@/lib/pending-invite";
 import { toast } from "@/lib/toast";
 import { AuthFormFallback, AuthScreen } from "@/components/auth/auth-screen";
 import { Button } from "@/components/ui/button";
@@ -26,8 +27,12 @@ export default function ConviteAcceptPage({ params }: { params: Promise<{ token:
     (async () => {
       try {
         const data = await venueTeamApi.previewInvitation(token);
+        // Guarda o convite: se o login seguir por outro caminho, a pessoa
+        // volta pra cá em vez de cair no "criar workspace".
+        savePendingInvite(token);
         if (active) setPreview(data);
       } catch (err) {
+        clearPendingInvite(token);
         if (active) setError(getErrorMessage(err, "Este convite não é válido ou já expirou."));
       } finally {
         if (active) setLoading(false);
@@ -42,6 +47,7 @@ export default function ConviteAcceptPage({ params }: { params: Promise<{ token:
     setAccepting(true);
     try {
       await venueTeamApi.acceptInvitation(token);
+      clearPendingInvite(token);
       toast.success("Convite aceito! Bem-vindo(a) à equipe.");
       router.push("/dashboard/inicio");
     } catch (err) {

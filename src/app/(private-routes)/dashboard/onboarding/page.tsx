@@ -22,6 +22,7 @@ import { toast } from "@/lib/toast";
 import { createDefaultSelection, flattenSelection, type BusinessNeedSelectionState } from "../_components/business-needs/business-need-groups-picker";
 import { useActivateBusinessNeeds, useBusinessNeedsCatalog, usePreviewBusinessNeedsActivation } from "../_hooks/use-platform";
 import { OnboardingExtras } from "./_components/onboarding-extras";
+import { PendingInviteCallout } from "./_components/pending-invite-callout";
 import type { BusinessNeedGroup, BusinessNeedKey } from "@/services/platform";
 
 const STEP_LABELS = ["Identificação", "Operação", "Termos", "Resumo"] as const;
@@ -650,6 +651,12 @@ export default function PlatformOnboardingPage() {
     }
   };
 
+  // Convite aceito pelo aviso: recarrega de verdade pra organização, módulos
+  // e menu virem do zero já com o workspace novo.
+  const goToInvitedWorkspace = () => {
+    window.location.href = "/dashboard/inicio";
+  };
+
   if (loadingOrgs || !progressChecked || alreadyConfigured) {
     return (
       <div className="space-y-6">
@@ -668,6 +675,8 @@ export default function PlatformOnboardingPage() {
             <h1 className="mt-6 text-display font-medium tracking-tight text-foreground">Só falta criar seu workspace</h1>
             <p className="mt-2 text-body text-muted-foreground">Seu acesso já está ativo. Informe o nome do negócio ou operação para continuar.</p>
           </div>
+
+          <PendingInviteCallout onAccepted={goToInvitedWorkspace} className="mb-4" />
 
           <Card accent className="p-6">
             <form
@@ -693,6 +702,7 @@ export default function PlatformOnboardingPage() {
   if (step === 0) {
     return (
       <div className="space-y-6">
+        <PendingInviteCallout onAccepted={goToInvitedWorkspace} />
         <OnboardingStepper step={step} />
 
         <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1.1fr_1fr]">

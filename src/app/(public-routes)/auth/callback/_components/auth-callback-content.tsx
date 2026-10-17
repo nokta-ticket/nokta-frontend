@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import { useAuth } from "@/context/AuthContext";
+import { pendingInvitePath } from "@/lib/pending-invite";
 import { useSurface } from "@/lib/use-surface";
 import { AuthScreen } from "@/components/auth/auth-screen";
 import { Button } from "@/components/ui/button";
@@ -66,7 +67,10 @@ function MergeAccountForm({ code, provider, ctx }: { code: string; provider: str
       signIn(user);
       toast.success(`Conta ${providerLabel} vinculada com sucesso!`);
 
-      if (ctx === "produtor") {
+      const invite = pendingInvitePath();
+      if (invite) {
+        router.replace(invite);
+      } else if (ctx === "produtor") {
         // Decide antes de navegar — ver mesmo comentário em login-form.tsx.
         router.replace(await resolveProdutorDestination());
       } else {
@@ -129,7 +133,12 @@ export function AuthCallbackContent() {
         const data = res.data;
         signIn({ userId: data.id, role: data.role, nivelProdutor: data.nivelProdutor ?? null });
 
-        if (ctx === "produtor") {
+        // Convite aberto antes do login: o OAuth não carrega o `redirect`,
+        // então sem isso o convidado caía no "criar workspace".
+        const invite = pendingInvitePath();
+        if (invite) {
+          if (!cancelled) router.replace(invite);
+        } else if (ctx === "produtor") {
           const destination = await resolveProdutorDestination();
           if (!cancelled) router.replace(destination);
         } else {

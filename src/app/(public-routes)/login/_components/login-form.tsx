@@ -7,6 +7,7 @@ import axios from "axios";
 import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import { useAuth, type UserPayload } from "@/context/AuthContext";
+import { pendingInvitePath } from "@/lib/pending-invite";
 import { isSafeInternalRedirect } from "@/lib/safe-redirect";
 import { useSurface } from "@/lib/use-surface";
 import { Button } from "@/components/ui/button";
@@ -44,8 +45,12 @@ export function LoginForm() {
     signIn(user);
     toast.success("Login realizado com sucesso!");
 
+    const invite = pendingInvitePath();
     if (isSafeInternalRedirect(redirectTo)) {
       router.push(redirectTo);
+    } else if (invite) {
+      // Convite aberto antes do login: volta pra ele (e não pro "criar workspace").
+      router.push(invite);
     } else if (ctx === "produtor") {
       // Decide aqui, antes de navegar: se toda organização do usuário já
       // tem onboarding concluído (mesmo campo que dashboard/onboarding/

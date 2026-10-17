@@ -9,6 +9,7 @@ import api, { getErrorMessage } from "@/lib/axios";
 import { toast } from "@/lib/toast";
 import { useAuth } from "@/context/AuthContext";
 import { toNameCase } from "@/lib/name-case";
+import { pendingInvitePath } from "@/lib/pending-invite";
 import { isSafeInternalRedirect } from "@/lib/safe-redirect";
 import { useSurface } from "@/lib/use-surface";
 import { cn } from "@/lib/cn";
@@ -253,8 +254,12 @@ export function RegisterForm() {
       signIn(user);
       setStep("done");
       setTimeout(() => {
+        const invite = pendingInvitePath();
         if (redirectTo) {
           router.push(redirectTo);
+        } else if (invite) {
+          // Convite aberto antes do cadastro: volta pra ele.
+          router.push(invite);
         } else if (ctx === "produtor") {
           // Sempre onboarding — ver mesmo comentário em login-form.tsx.
           router.push("/dashboard/onboarding");
