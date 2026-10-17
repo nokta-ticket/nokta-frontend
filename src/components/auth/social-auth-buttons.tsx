@@ -21,8 +21,11 @@ export function SocialAuthButtons({ ctx, mode = "login" }: { ctx: string; mode?:
       <Button type="button" variant="contrast" shape="pill" size="full" leftIcon="google" onClick={() => go("google")}>
         {verb} com Google
       </Button>
-      <Button type="button" variant="contrast" shape="pill" size="full" leftIcon="apple" onClick={() => go("apple")}>
-        {verb} com Apple
+      {/* Apple ainda sem credenciais na API (APPLE_* não configuradas): o
+          fluxo terminava num erro da Apple. Fica visível, mas desligado,
+          até o Sign in with Apple ser configurado. */}
+      <Button type="button" variant="contrast" shape="pill" size="full" leftIcon="apple" disabled aria-disabled="true" title="Login com Apple indisponível no momento">
+        {verb} com Apple · indisponível
       </Button>
     </div>
   );
